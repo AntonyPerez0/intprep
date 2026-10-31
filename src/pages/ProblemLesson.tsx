@@ -1,5 +1,27 @@
-import { useMemo, useState } from 'react';
+import '../styles/pages/problem-lesson.css';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Brain,
+  Clock,
+  Database,
+  ExternalLink,
+  FileCode2,
+  FileText,
+  Gauge,
+  Hammer,
+  Keyboard,
+  Lightbulb,
+  Lock,
+  RefreshCw,
+  ScanSearch,
+  Star,
+  Target,
+  TriangleAlert,
+  Zap,
+} from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, problemsFor } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
@@ -14,24 +36,33 @@ import { getProgress, learnProblem, useProgress } from '../lib/store';
 import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { ComplexityDrill, KeyLineDrill, OrderDrill } from '../components/Drills';
 import { SessionShell } from '../components/Shell';
-import { DifficultyChip, freeMirrorUrl, Icon, leetcodeUrl } from '../components/ui';
+import { CATEGORY_ICON, CategoryIcon, IconTile } from '../components/icons';
+import { Badge, Completion, DifficultyChip, freeMirrorUrl, leetcodeUrl } from '../components/ui';
 
 const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'complexity', 'pitfalls', 'order', 'keyline'] as const;
 type Step = (typeof STEPS)[number];
 
-const STEP_LABEL: Record<Step, string> = {
-  read: 'Step 1 · Understand the problem',
-  guess: 'Step 2 · Make a guess',
-  hints: 'Step 3 · Think it through',
-  brute: 'Step 4 · The obvious way',
-  insight: 'Step 5 · The key insight',
-  plan: 'Step 6 · The plan',
-  code: 'Step 7 · Build the code',
-  complexity: 'Step 8 · Check the cost',
-  pitfalls: 'Step 9 · Avoid the traps',
+const STEP_NAME: Record<Step, string> = {
+  read: 'Understand the problem',
+  guess: 'Make a guess',
+  hints: 'Think it through',
+  brute: 'The obvious way',
+  insight: 'The key insight',
+  plan: 'The plan',
+  code: 'Build the code',
+  complexity: 'Check the cost',
+  pitfalls: 'Avoid the traps',
   order: 'Quick check',
   keyline: 'Final check',
 };
+
+/** Eyebrow shown above every step, e.g. "Step 3 of 11 · Think it through". */
+const stepLabel = (s: Step) => `Step ${STEPS.indexOf(s) + 1} of ${STEPS.length} · ${STEP_NAME[s]}`;
+
+const practiceLink = (p: Problem) => ({
+  href: p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id),
+  site: p.premium ? 'a free mirror' : 'LeetCode',
+});
 
 export function ProblemLessonRoute() {
   const { id } = useParams();
@@ -66,103 +97,210 @@ function ProblemLesson({ p }: { p: Problem }) {
 
   if (done) return <Complete p={p} xp={xp} relearn={wasLearned} />;
 
+  const reward = wasLearned ? Math.round(XP.problem[p.difficulty] / 4) : XP.problem[p.difficulty];
+
   return (
-    <SessionShell progress={i / STEPS.length} onClose={close}>
-      {step === 'read' && <ReadStep p={p} onNext={next} />}
-      {step === 'guess' && <GuessStep p={p} onNext={next} />}
-      {step === 'hints' && <HintsStep p={p} onNext={next} />}
-      {step === 'brute' && (
-        <TextStep label={STEP_LABEL.brute} title="Start with brute force" onNext={next}>
-          <p className="muted">In an interview, say the simple solution out loud first. It shows you understand the problem and gives you something to improve.</p>
-          <div className="card">
-            <Md text={p.brute} />
-          </div>
-        </TextStep>
-      )}
-      {step === 'insight' && (
-        <TextStep label={STEP_LABEL.insight} title="The aha moment 💡" onNext={next}>
-          <div className="insight-card">
-            <div className="tiny" style={{ fontWeight: 900, opacity: 0.85, letterSpacing: '.08em' }}>
-              {CATEGORY_BY_ID[p.category].icon} {p.pattern.toUpperCase()}
-            </div>
-            <div style={{ marginTop: 6, fontWeight: 700, fontSize: '1.08rem' }}>
-              <Md text={p.insight} />
-            </div>
-            <div className="mnemonic">🧠 Remember: {p.mnemonic}</div>
-          </div>
-          <div style={{ marginTop: 16 }}>
-            <div className="small muted" style={{ fontWeight: 800, marginBottom: 6 }}>
-              Clues that point here — look for these next time:
-            </div>
-            <div className="row wrap" style={{ gap: 6 }}>
-              {p.signals.map((s, k) => (
-                <span key={k} className="chip signal">
-                  {inline(s)}
-                </span>
-              ))}
-            </div>
-          </div>
-        </TextStep>
-      )}
-      {step === 'plan' && <PlanStep p={p} onNext={next} />}
-      {step === 'code' && <CodeStep p={p} onNext={next} />}
-      {step === 'complexity' && <ComplexityDrill problem={p} onDone={next} kicker={STEP_LABEL.complexity} />}
-      {step === 'pitfalls' && (
-        <TextStep label={STEP_LABEL.pitfalls} title="Common traps" onNext={next}>
-          <div className="stack">
-            {p.pitfalls.map((x, k) => (
-              <div key={k} className="hint-box">
-                ⚠️ {inline(x)}
+    <SessionShell
+      progress={i / STEPS.length}
+      onClose={close}
+      title={p.title}
+      right={
+        <span className="pill-stat xp plesson-reward" title={`Finish the lesson to earn ${reward} XP`}>
+          <Zap strokeWidth={2} />+{reward}
+          <span className="plesson-reward-unit">XP</span>
+        </span>
+      }
+    >
+      <div className={`plesson plesson-step-${step}`}>
+        {step === 'read' && <ReadStep p={p} onNext={next} />}
+        {step === 'guess' && <GuessStep p={p} onNext={next} />}
+        {step === 'hints' && <HintsStep p={p} onNext={next} />}
+        {step === 'brute' && (
+          <TextStep
+            step="brute"
+            title="Start with brute force"
+            sub="In an interview, say the simple solution out loud first. It shows you understand the problem and gives you something to improve."
+            onNext={next}
+          >
+            <section className="card plesson-card">
+              <CardHead icon={<IconTile icon={Hammer} size="sm" color="var(--text-tertiary)" />} title="The naive approach" sub="Correct, but too slow to stop there" />
+              <Md text={p.brute} className="plesson-prose" />
+            </section>
+          </TextStep>
+        )}
+        {step === 'insight' && (
+          <TextStep step="insight" title="The aha moment" onNext={next}>
+            <div className="insight-card plesson-insight">
+              <div className="insight-label">
+                <Lightbulb strokeWidth={2} />
+                <span>Key insight · {p.pattern}</span>
               </div>
-            ))}
-          </div>
-          <div className="card flat small" style={{ marginTop: 16 }}>
-            <strong>Cost:</strong> {p.time} time · {p.space} space. <span className="muted">{inline(p.complexityWhy)}</span>
-          </div>
-        </TextStep>
-      )}
-      {step === 'order' && <OrderDrill problem={p} onDone={next} kicker={STEP_LABEL.order} />}
-      {step === 'keyline' && <KeyLineDrill problem={p} onDone={next} kicker={STEP_LABEL.keyline} />}
+              <div className="plesson-insight-body">
+                <Md text={p.insight} />
+              </div>
+              <div className="mnemonic">
+                <Brain strokeWidth={2} />
+                <span>
+                  <span className="plesson-mn-label">Remember</span>
+                  {p.mnemonic}
+                </span>
+              </div>
+            </div>
+            <section className="card plesson-card">
+              <CardHead
+                icon={<IconTile icon={ScanSearch} size="sm" />}
+                title="Clues that point here"
+                sub="Look for these the next time you read a problem"
+              />
+              <div className="plesson-chips">
+                {p.signals.map((s, k) => (
+                  <span key={k} className="chip signal">
+                    {inline(s)}
+                  </span>
+                ))}
+              </div>
+            </section>
+          </TextStep>
+        )}
+        {step === 'plan' && <PlanStep p={p} onNext={next} />}
+        {step === 'code' && <CodeStep p={p} onNext={next} />}
+        {step === 'complexity' && <ComplexityDrill problem={p} onDone={next} kicker={stepLabel('complexity')} />}
+        {step === 'pitfalls' && (
+          <TextStep step="pitfalls" title="Common traps" sub="Run through these whenever you write this solution yourself." onNext={next}>
+            <ul className="plesson-list">
+              {p.pitfalls.map((x, k) => (
+                <li key={k} className="callout callout-warning">
+                  <TriangleAlert />
+                  <div>{inline(x)}</div>
+                </li>
+              ))}
+            </ul>
+            <section className="card pad-0 plesson-cost" aria-label="Cost summary">
+              <div className="plesson-cost-head">
+                <Gauge />
+                <span>Cost summary</span>
+              </div>
+              <div className="plesson-cost-grid">
+                <div className="plesson-cost-cell">
+                  <div className="plesson-cost-label">
+                    <Clock /> Time
+                  </div>
+                  <div className="plesson-cost-value">{p.time}</div>
+                </div>
+                <div className="plesson-cost-cell">
+                  <div className="plesson-cost-label">
+                    <Database /> Space
+                  </div>
+                  <div className="plesson-cost-value">{p.space}</div>
+                </div>
+              </div>
+              <div className="plesson-cost-why">{inline(p.complexityWhy)}</div>
+            </section>
+          </TextStep>
+        )}
+        {step === 'order' && <OrderDrill problem={p} onDone={next} kicker={stepLabel('order')} />}
+        {step === 'keyline' && <KeyLineDrill problem={p} onDone={next} kicker={stepLabel('keyline')} />}
+      </div>
     </SessionShell>
   );
 }
 
-function TextStep({ label, title, children, onNext }: { label: string; title: string; children: React.ReactNode; onNext: () => void }) {
+// ── Building blocks ─────────────────────────────────────────────────────────
+
+function StepHeader({ step, title, sub, children }: { step: Step; title: ReactNode; sub?: ReactNode; children?: ReactNode }) {
+  return (
+    <header className="plesson-head">
+      <div className="kicker">{stepLabel(step)}</div>
+      <h1 className="q-title">{title}</h1>
+      {sub && <p className="plesson-sub">{sub}</p>}
+      {children}
+    </header>
+  );
+}
+
+function CardHead({ icon, title, sub }: { icon: ReactNode; title: ReactNode; sub?: ReactNode }) {
+  return (
+    <div className="plesson-card-head">
+      {icon}
+      <div className="grow">
+        <h2 className="card-title">{title}</h2>
+        {sub && <div className="card-subtitle">{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** Collapsible copy of the problem statement, for steps that need a quick look back. */
+function ProblemPeek({ p }: { p: Problem }) {
+  return (
+    <details className="disclosure plesson-peek">
+      <summary>
+        <FileText />
+        Problem statement
+      </summary>
+      <ProblemPrompt p={p} compact showTitle={false} />
+    </details>
+  );
+}
+
+function TextStep({
+  step,
+  title,
+  sub,
+  children,
+  onNext,
+}: {
+  step: Step;
+  title: string;
+  sub?: string;
+  children: ReactNode;
+  onNext: () => void;
+}) {
   return (
     <>
-      <div className="kicker">{label}</div>
-      <h2 className="q-title">{title}</h2>
-      {children}
+      <StepHeader step={step} title={title} sub={sub} />
+      <div className="plesson-stack">{children}</div>
       <ActionBar status="idle" onContinue={onNext} />
     </>
   );
 }
 
+// ── Steps ───────────────────────────────────────────────────────────────────
+
 function ReadStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const cat = CATEGORY_BY_ID[p.category];
+  const CatIcon = CATEGORY_ICON[p.category];
+  const link = practiceLink(p);
   return (
     <>
-      <div className="kicker">{STEP_LABEL.read}</div>
-      <h2 className="q-title">
-        {p.title} <span className="faint small">#{p.num}</span>
-      </h2>
-      <div className="row wrap" style={{ marginBottom: 12, gap: 6 }}>
-        <DifficultyChip d={p.difficulty} />
-        <span className="chip">
-          {cat.icon} {cat.short}
-        </span>
-        {p.premium && <span className="chip">LeetCode Premium</span>}
-      </div>
-      <ProblemPrompt p={p} showTitle={false} />
-      <div className="card flat small" style={{ marginTop: 16 }}>
-        <strong>🎯 Before you continue:</strong> restate the problem in your own words and trace the first example by hand.{' '}
-        <span className="muted">
-          Want a real challenge? Try solving it first on{' '}
-          <a href={p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id)} target="_blank" rel="noreferrer">
-            {p.premium ? 'a free mirror' : 'LeetCode'} <Icon name="external" size={12} />
-          </a>{' '}
-          — struggling first makes the lesson stick better.
-        </span>
+      <StepHeader step="read" title={p.title}>
+        <div className="plesson-meta">
+          <span className="plesson-num">#{p.num}</span>
+          <DifficultyChip d={p.difficulty} />
+          <span className="chip plesson-cat" style={{ ['--c' as string]: cat.color }}>
+            <CatIcon strokeWidth={2} />
+            {cat.name}
+          </span>
+          {p.premium && <Badge tone="warning">LeetCode Premium</Badge>}
+        </div>
+      </StepHeader>
+      <div className="plesson-stack">
+        <ProblemPrompt p={p} showTitle={false} />
+        <div className="callout plesson-tryfirst">
+          <Target />
+          <div className="grow">
+            <div className="plesson-callout-title">Before you continue</div>
+            <p>Restate the problem in your own words and trace the first example by hand.</p>
+            <p className="plesson-tryfirst-alt">
+              Want a real challenge? Try solving it first on{' '}
+              <a href={link.href} target="_blank" rel="noreferrer">
+                {link.site}
+                <ExternalLink size={12} aria-hidden="true" />
+              </a>
+              . Struggling first makes the lesson stick.
+            </p>
+          </div>
+        </div>
       </div>
       <ActionBar status="idle" onContinue={onNext} continueLabel="I understand it" />
     </>
@@ -177,20 +315,29 @@ function GuessStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const ok = sel !== null && accepted.includes(sel as CategoryId);
   return (
     <>
-      <div className="kicker">{STEP_LABEL.guess}</div>
-      <h2 className="q-title">Which pattern do you think will crack it?</h2>
-      <p className="muted small">Guess even if you are unsure — predicting before you are told makes the answer far more memorable.</p>
-      <Choices
-        options={options.map((c) => ({ key: c, label: CATEGORY_BY_ID[c].name, icon: CATEGORY_BY_ID[c].icon }))}
-        selected={sel}
-        onSelect={(k) => {
-          setSel(k);
-          sfx('tap');
-        }}
-        answer={accepted}
-        revealed={status !== 'idle'}
-        twoCol
+      <StepHeader
+        step="guess"
+        title="Which pattern do you think will crack it?"
+        sub="Guess even if you are unsure. Predicting before you are told makes the answer far more memorable."
       />
+      <div className="plesson-stack">
+        <ProblemPeek p={p} />
+        <Choices
+          options={options.map((c) => ({
+            key: c,
+            label: CATEGORY_BY_ID[c].name,
+            icon: <CategoryIcon id={c} color={CATEGORY_BY_ID[c].color} size="sm" />,
+          }))}
+          selected={sel}
+          onSelect={(k) => {
+            setSel(k);
+            sfx('tap');
+          }}
+          answer={accepted}
+          revealed={status !== 'idle'}
+          twoCol
+        />
+      </div>
       <ActionBar
         status={status}
         canCheck={sel !== null}
@@ -199,7 +346,7 @@ function GuessStep({ p, onNext }: { p: Problem; onNext: () => void }) {
           sfx(ok ? 'correct' : 'wrong');
         }}
         onContinue={onNext}
-        title={ok ? 'Great instinct!' : 'Good guess — here is the answer'}
+        title={ok ? 'Great instinct' : 'Good guess — here is the answer'}
         feedback={
           <>
             It's <strong>{CATEGORY_BY_ID[p.category].name}</strong>. The clues:{' '}
@@ -218,26 +365,55 @@ function GuessStep({ p, onNext }: { p: Problem; onNext: () => void }) {
 
 function HintsStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const [shown, setShown] = useState(0);
+  const total = p.hints.length;
+  const reveal = () => setShown((s) => Math.min(s + 1, total));
   return (
     <>
-      <div className="kicker">{STEP_LABEL.hints}</div>
-      <h2 className="q-title">Try to find the idea yourself</h2>
-      <p className="muted">Give it a minute of real thought. Reveal one hint at a time only when you are stuck.</p>
-      <div className="stack">
-        {p.hints.slice(0, shown).map((h, k) => (
-          <div key={k} className="hint-box">
-            <strong>Hint {k + 1}:</strong> {inline(h)}
-          </div>
-        ))}
+      <StepHeader
+        step="hints"
+        title="Try to find the idea yourself"
+        sub="Give it a minute of real thought. Reveal one hint at a time, only when you are stuck."
+      />
+      <div className="plesson-stack">
+        <ProblemPeek p={p} />
+        <ol className="plesson-list" aria-label="Hints">
+          {p.hints.map((h, k) =>
+            k < shown ? (
+              <li key={k} className="callout callout-brand plesson-hint">
+                <Lightbulb />
+                <div className="grow">
+                  <div className="plesson-hint-label">Hint {k + 1}</div>
+                  {inline(h)}
+                </div>
+              </li>
+            ) : (
+              <li key={k}>
+                {k === shown ? (
+                  <button type="button" className="plesson-locked next" onClick={reveal}>
+                    <Lock />
+                    <span className="grow">Hint {k + 1}</span>
+                    <span className="plesson-locked-action">Reveal</span>
+                  </button>
+                ) : (
+                  <div className="plesson-locked">
+                    <Lock />
+                    <span className="grow">Hint {k + 1}</span>
+                  </div>
+                )}
+              </li>
+            ),
+          )}
+        </ol>
       </div>
       <ActionBar
         status="idle"
         onContinue={onNext}
         continueLabel={shown === 0 ? 'Skip to the answer' : 'Show me the solution'}
         secondary={
-          shown < p.hints.length ? (
-            <button type="button" className="btn btn-ghost" onClick={() => setShown(shown + 1)}>
-              💡 Hint {shown + 1}/{p.hints.length}
+          shown < total ? (
+            <button type="button" className="btn btn-secondary btn-lg plesson-hint-btn" onClick={reveal}>
+              <Lightbulb />
+              Hint <span className="tabular">{shown + 1}/{total}</span>
             </button>
           ) : undefined
         }
@@ -248,24 +424,38 @@ function HintsStep({ p, onNext }: { p: Problem; onNext: () => void }) {
 
 function PlanStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const [shown, setShown] = useState(1);
-  const all = shown >= p.steps.length;
+  const total = p.steps.length;
+  const all = shown >= total;
   return (
     <>
-      <div className="kicker">{STEP_LABEL.plan}</div>
-      <h2 className="q-title">The algorithm, step by step</h2>
-      <p className="muted small">Before each new step appears, try to predict it.</p>
-      <ol className="steps-list">
-        {p.steps.slice(0, shown).map((s, k) => (
-          <li key={k}>
-            <span>{inline(s)}</span>
-          </li>
-        ))}
-      </ol>
-      <ActionBar
-        status="idle"
-        onContinue={all ? onNext : () => setShown(shown + 1)}
-        continueLabel={all ? 'Continue' : `Next step (${shown}/${p.steps.length})`}
-      />
+      <StepHeader step="plan" title="The algorithm, step by step" sub="Before each new step appears, try to predict it." />
+      <div className="plesson-stack">
+        <ol className="plesson-plan" aria-label="Algorithm steps">
+          {p.steps.slice(0, shown).map((s, k) => (
+            <li key={k} className="plesson-plan-step">
+              <span className="plesson-plan-num">{k + 1}</span>
+              <span className="plesson-plan-text">{inline(s)}</span>
+            </li>
+          ))}
+          {!all && (
+            <li className="plesson-plan-next" aria-hidden="true">
+              <span className="plesson-plan-num">{shown + 1}</span>
+              <span className="plesson-plan-text">What comes next? Predict it, then reveal.</span>
+            </li>
+          )}
+        </ol>
+        <div className="plesson-plan-foot">
+          <span className="tabular">
+            {shown} of {total} steps
+          </span>
+          <span className="plesson-plan-bar" aria-hidden="true">
+            {p.steps.map((_, k) => (
+              <span key={k} className={k < shown ? 'on' : ''} />
+            ))}
+          </span>
+        </div>
+      </div>
+      <ActionBar status="idle" onContinue={all ? onNext : () => setShown(shown + 1)} continueLabel={all ? 'Continue' : `Reveal step ${shown + 1}`} />
     </>
   );
 }
@@ -276,28 +466,64 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const [c, setC] = useState(Math.min(startAt, parsed.chunks.length - 1));
   const last = c >= parsed.chunks.length - 1;
   const chunk = parsed.chunks[c];
+  const pieces = parsed.chunks.length - startAt;
+  const piece = c + 1 - startAt;
   return (
     <>
-      <div className="kicker">
-        {STEP_LABEL.code} · {c + 1 - startAt}/{parsed.chunks.length - startAt}
-      </div>
-      <h2 className="q-title">Build the solution one piece at a time</h2>
-      <div className="bubble" style={{ marginBottom: 12 }} key={c}>
-        💬 {inline(chunk.explain)}
-        {chunk.keyLines.length > 0 && (
-          <div className="tiny" style={{ marginTop: 6, color: 'var(--gold)', fontWeight: 900 }}>
-            ★ Key line — this one carries the idea. You will be asked to recall it.
+      <StepHeader step="code" title="Build the solution one piece at a time" />
+      <div className="plesson-code">
+        <aside className="plesson-explain" aria-live="polite">
+          <div className="plesson-explain-head">
+            <span className="plesson-explain-count">
+              Piece <span className="tabular">{Math.max(piece, 1)}</span> of <span className="tabular">{Math.max(pieces, 1)}</span>
+            </span>
+            {chunk.keyLines.length > 0 && (
+              <Badge tone="warning">
+                <Star /> Key line
+              </Badge>
+            )}
           </div>
-        )}
+          <div className="plesson-segs" aria-hidden="true">
+            {Array.from({ length: Math.max(pieces, 1) }, (_, k) => (
+              <span key={k} className={k < piece ? 'on' : ''} />
+            ))}
+          </div>
+          <p className="plesson-explain-text" key={c}>
+            {inline(chunk.explain)}
+          </p>
+          {chunk.keyLines.length > 0 && (
+            <div className="plesson-keynote">
+              <Star />
+              <div>
+                {chunk.keyLines.length > 1 ? (
+                  <>
+                    <strong>These lines carry the idea.</strong> They are marked with a gold dot in the code, and you will be asked to recall them.
+                  </>
+                ) : (
+                  <>
+                    <strong>This line carries the idea.</strong> It is marked with a gold dot in the code, and you will be asked to recall it.
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </aside>
+        <div className="plesson-codewin">
+          <div className="plesson-codewin-bar">
+            <FileCode2 />
+            <span>solution.py</span>
+            <span className="plesson-codewin-lang">Python</span>
+          </div>
+          <CodeView lines={parsed.lines} focusChunk={c} hideAfterChunk={c} showKeys />
+        </div>
       </div>
-      <CodeView lines={parsed.lines} focusChunk={c} hideAfterChunk={c} showKeys />
       <ActionBar
         status="idle"
         onContinue={last ? onNext : () => setC(c + 1)}
         continueLabel={last ? 'Continue' : 'Next piece'}
         secondary={
           c > startAt ? (
-            <button type="button" className="btn btn-ghost" onClick={() => setC(c - 1)}>
+            <button type="button" className="btn btn-secondary btn-lg" onClick={() => setC(c - 1)}>
               Back
             </button>
           ) : undefined
@@ -307,62 +533,63 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   );
 }
 
+// ── Completion ──────────────────────────────────────────────────────────────
+
 function Complete({ p, xp, relearn }: { p: Problem; xp: number; relearn: boolean }) {
   const progress = useProgress();
   const card = progress.problems[p.id]?.srs;
   const siblings = problemsFor(p.category);
   const nextInUnit = siblings.find((q) => !progress.problems[q.id]?.learnedAt && q.id !== p.id);
+  const learnedInUnit = siblings.filter((q) => progress.problems[q.id]?.learnedAt).length;
+  const link = practiceLink(p);
+  const due = card ? friendlyDue(card.due) : null;
   return (
-    <SessionShell progress={1}>
-      <div className="complete">
-        <div className="trophy">{p.difficulty === 'Hard' ? '🐉' : '🏅'}</div>
-        <h1 style={{ marginTop: 12 }}>{relearn ? 'Refreshed!' : 'Problem learned!'}</h1>
-        <p className="muted">
-          <strong>{p.title}</strong> {relearn ? 'is fresh in your mind again.' : 'is now in your review deck.'}
-          {card && (
+    <SessionShell progress={1} title={p.title}>
+      <div className="plesson-done">
+        <Completion
+          icon={relearn ? RefreshCw : BadgeCheck}
+          tone={relearn ? 'brand' : 'success'}
+          title={relearn ? 'Refreshed' : 'Problem learned'}
+          subtitle={
             <>
-              {' '}
-              Next review: <strong>{friendlyDue(card.due)}</strong>.
+              <strong>{p.title}</strong> {relearn ? 'is fresh in your mind again.' : 'is now in your review deck.'}
             </>
-          )}
-        </p>
-        <div className="reward-tiles">
-          <div className="reward" style={{ ['--c' as string]: 'var(--gold)' }}>
-            <div className="rk">XP</div>
-            <div className="rv">+{xp}</div>
-          </div>
-          <div className="reward" style={{ ['--c' as string]: 'var(--blue)' }}>
-            <div className="rk">Pattern</div>
-            <div className="rv" style={{ fontSize: '1.4rem' }}>
-              {CATEGORY_BY_ID[p.category].icon}
-            </div>
-          </div>
-          <div className="reward" style={{ ['--c' as string]: 'var(--green)' }}>
-            <div className="rk">Level</div>
-            <div className="rv">{p.difficulty}</div>
-          </div>
-        </div>
-        <div className="card flat small" style={{ textAlign: 'left', marginBottom: 18 }}>
-          <strong>🔒 Lock it in:</strong> rebuilding the code from memory now (while it is fresh) is the fastest way to make it stick. Then solve it on LeetCode
-          without peeking.
-        </div>
-        <div className="stack" style={{ maxWidth: 380, margin: '0 auto' }}>
-          <Link to={`/p/${p.id}/rebuild`} className="btn btn-blue btn-block">
-            ⌨️ Code it from memory
+          }
+          stats={[
+            { label: 'XP earned', value: `+${xp}` },
+            { label: 'Next review', value: due ? due.charAt(0).toUpperCase() + due.slice(1) : '—' },
+            {
+              label: 'Unit progress',
+              value: (
+                <>
+                  {learnedInUnit}
+                  <span className="plesson-done-of">/{siblings.length}</span>
+                </>
+              ),
+            },
+          ]}
+        >
+          <Link to={`/p/${p.id}/rebuild`} className="btn btn-primary btn-lg btn-block">
+            <Keyboard />
+            Code it from memory
           </Link>
+          <p className="plesson-done-tip">Rebuild it now, while it is fresh, to make it stick.</p>
           {nextInUnit ? (
-            <Link to={`/p/${nextInUnit.id}/learn`} className="btn btn-green btn-block">
-              Next: {nextInUnit.title}
+            <Link to={`/p/${nextInUnit.id}/learn`} className="btn btn-secondary btn-lg btn-block">
+              <span className="truncate">Next: {nextInUnit.title}</span>
+              <ArrowRight />
             </Link>
           ) : (
-            <Link to="/learn" className="btn btn-green btn-block">
-              Back to the path
+            <Link to="/learn" className="btn btn-secondary btn-lg btn-block">
+              Back to the learning path
+              <ArrowRight />
             </Link>
           )}
-          <a className="btn btn-ghost btn-block" href={p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id)} target="_blank" rel="noreferrer">
-            Solve on {p.premium ? 'a free mirror' : 'LeetCode'} <Icon name="external" size={16} />
+          <a className="btn btn-quiet btn-block" href={link.href} target="_blank" rel="noreferrer">
+            Solve it on {link.site}
+            <ExternalLink />
           </a>
-        </div>
+        </Completion>
       </div>
     </SessionShell>
   );

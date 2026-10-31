@@ -1,0 +1,550 @@
+/* ==========================================================================
+   Problem lesson — /p/:id/learn (11 guided steps + completion)
+   All classes are prefixed `plesson-`.
+   ========================================================================== */
+
+/* ── Session header extras ──────────────────────────────────────────────── */
+.plesson-reward {
+  flex: none;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+}
+.plesson-reward svg {
+  width: 14px;
+  height: 14px;
+}
+.plesson-reward-unit {
+  font-weight: 550;
+  color: var(--text-tertiary);
+  margin-left: 2px;
+}
+
+/* ── Step header ────────────────────────────────────────────────────────── */
+.plesson-head {
+  margin-bottom: 20px;
+}
+.plesson-head .q-title {
+  margin: 0;
+}
+.plesson-sub {
+  margin: 8px 0 0;
+  max-width: 640px;
+  font-size: var(--fs-base);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.plesson-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.plesson-num {
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.plesson-cat svg {
+  color: var(--c);
+}
+
+.plesson-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.plesson-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Drills reused inside the lesson: give them the same header rhythm. */
+.plesson-step-complexity .q-title,
+.plesson-step-order .q-title,
+.plesson-step-keyline .q-title {
+  margin-bottom: 20px;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.plesson-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.plesson-card-head .card-title {
+  line-height: 1.3;
+}
+.plesson-prose {
+  font-size: var(--fs-base);
+  line-height: 1.65;
+  color: var(--text);
+}
+.plesson-prose p {
+  margin-bottom: 0.65em;
+}
+.plesson-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ── Read step ──────────────────────────────────────────────────────────── */
+.plesson-tryfirst {
+  background: var(--surface);
+  border-color: var(--border);
+  padding: 14px 16px;
+}
+.plesson-tryfirst > svg {
+  color: var(--brand-text);
+}
+.plesson-callout-title {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+.plesson-tryfirst p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.plesson-tryfirst p + p {
+  margin-top: 6px;
+}
+.plesson-tryfirst-alt {
+  font-size: var(--fs-sm);
+}
+.plesson-tryfirst a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 550;
+}
+
+/* Collapsible problem statement */
+details.plesson-peek > summary {
+  padding: 12px 16px;
+}
+.plesson-peek > .prompt-card {
+  margin: 0;
+  padding: 4px 16px 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  font-size: var(--fs-md);
+}
+.plesson-peek[open] > summary {
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 12px;
+}
+/* ── Hints ──────────────────────────────────────────────────────────────── */
+.plesson-hint {
+  animation: plesson-rise var(--dur-slow) var(--ease);
+}
+.plesson-hint-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  margin-bottom: 2px;
+}
+.plesson-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-tertiary);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  text-align: left;
+}
+.plesson-locked svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-disabled);
+}
+button.plesson-locked {
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast),
+    background var(--dur-fast),
+    color var(--dur-fast);
+}
+button.plesson-locked:hover {
+  border-color: var(--brand-border);
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+.plesson-locked-action {
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  color: var(--brand-text);
+}
+div.plesson-locked {
+  opacity: 0.7;
+}
+.plesson-hint-btn .tabular {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+/* ── Insight ────────────────────────────────────────────────────────────── */
+.plesson-insight {
+  padding: 22px 24px;
+}
+.plesson-insight .insight-label {
+  align-items: flex-start;
+  line-height: 1.4;
+}
+.plesson-insight .insight-label svg {
+  margin-top: 1px;
+}
+.plesson-insight-body {
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.plesson-mn-label {
+  display: inline-block;
+  margin-right: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+/* ── Plan ───────────────────────────────────────────────────────────────── */
+.plesson-plan {
+  list-style: none;
+  margin: 0;
+  padding: 4px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+}
+.plesson-plan li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 14px 0;
+  font-size: var(--fs-base);
+  line-height: 1.55;
+}
+.plesson-plan li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.plesson-plan-step {
+  animation: plesson-rise var(--dur-slow) var(--ease);
+}
+.plesson-plan-num {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 0;
+  border-radius: 50%;
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-text);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.plesson-plan-next {
+  color: var(--text-tertiary);
+}
+.plesson-plan-next .plesson-plan-num {
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  color: var(--text-tertiary);
+}
+.plesson-plan-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}
+.plesson-plan-bar,
+.plesson-segs {
+  display: flex;
+  gap: 4px;
+}
+.plesson-plan-bar {
+  width: min(180px, 45%);
+}
+.plesson-plan-bar span,
+.plesson-segs span {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-active);
+  transition: background var(--dur) var(--ease);
+}
+.plesson-plan-bar span.on,
+.plesson-segs span.on {
+  background: var(--brand);
+}
+
+/* ── Code walkthrough ───────────────────────────────────────────────────── */
+.plesson-code {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.plesson-explain {
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+}
+.plesson-explain-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 22px;
+  margin-bottom: 10px;
+}
+.plesson-explain-count {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.plesson-explain-head .badge svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+}
+.plesson-segs {
+  margin-bottom: 14px;
+}
+.plesson-explain-text {
+  margin: 0;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--text);
+  animation: plesson-fade var(--dur-slow) var(--ease);
+}
+.plesson-keynote {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--xp-subtle);
+  border: 1px solid color-mix(in srgb, var(--xp) 32%, transparent);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.plesson-keynote strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.plesson-keynote svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+  color: var(--xp);
+  fill: currentColor;
+}
+
+/* Code "window": filename bar + the shared dark code block. */
+.plesson-codewin {
+  min-width: 0;
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-lg);
+  background: var(--code-bg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.plesson-codewin-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--code-border);
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.plesson-codewin-bar svg {
+  width: 14px;
+  height: 14px;
+  color: var(--code-comment);
+}
+.plesson-codewin-lang {
+  margin-left: auto;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  color: var(--code-comment);
+}
+.plesson-codewin .code {
+  border: 0;
+  border-radius: 0;
+  padding: 12px 0 14px;
+}
+
+@media (min-width: 1024px) {
+  /* The walkthrough gets a wider canvas: code left, sticky notes right. */
+  .session-body:has(.plesson-code) {
+    max-width: 1104px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  body:has(.plesson-code) .actionbar-inner {
+    max-width: 1040px;
+  }
+  .plesson-code {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-areas: 'code explain';
+    align-items: start;
+    gap: 24px;
+  }
+  .plesson-codewin {
+    grid-area: code;
+  }
+  .plesson-explain {
+    grid-area: explain;
+    position: sticky;
+    top: 80px;
+    padding: 20px;
+  }
+  .plesson-codewin .code {
+    font-size: 13.5px;
+  }
+}
+
+/* ── Pitfalls + cost ────────────────────────────────────────────────────── */
+.plesson-cost {
+  margin-top: 8px;
+  overflow: hidden;
+}
+.plesson-cost-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.plesson-cost-head svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+}
+.plesson-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.plesson-cost-cell {
+  padding: 16px 20px;
+  min-width: 0;
+}
+.plesson-cost-cell + .plesson-cost-cell {
+  border-left: 1px solid var(--border);
+}
+.plesson-cost-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.plesson-cost-label svg {
+  width: 13px;
+  height: 13px;
+}
+.plesson-cost-value {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.plesson-cost-why {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-hover);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+@media (max-width: 479px) {
+  .plesson-cost-head,
+  .plesson-cost-cell,
+  .plesson-cost-why {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .plesson-cost-value {
+    font-size: var(--fs-base);
+  }
+}
+
+/* ── Completion ─────────────────────────────────────────────────────────── */
+.plesson-done .complete-actions .btn {
+  min-width: 0;
+  max-width: 100%;
+}
+.plesson-done .complete-actions .btn .truncate {
+  min-width: 0;
+}
+.plesson-done-tip {
+  margin: -2px 0 8px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+.plesson-done-of {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+@keyframes plesson-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes plesson-fade {
+  from {
+    opacity: 0;
+  }
+}
