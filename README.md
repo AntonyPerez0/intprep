@@ -9,6 +9,10 @@ streaks, XP, gems and achievements in the style of Duolingo.
 It is a static web app with no account and no server. It works on desktop and phones, can be installed to your home
 screen, and saves progress in your browser.
 
+The interface follows a documented design system ([`docs/DESIGN.md`](docs/DESIGN.md)): Inter typography, a neutral
+palette with one indigo accent, Lucide icons, tuned light and dark themes, and a ⌘K / Ctrl+K command palette for
+jumping to any problem, pattern or page.
+
 ## What's inside
 
 | | |
@@ -86,10 +90,12 @@ src/
   content/      teaching content (typed data)
   lib/          spaced repetition (srs.ts), progress store & streaks (store.ts),
                 game rules (game.ts), drill generators (drills.ts), parser, markdown, highlighter
-  components/   app shell, drills, shared UI
-  pages/        Home, Learn path, Unit, guided lesson, review, Blitz, rebuild, patterns, profile, science
+  components/   app shell, command palette, icon registry, drills, shared UI primitives
+  pages/        landing, onboarding, dashboard, learning path, unit, guided lesson, review,
+                Blitz, code from memory, pattern guide, problem library, profile, science
+  styles/       design tokens (base.css), components, shell, per-page styles (pages/)
 scripts/        content validator
-docs/           learning-science design doc, content guide
+docs/           design system, learning-science design doc, content guide
 ```
 
 ## Notes
