@@ -1,10 +1,12 @@
 import '../styles/pages/home.css';
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { CalendarDays } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, PROBLEMS } from '../content/index';
-import { addDays, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
+import { addDays, dayKey, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
 import { GEMS, levelInfo, levelTitle } from '../lib/game';
+import { inline } from '../lib/markdown';
 import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
 import { crowns } from '../lib/srs';
 import { dueProblemIds, learnedIds, repairableStreak, repairStreak, useProgress, xpToday, type Progress } from '../lib/store';
@@ -33,6 +35,7 @@ export function Home() {
   const isNew = learned === 0 && p.xp === 0;
   const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
+  const repairable = repairableStreak(p);
   let status: string;
   if (isNew) status = 'Welcome to IntPrep. Your plan is ready, starting with one short lesson.';
   else if (p.streak.current > 0)
@@ -42,8 +45,9 @@ export function Home() {
           ? `Daily goal complete. Your ${p.streak.current}-day streak is safe.`
           : `Your ${p.streak.current}-day streak is safe for today. ${goal - x} XP to your daily goal.`
         : `Keep your ${p.streak.current}-day streak going. One lesson or review is enough.`;
-  else if (repairableStreak(p) > 0) status = `Your ${repairableStreak(p)}-day streak was interrupted. Repair it below, or start a new one today.`;
-  else status = 'Small daily reps build lasting skill. One lesson starts your streak.';
+  else if (x >= goal) status = 'Daily goal complete. Nice work today.';
+  else if (due.length > 0) status = `${plural(due.length, 'review')} due and ${goal - x} XP to your daily goal.`;
+  else status = `${goal - x} XP to your daily goal. One lesson starts a new streak.`;
 
   return (
     <div className="home">
@@ -57,19 +61,20 @@ export function Home() {
           <p className="home-sub">{status}</p>
         </header>
 
-        {repairableStreak(p) > 0 && <RepairCard p={p} />}
+        {repairable > 0 && <RepairCard p={p} />}
 
         <div className="home-hero">
           <ContinueCard p={p} next={next} />
+          <GetStarted p={p} learned={learned} next={next} />
           <ReviewCard p={p} due={due.length} learned={learned} />
           <TodayPanel p={p} xp={x} />
         </div>
 
-        <GetStarted p={p} learned={learned} next={next} />
-
-        <section className="home-kpis" aria-label="Your progress">
-          <Kpis p={p} learned={learned} mastered={mastered} />
-        </section>
+        {!isNew && (
+          <section className="home-kpis" aria-label="Your progress">
+            <Kpis p={p} learned={learned} mastered={mastered} />
+          </section>
+        )}
 
         <div className="home-row">
           <ActivityCard p={p} />
@@ -79,9 +84,7 @@ export function Home() {
         <Roadmap p={p} next={next} />
 
         <p className="home-foot">
-          {PROBLEMS.length} problems <span className="dot-sep" />
-          {CATEGORIES.length} patterns <span className="dot-sep" />
-          Grounded in learning science. <Link to="/science">See why it works</Link>
+          {PROBLEMS.length} problems across {CATEGORIES.length} patterns, grounded in learning science. <Link to="/science">See why it works</Link>
         </p>
       </div>
     </div>
@@ -100,18 +103,16 @@ function RepairCard({ p }: { p: Progress }) {
         <h2 id="home-repair-title" className="card-title">
           Repair your {value}-day streak
         </h2>
-        <p className="home-repair-body">
-          You missed a day. For the next 48 hours you can restore your streak, or start fresh with today’s practice.
-        </p>
+        <p className="home-repair-body">You missed a day. Restore your streak within 48 hours, or start a new one with today’s practice.</p>
       </div>
       <div className="home-repair-action">
-        <button type="button" className="btn btn-primary" disabled={p.gems < GEMS.repairCost} onClick={repairStreak}>
+        <button type="button" className="btn btn-secondary" disabled={p.gems < GEMS.repairCost} onClick={repairStreak} aria-describedby="home-repair-cost">
           <Icon name="wrench" />
           Repair streak
         </button>
-        <span className="home-repair-cost">
+        <span id="home-repair-cost" className="home-repair-cost">
           <Icon name="gem" size={13} />
-          {short > 0 ? `${GEMS.repairCost} gems · ${short} more needed` : `${GEMS.repairCost} gems · you have ${p.gems}`}
+          {short > 0 ? `Costs ${GEMS.repairCost} gems · ${short} more needed` : `Costs ${GEMS.repairCost} gems · you have ${p.gems}`}
         </span>
       </div>
     </section>
@@ -122,12 +123,13 @@ function RepairCard({ p }: { p: Progress }) {
 
 interface NextView {
   kind: string;
+  tone?: 'brand' | 'success';
   context: string;
   position?: string;
   accent: string;
   tile: ReactNode;
   title: string;
-  description?: string;
+  description?: ReactNode;
   meta: ReactNode;
   progress?: { label: string; done: number; total: number; unit: string };
   cta: string;
@@ -152,7 +154,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
             {lesson.minutes} min
           </span>
         ) : null,
-        progress: { label: 'Beginner foundations', done: foundationsDone(p), total: FOUNDATIONS.length, unit: 'complete' },
+        progress: { label: 'Foundations progress', done: foundationsDone(p), total: FOUNDATIONS.length, unit: 'complete' },
         cta: 'Start lesson',
       };
     }
@@ -173,7 +175,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
             Pattern intro, template and quiz
           </span>
         ),
-        progress: { label: c.name, done: u.learned, total: u.total, unit: 'learned' },
+        progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
         cta: 'Start lesson',
       };
     }
@@ -188,6 +190,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
         accent: c.color,
         tile: <CategoryIcon id={c.id} color={c.color} size="lg" />,
         title: next.title,
+        description: inline(q.prompt),
         meta: (
           <>
             <DifficultyChip d={q.difficulty} />
@@ -195,19 +198,21 @@ function describeNext(p: Progress, next: NextStep): NextView {
             <span className="home-meta-item truncate">{q.pattern}</span>
           </>
         ),
-        progress: { label: c.name, done: u.learned, total: u.total, unit: 'learned' },
+        progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
         cta: 'Start lesson',
       };
     }
     default:
       return {
         kind: 'Roadmap complete',
-        context: 'All patterns',
+        tone: 'success',
+        context: `${CATEGORIES.length} of ${CATEGORIES.length} patterns`,
         accent: 'var(--success)',
         tile: <IconTile icon={ICONS.trophy} color="var(--success)" size="lg" />,
         title: `All ${PROBLEMS.length} problems learned`,
         description: 'Every pattern is in your toolkit. Daily review keeps it sharp until interview day.',
         meta: null,
+        progress: { label: 'Roadmap progress', done: PROBLEMS.filter((q) => p.problems[q.id]?.learnedAt).length, total: PROBLEMS.length, unit: 'learned' },
         cta: 'Go to review',
       };
   }
@@ -219,7 +224,7 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
     <section className="card home-card home-continue" style={{ ['--c' as string]: v.accent } as CSSProperties} aria-labelledby="home-continue-title">
       <div className="home-card-head">
         <h2 id="home-continue-title" className="card-title">
-          Continue learning
+          {next.kind === 'done' ? 'Keep it sharp' : 'Continue learning'}
         </h2>
         {v.position && <span className="home-card-aside tabular">{v.position}</span>}
       </div>
@@ -227,12 +232,10 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
       <div className="home-continue-main">
         {v.tile}
         <div className="home-continue-kind">
-          <Badge tone="brand">{v.kind}</Badge>
+          <Badge tone={v.tone ?? 'brand'}>{v.kind}</Badge>
           <span className="truncate">{v.context}</span>
         </div>
-        <h3 className="home-continue-title">
-          <Link to={next.href}>{v.title}</Link>
-        </h3>
+        <h3 className="home-continue-title">{v.title}</h3>
         {v.description && <p className="home-continue-desc">{v.description}</p>}
         {v.meta && <div className="home-continue-meta">{v.meta}</div>}
       </div>
@@ -247,7 +250,7 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
                 <span className="text-tertiary"> {v.progress.unit}</span>
               </span>
             </div>
-            <ProgressBar value={v.progress.total ? v.progress.done / v.progress.total : 0} color={v.accent} label={`${v.progress.label} progress`} />
+            <ProgressBar value={v.progress.total ? v.progress.done / v.progress.total : 0} color={v.accent} label={`${v.context}: ${v.progress.done} of ${v.progress.total} ${v.progress.unit}`} />
           </div>
         ) : (
           <div className="grow" />
@@ -295,7 +298,7 @@ function ReviewCard({ p, due, learned }: { p: Progress; due: number; learned: nu
     );
   } else {
     title = 'Nothing to review yet';
-    body = 'Learn a problem and it will show up here for spaced review, starting the next day.';
+    body = 'Problems you learn return here the next day for spaced review.';
     action = (
       <Link to="/blitz" className="btn btn-secondary home-review-cta">
         Try Pattern Blitz
@@ -417,6 +420,7 @@ function TodayPanel({ p, xp }: { p: Progress; xp: number }) {
 
 function WeekStrip({ p }: { p: Progress }) {
   const t = today();
+  const joined = dayKey(new Date(p.createdAt));
   const days = lastNDays(7);
   const frozen = new Set(p.streak.frozenDays);
   const active = days.filter((d) => (p.xpByDay[d] ?? 0) > 0).length;
@@ -430,17 +434,19 @@ function WeekStrip({ p }: { p: Progress }) {
         {days.map((d) => {
           const done = (p.xpByDay[d] ?? 0) > 0;
           const isFrozen = !done && frozen.has(d);
-          const state = done ? 'is-done' : isFrozen ? 'is-frozen' : d === t ? 'is-open' : 'is-missed';
+          const before = !done && !isFrozen && d < joined;
+          const state = done ? 'is-done' : isFrozen ? 'is-frozen' : d === t ? 'is-open' : before ? 'is-before' : 'is-missed';
+          const what = done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : before ? 'before you joined' : 'missed';
           const label = parseDay(d).toLocaleDateString(undefined, { weekday: 'long' });
           return (
             <li key={d} className={`home-day ${state} ${d === t ? 'is-today' : ''}`}>
               <span className="home-day-name" aria-hidden="true">
                 {weekdayShort(d)}
               </span>
-              <span className="home-day-dot" title={`${label}: ${done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : 'missed'}`}>
+              <span className="home-day-dot" title={`${label}: ${what}`}>
                 {done ? <Icon name="flame" size={14} strokeWidth={2} /> : isFrozen ? <Icon name="snowflake" size={14} strokeWidth={2} /> : null}
                 <span className="sr-only">
-                  {label}: {done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : 'missed'}
+                  {label}: {what}
                 </span>
               </span>
             </li>
@@ -557,7 +563,7 @@ function KpiMeta({ value, text }: { value: number; text: string }) {
 // ── Activity heatmap ────────────────────────────────────────────────────────
 
 const WEEK_OPTIONS = [52, 40, 32, 26, 20, 16, 12];
-const DAY_COL = 28;
+const DAY_COL = 30;
 const GAP = 3;
 const MIN_CELL = 13;
 const MAX_CELL = 18;
@@ -619,23 +625,25 @@ function ActivityCard({ p }: { p: Progress }) {
           </h2>
           <div className="card-subtitle">Last {weeks} weeks</div>
         </div>
-        <dl className="home-activity-stats">
-          <div>
-            <dt>Active days</dt>
-            <dd className="tabular">{active}</dd>
-          </div>
-          <div>
-            <dt>Goal met</dt>
-            <dd className="tabular">{goalCount}</dd>
-          </div>
-          <div>
-            <dt>Best streak</dt>
-            <dd className="tabular">{p.streak.longest}</dd>
-          </div>
-        </dl>
+        {(active > 0 || p.streak.longest > 0) && (
+          <dl className="home-activity-stats">
+            <div>
+              <dt>Active days</dt>
+              <dd className="tabular">{active}</dd>
+            </div>
+            <div>
+              <dt>Goals met</dt>
+              <dd className="tabular">{goalCount}</dd>
+            </div>
+            <div>
+              <dt>Best streak</dt>
+              <dd className="tabular">{p.streak.longest}</dd>
+            </div>
+          </dl>
+        )}
       </div>
 
-      <div ref={ref} className="home-heat-wrap">
+      <div ref={ref} className={`home-heat-wrap ${active ? '' : 'is-empty'}`}>
         <div
           className="home-heat"
           role="img"
@@ -667,10 +675,21 @@ function ActivityCard({ p }: { p: Progress }) {
             </Fragment>
           ))}
         </div>
+        {!active && (
+          <div className="home-heat-empty">
+            <div className="home-heat-empty-box">
+              <CalendarDays size={18} strokeWidth={1.75} aria-hidden="true" />
+              <div>
+                <div className="home-heat-empty-title">No activity yet</div>
+                <div className="home-heat-empty-body">Each day you practise fills in a square.</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="home-heat-foot">
-        <span className="home-heat-note">{active ? 'Each square is one day. Darker means more XP.' : 'Your practice will appear here, one square per day.'}</span>
+        <span className="home-heat-note">One square per day, shaded by XP earned.</span>
         <span className="home-heat-legend" aria-hidden="true">
           <span className="home-heat-word">Less</span>
           {[0, 1, 2, 3, 4].map((l) => (
@@ -691,6 +710,8 @@ function ActivityCard({ p }: { p: Progress }) {
 
 // ── Quick links ─────────────────────────────────────────────────────────────
 
+const NEUTRAL = 'var(--text-secondary)';
+
 function QuickLinks({ p }: { p: Progress }) {
   const fDone = foundationsDone(p);
   return (
@@ -703,7 +724,7 @@ function QuickLinks({ p }: { p: Progress }) {
       <ul className="home-link-list">
         <li>
           <Link to="/blitz" className="home-link">
-            <IconTile icon={ICONS.blitz} color="var(--xp)" size="sm" />
+            <IconTile icon={ICONS.blitz} color={NEUTRAL} size="sm" />
             <div className="grow">
               <div className="home-link-title">Pattern Blitz</div>
               <div className="home-link-meta">{p.stats.blitzBest > 0 ? `Best score ${p.stats.blitzBest}` : '60 seconds. Name the pattern.'}</div>
@@ -714,7 +735,7 @@ function QuickLinks({ p }: { p: Progress }) {
         {FOUNDATIONS.length > 0 && (
           <li>
             <Link to="/learn#foundations" className="home-link">
-              <IconTile icon={ICONS.layers} size="sm" />
+              <IconTile icon={ICONS.layers} color={NEUTRAL} size="sm" />
               <div className="grow">
                 <div className="home-link-title">Beginner foundations</div>
                 <div className="home-link-meta">
@@ -730,7 +751,7 @@ function QuickLinks({ p }: { p: Progress }) {
         )}
         <li>
           <Link to="/patterns" className="home-link">
-            <IconTile icon={ICONS.book} color="var(--info)" size="sm" />
+            <IconTile icon={ICONS.book} color={NEUTRAL} size="sm" />
             <div className="grow">
               <div className="home-link-title">Pattern guide</div>
               <div className="home-link-meta">{CATEGORIES.length} patterns, templates and cues</div>
@@ -740,7 +761,7 @@ function QuickLinks({ p }: { p: Progress }) {
         </li>
         <li>
           <Link to="/problems" className="home-link">
-            <IconTile icon={ICONS.list} color="var(--success)" size="sm" />
+            <IconTile icon={ICONS.list} color={NEUTRAL} size="sm" />
             <div className="grow">
               <div className="home-link-title">Problem library</div>
               <div className="home-link-meta">Browse all {PROBLEMS.length} problems</div>
