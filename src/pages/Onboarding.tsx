@@ -19,6 +19,11 @@ const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
 const MAX_GOAL = DAILY_GOALS[DAILY_GOALS.length - 1].xp;
 const DEFAULT_GOAL = 50;
 
+/** "≈ 10 min a day" → "About 10 min a day"; "≈ 30+ min a day" → "30+ min a day". */
+function goalTime(blurb: string): string {
+  return blurb.includes('+') ? blurb.replace('≈', '').trim() : blurb.replace('≈', 'About');
+}
+
 /** Where each experience level begins (navigation itself happens in `done`). */
 function startingPoint(exp: Experience): string {
   const first = FOUNDATIONS[0];
@@ -95,9 +100,9 @@ export function OnboardingPage() {
               {step === 0 && (
                 <>
                   <h1 ref={headingRef} tabIndex={-1} className="ob-title">
-                    Let’s set up your study plan
+                    Let's set up your study plan
                   </h1>
-                  <p className="ob-sub">Three quick questions and you are in. It takes less than a minute, and you can change everything later.</p>
+                  <p className="ob-sub">Three quick questions and you're in. It takes less than a minute, and you can change everything later.</p>
                   <div className="ob-field">
                     <label className="label" htmlFor="ob-name">
                       What should we call you? <span className="ob-optional">Optional</span>
@@ -142,7 +147,7 @@ export function OnboardingPage() {
                   <h1 ref={headingRef} tabIndex={-1} className="ob-title">
                     How much coding do you know?
                   </h1>
-                  <p className="ob-sub">We will pick your starting point. You can jump to any unit later.</p>
+                  <p className="ob-sub">We'll pick your starting point. You can jump to any unit later.</p>
                   <div className="ob-options">
                     {LEVELS.map((l) => {
                       const on = exp === l.id;
@@ -177,10 +182,16 @@ export function OnboardingPage() {
                       return (
                         <label key={g.xp} className={`ob-option ob-goal ${on ? 'on' : ''}`}>
                           <input type="radio" name="goal" value={g.xp} checked={on} onChange={() => setGoal(g.xp)} className="ob-radio-input" />
-                          <Ring value={g.xp / MAX_GOAL} size={40} stroke={4.5} color={on ? 'var(--brand)' : 'var(--text-disabled)'} />
+                          <Ring
+                            value={g.xp / MAX_GOAL}
+                            size={40}
+                            stroke={5}
+                            color={on ? 'var(--brand)' : 'var(--text-tertiary)'}
+                            track={on ? 'var(--brand-border)' : 'var(--border-strong)'}
+                          />
                           <span className="ob-option-text">
                             <span className="ob-option-title">{g.label}</span>
-                            <span className="ob-option-desc">{g.blurb.replace('≈', 'About')}</span>
+                            <span className="ob-option-desc">{goalTime(g.blurb)}</span>
                           </span>
                           <span className="ob-goal-xp">{g.xp} XP</span>
                           <span className="ob-radio" aria-hidden="true" />
@@ -196,14 +207,14 @@ export function OnboardingPage() {
                   <h1 ref={headingRef} tabIndex={-1} className="ob-title">
                     {firstName ? `${firstName}, your plan is ready` : 'Your plan is ready'}
                   </h1>
-                  <p className="ob-sub">Here is how IntPrep will work for you. You can change any of it later in your profile.</p>
+                  <p className="ob-sub">Here's how IntPrep will work for you. You can change any of it later in your profile.</p>
                   <dl className="ob-plan">
                     <PlanRow icon={Route} label="Starting point" value={level.title} detail={startingPoint(exp)} onChange={() => setStep(1)} changeLabel="Edit starting point" />
                     <PlanRow
                       icon={Target}
                       label="Daily goal"
                       value={`${goalInfo.label} · ${goalInfo.xp} XP a day`}
-                      detail={`${goalInfo.blurb.replace('≈', 'About')}. Each day you reach it earns ${GEMS.dailyGoal} gems.`}
+                      detail={`${goalTime(goalInfo.blurb)}. Each day you reach it earns ${GEMS.dailyGoal} gems.`}
                       onChange={() => setStep(2)}
                       changeLabel="Edit daily goal"
                     />

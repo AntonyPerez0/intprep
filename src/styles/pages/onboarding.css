@@ -362,26 +362,38 @@
   background: var(--surface);
   overflow: hidden;
 }
+/* Icon | label ... Edit
+        | value + detail (full width, so the Edit button never narrows the text) */
 .ob-plan-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
   padding: 12px 16px;
   border-bottom: 1px solid var(--border-subtle);
+}
+.ob-plan-row > .icon-tile {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
 }
 .ob-plan-row:last-child {
   border-bottom: 0;
 }
 .ob-plan-text {
-  flex: 1;
-  min-width: 0;
+  display: contents;
 }
 .ob-plan-text dt {
+  grid-column: 2;
+  grid-row: 1;
   font-size: var(--fs-xs);
   font-weight: 550;
+  line-height: 18px;
   color: var(--text-tertiary);
 }
 .ob-plan-text dd {
+  grid-column: 2 / -1;
+  grid-row: 2;
   margin: 2px 0 0;
   display: flex;
   flex-direction: column;
@@ -397,12 +409,29 @@
   line-height: 1.5;
   color: var(--text-secondary);
 }
-.ob-plan-change {
-  margin: -6px -8px 0 0;
+/* Sits on the label line; negative margins keep it from changing the row rhythm. */
+.ob-plan .ob-plan-change {
+  --btn-fg: var(--brand-text);
+  position: relative;
+  grid-column: 3;
+  grid-row: 1;
+  height: 28px;
+  margin: -5px -8px -5px 0;
+  padding: 0 10px;
+}
+/* Invisible 44px-tall hit area for touch. */
+.ob-plan-change::after {
+  content: '';
+  position: absolute;
+  inset: -8px 0;
+}
+.ob-plan .ob-plan-change:hover {
+  color: var(--brand-text);
 }
 @media (max-width: 639px) {
-  .ob-plan-change {
+  .ob-plan .ob-plan-change {
     height: 36px;
+    margin: -9px -10px -9px 0;
   }
 }
 /* Actions */

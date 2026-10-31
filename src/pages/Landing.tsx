@@ -22,9 +22,11 @@ import { CategoryIcon, IconTile, LESSON_ICON, SCIENCE_ICON, type LucideIcon } fr
 import { DifficultyChip, Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
 import { DRILL_LABEL } from '../lib/drills';
 import { XP } from '../lib/game';
+import { addDays, today } from '../lib/date';
 import { highlightLine } from '../lib/highlight';
 import { inline } from '../lib/markdown';
 import { parseSolution } from '../lib/parseSolution';
+import { preview as previewIntervals } from '../lib/srs';
 import { useProgress } from '../lib/store';
 
 // ── Page sections (the app uses a hash router, so anchors scroll via JS) ────
@@ -251,7 +253,8 @@ function HeroPreview() {
             <CircleCheck aria-hidden="true" /> Correct
           </div>
           <div className="lp-pv-feedback-body">
-            <strong>{CATEGORY_BY_ID[TWO_SUM.category].name}</strong> · {TWO_SUM.pattern.toLowerCase()}
+            <strong>{CATEGORY_BY_ID[TWO_SUM.category].name}</strong>
+            <span>{TWO_SUM.pattern}.</span>
           </div>
         </div>
       </div>
@@ -259,7 +262,7 @@ function HeroPreview() {
       {/* Daily goal + streak */}
       <div className="lp-pv lp-pv-goal">
         <div className="lp-pv-goal-head">
-          <Ring value={0.7} size={60} stroke={6}>
+          <Ring value={0.7} size={52} stroke={5}>
             <span className="lp-pv-ring-label">70%</span>
           </Ring>
           <div>
@@ -380,6 +383,18 @@ function HowItWorks() {
 
 // ── Features ────────────────────────────────────────────────────────────────
 
+// Real scheduler output for a card on its third on-time review (SM-2, ease 2.5).
+const REVIEW_INTERVALS = (() => {
+  const t = today();
+  return previewIntervals({ due: t, interval: 4, ease: 2.5, reps: 2, lapses: 0, last: addDays(t, -4) });
+})();
+const GRADES = [
+  ['again', 'Again'],
+  ['hard', 'Hard'],
+  ['good', 'Good'],
+  ['easy', 'Easy'],
+] as const;
+
 // "Code from memory" walks the non-header chunks; show the cue for the first key line.
 const TWO_SUM_BODY = parseSolution(TWO_SUM.solution).chunks.filter((c) => !c.header);
 const KEY_CHUNK = TWO_SUM_BODY.findIndex((c) => c.keyLines.length > 0);
@@ -404,24 +419,18 @@ function FeatureVisual({ kind }: { kind: string }) {
         </ul>
       );
     case 'review':
-      // Intervals for a card on its third review (SM-2, ease 2.5): real scheduler output.
       return (
         <div className="lp-fv-review">
           <div className="lp-fv-review-q">
             How well did you recall <strong>{TWO_SUM.title}</strong>?
           </div>
           <div className="lp-fv-grades">
-          {[
-            ['Again', '1d'],
-            ['Hard', '5d'],
-            ['Good', '10d'],
-            ['Easy', '14d'],
-          ].map(([g, d]) => (
-            <span key={g} className={`lp-fv-grade ${g === 'Good' ? 'on' : ''}`}>
-              <span className="lp-fv-grade-label">{g}</span>
-              <span className="lp-fv-grade-days">{d}</span>
-            </span>
-          ))}
+            {GRADES.map(([g, label]) => (
+              <span key={g} className={`lp-fv-grade ${g === 'good' ? 'on' : ''}`}>
+                <span className="lp-fv-grade-label">{label}</span>
+                <span className="lp-fv-grade-days">{REVIEW_INTERVALS[g]}d</span>
+              </span>
+            ))}
           </div>
         </div>
       );
@@ -432,7 +441,7 @@ function FeatureVisual({ kind }: { kind: string }) {
             <span className="lp-fv-cue-step">
               Chunk {KEY_CHUNK + 1}/{TWO_SUM_BODY.length}
             </span>
-            <span className="truncate">{KEY_CUE}</span>
+            <span className="lp-fv-cue-text">{KEY_CUE}</span>
           </div>
           <pre className="code lp-fv-code">
             <div className="code-line">
@@ -638,30 +647,34 @@ function Curriculum() {
           {CATEGORIES.map((c, i) => {
             const mix = difficultyMix(c.id);
             return (
-              <li key={c.id} className="lp-unit">
-                <CategoryIcon id={c.id} color={c.color} />
-                <div className="lp-unit-text">
-                  <div className="lp-unit-name">
-                    <span className="truncate">{c.name}</span>
-                    <span className="lp-unit-idx">{String(i + 1).padStart(2, '0')}</span>
-                  </div>
-                  <div className="lp-unit-tagline">{c.tagline}</div>
-                  <div className="lp-unit-meta">
-                  <span className="lp-unit-count">
-                    {mix.total} <span>problems</span>
+              <li key={c.id}>
+                <Link to={`/unit/${c.id}`} className="lp-unit">
+                  <CategoryIcon id={c.id} color={c.color} />
+                  <span className="lp-unit-text">
+                    <span className="lp-unit-name">
+                      <span className="truncate">{c.name}</span>
+                      <span className="lp-unit-idx" aria-hidden="true">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                    </span>
+                    <span className="lp-unit-tagline">{c.tagline}</span>
+                    <span className="lp-unit-meta">
+                      <span className="lp-unit-count">
+                        {mix.total} <span>problems</span>
+                      </span>
+                      <span
+                        className="lp-mix"
+                        role="img"
+                        aria-label={`${mix.easy} easy, ${mix.medium} medium, ${mix.hard} hard`}
+                        title={`${mix.easy} easy · ${mix.medium} medium · ${mix.hard} hard`}
+                      >
+                        <span className="e" style={{ flexGrow: mix.easy }} />
+                        <span className="m" style={{ flexGrow: mix.medium }} />
+                        <span className="h" style={{ flexGrow: mix.hard }} />
+                      </span>
+                    </span>
                   </span>
-                  <span
-                    className="lp-mix"
-                    role="img"
-                    aria-label={`${mix.easy} easy, ${mix.medium} medium, ${mix.hard} hard`}
-                    title={`${mix.easy} easy · ${mix.medium} medium · ${mix.hard} hard`}
-                  >
-                    <span className="e" style={{ flexGrow: mix.easy }} />
-                    <span className="m" style={{ flexGrow: mix.medium }} />
-                    <span className="h" style={{ flexGrow: mix.hard }} />
-                  </span>
-                  </div>
-                </div>
+                </Link>
               </li>
             );
           })}
@@ -697,7 +710,7 @@ function Science() {
       <div className="lp-container lp-split">
         <div className="lp-split-aside">
           <SectionIntro
-            kicker="Learning science"
+            kicker="Why it works"
             title="Grounded in learning science"
             lead="Every mechanic in IntPrep maps to published research on how people learn and remember, not to what merely feels productive."
           />
@@ -827,7 +840,7 @@ const FOOTER_COLS: { title: string; links: { to: string; label: string }[] }[] =
     title: 'About',
     links: [
       { to: '/science', label: 'Learning science' },
-      { to: '/profile', label: 'Profile and settings' },
+      { to: '/profile', label: 'Profile' },
     ],
   },
 ];
