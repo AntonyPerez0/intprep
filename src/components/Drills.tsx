@@ -1,9 +1,26 @@
-import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import '../styles/pages/drills.css';
+import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import {
+  Brain,
+  CodeXml,
+  Eye,
+  FileCode2,
+  Gauge,
+  Keyboard,
+  Lightbulb,
+  List,
+  ListOrdered,
+  MessageSquareText,
+  ScanSearch,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import type { CategoryId, Problem } from '../content/types';
 import {
   acceptedCategories,
   complexityChoices,
+  DRILL_LABEL,
   keyLineDrill,
   patternChoices,
   sameCode,
@@ -12,11 +29,12 @@ import {
 } from '../lib/drills';
 import { inline, Md } from '../lib/markdown';
 import { parseSolution } from '../lib/parseSolution';
-import type { Grade } from '../lib/srs';
+import { preview, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
-import { useProgress } from '../lib/store';
+import { getProgress, useProgress } from '../lib/store';
+import { CategoryIcon } from './icons';
 import { ActionBar, Choices, CodeView, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
-import { Icon } from './ui';
+import { Kbd } from './ui';
 
 export interface DrillResult {
   kind: DrillKind;
@@ -27,10 +45,23 @@ export interface DrillResult {
 interface DrillProps {
   problem: Problem;
   onDone: (r: DrillResult) => void;
-  /** Shown above the question, e.g. "Review · 3 of 12". */
+  /** Eyebrow label, e.g. "Step 8 · Check the cost". Defaults to the drill's name. */
   kicker?: string;
   combo?: number;
+  /** Shown next to the eyebrow, e.g. a "Try again" badge. */
+  badge?: ReactNode;
+  /** Right-aligned context in the header, e.g. "3 of 12". */
+  meta?: ReactNode;
 }
+
+const KIND_ICON: Record<DrillKind, LucideIcon> = {
+  pattern: ScanSearch,
+  technique: Wrench,
+  insight: Lightbulb,
+  order: ListOrdered,
+  keyline: CodeXml,
+  complexity: Gauge,
+};
 
 function useCheck(onCorrect?: () => void) {
   const [status, setStatus] = useState<CheckStatus>('idle');
@@ -42,12 +73,60 @@ function useCheck(onCorrect?: () => void) {
   return { status, resolve };
 }
 
-function Signals({ p }: { p: Problem }) {
+// ── Shared anatomy ──────────────────────────────────────────────────────────
+//
+// Every drill: eyebrow (kind icon + label, optional badge, meta) → question
+// title → optional sub → content → answers → ActionBar feedback.
+
+function DrillHead({
+  kind,
+  kicker,
+  badge,
+  meta,
+  title,
+  sub,
+}: {
+  kind: DrillKind;
+  kicker?: string;
+  badge?: ReactNode;
+  meta?: ReactNode;
+  title: ReactNode;
+  sub?: ReactNode;
+}) {
+  const I = KIND_ICON[kind];
   return (
-    <div className="row wrap" style={{ gap: 6, marginTop: 8 }}>
-      <span className="tiny muted" style={{ fontWeight: 800 }}>
-        CLUES:
-      </span>
+    <header className="drill-head">
+      <div className="drill-eyebrow">
+        <div className="kicker">
+          <I strokeWidth={2} aria-hidden="true" />
+          <span>{kicker ?? DRILL_LABEL[kind]}</span>
+        </div>
+        {badge}
+        {meta && <div className="drill-meta">{meta}</div>}
+      </div>
+      <h2 className="q-title">{title}</h2>
+      {sub && <p className="drill-sub">{sub}</p>}
+    </header>
+  );
+}
+
+function AnswerLabel({ children, keys }: { children: ReactNode; keys?: number }) {
+  return (
+    <div className="drill-label">
+      <span>{children}</span>
+      {keys !== undefined && keys > 1 && (
+        <span className="drill-keys" aria-hidden="true">
+          Press <Kbd>1</Kbd>–<Kbd>{keys}</Kbd>
+        </span>
+      )}
+    </div>
+  );
+}
+
+function Clues({ p }: { p: Problem }) {
+  return (
+    <div className="drill-clues">
+      <span className="drill-fb-label">Clues</span>
       {p.signals.map((s, i) => (
         <span className="chip signal" key={i}>
           {inline(s)}
@@ -57,185 +136,297 @@ function Signals({ p }: { p: Problem }) {
   );
 }
 
+/** An editor-style frame around code: a file tab on top, optional footer. */
+export function CodeWindow({
+  filename = 'solution.py',
+  right,
+  footer,
+  children,
+  className = '',
+}: {
+  filename?: string;
+  right?: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`drill-window ${className}`}>
+      <div className="drill-window-head">
+        <span className="drill-window-tab">
+          <FileCode2 strokeWidth={1.9} aria-hidden="true" />
+          {filename}
+        </span>
+        <span className="drill-window-right">{right ?? 'Python 3'}</span>
+      </div>
+      <div className="drill-window-body">{children}</div>
+      {footer && <div className="drill-window-foot">{footer}</div>}
+    </div>
+  );
+}
+
 const catLabel = (c: CategoryId) => CATEGORY_BY_ID[c].name;
 
 // ── 1. Spot the pattern ─────────────────────────────────────────────────────
 
-export function PatternDrill({ problem: p, onDone, kicker, combo = 0 }: DrillProps) {
+export function PatternDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const { options } = useMemo(() => patternChoices(p), [p]);
   const accepted = acceptedCategories(p);
   const [sel, setSel] = useState<string | null>(null);
   const { status, resolve } = useCheck();
   const ok = sel !== null && accepted.includes(sel as CategoryId);
+  const cat = CATEGORY_BY_ID[p.category];
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Spot the pattern'}</div>
-      <h2 className="q-title">Which pattern fits this problem best?</h2>
+    <section className="drill" data-drill="pattern" data-problem={p.id}>
+      <DrillHead kind="pattern" kicker={kicker} badge={badge} meta={meta} title="Which pattern fits this problem best?" />
       <ProblemPrompt p={p} compact />
-      <div style={{ height: 16 }} />
-      <Choices
-        options={options.map((c) => ({ key: c, label: catLabel(c), icon: CATEGORY_BY_ID[c].icon }))}
-        selected={sel}
-        onSelect={(k) => {
-          setSel(k);
-          sfx('tap');
-        }}
-        answer={accepted}
-        revealed={status !== 'idle'}
-        twoCol
-      />
+      <div>
+        <AnswerLabel keys={options.length}>Choose a pattern</AnswerLabel>
+        <Choices
+          options={options.map((c) => ({
+            key: c,
+            label: catLabel(c),
+            icon: <CategoryIcon id={c} color={CATEGORY_BY_ID[c].color} size="sm" />,
+          }))}
+          selected={sel}
+          onSelect={(k) => {
+            setSel(k);
+            sfx('tap');
+          }}
+          answer={accepted}
+          revealed={status !== 'idle'}
+          twoCol
+        />
+      </div>
       <ActionBar
         status={status}
         canCheck={sel !== null}
         onCheck={() => resolve(ok, combo)}
         onContinue={() => onDone({ kind: 'pattern', correct: ok })}
         feedback={
-          <>
-            <div>
-              <strong>{catLabel(p.category)}</strong> — {p.pattern}.
+          <div className="drill-fb">
+            <div className="drill-fb-answer">
+              <CategoryIcon id={p.category} color={cat.color} size="sm" />
+              <span>
+                <strong>{cat.name}</strong>
+                <span className="drill-fb-sep">·</span>
+                {p.pattern}
+              </span>
             </div>
-            <Signals p={p} />
-          </>
+            <Clues p={p} />
+          </div>
         }
       />
-    </>
+    </section>
   );
 }
 
 // ── 2. Name the technique ───────────────────────────────────────────────────
 
-export function TechniqueDrill({ problem: p, onDone, kicker, combo = 0 }: DrillProps) {
+export function TechniqueDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const { options, answer } = useMemo(() => techniqueChoices(p), [p]);
   const [sel, setSel] = useState<string | null>(null);
   const { status, resolve } = useCheck();
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Name the technique'}</div>
-      <h2 className="q-title">Which technique cracks this one?</h2>
+    <section className="drill" data-drill="technique" data-problem={p.id}>
+      <DrillHead kind="technique" kicker={kicker} badge={badge} meta={meta} title="Which technique cracks this one?" />
       <ProblemPrompt p={p} compact />
-      <div style={{ height: 16 }} />
-      <Choices
-        options={options.map((o) => ({ key: o, label: o }))}
-        selected={sel}
-        onSelect={(k) => {
-          setSel(k);
-          sfx('tap');
-        }}
-        answer={answer}
-        revealed={status !== 'idle'}
-      />
+      <div>
+        <AnswerLabel keys={options.length}>Choose a technique</AnswerLabel>
+        <Choices
+          options={options.map((o) => ({ key: o, label: o }))}
+          selected={sel}
+          onSelect={(k) => {
+            setSel(k);
+            sfx('tap');
+          }}
+          answer={answer}
+          revealed={status !== 'idle'}
+        />
+      </div>
       <ActionBar
         status={status}
         canCheck={sel !== null}
         onCheck={() => resolve(sel === answer, combo)}
         onContinue={() => onDone({ kind: 'technique', correct: sel === answer })}
-        feedback={<Md text={p.insight} />}
+        feedback={
+          <div className="drill-fb">
+            <div className="drill-fb-answer">
+              <strong>{answer}</strong>
+            </div>
+            <Md text={p.insight} />
+          </div>
+        }
       />
-    </>
+    </section>
   );
 }
 
 // ── 3. Recall the key insight (self-rated) ──────────────────────────────────
 
-export function InsightDrill({ problem: p, onDone, kicker }: DrillProps) {
+const RATINGS: { grade: Grade; label: string; tone: string; fallback: string }[] = [
+  { grade: 'again', label: 'Forgot', tone: 'danger', fallback: 'See it again soon' },
+  { grade: 'hard', label: 'Fuzzy', tone: 'warning', fallback: 'Shorter gap' },
+  { grade: 'good', label: 'Got it', tone: 'success', fallback: 'Normal gap' },
+  { grade: 'easy', label: 'Easy', tone: 'brand', fallback: 'Longer gap' },
+];
+
+function fmtInterval(days: number) {
+  if (days <= 1) return 'in 1 day';
+  if (days < 14) return `in ${days} days`;
+  if (days < 60) return `in ${Math.round(days / 7)} wk`;
+  if (days < 365) return `in ${Math.round(days / 30)} mo`;
+  return `in ${Math.round(days / 365)} yr`;
+}
+
+export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillProps) {
   const [revealed, setRevealed] = useState(false);
   const [note, setNote] = useState('');
+  // What each self-rating would schedule for this learner's card (if learned).
+  const [next] = useState(() => {
+    const card = getProgress().problems[p.id]?.srs;
+    return card ? preview(card) : null;
+  });
   const rate = (g: Grade) => {
     sfx(g === 'again' ? 'wrong' : 'correct');
     onDone({ kind: 'insight', correct: g === 'good' || g === 'easy', selfGrade: g });
   };
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Recall the key insight'}</div>
-      <h2 className="q-title">What's the trick? Say it out loud (or type it) before you peek.</h2>
+    <section className="drill" data-drill="insight" data-problem={p.id}>
+      <DrillHead
+        kind="insight"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title="What's the key insight?"
+        sub="Say the approach out loud, or type it, before you reveal the answer."
+      />
       <ProblemPrompt p={p} compact />
-      <div style={{ height: 14 }} />
       {!revealed ? (
-        <textarea
-          className="input"
-          rows={3}
-          placeholder="Optional: jot the approach in your own words…"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-        />
+        <div>
+          <label className="drill-label" htmlFor={`note-${p.id}`}>
+            <span>
+              Your answer <span className="drill-optional">Optional</span>
+            </span>
+          </label>
+          <textarea
+            id={`note-${p.id}`}
+            className="input drill-note-input"
+            rows={3}
+            placeholder="In a sentence or two, how would you solve it?"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
       ) : (
-        <div className="stack">
+        <div className="stack drill-reveal">
           {note.trim() && (
-            <div className="card flat small">
-              <div className="tiny muted" style={{ fontWeight: 800 }}>
-                YOU WROTE
-              </div>
-              {note}
+            <div className="drill-note">
+              <div className="drill-fb-label">Your answer</div>
+              <div className="drill-note-text">{note}</div>
             </div>
           )}
           <div className="insight-card">
-            <div className="tiny" style={{ fontWeight: 900, opacity: 0.85, letterSpacing: '.08em' }}>
-              KEY INSIGHT · {p.pattern.toUpperCase()}
+            <div className="insight-label">
+              <Lightbulb strokeWidth={2} aria-hidden="true" />
+              <span className="drill-insight-key">Key insight</span>
+              <span className="drill-insight-pattern">{p.pattern}</span>
             </div>
-            <div style={{ marginTop: 6, fontWeight: 700 }}>
+            <div className="drill-insight-text">
               <Md text={p.insight} />
             </div>
-            <div className="mnemonic">🧠 {p.mnemonic}</div>
+            <div className="mnemonic">
+              <Brain strokeWidth={2} aria-hidden="true" />
+              <span>{p.mnemonic}</span>
+            </div>
           </div>
         </div>
       )}
-      <div className="actionbar">
+      <div className="actionbar drill-rate-actions">
         <div className="actionbar-inner">
           {!revealed ? (
             <div className="buttons">
-              <span />
-              <button type="button" className="btn btn-blue" onClick={() => setRevealed(true)}>
+              <span className="drill-hint">
+                <Brain strokeWidth={1.9} aria-hidden="true" />
+                Retrieve it from memory first. The effort is what makes it stick.
+              </span>
+              <button type="button" className="btn btn-primary btn-lg" onClick={() => setRevealed(true)}>
+                <Eye aria-hidden="true" />
                 Show answer
               </button>
             </div>
           ) : (
-            <>
-              <div className="small muted center" style={{ fontWeight: 800 }}>
-                How well did you remember it?
+            <div className="drill-rate" role="group" aria-label="How well did you remember it?">
+              <div className="drill-rate-q">
+                <span>How well did you remember it?</span>
+                <span className="drill-rate-q-meta">{next ? 'Next review' : 'Your rating sets the next review'}</span>
               </div>
-              <div className="grid-4">
-                <button type="button" className="btn btn-red btn-sm" onClick={() => rate('again')}>
-                  Forgot
-                </button>
-                <button type="button" className="btn btn-orange btn-sm" onClick={() => rate('hard')}>
-                  Fuzzy
-                </button>
-                <button type="button" className="btn btn-green btn-sm" onClick={() => rate('good')}>
-                  Got it
-                </button>
-                <button type="button" className="btn btn-blue btn-sm" onClick={() => rate('easy')}>
-                  Easy
-                </button>
+              <div className="drill-rate-grid">
+                {RATINGS.map((r) => (
+                  <div className="drill-rate-option" key={r.grade}>
+                    <button
+                      type="button"
+                      className={`btn btn-secondary btn-lg drill-rate-btn tone-${r.tone}`}
+                      aria-describedby={`rate-${r.grade}`}
+                      onClick={() => rate(r.grade)}
+                    >
+                      {r.label}
+                    </button>
+                    <span className="drill-rate-next" id={`rate-${r.grade}`}>
+                      {next ? fmtInterval(next[r.grade]) : r.fallback}
+                    </span>
+                  </div>
+                ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
-    </>
+    </section>
   );
 }
 
 // ── 4. Put the steps in order (Parsons) ─────────────────────────────────────
 
-export function OrderDrill({ problem: p, onDone, kicker, combo = 0 }: DrillProps) {
+export function OrderDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const [order, setOrder] = useState<number[] | null>(null);
   const { status, resolve } = useCheck();
   const ok = !!order && order.every((v, i) => v === i);
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Put the steps in order'}</div>
-      <h2 className="q-title">
-        Order the steps for <em>{p.title}</em>
-      </h2>
+    <section className="drill" data-drill="order" data-problem={p.id}>
+      <DrillHead
+        kind="order"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title={
+          <>
+            Order the steps for <span className="drill-em">{p.title}</span>
+          </>
+        }
+        sub="Pick the steps in the order you would write them. Select a placed step to send it back."
+      />
       <OrderSteps steps={p.steps} revealed={status !== 'idle'} onChange={setOrder} />
       <ActionBar
         status={status}
         canCheck={!!order}
         onCheck={() => resolve(ok, combo)}
         onContinue={() => onDone({ kind: 'order', correct: ok })}
-        feedback={ok ? <span>🧠 {p.mnemonic}</span> : <CorrectOrder steps={p.steps} />}
+        feedback={
+          ok ? (
+            <div className="drill-fb-answer">
+              <Brain className="drill-fb-icon" strokeWidth={1.9} aria-hidden="true" />
+              <span>{p.mnemonic}</span>
+            </div>
+          ) : (
+            <div className="drill-fb">
+              <div className="drill-fb-label">Correct order</div>
+              <CorrectOrder steps={p.steps} />
+            </div>
+          )
+        }
       />
-    </>
+    </section>
   );
 }
 
@@ -246,7 +437,7 @@ function preferTyping(mode: 'auto' | 'type' | 'tap') {
   return typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches && window.innerWidth >= 820;
 }
 
-export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0 }: DrillProps) {
+export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const settings = useProgress().settings;
   const drill = useMemo(() => keyLineDrill(p), [p]);
   const parsed = parseSolution(p.solution);
@@ -255,49 +446,79 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0 }: DrillPro
   const [typed, setTyped] = useState('');
   const { status, resolve } = useCheck();
   if (!drill) {
-    return <OrderDrill problem={p} onDone={onDone} kicker={kicker} combo={combo} />;
+    return <OrderDrill problem={p} onDone={onDone} kicker={kicker} combo={combo} badge={badge} meta={meta} />;
   }
   const chosen = typing ? typed : sel ?? '';
   const ok = sameCode(chosen, drill.answer);
   const explain = parsed.chunks[parsed.lines[drill.lineIndex].chunk]?.explain;
-  const indent = drill.answer.match(/^\s*/)?.[0] ?? '';
+  const filled = typing ? typed.trim() : sel?.trim();
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Fill in the key line'}</div>
-      <h2 className="q-title">Which line completes {p.title}?</h2>
-      {explain && <div className="bubble small" style={{ marginBottom: 12 }}>💬 {inline(explain)}</div>}
-      <CodeView
-        lines={parsed.lines}
-        blankIndex={drill.lineIndex}
-        blankContent={status !== 'idle' ? drill.answer.trim() : typing && typed.trim() ? typed.trim() : '???'}
-        blankState={status === 'idle' ? undefined : ok ? 'correct' : 'wrong'}
+    <section className="drill" data-drill="keyline" data-problem={p.id}>
+      <DrillHead
+        kind="keyline"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title={
+          <>
+            Which line completes <span className="drill-em">{p.title}</span>?
+          </>
+        }
       />
-      <div style={{ height: 14 }} />
+      {explain && (
+        <div className="callout callout-brand drill-explain">
+          <MessageSquareText aria-hidden="true" />
+          <div>
+            <div className="drill-fb-label">This step</div>
+            {inline(explain)}
+          </div>
+        </div>
+      )}
+      <CodeWindow>
+        <CodeView
+          lines={parsed.lines}
+          blankIndex={drill.lineIndex}
+          blankContent={status !== 'idle' ? drill.answer.trim() : filled || '???'}
+          blankState={status === 'idle' ? undefined : ok ? 'correct' : 'wrong'}
+        />
+      </CodeWindow>
       {typing ? (
-        <input
-          className="input"
-          style={{ fontFamily: 'var(--mono)', fontSize: '0.9rem' }}
-          autoFocus
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
-          placeholder={`${indent.length ? `(${indent.length / 4} indent${indent.length > 4 ? 's' : ''}) ` : ''}type the missing line…`}
-          value={typed}
-          disabled={status !== 'idle'}
-          onChange={(e) => setTyped(e.target.value)}
-        />
+        <div>
+          <label className="drill-label" htmlFor={`line-${p.id}`}>
+            <span>Your line</span>
+            <span className="drill-keys" aria-hidden="true">
+              <Kbd>Enter</Kbd> to check
+            </span>
+          </label>
+          <input
+            id={`line-${p.id}`}
+            className="input mono drill-line-input"
+            autoFocus
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+            placeholder="Type the missing line"
+            value={typed}
+            disabled={status !== 'idle'}
+            onChange={(e) => setTyped(e.target.value)}
+          />
+          <div className="help">Spacing and quote style don't matter.</div>
+        </div>
       ) : (
-        <Choices
-          options={drill.options.map((o) => ({ key: o, label: o.trim() }))}
-          selected={sel}
-          onSelect={(k) => {
-            setSel(k);
-            sfx('tap');
-          }}
-          answer={drill.answer}
-          revealed={status !== 'idle'}
-          code
-        />
+        <div>
+          <AnswerLabel keys={drill.options.length}>Choose the missing line</AnswerLabel>
+          <Choices
+            options={drill.options.map((o) => ({ key: o, label: o.trim() }))}
+            selected={sel}
+            onSelect={(k) => {
+              setSel(k);
+              sfx('tap');
+            }}
+            answer={drill.answer}
+            revealed={status !== 'idle'}
+            code
+          />
+        </div>
       )}
       <ActionBar
         status={status}
@@ -305,69 +526,90 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0 }: DrillPro
         onCheck={() => resolve(ok, combo)}
         onContinue={() => onDone({ kind: 'keyline', correct: ok })}
         secondary={
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setTyping((t) => !t)}>
-            <Icon name={typing ? 'list' : 'keyboard'} size={16} /> {typing ? 'Choices' : 'Type it'}
+          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
+            {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
+            {typing ? 'Show options' : 'Type it'}
           </button>
         }
         feedback={
-          <>
+          <div className="drill-fb">
             {!ok && (
-              <div className="diff-line exp" style={{ marginBottom: 6 }}>
-                {drill.answer.trim()}
+              <div>
+                <div className="drill-fb-label">Expected</div>
+                <div className="drill-expected">{drill.answer.trim()}</div>
               </div>
             )}
-            {explain && <span>{inline(explain)}</span>}
-          </>
+            {explain && <div>{inline(explain)}</div>}
+          </div>
         }
       />
-    </>
+    </section>
   );
 }
 
 // ── 6. Complexity ───────────────────────────────────────────────────────────
 
-export function ComplexityDrill({ problem: p, onDone, kicker, combo = 0 }: DrillProps) {
+export function ComplexityDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const which = useMemo<'time' | 'space'>(() => (Math.random() < 0.7 ? 'time' : 'space'), []);
   const { options, answer } = useMemo(() => complexityChoices(p, which), [p, which]);
   const parsed = parseSolution(p.solution);
   const [sel, setSel] = useState<string | null>(null);
   const { status, resolve } = useCheck();
   return (
-    <>
-      <div className="kicker">{kicker ?? 'Know the complexity'}</div>
-      <h2 className="q-title">
-        What is the <u>{which}</u> complexity of this {p.title} solution?
-      </h2>
-      <details className="disclosure" style={{ marginBottom: 14 }}>
-        <summary>Show the code</summary>
+    <section className="drill" data-drill="complexity" data-problem={p.id}>
+      <DrillHead
+        kind="complexity"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title={
+          <>
+            What is the <span className="drill-em">{which}</span> complexity of this {p.title} solution?
+          </>
+        }
+      />
+      <details className="disclosure drill-code-disclosure">
+        <summary>
+          <CodeXml aria-hidden="true" />
+          Show the solution
+          <span className="drill-summary-meta">{parsed.lines.length} lines</span>
+        </summary>
         <CodeView lines={parsed.lines} />
       </details>
-      <Choices
-        options={options.map((o) => ({ key: o, label: <span style={{ fontFamily: 'var(--mono)' }}>{o}</span> }))}
-        selected={sel}
-        onSelect={(k) => {
-          setSel(k);
-          sfx('tap');
-        }}
-        answer={answer}
-        revealed={status !== 'idle'}
-        twoCol
-      />
+      <div>
+        <AnswerLabel keys={options.length}>{which === 'time' ? 'Time complexity' : 'Space complexity'}</AnswerLabel>
+        <Choices
+          options={options.map((o) => ({ key: o, label: <span className="mono">{o}</span> }))}
+          selected={sel}
+          onSelect={(k) => {
+            setSel(k);
+            sfx('tap');
+          }}
+          answer={answer}
+          revealed={status !== 'idle'}
+          twoCol
+        />
+      </div>
       <ActionBar
         status={status}
         canCheck={sel !== null}
         onCheck={() => resolve(sel === answer, combo)}
         onContinue={() => onDone({ kind: 'complexity', correct: sel === answer })}
         feedback={
-          <>
-            <div>
-              Time <strong>{p.time}</strong> · Space <strong>{p.space}</strong>
+          <div className="drill-fb">
+            <div className="drill-cost">
+              <span className="drill-cost-item">
+                Time <span className="mono">{p.time}</span>
+              </span>
+              <span className="drill-cost-item">
+                Space <span className="mono">{p.space}</span>
+              </span>
             </div>
             <Md text={p.complexityWhy} />
-          </>
+          </div>
         }
       />
-    </>
+    </section>
   );
 }
 

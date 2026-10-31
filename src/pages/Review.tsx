@@ -1,11 +1,13 @@
+import '../styles/pages/review.css';
 import { useMemo, useState } from 'react';
+import { ArrowRight, Brain, CalendarCheck, CircleCheck, GraduationCap, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID } from '../content/index';
 import type { CategoryId } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { friendlyDue } from '../lib/date';
-import { cardsForProblem, DRILL_LABEL, type DrillCardSpec } from '../lib/drills';
+import { cardsForProblem, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
 import { interleave, shuffle } from '../lib/random';
 import { gradeFrom, type Grade } from '../lib/srs';
@@ -13,6 +15,8 @@ import { sfx } from '../lib/sound';
 import { awardXp, dueProblemIds, finishSession, getProgress, learnedIds, recordAnswers, reviewProblem, useProgress } from '../lib/store';
 import { Drill, type DrillResult } from '../components/Drills';
 import { SessionShell } from '../components/Shell';
+import { CategoryIcon, IconTile } from '../components/icons';
+import { Badge, Completion, EmptyState } from '../components/ui';
 
 const MAX_DUE = 10;
 const MAX_EXTRA = 6;
@@ -91,7 +95,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
   const [done, setDone] = useState(false);
   const [popKey, setPopKey] = useState(0);
 
-  const title = mode.kind === 'unit' ? `${CATEGORY_BY_ID[mode.cat].icon} ${CATEGORY_BY_ID[mode.cat].name} practice` : mode.kind === 'ahead' ? 'Practise ahead' : 'Daily review';
+  const title = mode.kind === 'unit' ? `${CATEGORY_BY_ID[mode.cat].name} practice` : mode.kind === 'ahead' ? 'Practise ahead' : 'Daily review';
 
   const onDone = useMemo(
     () => (r: DrillResult) => {
@@ -155,20 +159,47 @@ function ReviewSession({ mode }: { mode: Mode }) {
   );
 
   if (!deck.length) {
+    const unitName = mode.kind === 'unit' ? CATEGORY_BY_ID[mode.cat].name : null;
     return (
-      <SessionShell progress={0} onClose={() => nav('/')}>
-        <div className="empty">
-          <div className="e-icon">🌱</div>
-          <h2>Nothing to review yet</h2>
-          <p className="muted">Learn your first problem and it will join your spaced-repetition deck. Reviews appear right when you are about to forget.</p>
-          <div className="stack" style={{ maxWidth: 320, margin: '0 auto' }}>
-            <Link to="/learn" className="btn btn-green btn-block">
-              Go to the path
-            </Link>
-            <Link to="/blitz" className="btn btn-ghost btn-block">
-              Play Pattern Blitz
-            </Link>
+      <SessionShell progress={0} onClose={() => nav('/')} title={title}>
+        <div className="review-empty">
+          <EmptyState
+            icon={CalendarCheck}
+            title="Nothing to review yet"
+            actions={
+              <>
+                <Link to="/learn" className="btn btn-primary">
+                  Open learning path
+                  <ArrowRight aria-hidden="true" />
+                </Link>
+                <Link to="/blitz" className="btn btn-secondary">
+                  <Zap aria-hidden="true" />
+                  Play Pattern Blitz
+                </Link>
+              </>
+            }
+          >
+            {unitName
+              ? `You haven't learned any ${unitName} problems yet. Learn one and it joins your spaced-repetition deck.`
+              : 'Learn your first problem and it joins your spaced-repetition deck. Reviews are scheduled just before you are likely to forget.'}
+          </EmptyState>
+          <div className="eyebrow review-how-label" id="review-how-label">
+            How Daily review works
           </div>
+          <ol className="review-how" aria-labelledby="review-how-label">
+            {HOW_IT_WORKS.map((s, k) => (
+              <li key={s.title} className="review-how-step">
+                <IconTile icon={s.icon} size="sm" />
+                <div className="grow">
+                  <div className="review-how-title">
+                    <span className="review-how-num">{k + 1}</span>
+                    {s.title}
+                  </div>
+                  <div className="review-how-body">{s.body}</div>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </SessionShell>
     );
@@ -176,54 +207,87 @@ function ReviewSession({ mode }: { mode: Mode }) {
 
   if (done) {
     const acc = Math.round((correct / Math.max(1, firstTotal)) * 100);
+    const perfect = acc === 100;
     return (
-      <SessionShell progress={1} onClose={() => nav('/')}>
-        <div className="complete">
-          <div className="trophy">{acc === 100 ? '🏆' : acc >= 80 ? '🎉' : '💪'}</div>
-          <h1 style={{ marginTop: 12 }}>{acc === 100 ? 'Flawless review!' : 'Review complete!'}</h1>
-          <p className="muted">Every review pushes these problems deeper into long-term memory.</p>
-          <div className="reward-tiles">
-            <div className="reward" style={{ ['--c' as string]: 'var(--gold)' }}>
-              <div className="rk">XP</div>
-              <div className="rv">+{xp}</div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--green)' }}>
-              <div className="rk">Accuracy</div>
-              <div className="rv">{acc}%</div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--orange)' }}>
-              <div className="rk">Best combo</div>
-              <div className="rv">{bestCombo}</div>
-            </div>
-          </div>
-          <div className="list" style={{ textAlign: 'left', marginBottom: 20 }}>
-            {ids.map((id) => {
-              const g = grades[id];
-              const pp = progress.problems[id];
-              const label = { again: 'Relearn soon', hard: 'Shaky', good: 'Solid', easy: 'Easy' }[g ?? 'good'];
-              const color = { again: 'var(--red)', hard: 'var(--orange)', good: 'var(--green)', easy: 'var(--blue)' }[g ?? 'good'];
-              return (
-                <Link to={`/p/${id}`} className="list-row" key={id}>
-                  <span style={{ fontSize: '1.2rem' }}>{CATEGORY_BY_ID[PROBLEM_BY_ID[id].category].icon}</span>
-                  <div className="grow">
-                    <div className="title">{PROBLEM_BY_ID[id].title}</div>
-                    <div className="tiny muted">{pp?.srs ? `Next review ${friendlyDue(pp.srs.due)}` : ''}</div>
-                  </div>
-                  <span className="chip" style={{ color, borderColor: color }}>
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-          <div className="stack" style={{ maxWidth: 360, margin: '0 auto' }}>
-            <Link to="/" className="btn btn-green btn-block">
+      <SessionShell progress={1} onClose={() => nav('/')} title={title}>
+        <div className="review-done">
+          <Completion
+            icon={perfect ? Trophy : acc >= 80 ? CircleCheck : Repeat2}
+            tone={perfect ? 'warning' : acc >= 80 ? 'success' : 'brand'}
+            title="Review complete"
+            subtitle={
+              perfect ? (
+                <>Flawless: all {firstTotal} cards right on the first try. These problems now move further out on your schedule.</>
+              ) : (
+                <>
+                  {correct} of {firstTotal} cards right on the first try. Missed problems come back sooner, so they stick.
+                </>
+              )
+            }
+            stats={[
+              { label: 'XP earned', value: `+${xp}` },
+              { label: 'Accuracy', value: `${acc}%` },
+              { label: 'Best combo', value: bestCombo },
+            ]}
+          >
+            <Link to="/" className="btn btn-primary btn-lg btn-block">
               Continue
+              <ArrowRight aria-hidden="true" />
             </Link>
-            <Link to="/blitz" className="btn btn-ghost btn-block">
-              ⚡ Pattern Blitz
+            <Link to="/blitz" className="btn btn-secondary btn-lg btn-block">
+              <Zap aria-hidden="true" />
+              Play Pattern Blitz
             </Link>
-          </div>
+          </Completion>
+
+          <section className="review-results" aria-labelledby="review-results-title">
+            <div className="review-results-head">
+              <h2 id="review-results-title">Problems reviewed</h2>
+              <span className="review-results-count tabular">{ids.length}</span>
+            </div>
+            <table className="review-table">
+              <thead>
+                <tr>
+                  <th scope="col">Problem</th>
+                  <th scope="col">Result</th>
+                  <th scope="col" className="review-col-next">
+                    Next review
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {ids.map((id) => {
+                  const prob = PROBLEM_BY_ID[id];
+                  const cat = CATEGORY_BY_ID[prob.category];
+                  const g = grades[id] ?? 'good';
+                  const pp = progress.problems[id];
+                  const next = pp?.srs ? friendlyDue(pp.srs.due) : null;
+                  return (
+                    <tr key={id}>
+                      <td>
+                        <Link to={`/p/${id}`} className="review-prob">
+                          <CategoryIcon id={prob.category} color={cat.color} size="sm" />
+                          <span className="review-prob-text">
+                            <span className="review-prob-title">{prob.title}</span>
+                            <span className="review-prob-meta review-meta-wide">
+                              #{prob.num} · {cat.name}
+                            </span>
+                            <span className="review-prob-meta review-meta-narrow">{next ? `Next review ${next}` : `#${prob.num}`}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td>
+                        <Badge tone={GRADE_UI[g].tone} dot>
+                          {GRADE_UI[g].label}
+                        </Badge>
+                      </td>
+                      <td className="review-col-next tabular">{next ? capitalize(next) : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </section>
         </div>
       </SessionShell>
     );
@@ -235,9 +299,20 @@ function ReviewSession({ mode }: { mode: Mode }) {
     <SessionShell
       progress={i / deck.length}
       onClose={() => nav('/')}
+      title={title}
       right={
-        <span key={popKey} className={`combo ${popKey ? 'pop' : ''}`} title="Combo: answers right in a row">
-          {combo >= 2 ? `⚡${combo}` : ''}
+        <span className="review-combo-slot">
+          {combo >= 2 && (
+            <span
+              key={popKey}
+              className={`review-combo ${popKey ? 'pop' : ''}`}
+              title="Combo: answers right in a row"
+              aria-label={`${combo} correct in a row`}
+            >
+              <Zap strokeWidth={2.2} aria-hidden="true" />
+              {combo}
+            </span>
+          )}
         </span>
       }
     >
@@ -247,8 +322,35 @@ function ReviewSession({ mode }: { mode: Mode }) {
         problem={p}
         onDone={onDone}
         combo={combo}
-        kicker={`${card.retry ? 'Try again' : title} · ${DRILL_LABEL[card.kind]} · ${i + 1}/${deck.length}`}
+        badge={
+          card.retry ? (
+            <Badge tone="warning">
+              <RotateCcw aria-hidden="true" />
+              Try again
+            </Badge>
+          ) : undefined
+        }
+        meta={
+          <>
+            {i + 1} <span className="review-of">of</span> {deck.length}
+          </>
+        }
       />
     </SessionShell>
   );
 }
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'success' | 'info' }> = {
+  again: { label: 'Relearn soon', tone: 'danger' },
+  hard: { label: 'Shaky', tone: 'warning' },
+  good: { label: 'Solid', tone: 'success' },
+  easy: { label: 'Easy', tone: 'info' },
+};
+
+const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [
+  { icon: GraduationCap, title: 'Learn a problem', body: 'A guided lesson walks you from the prompt to working code.' },
+  { icon: Brain, title: 'Recall it', body: 'Short drills test the pattern, the key insight and the code.' },
+  { icon: CalendarCheck, title: 'Space it out', body: 'Each good review pushes the next one further away.' },
+];
