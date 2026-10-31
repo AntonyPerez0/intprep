@@ -1,13 +1,15 @@
+import '../styles/pages/home.css';
+import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CATEGORIES } from '../content/categories';
+import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, PROBLEMS } from '../content/index';
-import { lastNDays, today, weekdayShort } from '../lib/date';
-import { levelInfo, levelTitle } from '../lib/game';
-import { foundationsDone, nextStep, unitProgress } from '../lib/path';
+import { addDays, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
+import { GEMS, levelInfo, levelTitle } from '../lib/game';
+import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
 import { crowns } from '../lib/srs';
-import { dueProblemIds, learnedIds, repairableStreak, repairStreak, useProgress, xpToday } from '../lib/store';
-import { GEMS } from '../lib/game';
-import { DifficultyChip, ProgressBar, Ring } from '../components/ui';
+import { dueProblemIds, learnedIds, repairableStreak, repairStreak, useProgress, xpToday, type Progress } from '../lib/store';
+import { CategoryIcon, Icon, IconTile, ICONS, LESSON_ICON } from '../components/icons';
+import { Badge, DifficultyChip, ProgressBar, Ring, StatCard } from '../components/ui';
 
 function greeting() {
   const h = new Date().getHours();
@@ -17,6 +19,8 @@ function greeting() {
   return 'Good evening';
 }
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
 export function Home() {
   const p = useProgress();
   const next = nextStep(p);
@@ -24,185 +28,780 @@ export function Home() {
   const learned = learnedIds(p).length;
   const mastered = Object.values(p.problems).filter((x) => crowns(x.srs) >= 4).length;
   const x = xpToday(p);
-  const lv = levelInfo(p.xp);
-  const days = lastNDays(7);
-  const name = p.settings.name.trim();
+  const goal = p.settings.dailyGoal;
+  const firstName = p.settings.name.trim().split(/\s+/)[0] ?? '';
+  const isNew = learned === 0 && p.xp === 0;
+  const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  let status: string;
+  if (isNew) status = 'Welcome to IntPrep. Your plan is ready, starting with one short lesson.';
+  else if (p.streak.current > 0)
+    status =
+      x > 0
+        ? x >= goal
+          ? `Daily goal complete. Your ${p.streak.current}-day streak is safe.`
+          : `Your ${p.streak.current}-day streak is safe for today. ${goal - x} XP to your daily goal.`
+        : `Keep your ${p.streak.current}-day streak going. One lesson or review is enough.`;
+  else if (repairableStreak(p) > 0) status = `Your ${repairableStreak(p)}-day streak was interrupted. Repair it below, or start a new one today.`;
+  else status = 'Small daily reps build lasting skill. One lesson starts your streak.';
 
   return (
-    <div className="stack" style={{ gap: 18 }}>
-      <div>
-        <div className="greeting">
-          {greeting()}
-          {name ? `, ${name}` : ''}! 👋
+    <div className="home">
+      <div className="home-page">
+        <header className="home-head">
+          <div className="eyebrow">{date}</div>
+          <h1 className="home-title">
+            {greeting()}
+            {firstName ? `, ${firstName}` : ''}
+          </h1>
+          <p className="home-sub">{status}</p>
+        </header>
+
+        {repairableStreak(p) > 0 && <RepairCard p={p} />}
+
+        <div className="home-hero">
+          <ContinueCard p={p} next={next} />
+          <ReviewCard p={p} due={due.length} learned={learned} />
+          <TodayPanel p={p} xp={x} />
         </div>
-        <div className="muted">
-          {p.streak.current > 0
-            ? x > 0
-              ? `Streak safe for today. ${x >= p.settings.dailyGoal ? 'Daily goal smashed. 🎉' : `${p.settings.dailyGoal - x} XP to your daily goal.`}`
-              : `Keep your ${p.streak.current}-day streak alive — one lesson or review is enough.`
-            : 'Small daily reps build big skills. Start a streak today.'}
+
+        <GetStarted p={p} learned={learned} next={next} />
+
+        <section className="home-kpis" aria-label="Your progress">
+          <Kpis p={p} learned={learned} mastered={mastered} />
+        </section>
+
+        <div className="home-row">
+          <ActivityCard p={p} />
+          <QuickLinks p={p} />
         </div>
+
+        <Roadmap p={p} next={next} />
+
+        <p className="home-foot">
+          {PROBLEMS.length} problems <span className="dot-sep" />
+          {CATEGORIES.length} patterns <span className="dot-sep" />
+          Grounded in learning science. <Link to="/science">See why it works</Link>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Streak repair ───────────────────────────────────────────────────────────
+
+function RepairCard({ p }: { p: Progress }) {
+  const value = repairableStreak(p);
+  const short = GEMS.repairCost - p.gems;
+  return (
+    <section className="card home-repair" aria-labelledby="home-repair-title">
+      <IconTile icon={ICONS.wrench} color="var(--streak)" />
+      <div className="grow">
+        <h2 id="home-repair-title" className="card-title">
+          Repair your {value}-day streak
+        </h2>
+        <p className="home-repair-body">
+          You missed a day. For the next 48 hours you can restore your streak, or start fresh with today’s practice.
+        </p>
+      </div>
+      <div className="home-repair-action">
+        <button type="button" className="btn btn-primary" disabled={p.gems < GEMS.repairCost} onClick={repairStreak}>
+          <Icon name="wrench" />
+          Repair streak
+        </button>
+        <span className="home-repair-cost">
+          <Icon name="gem" size={13} />
+          {short > 0 ? `${GEMS.repairCost} gems · ${short} more needed` : `${GEMS.repairCost} gems · you have ${p.gems}`}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+// ── Continue learning ───────────────────────────────────────────────────────
+
+interface NextView {
+  kind: string;
+  context: string;
+  position?: string;
+  accent: string;
+  tile: ReactNode;
+  title: string;
+  description?: string;
+  meta: ReactNode;
+  progress?: { label: string; done: number; total: number; unit: string };
+  cta: string;
+}
+
+function describeNext(p: Progress, next: NextStep): NextView {
+  switch (next.kind) {
+    case 'foundation': {
+      const i = FOUNDATIONS.findIndex((l) => l.id === next.lessonId);
+      const lesson = FOUNDATIONS[i];
+      return {
+        kind: 'Lesson',
+        context: 'Beginner foundations',
+        position: `Lesson ${i + 1} of ${FOUNDATIONS.length}`,
+        accent: 'var(--brand)',
+        tile: <IconTile icon={LESSON_ICON[next.lessonId] ?? ICONS.grad} size="lg" />,
+        title: next.title,
+        description: lesson?.blurb,
+        meta: lesson ? (
+          <span className="home-meta-item">
+            <Icon name="clock" size={14} />
+            {lesson.minutes} min
+          </span>
+        ) : null,
+        progress: { label: 'Beginner foundations', done: foundationsDone(p), total: FOUNDATIONS.length, unit: 'complete' },
+        cta: 'Start lesson',
+      };
+    }
+    case 'guide': {
+      const c = CATEGORY_BY_ID[next.category];
+      const u = unitProgress(p, c.id);
+      return {
+        kind: 'New pattern',
+        context: c.name,
+        position: `Unit ${CATEGORIES.indexOf(c) + 1} of ${CATEGORIES.length}`,
+        accent: c.color,
+        tile: <CategoryIcon id={c.id} color={c.color} size="lg" />,
+        title: next.title,
+        description: c.tagline,
+        meta: (
+          <span className="home-meta-item">
+            <Icon name="book" size={14} />
+            Pattern intro, template and quiz
+          </span>
+        ),
+        progress: { label: c.name, done: u.learned, total: u.total, unit: 'learned' },
+        cta: 'Start lesson',
+      };
+    }
+    case 'problem': {
+      const q = next.problem;
+      const c = CATEGORY_BY_ID[q.category];
+      const u = unitProgress(p, c.id);
+      return {
+        kind: 'Next problem',
+        context: c.name,
+        position: `Unit ${CATEGORIES.indexOf(c) + 1} of ${CATEGORIES.length}`,
+        accent: c.color,
+        tile: <CategoryIcon id={c.id} color={c.color} size="lg" />,
+        title: next.title,
+        meta: (
+          <>
+            <DifficultyChip d={q.difficulty} />
+            <span className="home-meta-item mono">#{q.num}</span>
+            <span className="home-meta-item truncate">{q.pattern}</span>
+          </>
+        ),
+        progress: { label: c.name, done: u.learned, total: u.total, unit: 'learned' },
+        cta: 'Start lesson',
+      };
+    }
+    default:
+      return {
+        kind: 'Roadmap complete',
+        context: 'All patterns',
+        accent: 'var(--success)',
+        tile: <IconTile icon={ICONS.trophy} color="var(--success)" size="lg" />,
+        title: `All ${PROBLEMS.length} problems learned`,
+        description: 'Every pattern is in your toolkit. Daily review keeps it sharp until interview day.',
+        meta: null,
+        cta: 'Go to review',
+      };
+  }
+}
+
+function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
+  const v = describeNext(p, next);
+  return (
+    <section className="card home-card home-continue" style={{ ['--c' as string]: v.accent } as CSSProperties} aria-labelledby="home-continue-title">
+      <div className="home-card-head">
+        <h2 id="home-continue-title" className="card-title">
+          Continue learning
+        </h2>
+        {v.position && <span className="home-card-aside tabular">{v.position}</span>}
       </div>
 
-      {repairableStreak(p) > 0 && (
-        <div className="card row wrap" style={{ borderColor: 'var(--orange)' }}>
-          <span style={{ fontSize: '2rem' }}>🔧</span>
-          <div className="grow">
-            <div className="card-title">Repair your {repairableStreak(p)}-day streak?</div>
-            <div className="small muted">Life happens. For the next 48 hours you can restore it for {GEMS.repairCost} 💎 — or simply start fresh.</div>
-          </div>
-          <button type="button" className="btn btn-orange btn-sm" disabled={p.gems < GEMS.repairCost} onClick={repairStreak}>
-            Repair · {GEMS.repairCost} 💎
-          </button>
+      <div className="home-continue-main">
+        {v.tile}
+        <div className="home-continue-kind">
+          <Badge tone="brand">{v.kind}</Badge>
+          <span className="truncate">{v.context}</span>
         </div>
-      )}
+        <h3 className="home-continue-title">
+          <Link to={next.href}>{v.title}</Link>
+        </h3>
+        {v.description && <p className="home-continue-desc">{v.description}</p>}
+        {v.meta && <div className="home-continue-meta">{v.meta}</div>}
+      </div>
 
-      <div className="grid-2">
-        <div className="action-card primary">
-          <span className="big-emoji">{next.icon}</span>
-          <div className="tiny" style={{ fontWeight: 900, letterSpacing: '.08em', opacity: 0.85 }}>
-            {next.kind === 'foundation' ? 'BEGINNER TRACK' : next.kind === 'guide' ? 'NEW PATTERN' : next.kind === 'problem' ? 'NEXT PROBLEM' : 'ALL DONE'}
-          </div>
-          <div style={{ fontWeight: 900, fontSize: '1.3rem', lineHeight: 1.2, paddingRight: 56 }}>{next.title}</div>
-          {next.kind === 'problem' && (
-            <div className="row" style={{ gap: 6 }}>
-              <DifficultyChip d={next.problem.difficulty} />
-              <span className="small muted">{next.problem.pattern}</span>
+      <div className="home-continue-foot">
+        {v.progress ? (
+          <div className="home-continue-progress">
+            <div className="home-progress-label">
+              <span className="truncate">{v.progress.label}</span>
+              <span className="tabular">
+                {v.progress.done}/{v.progress.total}
+                <span className="text-tertiary"> {v.progress.unit}</span>
+              </span>
             </div>
-          )}
+            <ProgressBar value={v.progress.total ? v.progress.done / v.progress.total : 0} color={v.accent} label={`${v.progress.label} progress`} />
+          </div>
+        ) : (
           <div className="grow" />
-          <Link to={next.href} className="btn btn-white btn-block">
-            {next.kind === 'done' ? 'Review' : 'Start lesson'}
-          </Link>
-        </div>
+        )}
+        <Link to={next.href} className="btn btn-primary btn-lg home-continue-cta">
+          {v.cta}
+          <Icon name="arrow" />
+        </Link>
+      </div>
+    </section>
+  );
+}
 
-        <div className={`action-card ${due.length ? 'review' : ''}`}>
-          <span className="big-emoji">{due.length ? '🔁' : '✅'}</span>
-          <div className="tiny" style={{ fontWeight: 900, letterSpacing: '.08em', opacity: 0.85 }}>
-            DAILY REVIEW
-          </div>
-          <div style={{ fontWeight: 900, fontSize: '1.3rem', lineHeight: 1.2, paddingRight: 56 }}>
-            {due.length ? `${due.length} problem${due.length > 1 ? 's' : ''} ready to review` : learned ? 'All caught up!' : 'Nothing to review yet'}
-          </div>
-          <div className="small muted">
-            {due.length
-              ? 'Recall them now, right as they start to fade. That is when it sticks best.'
-              : learned
-                ? 'Come back tomorrow, or practise ahead with a few extra cards.'
-                : 'Learn a problem and it will show up here for spaced review.'}
-          </div>
-          <div className="grow" />
-          {due.length ? (
-            <Link to="/review" className="btn btn-white btn-block">
-              Start review
-            </Link>
+// ── Daily review ────────────────────────────────────────────────────────────
+
+function ReviewCard({ p, due, learned }: { p: Progress; due: number; learned: number }) {
+  const t = today();
+  const tomorrow = Math.max(0, dueProblemIds(p, addDays(t, 1)).length - due);
+  const upcoming = Object.values(p.problems)
+    .map((q) => q.srs?.due)
+    .filter((d): d is string => !!d && d > t)
+    .sort()[0];
+
+  let title: string;
+  let body: string;
+  let foot: string | null = null;
+  let action: ReactNode;
+  if (due > 0) {
+    title = `${plural(due, 'problem')} ready to review`;
+    body = 'Recall them now, right as they start to fade. That is when memory strengthens most.';
+    foot = tomorrow > 0 ? `${tomorrow} more due tomorrow` : null;
+    action = (
+      <Link to="/review" className="btn btn-secondary home-review-cta">
+        Start review
+      </Link>
+    );
+  } else if (learned) {
+    title = 'All caught up';
+    body = 'Nothing is due today. Practise ahead with a few extra cards, or come back when reviews are due.';
+    foot = upcoming ? `Next review ${friendlyDue(upcoming)}` : null;
+    action = (
+      <Link to="/review?ahead=1" className="btn btn-secondary home-review-cta">
+        Practise ahead
+      </Link>
+    );
+  } else {
+    title = 'Nothing to review yet';
+    body = 'Learn a problem and it will show up here for spaced review, starting the next day.';
+    action = (
+      <Link to="/blitz" className="btn btn-secondary home-review-cta">
+        Try Pattern Blitz
+      </Link>
+    );
+  }
+
+  return (
+    <section className="card home-card home-review" aria-labelledby="home-review-title">
+      <div className="home-card-head">
+        <h2 id="home-review-title" className="card-title">
+          Daily review
+        </h2>
+        <span className="home-card-aside">{foot ?? 'Spaced repetition'}</span>
+      </div>
+      <div className="home-review-main">
+        <div className={`home-review-count ${due > 0 ? 'is-due' : learned ? 'is-clear' : ''}`} aria-hidden="true">
+          {due > 0 ? (
+            <>
+              <span className="home-review-num tabular">{due}</span>
+              <span className="home-review-unit">due</span>
+            </>
           ) : learned ? (
-            <Link to="/review?ahead=1" className="btn btn-ghost btn-block">
-              Practise ahead
-            </Link>
+            <Icon name="check" size={22} strokeWidth={2} />
           ) : (
-            <Link to="/blitz" className="btn btn-ghost btn-block">
-              Try Pattern Blitz
-            </Link>
+            <Icon name="review" size={22} />
           )}
+        </div>
+        <div className="home-review-text">
+          <h3 className="home-review-title">{title}</h3>
+          <p className="home-review-body">{body}</p>
+        </div>
+        <div className="home-review-action">{action}</div>
+      </div>
+    </section>
+  );
+}
+
+// ── Today panel ─────────────────────────────────────────────────────────────
+
+function TodayPanel({ p, xp }: { p: Progress; xp: number }) {
+  const goal = p.settings.dailyGoal;
+  const done = xp >= goal;
+  const ring = done ? 'var(--success)' : 'var(--brand)';
+  const s = p.streak;
+  return (
+    <section className="card home-card home-today" aria-labelledby="home-today-title">
+      <div className="home-card-head">
+        <h2 id="home-today-title" className="card-title">
+          Today
+        </h2>
+        <Link to="/profile" className="home-card-aside home-aside-link">
+          Edit goal
+        </Link>
+      </div>
+
+      <div className="home-goal">
+        <Ring value={xp / goal} size={104} stroke={10} color={ring} track={`color-mix(in srgb, ${ring} 14%, var(--surface-active))`}>
+          <span className="home-goal-pct tabular">{Math.round(Math.min(1, xp / goal) * 100)}%</span>
+        </Ring>
+        <div className="home-goal-text">
+          <div className="home-goal-label">Daily goal</div>
+          <div className="home-goal-value tabular">
+            {xp}
+            <span>/{goal} XP</span>
+          </div>
+          <div className={`home-goal-status ${done ? 'is-done' : ''}`}>
+            {done ? (
+              <>
+                <Icon name="success" size={14} />
+                Goal complete
+              </>
+            ) : (
+              `${goal - xp} XP to go`
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="row between" style={{ marginBottom: 12 }}>
-          <div className="card-title" style={{ margin: 0 }}>
-            This week
+      <WeekStrip p={p} />
+
+      <ul className="home-today-list">
+        <li>
+          <IconTile icon={ICONS.flame} color={s.current > 0 ? 'var(--streak)' : 'var(--text-tertiary)'} size="sm" />
+          <div className="grow">
+            <div className="home-today-k">Current streak</div>
+            <div className="home-today-sub">{s.longest > 0 ? `Best ${plural(s.longest, 'day')}` : 'Practise today to start one'}</div>
           </div>
-          <div className="row small muted" style={{ gap: 8 }}>
-            <Ring value={x / p.settings.dailyGoal} size={30} stroke={4} color="var(--gold)" />
-            {x}/{p.settings.dailyGoal} XP today
+          <div className="home-today-v tabular">
+            {s.current}
+            <span> {s.current === 1 ? 'day' : 'days'}</span>
           </div>
+        </li>
+        <li>
+          <IconTile icon={ICONS.snowflake} color="var(--info)" size="sm" />
+          <div className="grow">
+            <div className="home-today-k">Streak freezes</div>
+            <div className="home-today-sub">Covers a missed day</div>
+          </div>
+          <div className="home-today-v tabular">
+            {s.freezes}
+            <span> of {GEMS.maxFreezes}</span>
+          </div>
+        </li>
+        <li>
+          <IconTile icon={ICONS.gem} color="var(--gem)" size="sm" />
+          <div className="grow">
+            <div className="home-today-k">Gems</div>
+            <div className="home-today-sub">
+              <Link to="/profile">Spend on freezes</Link>
+            </div>
+          </div>
+          <div className="home-today-v tabular">{p.gems}</div>
+        </li>
+      </ul>
+    </section>
+  );
+}
+
+function WeekStrip({ p }: { p: Progress }) {
+  const t = today();
+  const days = lastNDays(7);
+  const frozen = new Set(p.streak.frozenDays);
+  const active = days.filter((d) => (p.xpByDay[d] ?? 0) > 0).length;
+  return (
+    <div className="home-week">
+      <div className="home-week-head">
+        <span>Last 7 days</span>
+        <span className="tabular">{active} of 7 active</span>
+      </div>
+      <ol className="home-week-days">
+        {days.map((d) => {
+          const done = (p.xpByDay[d] ?? 0) > 0;
+          const isFrozen = !done && frozen.has(d);
+          const state = done ? 'is-done' : isFrozen ? 'is-frozen' : d === t ? 'is-open' : 'is-missed';
+          const label = parseDay(d).toLocaleDateString(undefined, { weekday: 'long' });
+          return (
+            <li key={d} className={`home-day ${state} ${d === t ? 'is-today' : ''}`}>
+              <span className="home-day-name" aria-hidden="true">
+                {weekdayShort(d)}
+              </span>
+              <span className="home-day-dot" title={`${label}: ${done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : 'missed'}`}>
+                {done ? <Icon name="flame" size={14} strokeWidth={2} /> : isFrozen ? <Icon name="snowflake" size={14} strokeWidth={2} /> : null}
+                <span className="sr-only">
+                  {label}: {done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : 'missed'}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+// ── Getting started checklist (new learners) ────────────────────────────────
+
+function GetStarted({ p, learned, next }: { p: Progress; learned: number; next: NextStep }) {
+  const steps = [
+    { title: 'Set a daily goal', body: `${p.settings.dailyGoal} XP a day. Change it any time.`, done: p.onboarded, to: '/profile' },
+    { title: 'Finish your first lesson', body: 'A short, interactive intro with a quick quiz.', done: Object.keys(p.lessonsDone).length > 0, to: next.href },
+    { title: 'Learn your first problem', body: 'Walk through the idea, then build the solution.', done: learned > 0, to: '/learn' },
+    { title: 'Complete a daily review', body: 'Reviews start the day after you learn a problem.', done: p.stats.sessions > 0, to: '/review' },
+  ];
+  const complete = steps.filter((s) => s.done).length;
+  if (complete === steps.length) return null;
+  return (
+    <section className="card home-card home-start" aria-labelledby="home-start-title">
+      <div className="home-card-head">
+        <div>
+          <h2 id="home-start-title" className="card-title">
+            Get started
+          </h2>
+          <div className="card-subtitle">Four short steps to build a daily habit.</div>
         </div>
-        <div className="week">
-          {days.map((d) => {
-            const done = (p.xpByDay[d] ?? 0) > 0;
-            const frozen = p.streak.frozenDays.includes(d);
-            return (
-              <div key={d}>
-                <div className="d">{weekdayShort(d)}</div>
-                <div className={`dot ${done ? 'done' : ''} ${frozen ? 'frozen' : ''} ${d === today() ? 'today' : ''}`}>
-                  {done ? '🔥' : frozen ? '🧊' : ''}
+        <div className="home-start-count">
+          <span className="tabular">
+            {complete} of {steps.length} complete
+          </span>
+          <ProgressBar value={complete / steps.length} label="Getting started progress" />
+        </div>
+      </div>
+      <ol className="home-steps">
+        {steps.map((s, i) => (
+          <li key={s.title}>
+            <Link to={s.to} className={`home-step ${s.done ? 'is-done' : ''}`}>
+              <span className="home-step-mark" aria-hidden="true">
+                {s.done ? <Icon name="check" size={13} strokeWidth={2.5} /> : i + 1}
+              </span>
+              <span className="grow">
+                <span className="home-step-title">
+                  {s.title}
+                  {s.done && <span className="sr-only"> (done)</span>}
+                </span>
+                <span className="home-step-body">{s.body}</span>
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+// ── KPIs ────────────────────────────────────────────────────────────────────
+
+function Kpis({ p, learned, mastered }: { p: Progress; learned: number; mastered: number }) {
+  const lv = levelInfo(p.xp);
+  const acc = p.stats.answered > 0 ? p.stats.correct / p.stats.answered : null;
+  return (
+    <>
+      <StatCard
+        icon="checks"
+        label="Problems learned"
+        value={
+          <>
+            {learned}
+            <span className="home-kpi-of">/{PROBLEMS.length}</span>
+          </>
+        }
+        meta={<KpiMeta value={learned / PROBLEMS.length} text={`${Math.round((learned / PROBLEMS.length) * 100)}% of the roadmap`} />}
+      />
+      <StatCard
+        icon="crown"
+        label="Strong or better"
+        value={mastered}
+        meta={<KpiMeta value={learned ? mastered / learned : 0} text={learned ? `${Math.round((mastered / learned) * 100)}% of learned` : 'Grows with each review'} />}
+      />
+      <StatCard
+        icon="target"
+        label="Drill accuracy"
+        value={acc === null ? '–' : `${Math.round(acc * 100)}%`}
+        meta={<KpiMeta value={acc ?? 0} text={acc === null ? 'No drills yet' : `${p.stats.correct}/${p.stats.answered} correct`} />}
+      />
+      <StatCard
+        icon="award"
+        label="Level"
+        value={
+          <>
+            {lv.level}
+            <span className="home-kpi-title">{levelTitle(lv.level)}</span>
+          </>
+        }
+        meta={<KpiMeta value={lv.pct} text={`${lv.cost - lv.into} XP to level ${lv.level + 1}`} />}
+      />
+    </>
+  );
+}
+
+function KpiMeta({ value, text }: { value: number; text: string }) {
+  return (
+    <div className="home-kpi-meta">
+      <ProgressBar value={value} thin />
+      <div className="truncate">{text}</div>
+    </div>
+  );
+}
+
+// ── Activity heatmap ────────────────────────────────────────────────────────
+
+const WEEK_OPTIONS = [52, 40, 32, 26, 20, 16, 12];
+const DAY_COL = 28;
+const GAP = 3;
+const MIN_CELL = 13;
+const MAX_CELL = 18;
+const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+
+function useWidth<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+function heatLevel(xp: number, goal: number) {
+  if (xp <= 0) return 0;
+  if (xp < goal / 2) return 1;
+  if (xp < goal) return 2;
+  if (xp < goal * 2) return 3;
+  return 4;
+}
+
+function ActivityCard({ p }: { p: Progress }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const avail = Math.max(0, width - DAY_COL - GAP);
+  const weeks = width ? (WEEK_OPTIONS.find((n) => (avail + GAP) / n - GAP >= MIN_CELL) ?? 12) : 20;
+  const cell = width ? Math.min(MAX_CELL, Math.floor(((avail + GAP) / weeks - GAP) * 10) / 10) : 12;
+
+  const t = today();
+  const start = addDays(t, -parseDay(t).getDay() - 7 * (weeks - 1));
+  const cols = Array.from({ length: weeks }, (_, c) => Array.from({ length: 7 }, (_, r) => addDays(start, c * 7 + r)));
+  const months = cols.map((col, c) => {
+    const m = parseDay(col[0]).getMonth();
+    const changes = (k: number) => k > 0 && k < weeks && parseDay(cols[k][0]).getMonth() !== parseDay(cols[k - 1][0]).getMonth();
+    const show = c === 0 ? !changes(1) && !changes(2) : m !== parseDay(cols[c - 1][0]).getMonth();
+    return show ? parseDay(col[0]).toLocaleDateString(undefined, { month: 'short' }) : '';
+  });
+
+  const frozen = new Set(p.streak.frozenDays);
+  const inWindow = cols.flat().filter((d) => d <= t);
+  const active = inWindow.filter((d) => (p.xpByDay[d] ?? 0) > 0).length;
+  const goalsMet = new Set(p.goalDays);
+  const goalCount = inWindow.filter((d) => goalsMet.has(d)).length;
+  const anyFrozen = inWindow.some((d) => frozen.has(d));
+  const fmt = (d: string) => parseDay(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+
+  return (
+    <section className="card home-card home-activity" aria-labelledby="home-activity-title">
+      <div className="home-card-head">
+        <div>
+          <h2 id="home-activity-title" className="card-title">
+            Activity
+          </h2>
+          <div className="card-subtitle">Last {weeks} weeks</div>
+        </div>
+        <dl className="home-activity-stats">
+          <div>
+            <dt>Active days</dt>
+            <dd className="tabular">{active}</dd>
+          </div>
+          <div>
+            <dt>Goal met</dt>
+            <dd className="tabular">{goalCount}</dd>
+          </div>
+          <div>
+            <dt>Best streak</dt>
+            <dd className="tabular">{p.streak.longest}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div ref={ref} className="home-heat-wrap">
+        <div
+          className="home-heat"
+          role="img"
+          aria-label={`Activity over the last ${weeks} weeks: ${plural(active, 'active day')}`}
+          style={{ gridTemplateColumns: `${DAY_COL}px repeat(${weeks}, ${cell}px)`, gridTemplateRows: `16px repeat(7, ${cell}px)` }}
+        >
+          <span />
+          {DAY_LABELS.map((d, i) => (
+            <span key={i} className="home-heat-day">
+              {d}
+            </span>
+          ))}
+          {cols.map((col, c) => (
+            <Fragment key={col[0]}>
+              <span className="home-heat-month">{months[c]}</span>
+              {col.map((d) => {
+                if (d > t) return <span key={d} className="home-heat-cell is-future" />;
+                const xp = p.xpByDay[d] ?? 0;
+                const isFrozen = xp === 0 && frozen.has(d);
+                return (
+                  <span
+                    key={d}
+                    className={`home-heat-cell ${isFrozen ? 'is-frozen' : ''} ${d === t ? 'is-today' : ''}`}
+                    data-l={heatLevel(xp, p.settings.dailyGoal)}
+                    title={`${fmt(d)} · ${isFrozen ? 'Streak freeze' : xp ? `${xp} XP` : 'No activity'}`}
+                  />
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+
+      <div className="home-heat-foot">
+        <span className="home-heat-note">{active ? 'Each square is one day. Darker means more XP.' : 'Your practice will appear here, one square per day.'}</span>
+        <span className="home-heat-legend" aria-hidden="true">
+          <span className="home-heat-word">Less</span>
+          {[0, 1, 2, 3, 4].map((l) => (
+            <span key={l} className="home-heat-cell" data-l={l} />
+          ))}
+          <span className="home-heat-word">More</span>
+          {anyFrozen && (
+            <>
+              <span className="home-heat-cell is-frozen home-legend-gap" />
+              <span className="home-heat-word">Freeze</span>
+            </>
+          )}
+        </span>
+      </div>
+    </section>
+  );
+}
+
+// ── Quick links ─────────────────────────────────────────────────────────────
+
+function QuickLinks({ p }: { p: Progress }) {
+  const fDone = foundationsDone(p);
+  return (
+    <section className="card home-card home-links" aria-labelledby="home-links-title">
+      <div className="home-card-head">
+        <h2 id="home-links-title" className="card-title">
+          Explore
+        </h2>
+      </div>
+      <ul className="home-link-list">
+        <li>
+          <Link to="/blitz" className="home-link">
+            <IconTile icon={ICONS.blitz} color="var(--xp)" size="sm" />
+            <div className="grow">
+              <div className="home-link-title">Pattern Blitz</div>
+              <div className="home-link-meta">{p.stats.blitzBest > 0 ? `Best score ${p.stats.blitzBest}` : '60 seconds. Name the pattern.'}</div>
+            </div>
+            <Icon name="chevron" className="home-link-chevron" />
+          </Link>
+        </li>
+        {FOUNDATIONS.length > 0 && (
+          <li>
+            <Link to="/learn#foundations" className="home-link">
+              <IconTile icon={ICONS.layers} size="sm" />
+              <div className="grow">
+                <div className="home-link-title">Beginner foundations</div>
+                <div className="home-link-meta">
+                  <span className="tabular">
+                    {fDone} of {FOUNDATIONS.length} lessons
+                  </span>
+                  <ProgressBar value={fDone / FOUNDATIONS.length} thin label="Foundations progress" />
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid-3">
-        <div className="stat-tile">
-          <div className="v">{learned}</div>
-          <div className="k">Learned</div>
-        </div>
-        <div className="stat-tile">
-          <div className="v">{mastered}</div>
-          <div className="k">Strong+</div>
-        </div>
-        <div className="stat-tile">
-          <div className="v">Lv {lv.level}</div>
-          <div className="k">{levelTitle(lv.level)}</div>
-        </div>
-      </div>
-
-      <Link to="/blitz" className="card row" style={{ color: 'inherit', textDecoration: 'none' }}>
-        <span style={{ fontSize: '2.2rem' }}>⚡</span>
-        <div className="grow">
-          <div className="card-title">Pattern Blitz</div>
-          <div className="small muted">60 seconds. Read the problem, name the pattern. Best: {p.stats.blitzBest}</div>
-        </div>
-        <span className="btn btn-orange btn-sm">Play</span>
-      </Link>
-
-      {FOUNDATIONS.length > 0 && (
-        <Link to="/learn#foundations" className="card row" style={{ color: 'inherit', textDecoration: 'none' }}>
-          <span style={{ fontSize: '2.2rem' }}>🧱</span>
-          <div className="grow">
-            <div className="card-title">Beginner foundations</div>
-            <div className="small muted">
-              Python, Big-O, recursion and how to attack a problem. {foundationsDone(p)}/{FOUNDATIONS.length} done
+              <Icon name="chevron" className="home-link-chevron" />
+            </Link>
+          </li>
+        )}
+        <li>
+          <Link to="/patterns" className="home-link">
+            <IconTile icon={ICONS.book} color="var(--info)" size="sm" />
+            <div className="grow">
+              <div className="home-link-title">Pattern guide</div>
+              <div className="home-link-meta">{CATEGORIES.length} patterns, templates and cues</div>
             </div>
-            <div style={{ marginTop: 8 }}>
-              <ProgressBar value={foundationsDone(p) / FOUNDATIONS.length} thin />
-            </div>
-          </div>
-        </Link>
-      )}
-
-      <div>
-        <div className="section-title">
-          <h2>Your roadmap</h2>
-          <Link to="/learn" className="small" style={{ fontWeight: 800 }}>
-            See path →
+            <Icon name="chevron" className="home-link-chevron" />
           </Link>
+        </li>
+        <li>
+          <Link to="/problems" className="home-link">
+            <IconTile icon={ICONS.list} color="var(--success)" size="sm" />
+            <div className="grow">
+              <div className="home-link-title">Problem library</div>
+              <div className="home-link-meta">Browse all {PROBLEMS.length} problems</div>
+            </div>
+            <Icon name="chevron" className="home-link-chevron" />
+          </Link>
+        </li>
+      </ul>
+    </section>
+  );
+}
+
+// ── Roadmap ─────────────────────────────────────────────────────────────────
+
+function Roadmap({ p, next }: { p: Progress; next: NextStep }) {
+  const current = next.kind === 'guide' ? next.category : next.kind === 'problem' ? next.problem.category : null;
+  return (
+    <section className="card pad-0 home-roadmap" aria-labelledby="home-roadmap-title">
+      <div className="home-card-head home-roadmap-head">
+        <div>
+          <h2 id="home-roadmap-title" className="card-title">
+            Your roadmap
+          </h2>
+          <div className="card-subtitle">{CATEGORIES.length} patterns, in order</div>
         </div>
-        <div className="list">
-          {CATEGORIES.map((c) => {
-            const u = unitProgress(p, c.id);
-            return (
-              <Link to={`/unit/${c.id}`} className="list-row" key={c.id}>
-                <span style={{ fontSize: '1.4rem' }}>{c.icon}</span>
+        <Link to="/learn" className="btn btn-secondary btn-sm">
+          Learning path
+          <Icon name="arrow" />
+        </Link>
+      </div>
+      <ol className="home-units">
+        {CATEGORIES.map((c, i) => {
+          const u = unitProgress(p, c.id);
+          const complete = u.total > 0 && u.learned === u.total;
+          return (
+            <li key={c.id}>
+              <Link to={`/unit/${c.id}`} className="home-unit">
+                <span className="home-unit-num tabular" aria-hidden="true">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <CategoryIcon id={c.id} color={c.color} size="sm" />
                 <div className="grow">
-                  <div className="row between">
-                    <span className="title">{c.name}</span>
-                    <span className="tiny muted">
+                  <div className="home-unit-top">
+                    <span className="home-unit-name truncate">{c.name}</span>
+                    {c.id === current && (
+                      <Badge tone="brand" pill>
+                        Current
+                      </Badge>
+                    )}
+                    <span className={`home-unit-count tabular ${complete ? 'is-complete' : ''}`}>
+                      {complete && <Icon name="success" size={13} />}
                       {u.learned}/{u.total}
                     </span>
                   </div>
-                  <ProgressBar value={u.pct} thin color={c.color} />
+                  <ProgressBar value={u.pct} thin color={u.learned ? c.color : undefined} label={`${c.name}: ${u.learned} of ${u.total} learned`} />
                 </div>
               </Link>
-            );
-          })}
-        </div>
-        <div className="footer-note">
-          {PROBLEMS.length} problems · {CATEGORIES.length} patterns · built on learning science — <Link to="/science">see why it works</Link>
-        </div>
-      </div>
-    </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
