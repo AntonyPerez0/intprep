@@ -1,21 +1,24 @@
 import '../styles/pages/unit.css';
 import { useState, type CSSProperties } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
 import { friendlyDue } from '../lib/date';
 import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
-import { unitProgress, unitUnlocked } from '../lib/path';
+import { nextStep, unitProgress, unitUnlocked } from '../lib/path';
 import { crowns, isDue } from '../lib/srs';
 import { useProgress } from '../lib/store';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { Crowns, DifficultyChip, ProgressBar } from '../components/ui';
 
-/** Templates longer than this start collapsed. */
-const TEMPLATE_PREVIEW_LINES = 18;
+/**
+ * Templates longer than this start collapsed to a ~16-line preview. The gap
+ * means a toggle always hides a meaningful chunk, never just a line or two.
+ */
+const TEMPLATE_PREVIEW_LINES = 24;
 
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -48,6 +51,9 @@ export function Unit() {
     const pp = p.problems[q.id];
     return !!pp?.learnedAt && !!pp.srs && isDue(pp.srs);
   }).length;
+  // Same status vocabulary as the Learning path: this unit holds the recommended next step.
+  const next = nextStep(p);
+  const upNext = (next.kind === 'guide' && next.category === meta.id) || (next.kind === 'problem' && next.problem.category === meta.id);
   const mix = (['Easy', 'Medium', 'Hard'] as Difficulty[]).map((d) => ({ d, n: problems.filter((q) => q.difficulty === d).length }));
 
   const templateLines = guide ? guide.template.split('\n').length : 0;
@@ -82,6 +88,8 @@ export function Unit() {
     </span>
   ) : started ? (
     <span className="badge badge-brand">In progress</span>
+  ) : upNext ? (
+    <span className="badge badge-brand">Up next</span>
   ) : open ? (
     <span className="badge">Not started</span>
   ) : (
@@ -103,7 +111,7 @@ export function Unit() {
         <div className="unit-hero-body">
           <div className="unit-hero-title">
             <CategoryIcon id={meta.id} color={meta.color} size="xl" />
-            <div className="grow">
+            <div className="unit-hero-heading">
               <div className="unit-hero-kicker">
                 <span className="tabular">
                   Unit {ci + 1} of {CATEGORIES.length}
@@ -111,12 +119,12 @@ export function Unit() {
                 {status}
               </div>
               <h1>{meta.name}</h1>
-              <p className="unit-hero-tagline">{meta.tagline}</p>
             </div>
+            <p className="unit-hero-tagline">{meta.tagline}</p>
           </div>
           {!open && (
             <p className="unit-hero-note">
-              <Lock strokeWidth={2} />
+              <Info strokeWidth={2} />
               Recommended after {listJoin(meta.prereqs.map((x) => CATEGORY_BY_ID[x].name))}. You can still jump in.
             </p>
           )}
@@ -247,12 +255,12 @@ export function Unit() {
         {problems.length === 0 ? (
           <div className="card unit-empty">Lessons for this unit are on their way.</div>
         ) : (
-          <div className="unit-table">
+          <div className={`unit-table${learnedHere === 0 ? ' is-fresh' : ''}`}>
             <div className="unit-table-head" aria-hidden="true">
               <span />
               <span>Problem</span>
-              <span>Next review</span>
-              <span>Mastery</span>
+              <span className="unit-col-review">Next review</span>
+              <span className="unit-col-mastery">Mastery</span>
               <span>Difficulty</span>
               <span />
             </div>
@@ -269,10 +277,11 @@ export function Unit() {
                       <span className={`status-dot ${due ? 'due' : learned ? 'learned' : isNext ? 'unit-dot-next' : 'unit-dot-todo'}`} aria-hidden="true">
                         {due ? <RotateCcw strokeWidth={2.25} /> : learned ? <Check strokeWidth={2.5} /> : isNext ? <Play strokeWidth={2.25} /> : i + 1}
                       </span>
-                      <span className="sr-only">{due ? 'Review due: ' : learned ? 'Learned: ' : isNext ? 'Up next: ' : ''}</span>
+                      {/* "Up next" is announced by the visible badge. */}
+                      <span className="sr-only">{due ? 'Review due: ' : learned ? 'Learned: ' : ''}</span>
                       <span className="unit-row-main">
-                        <span className="unit-row-title">
-                          {q.title}
+                        <span className="unit-row-heading">
+                          <span className="unit-row-title">{q.title}</span>
                           {isNext && <span className="badge badge-brand unit-row-flag">Up next</span>}
                         </span>
                         <span className="unit-row-meta">
@@ -281,8 +290,20 @@ export function Unit() {
                           {review && <span className={`unit-row-review-inline${due ? ' is-due' : ''}`}>{due ? 'Review due' : `Review ${review}`}</span>}
                         </span>
                       </span>
-                      <span className={`unit-row-review${due ? ' is-due' : ''}`}>{review ? (due ? 'Due now' : sentence(review)) : <span className="unit-row-none">—</span>}</span>
-                      <span className={`unit-row-mastery${learned ? '' : ' is-empty'}`}>{learned ? <Crowns n={crowns(pp?.srs)} /> : <span className="unit-row-none">—</span>}</span>
+                      <span className={`unit-row-review unit-col-review${due ? ' is-due' : ''}`}>
+                        <span className="sr-only">Next review: </span>
+                        {review ? (
+                          due ? 'Due now' : sentence(review)
+                        ) : (
+                          <>
+                            <span className="unit-row-none" aria-hidden="true">—</span>
+                            <span className="sr-only">not learned yet</span>
+                          </>
+                        )}
+                      </span>
+                      <span className={`unit-row-mastery unit-col-mastery${learned ? '' : ' is-empty'}`}>
+                        {learned ? <Crowns n={crowns(pp?.srs)} /> : <span className="unit-row-none" aria-hidden="true">—</span>}
+                      </span>
                       <span className="unit-row-diff">
                         <DifficultyChip d={q.difficulty} />
                       </span>
@@ -306,18 +327,18 @@ export function Unit() {
             </span>
             <span className="unit-pager-name">
               <CategoryIcon id={prevUnit.id} color={prevUnit.color} size="sm" />
-              <span className="truncate">{prevUnit.name}</span>
+              <span className="unit-pager-text">{prevUnit.name}</span>
             </span>
           </Link>
         ) : (
           <Link to="/learn#foundations" className="unit-pager-link">
             <span className="unit-pager-label">
               <ArrowLeft />
-              Before this
+              Previous unit
             </span>
             <span className="unit-pager-name">
               <IconTile icon={GraduationCap} color="var(--text-secondary)" size="sm" />
-              <span className="truncate">Foundations</span>
+              <span className="unit-pager-text">Foundations</span>
             </span>
           </Link>
         )}
@@ -329,18 +350,18 @@ export function Unit() {
             </span>
             <span className="unit-pager-name">
               <CategoryIcon id={nextUnit.id} color={nextUnit.color} size="sm" />
-              <span className="truncate">{nextUnit.name}</span>
+              <span className="unit-pager-text">{nextUnit.name}</span>
             </span>
           </Link>
         ) : (
           <Link to="/learn" className="unit-pager-link is-next">
             <span className="unit-pager-label">
-              Back to
+              All units
               <ArrowRight />
             </span>
             <span className="unit-pager-name">
               <IconTile icon={MapIcon} color="var(--brand)" size="sm" />
-              <span className="truncate">Learning path</span>
+              <span className="unit-pager-text">Learning path</span>
             </span>
           </Link>
         )}

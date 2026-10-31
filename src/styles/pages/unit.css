@@ -11,7 +11,8 @@
 }
 .back-link.unit-back {
   align-self: flex-start;
-  margin: 8px 0 -8px;
+  min-height: 40px; /* touch target; the extra height is pulled back with margins */
+  margin: -2px 0 -18px;
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -40,23 +41,41 @@
     padding: 28px;
   }
 }
+/* Phones: icon beside the kicker + name, tagline full width below.
+   Wider: the 64px tile spans the kicker + name, tagline sits under the name. */
 .unit-hero-title {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'icon heading'
+    'tagline tagline';
+  align-items: center;
+  gap: 12px 16px;
 }
-.unit-hero-title > .grow {
-  width: 100%;
+.unit-hero-title > .icon-tile {
+  grid-area: icon;
 }
-@media (min-width: 480px) {
-  .unit-hero-title {
-    flex-direction: row;
+.unit-hero-heading {
+  grid-area: heading;
+  min-width: 0;
+}
+@media (max-width: 639px) {
+  .unit-hero .icon-tile.xl {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--r-lg);
+  }
+  .unit-hero .icon-tile.xl svg {
+    width: 24px;
+    height: 24px;
   }
 }
 @media (min-width: 640px) {
   .unit-hero-title {
-    gap: 20px;
+    grid-template-areas:
+      'icon heading'
+      '. tagline';
+    gap: 6px 20px;
   }
 }
 .unit-hero-kicker {
@@ -75,7 +94,8 @@
   overflow-wrap: anywhere;
 }
 .unit-hero-tagline {
-  margin: 6px 0 0;
+  grid-area: tagline;
+  margin: 0;
   font-size: var(--fs-base);
   line-height: 1.55;
   color: var(--text-secondary);
@@ -151,6 +171,21 @@
 }
 .unit-stat-due {
   border-right: 1px solid var(--border-subtle);
+}
+/* Tablet: a 2 × 2 grid (learned | due, intro | mix) instead of a lopsided 1 / 2 / 1 stack. */
+@container (min-width: 560px) and (max-width: 819px) {
+  .unit-stat-progress,
+  .unit-stat-mix {
+    grid-column: auto;
+  }
+  .unit-stat-due {
+    border-top: 0;
+    border-right: 0;
+    border-left: 1px solid var(--border-subtle);
+  }
+  .unit-stat-mix {
+    border-left: 1px solid var(--border-subtle);
+  }
 }
 @container (min-width: 820px) {
   .unit-stats {
@@ -272,9 +307,13 @@
 /* ── Overview card ──────────────────────────────────────────────────────── */
 .unit-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px 16px;
   padding: 20px 20px 0;
+}
+.unit-card-head > .grow {
+  flex: 1 1 280px;
 }
 @media (min-width: 640px) {
   .unit-card-head {
@@ -291,6 +330,12 @@
 }
 .unit-head-btn {
   flex: none;
+}
+@media (max-width: 639px) {
+  /* Touch targets ≥ 40px on phones. */
+  .btn.unit-head-btn {
+    height: 40px;
+  }
 }
 
 .unit-overview {
@@ -434,7 +479,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
+  height: 40px;
   margin-top: 8px;
   padding: 0 10px;
   border: 1px solid var(--border-strong);
@@ -449,6 +494,11 @@
 }
 .unit-code-toggle:hover {
   background: var(--surface-hover);
+}
+@media (min-width: 640px) {
+  .unit-code-toggle {
+    height: 32px;
+  }
 }
 .unit-complexity {
   display: flex;
@@ -556,19 +606,25 @@
   gap: 3px;
   min-width: 0;
 }
+.unit-row-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .unit-row-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   overflow: hidden;
+  min-width: 0;
   font-size: var(--fs-md);
   font-weight: 550;
   line-height: 1.4;
 }
 .badge.unit-row-flag {
-  margin-left: 8px;
-  vertical-align: 1px;
+  flex: none;
 }
 .unit-row-meta {
   display: block;
@@ -636,6 +692,16 @@
     display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  /* Nothing learned yet: drop the review and mastery columns instead of
+     filling them with placeholder dashes. */
+  .unit-table.is-fresh .unit-table-head,
+  .unit-table.is-fresh .unit-row {
+    grid-template-columns: 22px minmax(0, 1fr) 76px 16px;
+  }
+  .unit-table.is-fresh .unit-col-review,
+  .unit-table.is-fresh .unit-col-mastery {
+    display: none;
   }
   .unit-row-meta {
     display: flex;
@@ -727,4 +793,13 @@
   max-width: 100%;
   font-size: var(--fs-md);
   font-weight: 600;
+  line-height: 1.35;
+}
+.unit-pager-name > .unit-pager-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
 }

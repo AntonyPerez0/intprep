@@ -1,8 +1,7 @@
 import '../styles/pages/learn.css';
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, GraduationCap, Lock, Play, RotateCcw, Trophy } from 'lucide-react';
-import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
+import { ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, GraduationCap, Lock, Play, RotateCcw, Trophy } from 'lucide-react';import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor, problemsFor } from '../content/index';
 import { foundationsDone, nextStep, unitProgress, unitUnlocked, type NextStep } from '../lib/path';
 import { crowns, isDue } from '../lib/srs';
@@ -36,6 +35,54 @@ const FOUNDATIONS_COLOR = 'var(--text-secondary)';
 function listJoin(xs: string[]) {
   if (xs.length <= 1) return xs.join('');
   return `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+}
+
+/**
+ * Scrolls a section under the sticky header. In-page jumps glide; the glide is
+ * driven here (not by the browser) so it can be cancelled when the page
+ * unmounts or the user takes over — a native smooth scroll in flight survives
+ * the shell's scroll-to-top and leaves the next page part-scrolled. Reduced
+ * motion always jumps.
+ */
+function useSectionScroll() {
+  const frame = useRef(0);
+  const stop = useCallback(() => {
+    cancelAnimationFrame(frame.current);
+    frame.current = 0;
+  }, []);
+  useEffect(() => {
+    const events = ['wheel', 'touchstart', 'keydown'] as const;
+    events.forEach((e) => window.addEventListener(e, stop, { passive: true }));
+    return () => {
+      stop();
+      events.forEach((e) => window.removeEventListener(e, stop));
+    };
+  }, [stop]);
+  return useCallback(
+    (id: string, smooth: boolean) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      stop();
+      const root = document.documentElement;
+      const offset = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
+      const to = Math.max(0, Math.min(el.getBoundingClientRect().top + window.scrollY - offset, root.scrollHeight - window.innerHeight));
+      const from = window.scrollY;
+      if (!smooth || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || Math.abs(to - from) < 2) {
+        window.scrollTo(0, to);
+        return;
+      }
+      const duration = Math.min(600, Math.max(240, Math.abs(to - from) / 5));
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - (1 - t) ** 3; // ease-out: moves at once, settles gently
+        window.scrollTo(0, from + (to - from) * eased);
+        frame.current = t < 1 ? requestAnimationFrame(step) : 0;
+      };
+      frame.current = requestAnimationFrame(step);
+    },
+    [stop],
+  );
 }
 
 function nextUnitId(next: NextStep): string | null {
@@ -109,7 +156,12 @@ function LessonRow({
           <span className="learn-row-title">{title}</span>
           {sub && <span className="learn-row-sub">{sub}</span>}
         </span>
-        {isNext && <span className="badge badge-brand learn-row-flag">Up next</span>}
+        {/* Announced by the status prefix above; the badge hides on narrow phones. */}
+        {isNext && (
+          <span className="badge badge-brand learn-row-flag" aria-hidden="true">
+            Up next
+          </span>
+        )}
         {mastery !== undefined && (
           <span className="learn-row-mastery">
             <Mastery n={mastery} />
@@ -134,7 +186,7 @@ function StatusBadge({ s }: { s: UnitSummary }) {
   if (s.current) return <span className="badge badge-brand">Up next</span>;
   if (s.status === 'locked')
     return (
-      <span className="badge">
+      <span className="badge learn-badge-later">
         <Lock strokeWidth={2} />
         Recommended later
       </span>
@@ -234,7 +286,7 @@ function NextUp({ next }: { next: NextStep }) {
     context = `Unit ${n} · ${c.name}`;
     title = q.title;
     detail = (
-      <span className="row wrap" style={{ gap: 8 }}>
+      <span className="learn-next-meta">
         <DifficultyChip d={q.difficulty} />
         <span className="text-tertiary tabular">
           Problem {ids.indexOf(q.id) + 1} of {ids.length}
@@ -252,7 +304,7 @@ function NextUp({ next }: { next: NextStep }) {
 
   return (
     <div className="learn-next">
-      <div className="learn-next-label">Recommended next</div>
+      <h3 className="learn-next-label">Recommended next</h3>
       <div className="learn-next-body">
         {tile}
         <div className="grow">
@@ -334,14 +386,15 @@ export function Learn() {
   // shell's scroll-to-top on navigation does not cancel it.
   // Arriving from another page jumps straight there; in-page changes glide.
   const [mountedAt] = useState(() => Date.now());
+  const scrollToSection = useSectionScroll();
   useEffect(() => {
     if (!loc.hash) return;
     const id = decodeURIComponent(loc.hash.slice(1));
     setOpen((s) => (s.has(id) ? s : new Set(s).add(id)));
-    const behavior: ScrollBehavior = Date.now() - mountedAt < 600 ? 'auto' : 'smooth';
-    const raf = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior, block: 'start' }));
+    const smooth = Date.now() - mountedAt >= 600;
+    const raf = requestAnimationFrame(() => scrollToSection(id, smooth));
     return () => cancelAnimationFrame(raf);
-  }, [loc.hash, mountedAt]);
+  }, [loc.hash, mountedAt, scrollToSection]);
 
   // Scroll-spy for the unit index on wide screens.
   const [active, setActive] = useState<string>(units[0]?.id ?? '');
@@ -378,7 +431,7 @@ export function Learn() {
     // Same hash twice does not change the location, so scroll directly.
     if (loc.hash === `#${id}`) {
       e.preventDefault();
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      scrollToSection(id, true);
     }
   };
 
@@ -447,7 +500,16 @@ export function Learn() {
         title={c.name}
         tagline={c.tagline}
         note={lockNote}
-        summary={problems.length ? `${guide ? 'Pattern intro · ' : ''}${problems.length} problems` : 'Coming soon'}
+        summary={
+          problems.length ? (
+            <>
+              {guide && <span className="learn-unit-summary-intro">Pattern intro · </span>}
+              {problems.length} problems
+            </>
+          ) : (
+            'Coming soon'
+          )
+        }
         open={open.has(c.id)}
         onToggle={() => toggle(c.id)}
       >
@@ -553,30 +615,29 @@ export function Learn() {
       <div className="learn-layout">
         <div className="learn-main">
           <div className="learn-toolbar">
-            <div>
+            <div className="learn-toolbar-text">
               <h2 className="learn-toolbar-title">Curriculum</h2>
-              <div className="learn-legend" aria-label="Legend">
-                <span>
-                  <i className="learn-legend-swatch is-done" />
+              <ul className="learn-legend" aria-label="Status legend">
+                <li>
+                  <i className="learn-legend-swatch is-done" aria-hidden="true" />
                   Learned
-                </span>
-                <span>
-                  <i className="learn-legend-swatch is-due" />
+                </li>
+                <li>
+                  <i className="learn-legend-swatch is-due" aria-hidden="true" />
                   Review due
-                </span>
-                <span>
-                  <i className="learn-legend-swatch is-next" />
+                </li>
+                <li>
+                  <i className="learn-legend-swatch is-next" aria-hidden="true" />
                   Up next
-                </span>
-              </div>
+                </li>
+              </ul>
             </div>
             <button
               type="button"
-              className="btn btn-quiet btn-sm"
+              className="btn btn-quiet btn-sm learn-toolbar-btn"
               onClick={() => setOpen(allOpen ? new Set() : new Set(units.map((u) => u.id)))}
-              aria-pressed={allOpen}
             >
-              <ChevronDown className={`learn-chevron ${allOpen ? 'is-open' : ''}`} />
+              <ChevronDown className={`learn-chevron ${allOpen ? 'is-open' : ''}`} aria-hidden="true" />
               {allOpen ? 'Collapse all' : 'Expand all'}
             </button>
           </div>
@@ -594,12 +655,14 @@ export function Learn() {
                   onClick={jump(u.id)}
                   className={`learn-index-link${active === u.id ? ' is-active' : ''}${u.status === 'locked' ? ' is-locked' : ''}`}
                   aria-current={active === u.id ? 'location' : undefined}
+                  title={u.name}
                 >
                   <IndexMarker s={u} />
                   <span className="learn-index-n tabular">{u.n}</span>
                   <span className="learn-index-name">{u.name}</span>
                   <span className="learn-index-count tabular">
                     {u.learned}/{u.total}
+                    <span className="sr-only"> {u.id === FOUNDATIONS_ID ? 'lessons done' : 'learned'}</span>
                   </span>
                 </Link>
               </li>
@@ -641,7 +704,7 @@ function UnitStep({
   title: string;
   tagline: string;
   note?: string;
-  summary: string;
+  summary: ReactNode;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -650,25 +713,20 @@ function UnitStep({
   const headInner = (
     <>
       <span className="learn-unit-icon">{icon}</span>
+      <div className="learn-unit-kicker">
+        <span className="learn-unit-n">{kicker}</span>
+        <StatusBadge s={s} />
+        {s.due > 0 && (
+          <span className="badge badge-warning">
+            <RotateCcw strokeWidth={2.25} />
+            {s.due} due
+          </span>
+        )}
+      </div>
       <div className="learn-unit-text">
-        <div className="learn-unit-kicker">
-          <span className="learn-unit-n">{kicker}</span>
-          <StatusBadge s={s} />
-          {s.due > 0 && (
-            <span className="badge badge-warning">
-              <RotateCcw strokeWidth={2.25} />
-              {s.due} due
-            </span>
-          )}
-        </div>
         <h3 className="learn-unit-title">{title}</h3>
         <p className="learn-unit-tagline">{tagline}</p>
-        {note && (
-          <p className="learn-unit-note">
-            <Lock strokeWidth={2} />
-            {note}
-          </p>
-        )}
+        {note && <p className="learn-unit-note">{note}</p>}
       </div>
       <div className="learn-unit-progress">
         <div className="learn-unit-count tabular">
@@ -677,7 +735,8 @@ function UnitStep({
         </div>
         <ProgressBar value={s.pct} thin color={s.status === 'complete' ? 'var(--success)' : color} label={`${title} progress`} />
       </div>
-      {to && <ChevronRight className="learn-unit-go" size={18} aria-hidden="true" />}
+      {/* The column is reserved even without a link so progress lines up down the timeline. */}
+      {to ? <ChevronRight className="learn-unit-go" size={18} aria-hidden="true" /> : <span className="learn-unit-go" aria-hidden="true" />}
     </>
   );
 
@@ -705,8 +764,9 @@ function UnitStep({
         </ol>
         <div className="learn-unit-foot">
           <button type="button" className="learn-unit-toggle" aria-expanded={open} aria-controls={listId} onClick={onToggle}>
-            <ChevronDown className={`learn-chevron ${open ? 'is-open' : ''}`} />
+            <ChevronDown className={`learn-chevron ${open ? 'is-open' : ''}`} aria-hidden="true" />
             {open ? 'Hide lessons' : 'Show lessons'}
+            <span className="sr-only"> for {title}</span>
           </button>
           <span className="learn-unit-summary">{summary}</span>
         </div>
