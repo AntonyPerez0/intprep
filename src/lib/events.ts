@@ -2,6 +2,7 @@
 
 export interface Toast {
   id: number;
+  /** Name from the icon registry (src/components/icons.tsx), e.g. 'flame'. */
   icon: string;
   title: string;
   body?: string;

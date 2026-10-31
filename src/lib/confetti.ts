@@ -1,6 +1,6 @@
 // Lightweight canvas confetti burst. Respects prefers-reduced-motion.
 
-const COLORS = ['#58cc02', '#1cb0f6', '#ff9600', '#ff4b4b', '#ce82ff', '#ffc800'];
+const COLORS = ['#6366f1', '#818cf8', '#22c55e', '#0ea5e9', '#f59e0b', '#ec4899'];
 
 export function confetti(opts: { count?: number; originY?: number } = {}) {
   if (typeof window === 'undefined') return;
@@ -25,7 +25,7 @@ export function confetti(opts: { count?: number; originY?: number } = {}) {
 
   const W = window.innerWidth;
   const H = window.innerHeight;
-  const count = opts.count ?? 140;
+  const count = opts.count ?? 110;
   const oy = (opts.originY ?? 0.35) * H;
   const parts = Array.from({ length: count }, () => {
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.9;

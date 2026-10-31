@@ -1,29 +1,63 @@
-import { useEffect, type ReactNode } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { GEMS, levelInfo } from '../lib/game';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Search, X } from 'lucide-react';
+import { levelInfo, levelTitle } from '../lib/game';
 import { dueProblemIds, practicedToday, useProgress, xpToday } from '../lib/store';
-import { lastNDays, today, weekdayShort } from '../lib/date';
-import { Icon, Logo, ProgressBar, Ring } from './ui';
-import { Onboarding } from '../pages/Onboarding';
+import { CommandPalette, openCommandPalette } from './CommandPalette';
+import { ICONS, type LucideIcon } from './icons';
+import { Logo, ProgressBar, Ring } from './ui';
 
-const NAV = [
-  { to: '/', icon: 'home', label: 'Home', end: true },
-  { to: '/learn', icon: 'learn', label: 'Learn' },
-  { to: '/review', icon: 'review', label: 'Review' },
-  { to: '/blitz', icon: 'bolt', label: 'Blitz' },
-  { to: '/patterns', icon: 'book', label: 'Patterns' },
-  { to: '/problems', icon: 'list', label: 'Problems' },
-  { to: '/profile', icon: 'user', label: 'Profile' },
-  { to: '/science', icon: 'flask', label: 'The science' },
+export { PageHeader } from './ui';
+
+type NavItem = { to: string; icon: LucideIcon; label: string; end?: boolean; badge?: 'due' };
+
+const NAV: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Learn',
+    items: [
+      { to: '/', icon: ICONS.dashboard, label: 'Dashboard', end: true },
+      { to: '/learn', icon: ICONS.learn, label: 'Learning path' },
+      { to: '/problems', icon: ICONS.list, label: 'Problem library' },
+      { to: '/patterns', icon: ICONS.book, label: 'Pattern guide' },
+    ],
+  },
+  {
+    label: 'Practice',
+    items: [
+      { to: '/review', icon: ICONS.review, label: 'Daily review', badge: 'due' },
+      { to: '/blitz', icon: ICONS.blitz, label: 'Pattern Blitz' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/profile', icon: ICONS.user, label: 'Profile & settings' },
+      { to: '/science', icon: ICONS.flask, label: 'Learning science' },
+    ],
+  },
 ];
-const TABS = ['/', '/learn', '/review', '/blitz', '/profile'];
+
+const TABS: NavItem[] = [
+  { to: '/', icon: ICONS.home, label: 'Home', end: true },
+  { to: '/learn', icon: ICONS.learn, label: 'Learn' },
+  { to: '/review', icon: ICONS.review, label: 'Review', badge: 'due' },
+  { to: '/blitz', icon: ICONS.blitz, label: 'Blitz' },
+  { to: '/profile', icon: ICONS.user, label: 'Profile' },
+];
+
+// ── Status pills ────────────────────────────────────────────────────────────
 
 export function StreakStat() {
   const p = useProgress();
   const hot = practicedToday(p);
+  const Flame = ICONS.flame;
   return (
-    <span className={`pill-stat ${hot ? '' : 'cold'}`} title={hot ? 'Streak extended today' : 'Practice today to extend your streak'} style={{ color: 'var(--orange)' }}>
-      <span className="em">🔥</span>
+    <span
+      className={`pill-stat streak ${hot ? '' : 'cold'}`}
+      title={hot ? `${p.streak.current}-day streak — extended today` : `${p.streak.current}-day streak — practise today to extend it`}
+      aria-label={`${p.streak.current} day streak`}
+    >
+      <Flame strokeWidth={2} />
       {p.streak.current}
     </span>
   );
@@ -31,128 +65,147 @@ export function StreakStat() {
 
 export function GemStat() {
   const p = useProgress();
+  const Gem = ICONS.gem;
   return (
-    <span className="pill-stat" style={{ color: 'var(--blue)' }} title="Gems">
-      <span className="em">💎</span>
+    <span className="pill-stat gem" title="Gems — spend them on streak freezes" aria-label={`${p.gems} gems`}>
+      <Gem strokeWidth={2} />
       {p.gems}
     </span>
   );
 }
 
-export function GoalRing({ size = 34 }: { size?: number }) {
+export function GoalRing({ size = 30 }: { size?: number }) {
   const p = useProgress();
   const x = xpToday(p);
   const done = x >= p.settings.dailyGoal;
   return (
-    <span title={`Daily goal: ${x}/${p.settings.dailyGoal} XP`}>
-      <Ring value={x / p.settings.dailyGoal} size={size} stroke={5} color={done ? 'var(--green)' : 'var(--gold)'}>
-        <span style={{ fontSize: size < 40 ? '0.7rem' : undefined }}>{done ? '✓' : '⚡'}</span>
-      </Ring>
+    <span title={`Daily goal: ${x}/${p.settings.dailyGoal} XP`} aria-label={`Daily goal ${x} of ${p.settings.dailyGoal} XP`}>
+      <Ring value={x / p.settings.dailyGoal} size={size} stroke={3.5} color={done ? 'var(--success)' : 'var(--brand)'} />
     </span>
   );
 }
 
-function Rail() {
+function Avatar() {
+  const p = useProgress();
+  const name = p.settings.name.trim();
+  const initials = name ? name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() : '';
+  const User = ICONS.user;
+  return (
+    <Link to="/profile" className="avatar" aria-label="Profile" title={name || 'Profile'} style={{ textDecoration: 'none' }}>
+      {initials || <User size={16} />}
+    </Link>
+  );
+}
+
+function SidebarGoal() {
   const p = useProgress();
   const x = xpToday(p);
   const lv = levelInfo(p.xp);
-  const days = lastNDays(7);
+  const done = x >= p.settings.dailyGoal;
   return (
-    <aside className="rail">
-      <div className="row between card flat" style={{ padding: '12px 16px' }}>
-        <StreakStat />
-        <GemStat />
-        <span className="pill-stat" style={{ color: 'var(--brand)' }}>
-          <span className="em">⭐</span>
-          Lv {lv.level}
+    <div className="sidebar-card">
+      <div className="row between" style={{ marginBottom: 8 }}>
+        <span className="text-sm fw-600">Daily goal</span>
+        <span className="text-xs text-tertiary tabular">
+          {Math.min(x, p.settings.dailyGoal)}/{p.settings.dailyGoal} XP
         </span>
       </div>
-      <div className="card flat">
-        <div className="row between">
-          <div className="card-title">Daily goal</div>
-          <span className="small muted">
-            {x}/{p.settings.dailyGoal} XP
-          </span>
-        </div>
-        <ProgressBar value={x / p.settings.dailyGoal} thin color="var(--gold)" />
-        <div className="week" style={{ marginTop: 14 }}>
-          {days.map((d) => {
-            const done = (p.xpByDay[d] ?? 0) > 0;
-            const frozen = p.streak.frozenDays.includes(d);
-            return (
-              <div key={d}>
-                <div className="d">{weekdayShort(d)}</div>
-                <div className={`dot ${done ? 'done' : ''} ${frozen ? 'frozen' : ''} ${d === today() ? 'today' : ''}`}>
-                  {done ? '🔥' : frozen ? '🧊' : ''}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <ProgressBar value={x / p.settings.dailyGoal} color={done ? 'var(--success)' : undefined} label="Daily goal" />
+      <div className="row between" style={{ marginTop: 12 }}>
+        <span className="text-xs text-tertiary">
+          Level {lv.level} · {levelTitle(lv.level)}
+        </span>
+        <span className="row" style={{ gap: 6 }}>
+          <StreakStat />
+        </span>
       </div>
-      <div className="card flat small">
-        <div className="card-title">🧊 Streak freezes: {p.streak.freezes}/{GEMS.maxFreezes}</div>
-        <div className="muted">A freeze protects your streak on a day you miss. Get more in your profile for {GEMS.freezeCost} 💎.</div>
-      </div>
-      <div className="card flat small">
-        <div className="card-title">💡 Tip</div>
-        <div className="muted">
-          Short daily sessions beat weekend cramming. Spaced review is what moves problems from "I've seen this" to "I can solve this".
-        </div>
-      </div>
-    </aside>
+    </div>
   );
 }
+
+// ── App shell ───────────────────────────────────────────────────────────────
 
 export function AppShell() {
   const p = useProgress();
   const due = dueProblemIds(p).length;
   const loc = useLocation();
+  const [scrolled, setScrolled] = useState(false);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [loc.pathname]);
+  useEffect(() => {
+    const h = () => setScrolled(window.scrollY > 4);
+    window.addEventListener('scroll', h, { passive: true });
+    return () => window.removeEventListener('scroll', h);
+  }, []);
+
+  const Search_ = ICONS.search;
   return (
     <div className="app">
       <nav className="sidebar" aria-label="Main">
         <Logo />
-        {NAV.map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            <Icon name={n.icon} />
-            {n.label}
-            {n.to === '/review' && due > 0 && <span className="badge">{due}</span>}
-          </NavLink>
+        <button type="button" className="search-trigger" onClick={openCommandPalette}>
+          <Search_ />
+          Search
+          <span className="kbd">⌘K</span>
+        </button>
+        {NAV.map((g) => (
+          <div className="nav-group" key={g.label}>
+            <div className="nav-group-label">{g.label}</div>
+            {g.items.map((n) => {
+              const I = n.icon;
+              return (
+                <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                  <I />
+                  {n.label}
+                  {n.badge === 'due' && due > 0 && <span className="badge-count">{due}</span>}
+                </NavLink>
+              );
+            })}
+          </div>
         ))}
         <div className="spacer" />
-        <div className="tiny faint" style={{ padding: '0 10px' }}>
-          Progress is saved in this browser.
-        </div>
+        <SidebarGoal />
       </nav>
 
-      <header className="topbar">
-        <Logo />
-        <div className="stats">
+      <div className="main-col">
+        <header className="topbar">
+          <Logo />
+          <div className="stats">
+            <StreakStat />
+            <GemStat />
+            <button type="button" className="icon-btn" aria-label="Search" onClick={openCommandPalette}>
+              <Search size={19} />
+            </button>
+          </div>
+        </header>
+
+        <div className={`deskbar ${scrolled ? 'scrolled' : ''}`}>
           <StreakStat />
           <GemStat />
           <GoalRing />
+          <Avatar />
         </div>
-      </header>
 
-      <main className="main">
-        <Outlet />
-      </main>
-
-      <Rail />
+        <main className="main" id="main">
+          <Outlet />
+        </main>
+      </div>
 
       <nav className="tabbar" aria-label="Tabs">
-        {NAV.filter((n) => TABS.includes(n.to)).map((n) => (
-          <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
-            <Icon name={n.icon} size={24} />
-            {n.label}
-            {n.to === '/review' && due > 0 && <span className="badge">{due}</span>}
-          </NavLink>
-        ))}
+        {TABS.map((n) => {
+          const I = n.icon;
+          return (
+            <NavLink key={n.to} to={n.to} end={n.end} className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
+              <I strokeWidth={1.9} />
+              {n.label}
+              {n.badge === 'due' && due > 0 && <span className="badge-count">{due}</span>}
+            </NavLink>
+          );
+        })}
       </nav>
-      {!p.onboarded && <Onboarding />}
+      <CommandPalette />
     </div>
   );
 }
@@ -163,11 +216,14 @@ export function SessionShell({
   children,
   right,
   onClose,
+  title,
 }: {
   progress: number;
   children: ReactNode;
   right?: ReactNode;
   onClose?: () => void;
+  /** Optional short label shown next to the close button (desktop). */
+  title?: ReactNode;
 }) {
   const nav = useNavigate();
   useEffect(() => {
@@ -176,34 +232,25 @@ export function SessionShell({
   return (
     <div className="session">
       <div className="session-head">
-        <button
-          type="button"
-          className="icon-btn"
-          aria-label="Close"
-          onClick={() => {
-            if (onClose) onClose();
-            else if (window.history.length > 1) nav(-1);
-            else nav('/');
-          }}
-        >
-          <Icon name="x" size={26} stroke={3} />
-        </button>
-        <ProgressBar value={progress} />
-        {right}
+        <div className="session-head-inner">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Close"
+            onClick={() => {
+              if (onClose) onClose();
+              else if (window.history.length > 1) nav(-1);
+              else nav('/');
+            }}
+          >
+            <X size={20} />
+          </button>
+          {title && <span className="session-title">{title}</span>}
+          <ProgressBar value={progress} label="Progress" />
+          {right}
+        </div>
       </div>
       <div className="session-body">{children}</div>
-    </div>
-  );
-}
-
-export function PageHeader({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
-  return (
-    <div className="row between wrap" style={{ marginBottom: 18, alignItems: 'flex-end' }}>
-      <div className="grow">
-        <h1 style={{ marginBottom: 4 }}>{title}</h1>
-        {sub && <div className="muted">{sub}</div>}
-      </div>
-      {right}
     </div>
   );
 }

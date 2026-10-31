@@ -193,14 +193,14 @@ export function reconcileStreak() {
       d.streak.freezes -= missed;
       d.streak.lastDay = addDays(t, -1);
       toast({
-        icon: '🧊',
+        icon: 'snowflake',
         title: missed === 1 ? 'Streak freeze used' : `${missed} streak freezes used`,
         body: `Your ${d.streak.current}-day streak is safe. Practice today to keep it going!`,
         tone: 'streak',
       });
     } else if (d.streak.current > 0) {
       toast({
-        icon: '🌅',
+        icon: 'sunrise',
         title: 'Fresh start',
         body: `Your ${d.streak.current}-day streak paused. You can repair it for the next 48 hours, or begin a new one with one lesson.`,
         tone: 'warn',
@@ -230,9 +230,9 @@ export function awardXp(amount: number, reason?: string) {
       d.streak.lastDay = t;
       d.streak.longest = Math.max(d.streak.longest, d.streak.current);
       if (d.streak.current > 1) {
-        toast({ icon: '🔥', title: `${d.streak.current}-day streak!`, body: streakCheer(d.streak.current), tone: 'streak' });
+        toast({ icon: 'flame', title: `${d.streak.current}-day streak!`, body: streakCheer(d.streak.current), tone: 'streak' });
       } else {
-        toast({ icon: '🔥', title: 'Streak started!', body: 'Come back tomorrow to make it 2 days.', tone: 'streak' });
+        toast({ icon: 'flame', title: 'Streak started!', body: 'Come back tomorrow to make it 2 days.', tone: 'streak' });
       }
     }
 
@@ -240,13 +240,13 @@ export function awardXp(amount: number, reason?: string) {
     if (before < d.settings.dailyGoal && d.xpByDay[t] >= d.settings.dailyGoal && !d.goalDays.includes(t)) {
       d.goalDays.push(t);
       d.gems += GEMS.dailyGoal;
-      toast({ icon: '🎯', title: 'Daily goal complete!', body: `+${GEMS.dailyGoal} gems`, tone: 'success' });
+      toast({ icon: 'target', title: 'Daily goal complete!', body: `+${GEMS.dailyGoal} gems`, tone: 'success' });
       sfx('goal');
     }
 
     const after = levelInfo(d.xp).level;
     if (after > beforeLevel) {
-      toast({ icon: '⭐', title: `Level ${after}!`, body: `You are now a ${levelTitle(after)}.`, tone: 'success' });
+      toast({ icon: 'star', title: `Level ${after}!`, body: `You are now a ${levelTitle(after)}.`, tone: 'success' });
       sfx('level');
     }
   });
@@ -287,7 +287,7 @@ export function repairStreak(): boolean {
     d.streak.longest = Math.max(d.streak.longest, d.streak.current);
     d.streak.lost = null;
   });
-  toast({ icon: '🔧', title: 'Streak repaired!', body: `Back to ${state.streak.current} days. Keep it going!`, tone: 'streak' });
+  toast({ icon: 'wrench', title: 'Streak repaired!', body: `Back to ${state.streak.current} days. Keep it going!`, tone: 'streak' });
   return true;
 }
 
@@ -312,7 +312,7 @@ export function buyFreeze(): boolean {
     d.gems -= GEMS.freezeCost;
     d.streak.freezes += 1;
   });
-  toast({ icon: '🧊', title: 'Streak freeze equipped', body: 'It will protect your streak if you miss a day.', tone: 'info' });
+  toast({ icon: 'snowflake', title: 'Streak freeze equipped', body: 'It will protect your streak if you miss a day.', tone: 'info' });
   return true;
 }
 
@@ -321,7 +321,7 @@ function checkAchievements(d: Progress) {
     if (!d.achievements[a.id] && a.test(d)) {
       d.achievements[a.id] = Date.now();
       d.gems += a.gems;
-      toast({ icon: a.icon, title: `Achievement: ${a.title}`, body: `${a.desc} · +${a.gems} gems`, tone: 'gem' });
+      toast({ icon: a.icon, title: `Achievement unlocked: ${a.title}`, body: `${a.desc} · +${a.gems} gems`, tone: 'gem' });
     }
   }
 }

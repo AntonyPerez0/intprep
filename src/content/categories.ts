@@ -5,6 +5,7 @@ export interface CategoryMeta {
   name: string;
   /** Very short label for chips and small screens. */
   short: string;
+  /** @deprecated Emoji — do not render. Use CATEGORY_ICON from components/icons.tsx. */
   icon: string;
   /** Accent colour for the unit (works on light and dark backgrounds). */
   color: string;
@@ -22,7 +23,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Arrays & Hashing',
     short: 'Hashing',
     icon: '🗂️',
-    color: '#3b82f6',
+    color: '#2563eb',
     prereqs: [],
     tagline: 'Trade a little memory for instant lookups.',
     problemIds: [
@@ -42,7 +43,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Two Pointers',
     short: '2 Pointers',
     icon: '👉',
-    color: '#8b5cf6',
+    color: '#7c3aed',
     prereqs: ['arrays-hashing'],
     tagline: 'Two fingers walking an array beat one finger walking it twice.',
     problemIds: [
@@ -58,7 +59,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Stack',
     short: 'Stack',
     icon: '🥞',
-    color: '#f59e0b',
+    color: '#d97706',
     prereqs: ['arrays-hashing'],
     tagline: 'Last in, first out — perfect for "most recent unmatched" things.',
     problemIds: [
@@ -76,7 +77,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Binary Search',
     short: 'Bin Search',
     icon: '🔍',
-    color: '#06b6d4',
+    color: '#0891b2',
     prereqs: ['two-pointers'],
     tagline: 'Halve the search space every step: log n is magic.',
     problemIds: [
@@ -94,7 +95,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Sliding Window',
     short: 'Window',
     icon: '🪟',
-    color: '#10b981',
+    color: '#059669',
     prereqs: ['two-pointers'],
     tagline: 'Grow the window, shrink the window, never start over.',
     problemIds: [
@@ -111,7 +112,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Linked List',
     short: 'Linked List',
     icon: '🔗',
-    color: '#ec4899',
+    color: '#db2777',
     prereqs: ['two-pointers'],
     tagline: 'Rewire pointers carefully; a dummy node saves lives.',
     problemIds: [
@@ -133,7 +134,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Trees',
     short: 'Trees',
     icon: '🌳',
-    color: '#22c55e',
+    color: '#16a34a',
     prereqs: ['binary-search', 'sliding-window', 'linked-list'],
     tagline: 'Trust the recursion: solve it for the children, combine at the root.',
     problemIds: [
@@ -159,7 +160,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Tries',
     short: 'Tries',
     icon: '🔤',
-    color: '#a855f7',
+    color: '#9333ea',
     prereqs: ['trees'],
     tagline: 'A tree of letters: prefixes become paths.',
     problemIds: [
@@ -173,7 +174,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Heap / Priority Queue',
     short: 'Heap',
     icon: '⛰️',
-    color: '#ef4444',
+    color: '#dc2626',
     prereqs: ['trees'],
     tagline: 'Always know the smallest (or biggest) thing, cheaply.',
     problemIds: [
@@ -191,7 +192,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Backtracking',
     short: 'Backtrack',
     icon: '🧭',
-    color: '#f97316',
+    color: '#ea580c',
     prereqs: ['trees'],
     tagline: 'Choose, explore, un-choose. Try every path, prune the dead ends.',
     problemIds: [
@@ -211,7 +212,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Graphs',
     short: 'Graphs',
     icon: '🕸️',
-    color: '#14b8a6',
+    color: '#0d9488',
     prereqs: ['backtracking'],
     tagline: 'Nodes, edges, and a visited set: BFS and DFS everywhere.',
     problemIds: [
@@ -235,7 +236,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: '1-D Dynamic Programming',
     short: '1-D DP',
     icon: '🪜',
-    color: '#eab308',
+    color: '#ca8a04',
     prereqs: ['backtracking'],
     tagline: 'Remember answers to smaller problems so you never solve them twice.',
     problemIds: [
@@ -258,7 +259,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Intervals',
     short: 'Intervals',
     icon: '📅',
-    color: '#0ea5e9',
+    color: '#0284c7',
     prereqs: ['heap'],
     tagline: 'Sort by start, then the overlaps reveal themselves.',
     problemIds: [
@@ -275,7 +276,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Greedy',
     short: 'Greedy',
     icon: '🤑',
-    color: '#84cc16',
+    color: '#65a30d',
     prereqs: ['heap'],
     tagline: 'Make the locally best move — when you can prove it is globally best.',
     problemIds: [
@@ -294,7 +295,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Advanced Graphs',
     short: 'Adv Graphs',
     icon: '🗺️',
-    color: '#6366f1',
+    color: '#4f46e5',
     prereqs: ['graphs', 'heap'],
     tagline: 'Weighted edges: Dijkstra, Prim, and friends.',
     problemIds: [
@@ -311,7 +312,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: '2-D Dynamic Programming',
     short: '2-D DP',
     icon: '🧮',
-    color: '#d946ef',
+    color: '#c026d3',
     prereqs: ['graphs', 'dp-1d'],
     tagline: 'Two changing things? Your memo becomes a grid.',
     problemIds: [
@@ -333,7 +334,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Bit Manipulation',
     short: 'Bits',
     icon: '💡',
-    color: '#64748b',
+    color: '#475569',
     prereqs: ['dp-1d'],
     tagline: 'XOR, AND, shifts: think in ones and zeros.',
     problemIds: [
@@ -351,7 +352,7 @@ export const CATEGORIES: CategoryMeta[] = [
     name: 'Math & Geometry',
     short: 'Math',
     icon: '📐',
-    color: '#f43f5e',
+    color: '#e11d48',
     prereqs: ['dp-2d', 'bit-manipulation'],
     tagline: 'Matrices, digits and a little number sense.',
     problemIds: [

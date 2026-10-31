@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowRight, CircleCheck, CircleX, Check, X, CornerDownLeft } from 'lucide-react';
 import type { Problem } from '../content/types';
 import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import type { SolutionLine } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
-import { DifficultyChip, Icon } from './ui';
+import { DifficultyChip } from './ui';
 
 // ── Action bar: Check → feedback → Continue ─────────────────────────────────
+//
+// Stable hooks used by tests: .actionbar(.correct|.wrong), .actionbar .buttons > .btn:last-child
 
 export type CheckStatus = 'idle' | 'correct' | 'wrong';
 
-const PRAISE = ['Nice!', 'Correct!', 'Great job!', 'You got it!', 'Excellent!', 'Spot on!', 'Brilliant!'];
-const ENCOURAGE = ['Not quite', 'Almost!', 'Good try', 'Not this time'];
+const PRAISE = ['Correct', 'Nicely done', 'Exactly right', 'Well done', 'Spot on'];
+const ENCOURAGE = ['Not quite', 'Not this time', 'Close, but no'];
 
 export function ActionBar({
   status,
@@ -34,9 +37,9 @@ export function ActionBar({
   secondary?: ReactNode;
   title?: string;
 }) {
-  const praise = useMemo(() => PRAISE[Math.floor(Math.random() * PRAISE.length)], [status]); // eslint-disable-line
-  const enc = useMemo(() => ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)], [status]); // eslint-disable-line
-  const primary = status === 'idle' ? onCheck ?? onContinue : onContinue;
+  const praise = useMemo(() => PRAISE[Math.floor(Math.random() * PRAISE.length)], [status]);
+  const enc = useMemo(() => ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)], [status]);
+  const primary = status === 'idle' ? (onCheck ?? onContinue) : onContinue;
   const primaryEnabled = status !== 'idle' || !onCheck || canCheck;
 
   // Enter = primary action (unless typing in a textarea).
@@ -59,30 +62,31 @@ export function ActionBar({
     return () => window.removeEventListener('keydown', h);
   }, []);
 
+  const isIdle = status === 'idle';
+  const label = isIdle && onCheck ? checkLabel : continueLabel;
   return (
-    <div className={`actionbar ${status}`}>
+    <div className={`actionbar ${status}`} role={isIdle ? undefined : 'status'}>
       <div className="actionbar-inner">
-        {status !== 'idle' && (
+        {!isIdle && (
           <div>
             <div className="feedback-title">
-              <span className="feedback-icon" style={{ color: status === 'correct' ? 'var(--green)' : 'var(--red)' }}>
-                <Icon name={status === 'correct' ? 'check' : 'x'} size={20} stroke={3.5} />
-              </span>
+              {status === 'correct' ? <CircleCheck strokeWidth={2.2} /> : <CircleX strokeWidth={2.2} />}
               {title ?? (status === 'correct' ? praise : enc)}
             </div>
             {feedback && <div className="feedback-body">{feedback}</div>}
           </div>
         )}
         <div className="buttons">
-          {status === 'idle' ? secondary ?? <span /> : <span />}
+          {isIdle ? (secondary ?? <span />) : <span />}
           <button
             type="button"
-            className={`btn ${status === 'wrong' ? 'btn-red' : 'btn-green'}`}
+            className={`btn btn-lg ${status === 'wrong' ? 'btn-danger' : status === 'correct' ? 'btn-success' : 'btn-primary'}`}
             disabled={!primaryEnabled}
             onClick={primary}
-            autoFocus={status !== 'idle'}
+            autoFocus={!isIdle}
           >
-            {status === 'idle' && onCheck ? checkLabel : continueLabel}
+            {label}
+            {isIdle && onCheck ? null : <ArrowRight />}
           </button>
         </div>
       </div>
@@ -91,6 +95,8 @@ export function ActionBar({
 }
 
 // ── Multiple choice ─────────────────────────────────────────────────────────
+//
+// Stable hooks: .choice, .choice.selected, .choice.correct, .choice.wrong
 
 export interface ChoiceOption {
   key: string;
@@ -139,9 +145,15 @@ export function Choices({
     <div className={`choices ${twoCol ? 'two-col' : ''}`} role="radiogroup">
       {options.map((o, i) => {
         let cls = '';
+        let mark: ReactNode = null;
         if (revealed) {
-          if (answers.includes(o.key)) cls = 'correct';
-          else if (o.key === selected) cls = 'wrong shake';
+          if (answers.includes(o.key)) {
+            cls = 'correct';
+            mark = <Check strokeWidth={2.4} />;
+          } else if (o.key === selected) {
+            cls = 'wrong shake';
+            mark = <X strokeWidth={2.4} />;
+          }
         } else if (o.key === selected) cls = 'selected';
         return (
           <button
@@ -156,6 +168,7 @@ export function Choices({
             {!code && <span className="num">{i + 1}</span>}
             {o.icon && <span className="choice-icon">{o.icon}</span>}
             <span className="grow">{o.label}</span>
+            {mark && <span className="choice-mark">{mark}</span>}
           </button>
         );
       })}
@@ -173,7 +186,7 @@ export function CodeView({
   blankContent,
   blankState,
   showKeys,
-  lineNumbers,
+  lineNumbers = true,
 }: {
   lines: SolutionLine[];
   focusChunk?: number;
@@ -225,14 +238,19 @@ export function CodeView({
   );
 }
 
-// ── Problem prompt ──────────────────────────────────────────────────────────
+// ── Problem statement ───────────────────────────────────────────────────────
 
 export function ProblemPrompt({ p, compact, showTitle = true }: { p: Problem; compact?: boolean; showTitle?: boolean }) {
   return (
     <div className="prompt-card">
       {showTitle && (
-        <div className="row between wrap" style={{ marginBottom: 8 }}>
-          <strong style={{ fontSize: '1.05rem' }}>{p.title}</strong>
+        <div className="row between" style={{ marginBottom: 10, gap: 12 }}>
+          <div className="row" style={{ gap: 8, minWidth: 0 }}>
+            <span className="fw-600 truncate" style={{ fontSize: 'var(--fs-base)' }}>
+              {p.title}
+            </span>
+            <span className="text-xs text-tertiary tabular">#{p.num}</span>
+          </div>
           <DifficultyChip d={p.difficulty} />
         </div>
       )}
@@ -240,11 +258,11 @@ export function ProblemPrompt({ p, compact, showTitle = true }: { p: Problem; co
       {(compact ? p.examples.slice(0, 1) : p.examples).map((e, i) => (
         <div className="example" key={i}>
           <div>
-            <span className="lbl">Input: </span>
+            <span className="lbl">Input</span>
             {e.input}
           </div>
           <div>
-            <span className="lbl">Output: </span>
+            <span className="lbl">Output</span>
             {e.output}
           </div>
           {e.note && !compact && <div className="note">{inline(e.note)}</div>}
@@ -255,6 +273,8 @@ export function ProblemPrompt({ p, compact, showTitle = true }: { p: Problem; co
 }
 
 // ── Parsons: put the steps in order ─────────────────────────────────────────
+//
+// Stable hooks: .parsons-slot, .parsons-item
 
 export function OrderSteps({
   steps,
@@ -293,23 +313,31 @@ export function OrderSteps({
   return (
     <div className="stack">
       <div className="parsons-slot" aria-label="Your order">
-        {placed.length === 0 && <div className="faint small center" style={{ padding: 12 }}>Tap the steps below in the order you would do them</div>}
+        {placed.length === 0 && (
+          <div className="text-sm text-tertiary center" style={{ padding: 16 }}>
+            Select the steps below in the order you would perform them.
+          </div>
+        )}
         {placed.map((i, pos) => {
           const state = revealed ? (i === pos ? 'correct' : 'wrong') : '';
           return (
-            <button key={i} type="button" className={`parsons-item ${state}`} onClick={() => unplace(i)} disabled={revealed}>
+            <button key={i} type="button" className={`parsons-item ${state}`} onClick={() => unplace(i)} disabled={revealed} title="Remove">
               <span className="idx">{pos + 1}.</span>
-              <span>{inline(steps[i])}</span>
+              <span className="grow">{inline(steps[i])}</span>
+              {revealed && (i === pos ? <Check size={16} color="var(--success)" /> : <X size={16} color="var(--danger)" />)}
             </button>
           );
         })}
       </div>
       {bank.length > 0 && (
-        <div className="stack" style={{ gap: 8 }}>
+        <div className="stack-sm parsons-bank">
+          <div className="eyebrow">Available steps</div>
           {bank.map((i) => (
             <button key={i} type="button" className="parsons-item" onClick={() => place(i)} disabled={revealed}>
-              <span className="idx">•</span>
-              <span>{inline(steps[i])}</span>
+              <span className="idx">
+                <CornerDownLeft size={14} style={{ transform: 'scaleX(-1)' }} />
+              </span>
+              <span className="grow">{inline(steps[i])}</span>
             </button>
           ))}
         </div>

@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-import { createHashRouter, Navigate, Outlet, RouterProvider, useParams } from 'react-router-dom';
+import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation, useParams } from 'react-router-dom';
 import { AppShell } from './components/Shell';
 import { Toaster } from './components/ui';
 import { reconcileStreak, useProgress } from './lib/store';
 import { Blitz } from './pages/Blitz';
 import { Home } from './pages/Home';
+import { Landing } from './pages/Landing';
+import { OnboardingPage } from './pages/Onboarding';
 import { Learn } from './pages/Learn';
 import { LessonPlayer } from './pages/LessonPlayer';
 import { Patterns } from './pages/Patterns';
@@ -28,7 +30,9 @@ function GuideRoute() {
 }
 
 function Root() {
-  const theme = useProgress().settings.theme;
+  const { settings, onboarded } = useProgress();
+  const theme = settings.theme;
+  const loc = useLocation();
   useEffect(() => {
     const el = document.documentElement;
     if (theme === 'system') el.removeAttribute('data-theme');
@@ -40,6 +44,8 @@ function Root() {
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, []);
+  // First-time visitors land on the marketing page; everyone else gets the dashboard.
+  if (!onboarded && loc.pathname === '/') return <Navigate to="/welcome" replace />;
   return (
     <>
       <Outlet />
@@ -65,6 +71,9 @@ const router = createHashRouter([
           { path: '/science', element: <Science /> },
         ],
       },
+      // Marketing + onboarding (no app chrome).
+      { path: '/welcome', element: <Landing /> },
+      { path: '/onboarding', element: <OnboardingPage /> },
       // Focus-mode sessions (no navigation chrome).
       { path: '/foundations/:lessonId', element: <FoundationRoute /> },
       { path: '/unit/:cat/intro', element: <GuideRoute /> },

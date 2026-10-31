@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { DAILY_GOALS } from '../lib/game';
 import { finishOnboarding, type Experience } from '../lib/store';
 import { sfx } from '../lib/sound';
-import { LogoMark, Modal } from '../components/ui';
+import { LogoMark } from '../components/ui';
 
 const LEVELS: { id: Experience; icon: string; title: string; blurb: string }[] = [
   { id: 'none', icon: '🌱', title: "I'm brand new to coding", blurb: 'Start with Python basics, Big-O and recursion.' },
@@ -11,7 +11,8 @@ const LEVELS: { id: Experience; icon: string; title: string; blurb: string }[] =
   { id: 'comfortable', icon: '🌳', title: "I'm comfortable coding", blurb: 'Go straight to the problems and drills.' },
 ];
 
-export function Onboarding() {
+// PLACEHOLDER layout — replaced by the full onboarding flow.
+export function OnboardingPage() {
   const nav = useNavigate();
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
@@ -25,7 +26,7 @@ export function Onboarding() {
   };
 
   return (
-    <Modal>
+    <div className="modal" style={{ margin: '48px auto' }}>
       {step === 0 && (
         <div className="stack center" style={{ alignItems: 'center' }}>
           <LogoMark size={64} />
@@ -83,6 +84,6 @@ export function Onboarding() {
           </div>
         </div>
       )}
-    </Modal>
+    </div>
   );
 }

@@ -71,6 +71,7 @@ export const levelTitle = (level: number) => TITLES[Math.min(TITLES.length - 1, 
 
 export interface Achievement {
   id: string;
+  /** Name from the icon registry (src/components/icons.tsx). */
   icon: string;
   title: string;
   desc: string;
@@ -83,22 +84,22 @@ const masteredCount = (p: Progress, min = 5) =>
   Object.values(p.problems).filter((x) => x.srs && crowns(x.srs) >= min).length;
 
 export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'first-lesson', icon: '🎒', title: 'First Steps', desc: 'Finish any lesson', gems: 5, test: (p) => Object.keys(p.lessonsDone).length > 0 },
+  { id: 'first-lesson', icon: 'grad', title: 'First Steps', desc: 'Finish any lesson', gems: 5, test: (p) => Object.keys(p.lessonsDone).length > 0 },
   {
     id: 'foundations',
-    icon: '🧱',
+    icon: 'layers',
     title: 'Solid Foundations',
     desc: 'Finish every beginner lesson',
     gems: 25,
     test: (p) => FOUNDATIONS.length > 0 && FOUNDATIONS.every((l) => p.lessonsDone[`f:${l.id}`]),
   },
-  { id: 'first-problem', icon: '🧩', title: 'Problem Solver', desc: 'Learn your first problem', gems: 5, test: (p) => learnedCount(p) >= 1 },
-  { id: 'ten-problems', icon: '🔟', title: 'Double Digits', desc: 'Learn 10 problems', gems: 15, test: (p) => learnedCount(p) >= 10 },
-  { id: 'fifty-problems', icon: '🏔️', title: 'Halfway Up', desc: 'Learn 75 problems', gems: 40, test: (p) => learnedCount(p) >= 75 },
-  { id: 'all-problems', icon: '🏆', title: 'The Full 150', desc: 'Learn all 150 problems', gems: 100, test: (p) => learnedCount(p) >= 150 },
+  { id: 'first-problem', icon: 'puzzle', title: 'Problem Solver', desc: 'Learn your first problem', gems: 5, test: (p) => learnedCount(p) >= 1 },
+  { id: 'ten-problems', icon: 'checks', title: 'Double Digits', desc: 'Learn 10 problems', gems: 15, test: (p) => learnedCount(p) >= 10 },
+  { id: 'fifty-problems', icon: 'milestone', title: 'Halfway Up', desc: 'Learn 75 problems', gems: 40, test: (p) => learnedCount(p) >= 75 },
+  { id: 'all-problems', icon: 'trophy', title: 'The Full 150', desc: 'Learn all 150 problems', gems: 100, test: (p) => learnedCount(p) >= 150 },
   {
     id: 'unit-clear',
-    icon: '🎓',
+    icon: 'badge',
     title: 'Unit Cleared',
     desc: 'Learn every problem in a unit',
     gems: 15,
@@ -106,23 +107,23 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'hard-ten',
-    icon: '🐉',
+    icon: 'mountain',
     title: 'Dragon Slayer',
     desc: 'Learn 10 Hard problems',
     gems: 30,
     test: (p) => Object.values(p.problems).filter((x) => x.learnedAt && x.difficulty === 'Hard').length >= 10,
   },
-  { id: 'streak-3', icon: '🔥', title: 'Warming Up', desc: 'Reach a 3-day streak', gems: 10, test: (p) => p.streak.longest >= 3 },
-  { id: 'streak-7', icon: '📆', title: 'One Week Strong', desc: 'Reach a 7-day streak', gems: 20, test: (p) => p.streak.longest >= 7 },
-  { id: 'streak-30', icon: '🌋', title: 'Habit Formed', desc: 'Reach a 30-day streak', gems: 50, test: (p) => p.streak.longest >= 30 },
-  { id: 'streak-100', icon: '💯', title: 'Unstoppable', desc: 'Reach a 100-day streak', gems: 100, test: (p) => p.streak.longest >= 100 },
-  { id: 'goal-7', icon: '🎯', title: 'Goal Getter', desc: 'Hit your daily goal on 7 days', gems: 20, test: (p) => p.goalDays.length >= 7 },
-  { id: 'first-review', icon: '🔁', title: 'Remember Me', desc: 'Finish a review session', gems: 5, test: (p) => p.stats.sessions >= 1 },
-  { id: 'perfect-review', icon: '✨', title: 'Flawless', desc: 'Finish a review with no mistakes', gems: 15, test: (p) => p.stats.perfectSessions >= 1 },
-  { id: 'combo-10', icon: '⚡', title: 'Combo Breaker', desc: 'Get 10 answers right in a row', gems: 10, test: (p) => p.stats.bestCombo >= 10 },
-  { id: 'blitz-150', icon: '🏎️', title: 'Speed Reader', desc: 'Score 150 in Pattern Blitz', gems: 10, test: (p) => p.stats.blitzBest >= 150 },
-  { id: 'blitz-400', icon: '🚀', title: 'Pattern Radar', desc: 'Score 400 in Pattern Blitz', gems: 30, test: (p) => p.stats.blitzBest >= 400 },
-  { id: 'rebuild-perfect', icon: '⌨️', title: 'From Memory', desc: 'Rebuild a solution with no misses', gems: 15, test: (p) => p.stats.perfectRebuilds >= 1 },
-  { id: 'mastered-5', icon: '👑', title: 'Crowned', desc: 'Get 5 problems to Mastered', gems: 30, test: (p) => masteredCount(p) >= 5 },
-  { id: 'level-10', icon: '⭐', title: 'Rising Star', desc: 'Reach level 10', gems: 25, test: (p) => levelInfo(p.xp).level >= 10 },
+  { id: 'streak-3', icon: 'flame', title: 'Warming Up', desc: 'Reach a 3-day streak', gems: 10, test: (p) => p.streak.longest >= 3 },
+  { id: 'streak-7', icon: 'repeat', title: 'One Week Strong', desc: 'Reach a 7-day streak', gems: 20, test: (p) => p.streak.longest >= 7 },
+  { id: 'streak-30', icon: 'trending', title: 'Habit Formed', desc: 'Reach a 30-day streak', gems: 50, test: (p) => p.streak.longest >= 30 },
+  { id: 'streak-100', icon: 'crown', title: 'Unstoppable', desc: 'Reach a 100-day streak', gems: 100, test: (p) => p.streak.longest >= 100 },
+  { id: 'goal-7', icon: 'target', title: 'Goal Getter', desc: 'Hit your daily goal on 7 days', gems: 20, test: (p) => p.goalDays.length >= 7 },
+  { id: 'first-review', icon: 'review', title: 'Remember Me', desc: 'Finish a review session', gems: 5, test: (p) => p.stats.sessions >= 1 },
+  { id: 'perfect-review', icon: 'sparkles', title: 'Flawless', desc: 'Finish a review with no mistakes', gems: 15, test: (p) => p.stats.perfectSessions >= 1 },
+  { id: 'combo-10', icon: 'bolt', title: 'Combo Breaker', desc: 'Get 10 answers right in a row', gems: 10, test: (p) => p.stats.bestCombo >= 10 },
+  { id: 'blitz-150', icon: 'timer', title: 'Speed Reader', desc: 'Score 150 in Pattern Blitz', gems: 10, test: (p) => p.stats.blitzBest >= 150 },
+  { id: 'blitz-400', icon: 'rocket', title: 'Pattern Radar', desc: 'Score 400 in Pattern Blitz', gems: 30, test: (p) => p.stats.blitzBest >= 400 },
+  { id: 'rebuild-perfect', icon: 'keyboard', title: 'From Memory', desc: 'Rebuild a solution with no misses', gems: 15, test: (p) => p.stats.perfectRebuilds >= 1 },
+  { id: 'mastered-5', icon: 'star', title: 'Crowned', desc: 'Get 5 problems to Mastered', gems: 30, test: (p) => masteredCount(p) >= 5 },
+  { id: 'level-10', icon: 'award', title: 'Rising Star', desc: 'Reach level 10', gems: 25, test: (p) => levelInfo(p.xp).level >= 10 },
 ];

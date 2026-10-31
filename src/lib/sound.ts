@@ -15,7 +15,7 @@ function audio(): AudioContext | null {
   return ctx;
 }
 
-function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.12) {
+function tone(freq: number, start: number, dur: number, type: OscillatorType = 'sine', gain = 0.07) {
   const a = audio();
   if (!a) return;
   const t0 = a.currentTime + start;
