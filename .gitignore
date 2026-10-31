@@ -5,3 +5,6 @@ dist
 .vite
 screenshots
 *.tsbuildinfo
+
+# Local agent/worktree state
+.claude/
