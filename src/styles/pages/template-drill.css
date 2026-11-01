@@ -1,0 +1,232 @@
+/* ==========================================================================
+   Template from memory — src/pages/TemplateDrill.tsx (/patterns/:cat/type)
+   Header (drills.css anatomy) → "when to reach for it" cues → the typing kit
+   (src/styles/typer.css) → after a miss, "Fix and check again". Completion
+   shows the score and the reference template.
+   ========================================================================== */
+
+.tdrill {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Session header: best first try so far ─────────────────────────────── */
+.tdrill-best {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px 0 8px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.tdrill-best svg {
+  width: 13px;
+  height: 13px;
+  color: var(--xp);
+}
+
+/* ── Cues: when to reach for the pattern (open on desktop, a single row on phones) ── */
+.tdrill-cues > summary {
+  min-height: 46px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+.tdrill-cues-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  background: var(--surface-active);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+}
+details.disclosure.tdrill-cues > .tdrill-cue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 18px 14px;
+  list-style: none;
+}
+.tdrill-cue-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.tdrill-cue-list li strong {
+  color: var(--text);
+}
+.tdrill-cue-list li > svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: var(--brand-text);
+}
+
+/* ── Hint panel (inside the editor window, under the code) ─────────────── */
+.tdrill-hint {
+  padding: 10px 16px 12px 52px;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: 12.5px;
+  line-height: 22px;
+  color: var(--code-text);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+  border-top: 1px solid var(--code-border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--code-border) transparent;
+}
+.tdrill-hint-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -1px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: color-mix(in srgb, var(--warning) 70%, var(--code-text));
+}
+.tdrill-hint-label svg {
+  width: 14px;
+  height: 14px;
+}
+.tdrill-hint-cap {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--code-comment);
+}
+.tdrill-hint-line {
+  white-space: pre;
+}
+@media (min-width: 640px) {
+  .tdrill-hint {
+    font-size: 13px;
+  }
+}
+
+/* ── Result: "Fix and check again" sits right above the diff ───────────── */
+.tdrill-work {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+}
+.tdrill-retry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  animation: tdrill-in var(--dur) var(--ease);
+}
+.tdrill-retry p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.tdrill-retry .btn {
+  flex: none;
+}
+@media (max-width: 559px) {
+  .tdrill-retry {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    text-align: center;
+  }
+  .tdrill-retry .btn {
+    height: 44px;
+  }
+}
+@keyframes tdrill-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tdrill-retry {
+    animation: none;
+  }
+}
+
+/* ── Session title: shorter on phones ───────────────────────────────────── */
+.tdrill-title-short {
+  display: none;
+}
+@media (max-width: 479px) {
+  .tdrill-title-full {
+    display: none;
+  }
+  .tdrill-title-short {
+    display: inline;
+  }
+}
+
+/* ── Action bar extras ──────────────────────────────────────────────────── */
+.tdrill .actionbar .buttons > .tdrill-hint-btn:first-child {
+  margin-left: -12px;
+}
+
+/* ── Completion ─────────────────────────────────────────────────────────── */
+.tdrill-done .complete .lead {
+  max-width: 470px;
+  text-wrap: balance;
+}
+.tdrill-done .complete .lead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.tdrill-done .complete-actions .btn {
+  min-width: 0;
+  max-width: 100%;
+}
+.tdrill-done .complete-actions .btn .truncate {
+  min-width: 0;
+}
+.tdrill-of {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.tdrill-ref {
+  max-width: 560px;
+  margin: 32px auto 0;
+}
+.tdrill-ref-meta {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+details.disclosure.tdrill-ref > summary::after {
+  margin-left: 4px;
+}
+/* Code sits flush in the disclosure: one frame, not a card inside a card */
+details.disclosure.tdrill-ref > .code {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}

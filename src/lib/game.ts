@@ -18,6 +18,9 @@ export const XP = {
   rebuildMax: 35,
   /** Code from memory, the whole solution from scratch (with the outline shown, rebuildMax caps it). */
   scratchMax: 50,
+  /** Template from memory: up to this much, scaled by first-try accuracy (half with a hint). */
+  templateMax: 20,
+  templateHintMax: 10,
   blitzPerCorrect: 2,
 };
 

@@ -142,6 +142,11 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
   re-grades without raising it. Switching mode after a Check asks first, since it restarts the attempt. A strong
   part-by-part run's next step is "Now write it from scratch". Entry points: the problem page (Code from memory,
   Write it from scratch) and the dashboard's review card (one learned problem to write from memory).
+- **Template from memory (`/patterns/:cat/type`)** — the unit's guide template typed into a blank `CodeTyper`:
+  "When to reach for it" cues (open on desktop, collapsed on phones), an optional first-word hint (halves the
+  XP), then the diff. The first check sets the score; "Fix and check again" sits above the diff. Linked from
+  the Pattern guide and Unit template headings (with the best score) and the pattern intro's completion. Pass
+  `state={{ from }}` so Close and Back return to the page that opened it.
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,

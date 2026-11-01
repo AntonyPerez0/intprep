@@ -400,6 +400,40 @@ dd.patterns-mix {
   color: var(--brand-text);
 }
 
+/* Template heading: best typed-from-memory score + the drill link */
+.patterns-template-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 12px;
+}
+.patterns-section .patterns-template-head h3 {
+  margin: 0;
+}
+.patterns-best {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px 0 7px;
+  border-radius: var(--r-full);
+  background: var(--surface-active);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.patterns-best svg {
+  width: 12px;
+  height: 12px;
+  color: var(--xp);
+}
+.patterns-type {
+  margin-left: auto;
+}
+
 .patterns-notes {
   margin-top: 16px;
   font-size: var(--fs-md);
@@ -611,6 +645,13 @@ dd.patterns-mix {
   .patterns-acc-body .patterns-actions .btn {
     flex: 1;
     height: 42px;
+  }
+  /* The drill link takes its own full-width row under the heading */
+  .patterns-acc-body .patterns-type {
+    flex: 1 0 100%;
+    order: 1;
+    height: 44px;
+    margin-left: 0;
   }
   /* Give the template every pixel: it runs edge to edge inside the open pattern */
   .patterns-acc-body .patterns-code {

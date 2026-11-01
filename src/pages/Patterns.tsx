@@ -1,8 +1,8 @@
 import '../styles/pages/patterns.css';
-import { useMemo, useState, useSyncExternalStore } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, ChevronDown, ChevronRight, Gauge, GraduationCap, Lightbulb, Search, SearchX, X } from 'lucide-react';
-import { CATEGORIES, type CategoryMeta } from '../content/categories';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, BookOpen, ChevronDown, ChevronRight, Gauge, GraduationCap, Keyboard, Lightbulb, Search, SearchX, Trophy, X } from 'lucide-react';
+import { CATEGORIES, CATEGORY_BY_ID, type CategoryMeta } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { Difficulty } from '../content/types';
 import { HighlightedCode } from '../lib/highlight';
@@ -41,7 +41,10 @@ export function Patterns() {
   const progress = useProgress();
   const wide = useWide();
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
+  // `?p=<unit>` opens that pattern (e.g. coming back from typing its template).
+  const [params] = useSearchParams();
+  const linked = params.get('p');
+  const [open, setOpen] = useState<string | null>(() => (linked && linked in CATEGORY_BY_ID ? linked : null));
 
   const cues = useMemo(
     () =>
@@ -57,6 +60,13 @@ export function Patterns() {
   const selected = CATEGORIES.find((c) => c.id === open) ?? CATEGORIES[0];
 
   const targetId = (id: string) => (wide ? 'patterns-detail' : `pat-${id}`);
+
+  // Arriving with a linked pattern: bring it into view (the accordion can be long on phones).
+  useEffect(() => {
+    if (!linked || !(linked in CATEGORY_BY_ID) || wide) return;
+    const t = window.setTimeout(() => document.getElementById(`pat-${linked}`)?.scrollIntoView({ block: 'start' }), 30);
+    return () => window.clearTimeout(t);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (id: string) => {
     setOpen(id);
@@ -236,6 +246,7 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
   const g = guideFor(c.id);
   const s = unitStats(c, progress);
   const introDone = !!progress.lessonsDone[`g:${c.id}`];
+  const typed = progress.templates?.[c.id];
 
   const actions = (
     <div className="patterns-actions">
@@ -319,7 +330,21 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
       </section>
 
       <section className="patterns-section">
-        <h3>Template</h3>
+        <div className="patterns-template-head">
+          <h3>Template</h3>
+          {typed && (
+            <span className="patterns-best" title="Your best first try at typing it from memory">
+              <Trophy strokeWidth={2.2} aria-hidden="true" />
+              <span className="sr-only">Typed from memory, best first try: </span>
+              <span aria-hidden="true">Best </span>
+              {Math.round(typed.best * 100)}%
+            </span>
+          )}
+          <Link to={`/patterns/${c.id}/type`} state={{ from: `/patterns?p=${c.id}` }} className="btn btn-secondary btn-sm patterns-type">
+            <Keyboard aria-hidden="true" />
+            Type it from memory
+          </Link>
+        </div>
         <CodeWindow className="patterns-code" filename={`${c.id}.py`}>
           <HighlightedCode code={g.template} />
         </CodeWindow>

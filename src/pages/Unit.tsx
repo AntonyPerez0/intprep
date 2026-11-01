@@ -1,7 +1,7 @@
 import '../styles/pages/unit.css';
 import { useState, type CSSProperties } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, Trophy } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
@@ -60,6 +60,7 @@ export function Unit() {
   const templateLines = guide ? guide.template.split('\n').length : 0;
   const templateLong = templateLines > TEMPLATE_PREVIEW_LINES;
   const templateOpen = expandedFor === meta.id;
+  const typedBest = p.templates?.[meta.id]?.best;
 
   // Primary action: learn the pattern first, then the next problem, then practise.
   const guideCta = guide && (
@@ -226,6 +227,18 @@ export function Unit() {
           <div className="unit-template">
             <div className="unit-template-head">
               <h3 className="unit-label">Template</h3>
+              {typedBest !== undefined && (
+                <span className="unit-type-best" title="Your best first try at typing it from memory">
+                  <Trophy strokeWidth={2.2} aria-hidden="true" />
+                  <span className="sr-only">Typed from memory, best first try: </span>
+                  <span aria-hidden="true">Best </span>
+                  {Math.round(typedBest * 100)}%
+                </span>
+              )}
+              <Link to={`/patterns/${meta.id}/type`} state={{ from: `/unit/${meta.id}` }} className="btn btn-secondary btn-sm unit-type-btn">
+                <Keyboard />
+                Type it from memory
+              </Link>
             </div>
             <CodeWindow filename={`${meta.id}.py`} meta={`${templateLines} lines`}>
               <div className={`unit-code${templateLong && !templateOpen ? ' is-clamped' : ''}`}>

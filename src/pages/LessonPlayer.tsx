@@ -1,7 +1,7 @@
 import '../styles/pages/lesson-player.css';
 import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
+import { ArrowRight, BookOpen, Gauge, Keyboard, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide } from '../content/types';
@@ -171,10 +171,16 @@ export function LessonPlayer({ mode }: Props) {
                 );
               })()
             ) : (
-              <Link to={lesson.back} className="btn btn-primary btn-lg btn-block">
-                Start the problems
-                <ArrowRight />
-              </Link>
+              <>
+                <Link to={lesson.back} className="btn btn-primary btn-lg btn-block">
+                  Start the problems
+                  <ArrowRight />
+                </Link>
+                <Link to={`/patterns/${cat}/type`} state={{ from: lesson.back }} className="btn btn-secondary btn-lg btn-block">
+                  <Keyboard />
+                  Type the template from memory
+                </Link>
+              </>
             )}
             <Link to="/" className="btn btn-secondary btn-lg btn-block">
               Back to dashboard
