@@ -1,0 +1,747 @@
+/* ==========================================================================
+   Problem detail (/p/:id)
+   ========================================================================== */
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.problem-detail-head {
+  margin: 8px 0 24px;
+}
+.problem-detail-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+.problem-detail-head-text {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+/* Same scale as the PageHeader title on the other library pages */
+.problem-detail-head h1 {
+  font-size: clamp(22px, 3vw, 28px);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.problem-detail-num {
+  font-size: var(--fs-lg);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.problem-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.problem-detail-badges .badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.problem-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────────── */
+/* Narrow: one column. A learned problem's progress card sits right under the
+   header; a new problem leads with the statement instead. */
+.problem-detail-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.problem-detail-main {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.problem-detail-side {
+  display: contents;
+}
+.problem-detail-status {
+  order: 1;
+}
+.problem-detail-pattern {
+  order: 3;
+}
+.problem-detail-nav {
+  order: 4;
+}
+@media (max-width: 1179px) {
+  .problem-detail-status-new {
+    order: 3;
+  }
+}
+
+@media (min-width: 1180px) {
+  .problem-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 296px;
+    gap: 24px;
+    align-items: start;
+  }
+  .problem-detail-main {
+    order: 0;
+  }
+  .problem-detail-side {
+    order: 1;
+    position: sticky;
+    top: calc(var(--topbar-h) + 16px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  .problem-detail-side > * {
+    order: 0;
+  }
+}
+
+/* ── Main column ────────────────────────────────────────────────────────── */
+.problem-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.problem-detail-h2 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.problem-detail-h2-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+/* Problem statement + clues: one card, so its top lines up with the sidebar */
+.problem-detail-problem {
+  padding: 20px 24px 22px;
+  min-width: 0;
+}
+.problem-detail-problem > .problem-detail-h2 {
+  margin-bottom: 12px;
+}
+.problem-detail-problem .prompt-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.problem-detail-clues {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-clues-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  color: var(--text);
+}
+.problem-detail-clues-h > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--text-tertiary);
+}
+.problem-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.problem-detail-chips .chip.signal {
+  max-width: 100%;
+}
+
+.problem-detail-spoiler {
+  font-size: var(--fs-md);
+}
+.problem-detail-spoiler strong {
+  font-weight: 600;
+}
+
+/* ── Disclosures ────────────────────────────────────────────────────────── */
+.problem-detail-disclosures {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.problem-detail-disc > summary {
+  gap: 12px;
+  min-height: 60px;
+  padding: 12px 18px 12px 14px;
+}
+.problem-detail-sum-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition:
+    background var(--dur-fast),
+    color var(--dur-fast),
+    border-color var(--dur-fast);
+}
+.problem-detail-sum-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.problem-detail-disc[open] .problem-detail-sum-icon {
+  background: var(--brand-subtle);
+  border-color: var(--brand-border);
+  color: var(--brand-text);
+}
+.problem-detail-sum-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.problem-detail-sum-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+}
+.problem-detail-sum-sub {
+  font-size: var(--fs-xs);
+  font-weight: 450;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+}
+.problem-detail-disc[open] > summary {
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 16px;
+}
+
+/* Key insight: a tinted panel, not a second bordered card inside the disclosure */
+.problem-detail-insight {
+  border-color: transparent;
+  background: var(--brand-subtle);
+  box-shadow: none;
+}
+
+/* The plan */
+.problem-detail-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.problem-detail-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text);
+}
+.problem-detail-steps li:first-child {
+  padding-top: 2px;
+}
+.problem-detail-steps li:last-child {
+  padding-bottom: 0;
+}
+.problem-detail-steps li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-step-n,
+.problem-detail-chunk-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand-subtle);
+  border: 1px solid var(--brand-border);
+  color: var(--brand-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.problem-detail-step-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Annotated solution ─────────────────────────────────────────────────── */
+.problem-detail-solution {
+  min-width: 0;
+}
+.problem-detail-solution-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.problem-detail-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.problem-detail-legend-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--xp);
+}
+.problem-detail-listing {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--code-bg);
+}
+.problem-detail-chunk {
+  min-width: 0;
+}
+.problem-detail-chunk + .problem-detail-chunk {
+  border-top: 1px solid var(--border);
+}
+.problem-detail-chunk-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-hover);
+  border-bottom: 1px solid var(--border);
+}
+.problem-detail-chunk-n {
+  margin-top: 1px;
+}
+.problem-detail-chunk-explain {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text);
+}
+.problem-detail-key-badge {
+  flex: none;
+  margin-top: 1px;
+}
+.problem-detail-code {
+  margin: 0;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 0;
+}
+/* One indentation level, with a faint guide like an editor */
+.problem-detail-indent {
+  display: inline-block;
+  width: 4ch;
+  overflow: hidden;
+  vertical-align: top;
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--code-gutter) 55%, transparent);
+}
+
+/* ── Complexity & traps ─────────────────────────────────────────────────── */
+.problem-detail-cx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+.problem-detail-cx-tile {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-hover);
+}
+.problem-detail-cx-k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.problem-detail-cx-k svg {
+  width: 14px;
+  height: 14px;
+}
+.problem-detail-cx-v {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--fs-md);
+  font-weight: 500;
+  color: var(--text);
+  overflow-wrap: break-word;
+}
+.problem-detail-prose {
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.problem-detail-cx > .problem-detail-prose {
+  margin-top: 16px;
+}
+.problem-detail-sub-h {
+  margin: 0 0 4px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.problem-detail-brute {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-hover);
+}
+.problem-detail-brute > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--text-tertiary);
+}
+.problem-detail-traps {
+  margin-top: 20px;
+}
+.problem-detail-trap-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.problem-detail-trap-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text);
+}
+.problem-detail-trap-list li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-trap-list li > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--warning);
+}
+
+/* ── Sidebar cards ──────────────────────────────────────────────────────── */
+.problem-detail-card {
+  padding: 16px 18px;
+  min-width: 0;
+}
+.problem-detail-card-title {
+  margin-bottom: 12px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.problem-detail-mastery {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.problem-detail-mastery .mastery {
+  height: 24px;
+  gap: 3px;
+}
+.problem-detail-mastery .mastery span {
+  width: 6px;
+  border-radius: 2px;
+}
+.problem-detail-mastery .mastery span:nth-child(1) {
+  height: 8px;
+}
+.problem-detail-mastery .mastery span:nth-child(2) {
+  height: 12px;
+}
+.problem-detail-mastery .mastery span:nth-child(3) {
+  height: 16px;
+}
+.problem-detail-mastery .mastery span:nth-child(4) {
+  height: 20px;
+}
+.problem-detail-mastery .mastery span:nth-child(5) {
+  height: 24px;
+}
+.problem-detail-mastery-label {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--text);
+}
+.problem-detail-kv {
+  margin: 16px 0 0;
+}
+.problem-detail-kv > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-kv > div:last-child {
+  padding-bottom: 0;
+}
+.problem-detail-kv dt {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}
+.problem-detail-kv dd {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  color: var(--text);
+  text-align: right;
+}
+.problem-detail-kv dd.problem-detail-due {
+  color: var(--warning-text);
+}
+.problem-detail-status-note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.problem-detail-unit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: -6px -8px 0;
+  padding: 6px 8px;
+  border-radius: var(--r-md);
+  color: inherit;
+  text-decoration: none !important;
+  transition: background var(--dur-fast);
+}
+.problem-detail-unit:hover {
+  background: var(--surface-hover);
+}
+.problem-detail-unit-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+.problem-detail-unit-sub {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.problem-detail-unit-chev {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-disabled);
+}
+.problem-detail-pattern .progress {
+  flex: none;
+  margin-top: 12px;
+}
+
+.problem-detail-nav {
+  overflow: hidden;
+}
+.problem-detail-nav-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.problem-detail-nav-head .tabular {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+}
+.problem-detail-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 14px;
+  color: inherit;
+  text-decoration: none !important;
+  transition: background var(--dur-fast);
+}
+.problem-detail-nav-link + .problem-detail-nav-link {
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-nav-link:hover {
+  background: var(--surface-hover);
+}
+.problem-detail-nav-link:focus-visible {
+  outline: none;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 2px var(--brand-500);
+}
+.problem-detail-nav-next {
+  text-align: right;
+}
+.problem-detail-nav-k {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.problem-detail-nav-t {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  color: var(--text);
+}
+.problem-detail-nav-chev {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* ── Small screens ──────────────────────────────────────────────────────── */
+@media (max-width: 639px) {
+  .problem-detail-head {
+    margin-bottom: 20px;
+  }
+  /* Primary action full width; the secondary and the external link share a row */
+  .problem-detail-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: 100%;
+  }
+  .problem-detail-actions > .btn:first-child {
+    grid-column: 1 / -1;
+  }
+  .problem-detail-actions .btn {
+    height: 42px;
+    padding: 0 14px;
+  }
+  .problem-detail-actions .problem-detail-external {
+    --btn-bg: var(--surface);
+    --btn-fg: var(--text);
+    --btn-border: var(--border-strong);
+    --btn-hover: var(--surface-hover);
+    box-shadow: var(--shadow-xs);
+  }
+  .problem-detail-problem {
+    padding: 16px 16px 18px;
+  }
+  .problem-detail-disc > summary {
+    padding: 12px 14px 12px 12px;
+  }
+  details.problem-detail-disc > :not(summary) {
+    margin: 0 14px 16px;
+  }
+  /* The listing runs edge to edge inside its disclosure for the widest code */
+  details.problem-detail-disc > .problem-detail-solution {
+    margin-bottom: 0;
+  }
+  .problem-detail-solution-bar {
+    margin-bottom: 14px;
+  }
+  .problem-detail-solution-bar .btn {
+    height: 40px;
+  }
+  .problem-detail-listing {
+    margin: 0 -14px;
+    border-width: 1px 0 0;
+    border-radius: 0;
+  }
+  .problem-detail-chunk-head {
+    padding: 10px 14px;
+  }
+  .problem-detail-chunk-explain {
+    font-size: var(--fs-sm);
+  }
+  /* Compact label/value rows: long costs like O(log(min(m, n))) stay on one line */
+  .problem-detail-cx-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .problem-detail-cx-tile {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 14px;
+  }
+  .problem-detail-cx-k {
+    flex: none;
+  }
+  .problem-detail-cx-v {
+    margin-top: 0;
+    font-size: var(--fs-sm);
+    text-align: right;
+  }
+  .problem-detail-code .code-line {
+    padding: 0 14px 0 16px;
+  }
+  .problem-detail-code .code-line .ln {
+    width: 1.5em;
+    margin-right: 10px;
+  }
+  .problem-detail-code .code-line.key::before {
+    left: 6px;
+  }
+  .problem-detail-indent {
+    width: 2ch;
+  }
+}
