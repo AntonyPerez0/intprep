@@ -4,53 +4,24 @@
 
 .science {
   container: science / inline-size;
-  padding-top: 8px;
 }
 
-/* ── Hero ───────────────────────────────────────────────────────────────── */
-.science-hero {
-  max-width: var(--prose-max);
-  margin: 8px 0 32px;
-}
-.science-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--brand-text);
-}
-.science-eyebrow svg {
-  width: 14px;
-  height: 14px;
-}
-.science-title {
-  font-size: var(--fs-3xl);
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
-}
-.science-lead {
-  margin: 16px 0 0;
-  font-size: var(--fs-lg);
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
+/* ── Header meta ────────────────────────────────────────────────────────── */
+/* Every item starts with a dot; the list is pulled 23px left and clipped there,
+   so the dot that starts each line (including after a wrap) is never shown. */
 .science-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 0;
-  margin: 16px 0 0;
+  margin: 12px 0 0 -23px;
   padding: 0;
   list-style: none;
+  clip-path: inset(0 0 0 23px);
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
-.science-meta li + li::before {
+.science-meta li::before {
   content: '';
   display: inline-block;
   width: 3px;
@@ -73,11 +44,6 @@
 .science-toc {
   display: none;
 }
-@container science (min-width: 640px) {
-  .science-title {
-    font-size: var(--fs-4xl);
-  }
-}
 @container science (min-width: 900px) {
   .science-layout {
     grid-template-columns: minmax(0, var(--prose-max)) 220px;
@@ -92,11 +58,6 @@
     overflow-y: auto;
     scrollbar-width: thin;
   }
-}
-
-.science-h2 {
-  font-size: var(--fs-xl);
-  letter-spacing: -0.015em;
 }
 
 /* ── The short version ──────────────────────────────────────────────────── */
@@ -153,14 +114,6 @@
 }
 
 /* ── Principles ─────────────────────────────────────────────────────────── */
-.science-section-head {
-  margin: 48px 0 16px;
-}
-.science-section-head p {
-  margin: 4px 0 0;
-  font-size: var(--fs-base);
-  color: var(--text-tertiary);
-}
 .science-principles {
   display: flex;
   flex-direction: column;
@@ -246,7 +199,7 @@
   color: var(--text-secondary);
 }
 
-/* ── Closing call to action + footnote ────────────────────────────────── */
+/* ── Closing call to action ─────────────────────────────────────────────── */
 .science-cta {
   display: flex;
   flex-wrap: wrap;
@@ -270,26 +223,6 @@
 }
 .science-cta-btn {
   flex: none;
-}
-.science-footnote {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-  font-size: var(--fs-sm);
-  line-height: 1.55;
-  color: var(--text-tertiary);
-}
-.science-footnote > svg {
-  flex: none;
-  width: 15px;
-  height: 15px;
-  margin-top: 3px;
-}
-.science-footnote p {
-  margin: 0;
 }
 
 /* ── On this page ───────────────────────────────────────────────────────── */
@@ -360,12 +293,6 @@
 
 /* ── Small screens ──────────────────────────────────────────────────────── */
 @container science (max-width: 519px) {
-  .science-hero {
-    margin-bottom: 24px;
-  }
-  .science-lead {
-    font-size: var(--fs-base);
-  }
   .science-summary,
   .science-principle {
     padding: 16px;
@@ -381,9 +308,6 @@
   .science-principle-head .icon-tile svg {
     width: 20px;
     height: 20px;
-  }
-  .science-section-head {
-    margin-top: 36px;
   }
   .science-cta {
     padding: 16px;

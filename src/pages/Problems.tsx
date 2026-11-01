@@ -109,7 +109,7 @@ export function Problems() {
               <div className="problems-summary-v tabular">{dueCount}</div>
             </div>
             <div className="problems-summary-item" title="Mastery 4 or higher">
-              <div className="problems-summary-k">Strong</div>
+              <div className="problems-summary-k">Strong or better</div>
               <div className="problems-summary-v tabular">{strongCount}</div>
             </div>
           </div>
@@ -215,8 +215,8 @@ export function Problems() {
               <span>Problem</span>
               <span className="problems-th-tech">Technique</span>
               <span>Pattern</span>
-              <span>Difficulty</span>
               <span>Mastery</span>
+              <span>Difficulty</span>
             </div>
             <ul className="problems-rows" role="list">
               {rows.map((x) => {
@@ -238,16 +238,13 @@ export function Problems() {
                       <span className="problems-meta">
                         <span className="truncate">{x.pattern}</span>
                         <span className="problems-meta-cat" style={{ ['--c' as string]: c.color }}>
-                          {c.short}
+                          <span className="truncate">{c.name}</span>
                         </span>
                       </span>
                       <span className="problems-tech">{x.pattern}</span>
                       <span className="problems-cat">
                         <CategoryIcon id={c.id} color={c.color} size="sm" />
                         <span className="truncate">{c.name}</span>
-                      </span>
-                      <span className="problems-diff">
-                        <DifficultyChip d={x.difficulty} />
                       </span>
                       <span className="problems-mastery">
                         {learned ? (
@@ -260,6 +257,9 @@ export function Problems() {
                             —
                           </span>
                         )}
+                      </span>
+                      <span className="problems-diff">
+                        <DifficultyChip d={x.difficulty} />
                       </span>
                     </Link>
                   </li>

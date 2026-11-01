@@ -615,6 +615,8 @@ export function Profile() {
     URL.revokeObjectURL(a.href);
   };
 
+  // Return focus to Reset ourselves: the dialog's autoFocus (Cancel) runs before
+  // Modal records its opener, so Modal cannot restore it here.
   const closeReset = () => {
     setConfirmReset(false);
     resetRef.current?.focus();
@@ -656,21 +658,21 @@ export function Profile() {
         <StatCard icon="star" accent="var(--xp)" label="Total XP" value={fmt(p.xp)} meta={xpToday ? `+${fmt(xpToday)} today` : 'None earned today'} />
         <StatCard
           icon="checks"
-          label="Learned"
+          label="Problems learned"
           value={
             <>
               {learned}
-              <span className="profile-unit">/ {PROBLEMS.length}</span>
+              <span className="profile-unit profile-of">/{PROBLEMS.length}</span>
             </>
           }
-          meta={`${Math.round((learned / PROBLEMS.length) * 100)}% of the curriculum`}
+          meta={`${Math.round((learned / PROBLEMS.length) * 100)}% of the path`}
         />
-        <StatCard icon="crown" label="Mastered" value={fmt(mastered)} meta={learned ? `Of ${fmt(learned)} learned` : 'None learned yet'} />
+        <StatCard icon="sparkles" label="Mastered" value={fmt(mastered)} meta={learned ? `Of ${fmt(learned)} learned` : 'None learned yet'} />
         <StatCard
           icon="target"
           label="Drill accuracy"
           value={p.stats.answered ? `${acc}%` : '—'}
-          meta={p.stats.answered ? `${fmt(p.stats.correct)} of ${fmt(p.stats.answered)} correct` : 'No drills answered yet'}
+          meta={p.stats.answered ? `${fmt(p.stats.correct)}/${fmt(p.stats.answered)} correct` : 'No drills answered yet'}
         />
       </div>
 
@@ -808,7 +810,7 @@ export function Profile() {
                     Progress imported.
                   </div>
                 ) : (
-                  <div className="callout profile-callout-danger">
+                  <div className="callout callout-danger">
                     <CircleAlert aria-hidden="true" />
                     That file is not an IntPrep backup.
                   </div>

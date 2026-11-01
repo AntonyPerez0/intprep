@@ -61,7 +61,8 @@ export function Patterns() {
     setOpen(id);
     // Bring the chosen pattern into view once it has rendered.
     window.setTimeout(() => {
-      document.getElementById(targetId(id))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      document.getElementById(targetId(id))?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     }, 30);
   };
 
@@ -233,12 +234,13 @@ export function Patterns() {
 function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
   const g = guideFor(c.id);
   const s = unitStats(c, progress);
+  const introDone = !!progress.lessonsDone[`g:${c.id}`];
 
   const actions = (
     <div className="patterns-actions">
       <Link to={`/unit/${c.id}/intro`} className="btn btn-primary">
         <GraduationCap />
-        Pattern lesson
+        {introDone ? 'Replay pattern intro' : 'Start pattern intro'}
       </Link>
       <Link to={`/unit/${c.id}`} className="btn btn-secondary">
         <BookOpen />
