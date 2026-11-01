@@ -7,6 +7,20 @@
   color: var(--text-disabled);
 }
 
+/* Inline "1–4" key range */
+.blitz-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0 2px;
+}
+
+/* The lobby is not a session in progress, so the header's empty progress
+   track would only add noise. Keep its space so the header doesn't shift. */
+.session:has(.blitz-lobby) .session-head .progress {
+  visibility: hidden;
+}
+
 /* ── Lobby ──────────────────────────────────────────────────────────────── */
 .blitz-lobby {
   display: flex;
@@ -49,6 +63,7 @@
 .blitz-lede {
   max-width: 440px;
   margin: 12px 0 0;
+  text-wrap: pretty;
   font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -104,6 +119,12 @@
   justify-content: center;
   white-space: nowrap;
 }
+.blitz-seg button.on {
+  background: var(--surface-raised);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px var(--border-strong);
+}
 .blitz-setup-foot {
   display: flex;
   flex-direction: column;
@@ -125,9 +146,6 @@
   gap: 4px;
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
-}
-.blitz-kbd-hint .kbd {
-  margin: 0 1px;
 }
 @media (hover: none), (max-width: 599px) {
   .blitz-kbd-hint {
@@ -180,7 +198,22 @@
 
 @media (max-width: 599px) {
   .blitz-hero {
-    padding-top: 4px;
+    padding: 0 0 8px;
+  }
+  .blitz-hero-mark .icon-tile {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--r-lg);
+  }
+  .blitz-hero-mark {
+    border-radius: var(--r-lg);
+  }
+  .blitz-hero-mark .icon-tile svg {
+    width: 26px;
+    height: 26px;
+  }
+  .blitz-hero-meta {
+    margin-top: 20px;
   }
   .blitz-setting {
     flex-direction: column;
@@ -191,6 +224,10 @@
   .blitz-seg {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .blitz-seg button {
+    height: 40px;
+    font-size: var(--fs-md);
   }
   .blitz-setup-foot {
     padding: 16px;
@@ -249,7 +286,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  height: 16px;
+  line-height: 16px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -364,7 +403,7 @@
   width: 12px;
   height: 3px;
   border-radius: 2px;
-  background: var(--surface-active);
+  background: var(--border-strong);
   transition: background var(--dur) var(--ease);
 }
 .blitz-pips span.on {
@@ -394,6 +433,14 @@
 }
 .blitz-ring-track {
   stroke: var(--surface-active);
+}
+:root[data-theme='dark'] .blitz-ring-track {
+  stroke: var(--border-strong);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .blitz-ring-track {
+    stroke: var(--border-strong);
+  }
 }
 .blitz-ring-bar {
   stroke: var(--ring-c);
@@ -440,11 +487,9 @@
   color: var(--text-tertiary);
 }
 .blitz-ring-unit {
-  margin-top: 2px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
   color: var(--text-tertiary);
 }
 .blitz-ring.is-warning .blitz-ring-num {
@@ -544,9 +589,6 @@
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
-.blitz-feedback-hint .kbd {
-  margin: 0 1px;
-}
 @media (hover: none), (max-width: 599px) {
   .blitz-feedback-hint {
     visibility: hidden;
@@ -554,11 +596,14 @@
 }
 .blitz-feedback.is-correct {
   align-items: center;
-  background: linear-gradient(var(--success-subtle), var(--success-subtle)), var(--surface);
+  background:
+    linear-gradient(var(--success-subtle), var(--success-subtle)),
+    var(--surface);
   border-color: var(--success-border);
 }
 .blitz-feedback.is-wrong {
-  background: linear-gradient(var(--danger-subtle), var(--danger-subtle)), var(--surface);
+  background:
+    linear-gradient(var(--danger-subtle), var(--danger-subtle)), var(--surface);
   border-color: var(--danger-border);
 }
 .blitz-feedback-icon {
@@ -589,8 +634,33 @@
   font-size: var(--fs-sm);
   color: var(--text-secondary);
 }
+.blitz-feedback-body {
+  min-width: 0;
+}
+.blitz-feedback-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+.blitz-feedback-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.blitz-feedback.is-wrong .blitz-feedback-title {
+  color: var(--text);
+}
 .blitz-feedback-pattern {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
+}
+.blitz-feedback-problem {
+  font-weight: 550;
+  color: var(--text);
 }
 .blitz-feedback-clues {
   margin-top: 6px;
@@ -609,8 +679,22 @@
 @media (max-width: 599px) {
   .blitz-hud {
     gap: 8px;
-    padding: 12px 12px 12px 16px;
-    margin-bottom: 20px;
+    padding: 10px 12px 10px 16px;
+    margin-bottom: 16px;
+  }
+  .blitz-hud-value {
+    height: 34px;
+  }
+  .blitz-choices {
+    margin-top: 12px;
+  }
+  .blitz-choice {
+    min-height: 48px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .blitz-feedback {
+    margin-top: 12px;
   }
   .blitz-hud-center {
     gap: 12px;
@@ -619,7 +703,7 @@
     min-width: 56px;
   }
   .blitz-hud-label {
-    font-size: 10px;
+    letter-spacing: 0.04em;
   }
   .blitz-score {
     font-size: var(--fs-3xl);
@@ -641,17 +725,14 @@
     width: 9px;
   }
   .blitz-ring {
-    width: 52px;
-    height: 52px;
+    width: 54px;
+    height: 54px;
   }
   .blitz-ring-num {
     font-size: var(--fs-lg);
   }
   .blitz-ring-num.is-small {
     font-size: var(--fs-sm);
-  }
-  .blitz-q-count {
-    display: none;
   }
   .blitz-feedback.is-correct,
   .blitz-feedback.is-wrong {
@@ -668,6 +749,14 @@
 .blitz-results > .complete {
   width: 100%;
 }
+.blitz-results .complete .lead,
+.blitz-misses .section-title h2 + div {
+  text-wrap: pretty;
+}
+/* No stats row when nothing was answered: keep the actions off the subtitle. */
+.blitz-results .complete .lead + .complete-actions {
+  margin-top: 28px;
+}
 .blitz-of {
   color: var(--text-tertiary);
   font-weight: 500;
@@ -679,6 +768,15 @@
 }
 .blitz-misses .section-title {
   margin-top: 40px;
+}
+.blitz-misses .section-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.blitz-count {
+  min-width: 22px;
+  justify-content: center;
 }
 .blitz-clean {
   margin-top: 32px;
@@ -695,8 +793,16 @@
   margin-top: 1px;
 }
 .blitz-miss .title {
-  line-height: 28px;
+  padding-top: 4px;
+  line-height: 20px;
   color: var(--text);
+}
+.blitz-miss-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
 }
 .blitz-miss .chevron {
   flex: none;
@@ -712,7 +818,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .blitz-pick {
   display: inline-flex;
@@ -760,6 +866,11 @@
   gap: 6px;
   min-width: 0;
   max-width: 100%;
+}
+@media (max-width: 599px) {
+  .blitz-picks-arrow {
+    display: none;
+  }
 }
 .blitz-clues {
   margin-top: 8px;

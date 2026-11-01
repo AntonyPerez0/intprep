@@ -79,6 +79,17 @@ function HudRing({ value, tone, label, children }: { value: number; tone: 'calm'
   );
 }
 
+function KeyRange() {
+  return (
+    <span className="blitz-keys">
+      <Kbd>1</Kbd>
+      <span aria-hidden="true">–</span>
+      <span className="sr-only">to</span>
+      <Kbd>4</Kbd>
+    </span>
+  );
+}
+
 function Clues({ p }: { p: Problem }) {
   return (
     <>
@@ -153,6 +164,11 @@ export function Blitz() {
   useEffect(() => {
     if (phase === 'play') settled.current = false;
   }, [phase]);
+  // Display only: the best before this round, for the results subtitle.
+  const prevBest = useRef(progress.stats.blitzBest);
+  useEffect(() => {
+    if (phase === 'play') prevBest.current = progress.stats.blitzBest;
+  }, [phase]); // eslint-disable-line
 
   useEffect(() => {
     if (phase !== 'play' || zen) return;
@@ -235,8 +251,17 @@ export function Blitz() {
                 <Trophy className="blitz-stat-icon is-xp" strokeWidth={2} aria-hidden="true" />
                 Personal best
               </div>
-              <div className="stat-value">{blitzBest}</div>
-              <div className="stat-meta">{blitzBest > 0 ? 'Points in a timed round' : 'Play a timed round to set one'}</div>
+              <div className="stat-value">
+                {blitzBest > 0 ? (
+                  blitzBest
+                ) : (
+                  <>
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">None yet</span>
+                  </>
+                )}
+              </div>
+              <div className="stat-meta">{blitzBest > 0 ? 'Points in a timed round' : 'Not set yet'}</div>
             </div>
             <div className="card pad-sm stat blitz-stat">
               <div className="stat-label">
@@ -306,7 +331,7 @@ export function Blitz() {
                 Start
               </button>
               <div className="blitz-kbd-hint">
-                On a keyboard, press <Kbd>1</Kbd>–<Kbd>4</Kbd> to answer
+                On a keyboard, press <KeyRange /> to answer
               </div>
             </div>
           </section>
@@ -317,8 +342,8 @@ export function Blitz() {
                 <Check aria-hidden="true" />
               </span>
               <div>
-                <div className="blitz-rule-title">10 points per pick</div>
-                <div className="blitz-rule-body">Plus {XP.blitzPerCorrect} XP for every correct answer.</div>
+                <div className="blitz-rule-title">10 points a hit</div>
+                <div className="blitz-rule-body">Each correct answer also earns {XP.blitzPerCorrect} XP.</div>
               </div>
             </div>
             <div className="blitz-rule">
@@ -350,14 +375,15 @@ export function Blitz() {
     const correct = answers.filter((a) => a.ok).length;
     const misses = answers.filter((a) => !a.ok);
     const accuracy = answers.length ? Math.round((correct / answers.length) * 100) : 0;
+    const summary = `${accuracy}% accuracy, longest streak ${best}.`;
     const subtitle =
       answers.length === 0
-        ? 'No answers this round.'
+        ? 'No answers this round, so nothing was scored.'
         : newBest
-          ? `${accuracy}% accuracy with a longest streak of ${best}.`
+          ? `${summary} ${prevBest.current > 0 ? `Up from ${prevBest.current}.` : 'Your first recorded best.'}`
           : zen
-            ? `${accuracy}% accuracy, longest streak ${best}. Zen rounds don't affect your best.`
-            : `${accuracy}% accuracy, longest streak ${best}. Your best is ${progress.stats.blitzBest}.`;
+            ? `${summary} Zen rounds don't affect your best.`
+            : `${summary} Your best is ${progress.stats.blitzBest}.`;
     return (
       <SessionShell progress={1} onClose={() => nav('/')} title="Pattern Blitz">
         <div className="blitz-results">
@@ -366,19 +392,26 @@ export function Blitz() {
             tone={newBest ? 'warning' : 'brand'}
             title={newBest ? 'New personal best' : zen ? 'Zen round complete' : "Time's up"}
             subtitle={subtitle}
-            stats={[
-              { label: 'Score', value: score },
-              {
-                label: 'Correct',
-                value: (
-                  <>
-                    {correct}
-                    <span className="blitz-of">/{answers.length}</span>
-                  </>
-                ),
-              },
-              { label: 'XP earned', value: `+${correct * XP.blitzPerCorrect}` },
-            ]}
+            stats={
+              answers.length === 0
+                ? undefined
+                : [
+                    { label: 'Score', value: score },
+                    {
+                      label: 'Correct',
+                      value: (
+                        <>
+                          {correct}
+                          <span className="blitz-of">/{answers.length}</span>
+                        </>
+                      ),
+                    },
+                    {
+                      label: 'XP earned',
+                      value: `+${correct * XP.blitzPerCorrect}`,
+                    },
+                  ]
+            }
           >
             <button type="button" className="btn btn-primary btn-lg btn-block" onClick={start}>
               <RotateCcw aria-hidden="true" />
@@ -392,9 +425,13 @@ export function Blitz() {
           {misses.length > 0 ? (
             <section className="blitz-misses">
               <SectionHeader
-                title="Learn from the misses"
+                title={
+                  <>
+                    Learn from the misses
+                    <span className="badge badge-danger tabular blitz-count">{misses.length}</span>
+                  </>
+                }
                 sub="Misses on problems you've learned are added to today's review."
-                right={<span className="badge tabular">{misses.length}</span>}
               />
               <div className="list">
                 {misses.map((m, i) => {
@@ -404,7 +441,9 @@ export function Blitz() {
                     <Link key={i} to={`/p/${m.p.id}`} className="list-row blitz-miss">
                       <CategoryIcon id={right.id} color={right.color} size="sm" />
                       <div className="grow">
-                        <div className="title">{m.p.title}</div>
+                        <div className="title blitz-miss-title" title={m.p.title}>
+                          {m.p.title}
+                        </div>
                         <div className="blitz-picks">
                           <span className="blitz-pick is-wrong">
                             <X aria-hidden="true" />
@@ -547,7 +586,7 @@ export function Blitz() {
             <div className={`blitz-feedback ${flash ? (flash.ok ? 'is-correct' : 'is-wrong') : 'is-idle'}`} role="status" aria-live="polite">
               {!flash && (
                 <span className="blitz-feedback-hint">
-                  Press <Kbd>1</Kbd>–<Kbd>4</Kbd> to answer
+                  Press <KeyRange /> to answer
                 </span>
               )}
               {flash?.ok && (
@@ -561,11 +600,13 @@ export function Blitz() {
               {flash && !flash.ok && (
                 <>
                   <CircleX className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
-                  <div className="grow">
+                  <div className="grow blitz-feedback-body">
                     <div className="blitz-feedback-line">
-                      <span className="blitz-feedback-title">{current.title}</span>
-                      <span className="blitz-sep"> · </span>
-                      <span className="blitz-feedback-pattern">{current.pattern}</span>
+                      <span className="blitz-feedback-label">Answer</span>
+                      <span className="blitz-feedback-title">{CATEGORY_BY_ID[current.category].name}</span>
+                    </div>
+                    <div className="blitz-feedback-pattern">
+                      <span className="blitz-feedback-problem">{current.title}:</span> {current.pattern}
                     </div>
                     {zen && (
                       <div className="blitz-feedback-clues">
