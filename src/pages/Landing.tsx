@@ -7,7 +7,6 @@ import {
   BookOpen,
   Check,
   CircleCheck,
-  CodeXml,
   Flame,
   GraduationCap,
   Keyboard,
@@ -20,6 +19,7 @@ import {
 import { CATEGORIES, CATEGORY_BY_ID, FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS, problemsFor, type CategoryId } from '../content/index';
 import { SCIENCE } from '../content/science';
 import { CategoryIcon, IconTile, LESSON_ICON, SCIENCE_ICON, type LucideIcon } from '../components/icons';
+import { CodeWindow } from '../components/interact';
 import { DifficultyChip, Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
 import { DRILL_LABEL } from '../lib/drills';
 import { XP } from '../lib/game';
@@ -198,16 +198,15 @@ function HeroPreview() {
       aria-label="Preview of IntPrep: a Spot the pattern drill for Two Sum, the Python solution with its key lines marked, and a daily goal and streak tracker."
     >
       {/* Code window */}
-      <div className="lp-pv lp-pv-code">
-        <div className="lp-pv-code-head">
-          <span className="lp-pv-tab">
-            <CodeXml aria-hidden="true" />
-            two_sum.py
-          </span>
+      <CodeWindow
+        className="lp-pv-code"
+        filename="two_sum.py"
+        right={
           <span className="lp-pv-legend">
             <span className="lp-pv-keydot" /> Key lines
           </span>
-        </div>
+        }
+      >
         <pre className="code lp-pv-codeblock">
           {TWO_SUM_LINES.map((l, i) => (
             <div key={i} className={`code-line ${l.key ? 'key' : ''} ${i === TWO_SUM_FOCUS ? 'focus' : ''}`}>
@@ -216,7 +215,7 @@ function HeroPreview() {
             </div>
           ))}
         </pre>
-      </div>
+      </CodeWindow>
 
       {/* Toast */}
       <div className="lp-pv lp-pv-toast">

@@ -443,11 +443,7 @@
 .unit-template-head .unit-label {
   margin: 0;
 }
-.unit-template-lines {
-  margin-left: auto;
-  font-size: var(--fs-xs);
-  color: var(--text-tertiary);
-}
+/* Long templates start clamped inside the code window, fading out at the bottom */
 .unit-code {
   position: relative;
 }
@@ -458,11 +454,8 @@
 .unit-code.is-clamped::after {
   content: '';
   position: absolute;
-  left: 1px;
-  right: 1px;
-  bottom: 1px;
+  inset: auto 0 0;
   height: 88px;
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
   background: linear-gradient(180deg, transparent, var(--code-bg) 85%);
   pointer-events: none;
 }

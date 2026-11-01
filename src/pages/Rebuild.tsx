@@ -34,8 +34,8 @@ import { normalizeCode, parseSolution } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, recordRebuild, reviewProblem, useProgress } from '../lib/store';
-import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { codeKeyHandler, codeOptions, CodeWindow } from '../components/Drills';
+import { ActionBar, Choices, CodeView, CodeWindow, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { codeKeyHandler, codeOptions } from '../components/Drills';
 import { CATEGORY_ICON } from '../components/icons';
 import { SessionShell } from '../components/Shell';
 import { Completion, DifficultyChip, Kbd } from '../components/ui';
@@ -347,7 +347,7 @@ function Rebuild({ p }: { p: Problem }) {
           footer={
             <>
               <span className="rebuild-foot-left">
-                <span className="rebuild-foot-lang">Python 3</span>
+                <span className="rebuild-foot-lang">Python</span>
                 <span className="rebuild-foot-sep" aria-hidden="true" />
                 <span className={`rebuild-foot-desc ${result ? 'is-result' : ''}`}>{footLeft}</span>
               </span>

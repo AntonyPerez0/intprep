@@ -1028,6 +1028,7 @@ button.list-row {
 
 /* Editor-style frame around code: <CodeWindow filename lang meta right footer>. */
 .code-window {
+  container: code-window / inline-size;
   background: var(--code-bg);
   border: 1px solid var(--code-border);
   border-radius: var(--r-lg);
@@ -1066,11 +1067,18 @@ button.list-row {
   background: var(--brand-400);
 }
 .code-window-tab svg {
+  flex: none;
   width: 14px;
   height: 14px;
   color: var(--code-builtin);
 }
+.code-window-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .code-window-right {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1082,6 +1090,15 @@ button.list-row {
 .code-window-meta + .code-window-lang::before {
   content: '·';
   margin-right: 8px;
+}
+/* Narrow windows (a phone, inside a padded card): drop the meta before the file name truncates */
+@container code-window (max-width: 310px) {
+  .code-window-meta {
+    display: none;
+  }
+  .code-window-meta + .code-window-lang::before {
+    content: none;
+  }
 }
 .code-window-body .code {
   border: 0;

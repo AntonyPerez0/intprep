@@ -357,57 +357,26 @@
   box-shadow: var(--shadow-lg);
 }
 
-/* Code window */
+/* Code window: the app's own <CodeWindow>, lifted to stage elevation */
 .lp-pv-code {
+  position: relative;
   order: 1;
   z-index: 1;
-  overflow: hidden;
-  background: var(--code-bg);
-  border-color: var(--code-border);
   margin-right: 28px;
-}
-.lp-pv-code-head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: 40px;
-  padding: 0 14px 0 8px;
-  border-bottom: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-border) 40%, var(--code-bg));
-}
-.lp-pv-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: var(--r-sm);
-  background: var(--code-line-hl);
-  color: var(--code-text);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-.lp-pv-tab svg {
-  width: 14px;
-  height: 14px;
-  color: var(--brand-300);
+  box-shadow: var(--shadow-lg);
 }
 .lp-pv-legend {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11.5px;
-  color: var(--code-comment);
 }
 .lp-pv-keydot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--code-builtin);
+  background: var(--code-key);
 }
 .lp-pv-code .lp-pv-codeblock {
-  border: 0;
-  border-radius: 0;
   padding: 14px 0 18px;
   font-size: 12px;
   overflow: hidden;
@@ -417,9 +386,6 @@
 .lp-pv-codeblock .code-line .ln {
   width: 1.5em;
   margin-right: 12px;
-}
-.lp-pv-codeblock .code-line.key::before {
-  background: var(--code-builtin);
 }
 
 /* Toast */
@@ -754,6 +720,10 @@
     grid-column: 1;
     grid-row: 1;
     margin: 56px -56px 0 0;
+  }
+  /* Keep the "Key lines" legend clear of the drill card that overlaps this edge */
+  .lp-pv-code .code-window-right {
+    padding-right: 70px;
   }
   .lp-pv-code .lp-pv-codeblock {
     font-size: 12.5px;

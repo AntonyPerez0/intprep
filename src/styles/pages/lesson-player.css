@@ -171,64 +171,27 @@
 .lplayer-lede code {
   color: var(--text);
 }
-.lplayer-codewin {
-  border: 1px solid var(--code-border);
-  border-radius: var(--r-lg);
-  background: var(--code-bg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-.lplayer-codewin-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--code-border);
-  color: var(--code-text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-.lplayer-codewin-head svg,
-.lplayer-output-head svg {
-  width: 14px;
-  height: 14px;
-  color: var(--code-comment);
-}
-.lplayer-codewin-lang {
-  margin-left: auto;
-  font-family: var(--font-sans);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--code-comment);
-}
-.lplayer-codewin .code {
-  border: 0;
-  border-radius: 0;
-  padding: 14px 0 16px;
-}
-@media (min-width: 640px) {
-  .lplayer-codewin .code {
-    font-size: 13.5px;
-  }
-}
 
-/* Program output, docked under the code like a terminal pane. */
+/* Program output, docked under the code inside the CodeWindow like a terminal pane. */
 .lplayer-output {
   border-top: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-bg) 88%, var(--code-text));
+  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
 }
 .lplayer-output-head {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 34px;
-  padding: 0 16px;
+  padding: 0 18px;
   font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: var(--code-comment);
+}
+.lplayer-output-head svg {
+  width: 14px;
+  height: 14px;
   color: var(--code-comment);
 }
 .lplayer-output-body {
@@ -261,9 +224,6 @@
 }
 .lplayer-quiz-code {
   margin-bottom: 16px;
-}
-.lplayer-quiz-code .code {
-  padding-top: 14px;
 }
 
 /* ── Completion ─────────────────────────────────────────────────────────── */

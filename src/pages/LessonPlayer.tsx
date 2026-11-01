@@ -1,7 +1,7 @@
 import '../styles/pages/lesson-player.css';
 import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, FileCode2, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
+import { ArrowRight, BookOpen, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide } from '../content/types';
@@ -12,7 +12,7 @@ import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { completeLesson, getProgress } from '../lib/store';
-import { ActionBar, Choices, type CheckStatus } from '../components/interact';
+import { ActionBar, Choices, CodeWindow, type CheckStatus } from '../components/interact';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
 import { Badge, Completion } from '../components/ui';
@@ -33,7 +33,7 @@ function guideSlides(g: PatternGuide): PlayerSlide[] {
       kind: 'code',
       eyebrow: 'Template',
       icon: Wrench,
-      file: 'template.py',
+      file: `${g.category}.py`,
       title: 'The reusable template',
       body: 'Most problems in this unit are a variation of this shape. You will see it again and again.',
       code: g.template,
@@ -282,17 +282,12 @@ function SlideView({
       <div className="lplayer-slide" key={animKey}>
         {slide.title && <h1 className="q-title">{slide.title}</h1>}
         {slide.body && <Md text={slide.body} className="lplayer-lede" />}
-        <div className="lplayer-codewin">
-          <div className="lplayer-codewin-head">
-            <FileCode2 />
-            <span>{slide.file ?? 'example.py'}</span>
-            <span className="lplayer-codewin-lang">Python</span>
-          </div>
+        <CodeWindow filename={slide.file ?? 'example.py'}>
           <HighlightedCode code={slide.code} />
           {slide.output && (
             <div className="lplayer-output">
               <div className="lplayer-output-head">
-                <Terminal />
+                <Terminal aria-hidden="true" />
                 Output
               </div>
               <pre className="lplayer-output-body">
@@ -302,7 +297,7 @@ function SlideView({
               </pre>
             </div>
           )}
-        </div>
+        </CodeWindow>
       </div>
     );
   }
@@ -312,9 +307,9 @@ function SlideView({
         <Md text={slide.q} />
       </div>
       {slide.code && (
-        <div className="lplayer-codewin lplayer-quiz-code">
+        <CodeWindow className="lplayer-quiz-code" filename="example.py">
           <HighlightedCode code={slide.code} />
-        </div>
+        </CodeWindow>
       )}
       <Choices
         options={order.map((i) => ({ key: String(i), label: inline(slide.options[i]) }))}
