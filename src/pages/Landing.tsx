@@ -12,6 +12,7 @@ import {
   GraduationCap,
   Keyboard,
   Repeat2,
+  Snowflake,
   Timer,
   X,
   Zap,
@@ -22,7 +23,7 @@ import { CategoryIcon, IconTile, LESSON_ICON, SCIENCE_ICON, type LucideIcon } fr
 import { DifficultyChip, Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
 import { DRILL_LABEL } from '../lib/drills';
 import { XP } from '../lib/game';
-import { addDays, today } from '../lib/date';
+import { addDays, lastNDays, today, weekdayShort } from '../lib/date';
 import { highlightLine } from '../lib/highlight';
 import { inline } from '../lib/markdown';
 import { parseSolution } from '../lib/parseSolution';
@@ -169,7 +170,25 @@ const TWO_SUM_LINES = parseSolution(TWO_SUM.solution).lines;
 const TWO_SUM_FOCUS = TWO_SUM_LINES.findIndex((l) => l.key);
 // Real distractors the drill engine uses for Arrays & Hashing.
 const PREVIEW_CHOICES: CategoryId[] = ['two-pointers', 'arrays-hashing', 'sliding-window', 'greedy'];
-const WEEK = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+/** The Dashboard's "Last 7 days" strip: circles with a flame per practised day, today solid. */
+function MockWeek({ frozen = -1 }: { frozen?: number }) {
+  const days = lastNDays(7);
+  return (
+    <div className="lp-pv-week">
+      {days.map((d, i) => {
+        const isToday = i === days.length - 1;
+        const isFrozen = i === frozen;
+        return (
+          <span key={d} className={`lp-pv-day ${isFrozen ? 'is-frozen' : 'is-done'} ${isToday ? 'is-today' : ''}`}>
+            <span className="lp-pv-day-name">{weekdayShort(d)}</span>
+            <span className="lp-pv-day-dot">{isFrozen ? <Snowflake strokeWidth={2} aria-hidden="true" /> : <Flame strokeWidth={2} aria-hidden="true" />}</span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 
 function HeroPreview() {
   return (
@@ -284,14 +303,7 @@ function HeroPreview() {
             <strong>12-day</strong> streak
           </span>
         </div>
-        <div className="lp-pv-week">
-          {WEEK.map((d, i) => (
-            <span key={i} className={`lp-pv-day ${i < 4 ? 'done' : i === 4 ? 'today' : ''}`}>
-              <span className="lp-pv-day-mark">{i < 4 && <Check strokeWidth={3} aria-hidden="true" />}</span>
-              {d}
-            </span>
-          ))}
-        </div>
+        <MockWeek />
       </div>
     </div>
   );
@@ -328,14 +340,14 @@ const STEPS: { icon: LucideIcon; title: string; body: string; points: string[] }
   {
     icon: BookOpen,
     title: 'Learn the pattern',
-    body: 'Every unit opens with a short guide: what the pattern is, when to reach for it, and a reusable Python template. A quick quiz checks it landed.',
+    body: 'Every unit opens with a short pattern intro: what the pattern is, when to reach for it, and a reusable Python template. A quick quiz checks it landed.',
     points: ['Recognition cues', 'Reusable template', 'Quick quiz'],
   },
   {
     icon: GraduationCap,
     title: 'Solve step by step',
-    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one chunk at a time.',
-    points: ['Progressive hints', 'Key insight', 'Code in chunks'],
+    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one piece at a time.',
+    points: ['Progressive hints', 'Key insight', 'Code piece by piece'],
   },
   {
     icon: Repeat2,
@@ -388,10 +400,11 @@ const REVIEW_INTERVALS = (() => {
   const t = today();
   return previewIntervals({ due: t, interval: 4, ease: 2.5, reps: 2, lapses: 0, last: addDays(t, -4) });
 })();
+// Same labels as the real rating buttons (Drills.tsx RATINGS).
 const GRADES = [
-  ['again', 'Again'],
-  ['hard', 'Hard'],
-  ['good', 'Good'],
+  ['again', 'Forgot'],
+  ['hard', 'Fuzzy'],
+  ['good', 'Got it'],
   ['easy', 'Easy'],
 ] as const;
 
@@ -408,7 +421,7 @@ function FeatureVisual({ kind }: { kind: string }) {
           {[
             ['done', 'Spot the pattern'],
             ['done', 'Find the key insight'],
-            ['current', 'Build the code, chunk by chunk'],
+            ['current', 'Build the code, piece by piece'],
             ['todo', 'Check the complexity'],
           ].map(([state, label]) => (
             <li key={label} className={state}>
@@ -439,7 +452,7 @@ function FeatureVisual({ kind }: { kind: string }) {
         <div className="lp-fv-rebuild">
           <div className="lp-fv-cue-line">
             <span className="lp-fv-cue-step">
-              Chunk {KEY_CHUNK + 1}/{TWO_SUM_BODY.length}
+              Step {KEY_CHUNK + 1}/{TWO_SUM_BODY.length}
             </span>
             <span className="lp-fv-cue-text">{KEY_CUE}</span>
           </div>
@@ -507,14 +520,7 @@ function FeatureVisual({ kind }: { kind: string }) {
               <div className="text-xs text-tertiary">Longest: 19 days</div>
             </div>
           </div>
-          <div className="lp-pv-week">
-            {WEEK.map((d, i) => (
-              <span key={i} className={`lp-pv-day ${i < 5 ? 'done' : i === 5 ? 'today' : ''}`}>
-                <span className="lp-pv-day-mark">{i < 5 && <Check strokeWidth={3} aria-hidden="true" />}</span>
-                {d}
-              </span>
-            ))}
-          </div>
+          <MockWeek frozen={2} />
         </div>
       );
     default:
@@ -615,7 +621,7 @@ function Curriculum() {
               <span className="lp-nowrap-group lp-h2-soft">One roadmap.</span>
             </>
           }
-          lead={`The classic interview roadmap in teaching order, from ${CATEGORIES[0].name} to ${CATEGORY_BY_ID['dp-2d'].name}. Every unit opens with a pattern guide.`}
+          lead={`The classic interview roadmap in teaching order, from ${CATEGORIES[0].name} to ${CATEGORY_BY_ID['dp-2d'].name}. Every unit opens with a pattern intro.`}
         />
 
         <div className="lp-foundations">

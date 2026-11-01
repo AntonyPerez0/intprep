@@ -81,6 +81,19 @@
 a.home-aside-link {
   color: var(--brand-text);
 }
+/* Standalone text links in the Today card get an invisible 40px-tall hit area on touch screens. */
+@media (pointer: coarse) {
+  a.home-aside-link,
+  .home-today-sub a {
+    position: relative;
+  }
+  a.home-aside-link::before,
+  .home-today-sub a::before {
+    content: '';
+    position: absolute;
+    inset: -13px -4px;
+  }
+}
 
 /* ── Streak repair ──────────────────────────────────────────────────────── */
 .home .home-repair {
@@ -762,11 +775,6 @@ a.home-aside-link {
 .home .home-kpis .stat {
   gap: 8px;
 }
-@container home (min-width: 640px) {
-  .home .home-kpis .stat {
-    padding: 16px 20px;
-  }
-}
 .home-kpis .stat-label svg {
   color: var(--text-tertiary);
 }
@@ -884,12 +892,14 @@ a.home-aside-link {
   min-width: 0;
   overflow: hidden;
 }
-.home-heat-wrap.is-empty .home-heat {
+/* Fade only the squares, so the day and month labels keep their contrast. */
+.home-heat-wrap.is-empty .home-heat-cell {
   opacity: 0.55;
 }
 .home-heat-empty {
   position: absolute;
-  inset: 16px 0 0;
+  /* Cover the squares only (month row 16px, day column 30px + 3px gap), so no label is hidden. */
+  inset: 16px 0 0 33px;
   display: grid;
   place-items: center;
   padding: 0 8px;
@@ -918,6 +928,7 @@ a.home-aside-link {
 .home-heat-empty-body {
   font-size: var(--fs-xs);
   line-height: 1.45;
+  text-wrap: pretty;
   color: var(--text-tertiary);
 }
 .home-heat {
@@ -959,6 +970,11 @@ a.home-aside-link {
 }
 .home-heat-cell.is-frozen {
   background: color-mix(in srgb, var(--gem) 45%, var(--surface-active));
+}
+/* Days before the account existed: present for scale, but clearly not "missed" (matches Profile). */
+.home-heat-cell.is-before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
 }
 .home-heat-cell.is-today {
   box-shadow:
@@ -1159,13 +1175,4 @@ a.home-aside-link {
 .home-foot a {
   font-weight: 500;
   color: var(--brand-text);
-}
-
-/* ── Focus ──────────────────────────────────────────────────────────────── */
-/* base.css resets the radius on :focus-visible; keep each row's own shape. */
-.home .home-unit:focus-visible,
-.home .home-link:focus-visible,
-.home .home-step:focus-visible {
-  border-radius: var(--r-md);
-  outline-offset: 0;
 }
