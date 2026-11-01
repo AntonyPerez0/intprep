@@ -142,7 +142,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
       const lesson = FOUNDATIONS[i];
       return {
         kind: 'Lesson',
-        context: 'Beginner foundations',
+        context: 'Foundations',
         position: `Lesson ${i + 1} of ${FOUNDATIONS.length}`,
         accent: 'var(--brand)',
         tile: <IconTile icon={LESSON_ICON[next.lessonId] ?? ICONS.grad} size="lg" />,
@@ -176,7 +176,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
           </span>
         ),
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
-        cta: 'Start lesson',
+        cta: 'Start pattern intro',
       };
     }
     case 'problem': {
@@ -199,12 +199,12 @@ function describeNext(p: Progress, next: NextStep): NextView {
           </>
         ),
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
-        cta: 'Start lesson',
+        cta: 'Start problem',
       };
     }
     default:
       return {
-        kind: 'Roadmap complete',
+        kind: 'Learning path complete',
         tone: 'success',
         context: `${CATEGORIES.length} of ${CATEGORIES.length} patterns`,
         accent: 'var(--success)',
@@ -212,8 +212,8 @@ function describeNext(p: Progress, next: NextStep): NextView {
         title: `All ${PROBLEMS.length} problems learned`,
         description: 'Every pattern is in your toolkit. Daily review keeps it sharp until interview day.',
         meta: null,
-        progress: { label: 'Roadmap progress', done: PROBLEMS.filter((q) => p.problems[q.id]?.learnedAt).length, total: PROBLEMS.length, unit: 'learned' },
-        cta: 'Go to review',
+        progress: { label: 'Learning path progress', done: PROBLEMS.filter((q) => p.problems[q.id]?.learnedAt).length, total: PROBLEMS.length, unit: 'learned' },
+        cta: 'Open daily review',
       };
   }
 }
@@ -301,7 +301,7 @@ function ReviewCard({ p, due, learned }: { p: Progress; due: number; learned: nu
     body = 'Problems you learn return here the next day for spaced review.';
     action = (
       <Link to="/blitz" className="btn btn-secondary home-review-cta">
-        Try Pattern Blitz
+        Play Pattern Blitz
       </Link>
     );
   }
@@ -522,7 +522,7 @@ function Kpis({ p, learned, mastered }: { p: Progress; learned: number; mastered
             <span className="home-kpi-of">/{PROBLEMS.length}</span>
           </>
         }
-        meta={<KpiMeta value={learned / PROBLEMS.length} text={`${Math.round((learned / PROBLEMS.length) * 100)}% of the roadmap`} />}
+        meta={<KpiMeta value={learned / PROBLEMS.length} text={`${Math.round((learned / PROBLEMS.length) * 100)}% of the learning path`} />}
       />
       <StatCard
         icon="crown"
@@ -601,10 +601,12 @@ function ActivityCard({ p }: { p: Progress }) {
   const t = today();
   const start = addDays(t, -parseDay(t).getDay() - 7 * (weeks - 1));
   const cols = Array.from({ length: weeks }, (_, c) => Array.from({ length: 7 }, (_, r) => addDays(start, c * 7 + r)));
+  const joined = dayKey(new Date(p.createdAt));
+  const monthOf = (k: number) => parseDay(cols[k][0]).getMonth();
+  const changes = (k: number) => k > 0 && k < weeks && monthOf(k) !== monthOf(k - 1);
+  // A label needs about two columns of room, so skip one that would start in the last column (matches Profile).
   const months = cols.map((col, c) => {
-    const m = parseDay(col[0]).getMonth();
-    const changes = (k: number) => k > 0 && k < weeks && parseDay(cols[k][0]).getMonth() !== parseDay(cols[k - 1][0]).getMonth();
-    const show = c === 0 ? !changes(1) && !changes(2) : m !== parseDay(cols[c - 1][0]).getMonth();
+    const show = c === 0 ? !changes(1) && !changes(2) : changes(c) && c < weeks - 1;
     return show ? parseDay(col[0]).toLocaleDateString(undefined, { month: 'short' }) : '';
   });
 
@@ -663,12 +665,13 @@ function ActivityCard({ p }: { p: Progress }) {
                 if (d > t) return <span key={d} className="home-heat-cell is-future" />;
                 const xp = p.xpByDay[d] ?? 0;
                 const isFrozen = xp === 0 && frozen.has(d);
+                const before = xp === 0 && !isFrozen && d < joined;
                 return (
                   <span
                     key={d}
-                    className={`home-heat-cell ${isFrozen ? 'is-frozen' : ''} ${d === t ? 'is-today' : ''}`}
+                    className={`home-heat-cell ${isFrozen ? 'is-frozen' : ''} ${before ? 'is-before' : ''} ${d === t ? 'is-today' : ''}`}
                     data-l={heatLevel(xp, p.settings.dailyGoal)}
-                    title={`${fmt(d)} · ${isFrozen ? 'Streak freeze' : xp ? `${xp} XP` : 'No activity'}`}
+                    title={`${fmt(d)} · ${isFrozen ? 'Streak freeze' : xp ? `${xp} XP` : before ? 'Before you joined' : 'No practice'}`}
                   />
                 );
               })}
@@ -680,8 +683,8 @@ function ActivityCard({ p }: { p: Progress }) {
             <div className="home-heat-empty-box">
               <CalendarDays size={18} strokeWidth={1.75} aria-hidden="true" />
               <div>
-                <div className="home-heat-empty-title">No activity yet</div>
-                <div className="home-heat-empty-body">Each day you practise fills in a square.</div>
+                <div className="home-heat-empty-title">No practice yet</div>
+                <div className="home-heat-empty-body">Each day you earn XP fills in a square.</div>
               </div>
             </div>
           </div>
@@ -737,7 +740,7 @@ function QuickLinks({ p }: { p: Progress }) {
             <Link to="/learn#foundations" className="home-link">
               <IconTile icon={ICONS.layers} color={NEUTRAL} size="sm" />
               <div className="grow">
-                <div className="home-link-title">Beginner foundations</div>
+                <div className="home-link-title">Foundations</div>
                 <div className="home-link-meta">
                   <span className="tabular">
                     {fDone} of {FOUNDATIONS.length} lessons
@@ -783,7 +786,7 @@ function Roadmap({ p, next }: { p: Progress; next: NextStep }) {
       <div className="home-card-head home-roadmap-head">
         <div>
           <h2 id="home-roadmap-title" className="card-title">
-            Your roadmap
+            Learning path progress
           </h2>
           <div className="card-subtitle">{CATEGORIES.length} patterns, in order</div>
         </div>
