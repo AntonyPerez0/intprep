@@ -446,6 +446,68 @@ a.home-aside-link {
   }
 }
 
+/* Code from memory suggestion, under the review row: a practice link (as in Explore)
+   aligned to the review row's columns */
+.home-memory {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.home-memory-link {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  margin: 0 -8px -8px;
+  padding: 8px;
+  border-radius: var(--r-md);
+  color: var(--text);
+  transition: background var(--dur-fast) var(--ease);
+}
+@media (hover: hover) {
+  .home-memory-link:hover {
+    background: var(--surface-hover);
+    text-decoration: none;
+  }
+  .home-memory-link:hover .home-memory-chevron {
+    color: var(--text-tertiary);
+    transform: translateX(2px);
+  }
+}
+.home-memory-icon {
+  display: grid;
+  place-items: center;
+}
+.home-memory-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.home-memory-title {
+  font-size: var(--fs-md);
+  font-weight: 550;
+  line-height: 1.35;
+}
+.home-memory-why {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-tertiary);
+}
+.home-memory-chevron {
+  align-self: center;
+  color: var(--text-disabled);
+  transition:
+    transform var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+@container home (min-width: 640px) {
+  .home-memory-link {
+    align-items: center;
+    gap: 20px;
+  }
+}
+
 /* Today */
 .home-today {
   display: flex;

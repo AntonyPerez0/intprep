@@ -1,8 +1,10 @@
 /* ==========================================================================
-   Code from memory — src/pages/Rebuild.tsx (/p/:id/rebuild)
-   An editor: file tab + step progress, given code, the current step as a
-   highlighted comment, then the typing kit (src/styles/typer.css: typing
-   area, inline diff, status bar) or, in tap mode, the line being chosen.
+   Code from memory — src/pages/Rebuild.tsx (/p/:id/rebuild?mode=parts|scratch)
+   A mode switch (Part by part / From scratch), then an editor: file tab, the
+   given code, and the typing kit (src/styles/typer.css: typing area, inline
+   diff, status bar). Part by part adds the current step as a highlighted
+   comment (or, in tap mode, the line being chosen); From scratch can show the
+   whole plan as numbered comments (the outline).
    ========================================================================== */
 
 .rebuild {
@@ -61,6 +63,70 @@
 .rebuild-prompt-toggle {
   flex: none;
   margin-right: -12px;
+}
+
+/* ── Mode switch ────────────────────────────────────────────────────────── */
+.rebuild-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 6px 0 2px;
+}
+.rebuild-seg {
+  flex: none;
+  flex-wrap: nowrap;
+}
+.rebuild-seg button {
+  justify-content: center;
+  white-space: nowrap;
+}
+.rebuild-modes-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.rebuild-modes-note svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+/* Phones: the switch spans the column like a pair of tabs, with the touch-size buttons */
+@media (max-width: 639px) {
+  .rebuild-modes {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rebuild-seg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rebuild-seg button {
+    height: 40px;
+    font-size: var(--fs-md);
+  }
+  .rebuild-modes-note {
+    justify-content: center;
+  }
+}
+
+/* Switching after a check: confirm dialog */
+.rebuild-modal {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.rebuild-modal .modal-title {
+  margin-top: 6px;
+}
+.rebuild-modal p {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
 }
 
 /* ── Editor chrome ──────────────────────────────────────────────────────── */
@@ -139,6 +205,43 @@
   }
 }
 
+/* From scratch: the outline, the plan as numbered comments above the typing area */
+.rebuild-outline {
+  margin: 2px 0 4px;
+  padding: 4px 0;
+  list-style: none;
+  background: color-mix(in srgb, var(--brand-500) 9%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 70%, transparent);
+  animation: typer-fade var(--dur) var(--ease);
+}
+.rebuild .typer-line.rebuild-outline-row {
+  min-width: 0;
+  white-space: normal;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.rebuild-outline-row .typer-ln {
+  color: color-mix(in srgb, var(--brand-300) 70%, var(--code-gutter));
+}
+.rebuild-outline-text {
+  --indent: 0ch;
+  display: block;
+  padding-left: calc(var(--indent) + 5ch);
+  text-indent: -5ch;
+  color: color-mix(in srgb, var(--brand-200) 82%, var(--code-text));
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.rebuild-outline-num {
+  color: var(--code-comment);
+  font-style: normal;
+}
+@media (max-width: 479px) {
+  .rebuild-outline-text {
+    padding-left: calc(min(var(--indent), 4ch) + 5ch);
+  }
+}
+
 /* Tap mode: the line being chosen */
 .rebuild .typer-line.cursor {
   scroll-margin: 140px 0 280px;
@@ -208,6 +311,26 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+/* "Fix and check again" beside Continue once checked; the narrowest phones say "Fix it" */
+.rebuild-fix-short {
+  display: none;
+}
+@media (max-width: 479px) {
+  .actionbar .rebuild-fix {
+    padding-inline: 16px;
+  }
+  .actionbar .rebuild-fix svg {
+    display: none;
+  }
+}
+@media (max-width: 379px) {
+  .rebuild-fix-long {
+    display: none;
+  }
+  .rebuild-fix-short {
+    display: inline;
+  }
 }
 
 /* ── Completion ─────────────────────────────────────────────────────────── */

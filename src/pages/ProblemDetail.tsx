@@ -18,6 +18,7 @@ import {
   ListOrdered,
   Lock,
   MemoryStick,
+  PencilLine,
   Play,
   RotateCcw,
   ScanSearch,
@@ -37,6 +38,7 @@ import { CategoryIcon } from '../components/icons';
 import { Badge, Crowns, DifficultyChip, freeMirrorUrl, leetcodeUrl, ProgressBar } from '../components/ui';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const pct = (v: number | undefined) => (v !== undefined ? `${Math.round(v * 100)}%` : 'Not yet');
 
 export function ProblemDetail() {
   const { id } = useParams();
@@ -289,11 +291,21 @@ export function ProblemDetail() {
                 </div>
                 <div>
                   <dt>Best rebuild</dt>
-                  <dd className="tabular">{pp?.rebuildBest !== undefined ? `${Math.round(pp.rebuildBest * 100)}%` : 'Not yet'}</dd>
+                  <dd className="tabular">{pct(pp?.rebuildBest)}</dd>
+                </div>
+                <div>
+                  <dt>Best from scratch</dt>
+                  <dd className="tabular">{pct(pp?.scratchBest)}</dd>
                 </div>
               </dl>
             ) : (
               <p className="problem-detail-status-note">Finish the guided lesson to add this problem to your daily review, timed for just before you would forget it.</p>
+            )}
+            {learned && (
+              <Link to={`/p/${p.id}/rebuild?mode=scratch`} className="btn btn-secondary btn-block problem-detail-scratch">
+                <PencilLine aria-hidden="true" />
+                Write it from scratch
+              </Link>
             )}
           </section>
 

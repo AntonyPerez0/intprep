@@ -26,6 +26,7 @@ export function ActionBar({
   continueLabel = 'Continue',
   feedback,
   secondary,
+  checkedSecondary,
   title,
   primaryClassName = '',
   primaryIcon,
@@ -39,6 +40,8 @@ export function ActionBar({
   continueLabel?: string;
   feedback?: ReactNode;
   secondary?: ReactNode;
+  /** Shown left of Continue once checked (e.g. "Fix and check again"); `secondary` is the idle one. */
+  checkedSecondary?: ReactNode;
   title?: string;
   /** Extra class on the primary button (e.g. a test hook such as `blitz-start`). */
   primaryClassName?: string;
@@ -96,7 +99,7 @@ export function ActionBar({
           </div>
         )}
         <div className={`buttons arm-${arm.n % 2}`}>
-          {isIdle ? (secondary ?? <span />) : <span />}
+          {isIdle ? (secondary ?? <span />) : (checkedSecondary ?? <span />)}
           <button
             type="button"
             className={`btn btn-lg ${status === 'wrong' ? 'btn-danger' : status === 'correct' ? 'btn-success' : 'btn-primary'} ${primaryClassName}`}
