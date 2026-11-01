@@ -1647,9 +1647,19 @@ details.disclosure > :not(summary) {
 }
 .modal-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 20px;
+}
+/* The narrowest phones: the buttons stack full width, the primary (last) on top. */
+@media (max-width: 360px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions > .btn {
+    width: 100%;
+  }
 }
 @keyframes fade {
   from {
@@ -1728,7 +1738,11 @@ details.disclosure > :not(summary) {
   box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
+/* A column, value pinned to the bottom: a label that wraps on a narrow phone ("Gaps correct")
+   does not push its value below the others (the grid already gives every tile the same height). */
 .reward {
+  display: flex;
+  flex-direction: column;
   padding: 14px 12px;
   border-right: 1px solid var(--border);
 }
@@ -1741,7 +1755,8 @@ details.disclosure > :not(summary) {
   font-weight: 500;
 }
 .reward .rv {
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 4px;
   font-size: var(--fs-xl);
   font-weight: 600;
   letter-spacing: -0.02em;

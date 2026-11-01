@@ -16,7 +16,7 @@ import { CATEGORIES } from '../src/content/categories';
 import { CONTENT } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { parseSolution } from '../src/lib/parseSolution';
-import { codeLines, gradeCode, lineKey } from '../src/lib/codegrade';
+import { baseIndent, codeLines, gradeCode, lineKey, reindent } from '../src/lib/codegrade';
 import type { CategoryId, QuizQuestion } from '../src/content/types';
 
 const args = process.argv.slice(2);
@@ -157,9 +157,17 @@ function checkFoundations() {
         if (new Set(answers.map((a) => codeLines(a).map(lineKey).join('\n'))).size !== answers.length)
           err(sw, '"accept" repeats the answer (or another accepted answer) after normalizing');
         if (answers.some((a) => /\t/.test(a)) || /\t/.test(s.starter ?? '')) err(sw, 'code contains tabs — use 4 spaces');
+        // The editor starts at the answer's column and grading is anchored there (LessonPlayer), so
+        // every accepted answer must start at that column too, and grade perfect against itself
+        // typed the way a learner does: from the editor's column.
+        const col = baseIndent(s.answer);
         answers.forEach((a) => {
-          // Each accepted answer must grade perfect against itself, typed from the editor's column.
-          if (!gradeCode(a, a).perfect) err(sw, `answer does not grade as correct against itself: ${a.split('\n')[0]}`);
+          if (baseIndent(a) !== col) err(sw, `an accepted answer starts at column ${baseIndent(a)}, the answer at ${col}: ${a.trim().split('\n')[0]}`);
+          const typed = a
+            .split('\n')
+            .map((l) => reindent(l, col, 0))
+            .join('\n');
+          if (!gradeCode(typed, a, { anchor: col }).perfect) err(sw, `answer does not grade as correct against itself: ${a.trim().split('\n')[0]}`);
         });
         // starter + answer (and starter + each accepted answer) must be valid Python.
         answers.forEach((a, k) =>

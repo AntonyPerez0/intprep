@@ -9,7 +9,8 @@
 // Retrieval + generation, the strongest way to make code stick.
 
 import '../styles/pages/rebuild.css';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Fragment, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -38,17 +39,17 @@ import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { mutateLine, sameCode } from '../lib/drills';
 import { XP } from '../lib/game';
-import { codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
+import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { inline } from '../lib/markdown';
-import { normalizeCode, parseSolution } from '../lib/parseSolution';
+import { normalizeCode, parseSolution, stripComment } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
 import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
-import { GapsWindow, useGaps } from '../components/CodeGaps';
+import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
 import { codeOptions } from '../components/Drills';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
@@ -96,6 +97,12 @@ function preferTyping(mode: 'auto' | 'type' | 'tap') {
 
 const reviewGrade = (acc: number) => (acc >= 0.9 ? 'good' : acc >= 0.6 ? 'hard' : 'again');
 
+/**
+ * Code from memory is optional practice: it counts as a review (and moves the schedule) only for a
+ * problem that is due. A weak run on a problem that is not due never resets its spaced review.
+ */
+const reviewRun = (id: string, acc: number) => reviewProblem(id, reviewGrade(acc), { lapse: false });
+
 // ── Mode controller ─────────────────────────────────────────────────────────
 
 interface SessionProps {
@@ -123,23 +130,40 @@ function Rebuild({ p }: { p: Problem }) {
   const [checkedIn, setCheckedIn] = useState<string | null>(null);
   const checked = checkedIn === session;
   const [pending, setPending] = useState<Mode | null>(null);
-  // The From scratch draft survives a free switch to another mode and back (before any Check).
-  const draft = useRef('');
+  // The From scratch draft survives a free switch to another mode and back (before any Check),
+  // and so does whether the outline was shown for it (which caps the XP).
+  const draft = useRef<ScratchDraft>({ text: '', outline: false });
   // Fill the gaps: the round of gaps, so "Try new gaps" and a return to the mode bring new lines.
   const gapRound = useRef(0);
+  // Set when the mode switch changes the session: the radio that was pressed unmounts with it.
+  const switched = useRef(false);
 
   const setMode = (m: Mode) => setParams({ mode: m }, { replace: true });
   const restart = (m: Mode = mode) => {
-    draft.current = '';
+    draft.current = { text: '', outline: false };
     setPending(null);
     setRun((r) => r + 1);
     if (m !== mode) setMode(m);
   };
   const choose = (m: Mode) => {
     if (m === mode) return;
+    switched.current = true;
     if (checked) setPending(m);
     else setMode(m);
   };
+  const keepGoing = () => {
+    switched.current = false;
+    setPending(null);
+  };
+
+  // After a switch, keep keyboard and screen-reader focus on the switch (now on the new mode's
+  // radio) unless the new session focused its own editor. Runs after the session's own effects.
+  useEffect(() => {
+    if (!switched.current) return;
+    switched.current = false;
+    const a = document.activeElement;
+    if (!a || a === document.body) document.querySelector<HTMLElement>('.rebuild-seg [aria-checked="true"]')?.focus({ preventScroll: true });
+  }, [session]);
 
   const shared: SessionProps = {
     p,
@@ -158,7 +182,7 @@ function Rebuild({ p }: { p: Problem }) {
         <PartsSession key={session} {...shared} />
       )}
       {pending && (
-        <Modal onClose={() => setPending(null)} labelledBy="rebuild-switch-title">
+        <Modal onClose={keepGoing} labelledBy="rebuild-switch-title">
           <div className="rebuild-modal">
             <IconTile icon={RotateCcw} />
             <div className="grow">
@@ -170,7 +194,7 @@ function Rebuild({ p }: { p: Problem }) {
           </div>
           <div className="modal-actions">
             {/* Focus the safe choice when the dialog opens. */}
-            <button type="button" className="btn btn-secondary" onClick={() => setPending(null)} autoFocus>
+            <button type="button" className="btn btn-secondary" onClick={keepGoing} autoFocus>
               Keep going
             </button>
             <button type="button" className="btn btn-primary" onClick={() => restart(pending)}>
@@ -280,16 +304,18 @@ function PromptPanel({ p, show }: { p: Problem; show: boolean }) {
   );
 }
 
-/** "4/6" lines (or gaps) right on the first check, in the session header. */
-function ScoreChip({ correct, total, unit = 'lines' }: { correct: number; total: number; unit?: 'lines' | 'gaps' }) {
+/** "4/6" lines (or gaps) right on the first check, in the session header; "+2" for extra lines typed. */
+function ScoreChip({ correct, total, extra = 0, unit = 'lines' }: { correct: number; total: number; extra?: number; unit?: 'lines' | 'gaps' }) {
+  const extraText = extra > 0 ? `, plus ${extra} extra line${extra === 1 ? '' : 's'}` : '';
   return (
-    <span className="rebuild-score" title={`${unit === 'gaps' ? 'Gaps' : 'Lines'} right on the first try`}>
+    <span className="rebuild-score" title={`${unit === 'gaps' ? 'Gaps' : 'Lines'} right on the first try${extraText}`}>
       <Check strokeWidth={2.4} aria-hidden="true" />
       <span aria-hidden="true">
         {correct}/{total}
+        {extra > 0 && <span className="rebuild-score-extra"> +{extra}</span>}
       </span>
       <span className="sr-only">
-        {correct} of {total} {unit} right
+        {correct} of {total} {unit} right{extraText}
       </span>
     </span>
   );
@@ -318,6 +344,14 @@ function doneLook(acc: number) {
 
 // ── Part by part ────────────────────────────────────────────────────────────
 
+interface PartsScore {
+  correct: number;
+  total: number;
+  /** Typed lines that are not in the part: they count against the score, as in `Grade.score`. */
+  extra: number;
+}
+const partsAcc = (s: PartsScore) => (s.total + s.extra ? s.correct / (s.total + s.extra) : 0);
+
 function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const nav = useNavigate();
   const settings = useProgress().settings;
@@ -331,7 +365,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const [status, setStatus] = useState<CheckStatus>('idle');
   const [result, setResult] = useState<Grade | null>(null);
   const [sel, setSel] = useState<string | null>(null);
-  const [score, setScore] = useState({ correct: 0, total: 0 });
+  const [score, setScore] = useState<PartsScore>({ correct: 0, total: 0, extra: 0 });
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const [hint, setHint] = useState(false);
@@ -374,21 +408,21 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     else instrRef.current?.scrollIntoView({ block: 'center', behavior });
   }, [step, lineInChunk]);
 
-  const finish = (final: { correct: number; total: number }) => {
-    const acc = final.total ? final.correct / final.total : 0;
+  const finish = (final: PartsScore) => {
+    const acc = partsAcc(final);
     recordRebuild(p.id, acc);
     const xp = Math.round(XP.rebuildMax * acc) + 5;
     awardXp(xp, 'rebuild');
     setEarned(xp);
-    // A strong rebuild of a due problem counts as a successful review.
-    reviewProblem(p.id, reviewGrade(acc));
+    // A rebuild of a due problem counts as its review.
+    reviewRun(p.id, acc);
     setDone(true);
     sfx('complete');
     if (acc >= READY) confetti();
   };
 
-  const nextChunk = (add: { correct: number; total: number }) => {
-    const s = { correct: score.correct + add.correct, total: score.total + add.total };
+  const nextChunk = (add: PartsScore) => {
+    const s = { correct: score.correct + add.correct, total: score.total + add.total, extra: score.extra + add.extra };
     setScore(s);
     setText('');
     setResult(null);
@@ -401,7 +435,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   };
 
   if (done) {
-    const acc = score.total ? score.correct / score.total : 0;
+    const acc = partsAcc(score);
     const pct = Math.round(acc * 100);
     const ready = acc >= READY;
     const look = doneLook(acc);
@@ -414,9 +448,10 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
             title={acc >= 1 ? 'Flawless from memory' : ready ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
             subtitle={
               <>
-                You rebuilt {score.correct} of {score.total} lines of {p.title} correctly on the first try.
+                You rebuilt {score.correct} of {score.total} lines of {p.title} correctly on the first try
+                {score.extra > 0 ? `, plus ${score.extra} extra line${score.extra === 1 ? '' : 's'}.` : '.'}
                 {ready
-                  ? ' Next rung: the whole solution with a few lines left blank for you to fill in.'
+                  ? ' Next step: the whole solution with a few lines left blank for you to fill in.'
                   : ' Rebuild it again tomorrow. The struggle is what builds memory.'}
               </>
             }
@@ -429,7 +464,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
             {ready ? (
               <>
                 <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('gaps')}>
-                  Next: fill in the gaps
+                  Next: Fill the gaps
                   <ArrowRight aria-hidden="true" />
                 </button>
                 <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart()}>
@@ -461,7 +496,8 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   }
 
   const checkTyped = () => {
-    const r = gradeCode(text, cur.c.lines);
+    // The editor sits under the parts before it: typed column 0 is the editor's column.
+    const r = gradeCode(text, cur.c.lines, { anchor: indent });
     setResult(r);
     setStatus(r.perfect ? 'correct' : 'wrong');
     sfx(r.perfect ? 'correct' : 'wrong');
@@ -476,9 +512,9 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   };
   const continueTap = () => {
     const ok = sel !== null && sameCode(sel, tapLine);
-    const add = { correct: ok ? 1 : 0, total: 1 };
+    const add = { correct: ok ? 1 : 0, total: 1, extra: 0 };
     if (lineInChunk + 1 < curLines.length) {
-      setScore((s) => ({ correct: s.correct + add.correct, total: s.total + add.total }));
+      setScore((s) => ({ ...s, correct: s.correct + add.correct, total: s.total + add.total }));
       setLineInChunk(lineInChunk + 1);
       setSel(null);
       setStatus('idle');
@@ -492,12 +528,14 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
 
   // ── Editor model ──────────────────────────────────────────────────────────
   const given = [...header, ...doneLines];
-  const indent = Math.min(indentOf(curLines[0] ?? ''), 16);
+  // Typing starts at the part's least indented line (a part may end with a dedent), capped so a
+  // deeply nested part still fits; grading is anchored there (see checkTyped).
+  const indent = Math.min(baseIndent(curLines), 16);
   const firstNew = given.length + 2; // after the instruction comment
   const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this part
   const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
   const tapIndent = (tapLine ?? '').match(/^\s*/)?.[0] ?? '';
-  const hintBase = indentOf(curLines[0] ?? '');
+  const hintBase = indent;
 
   const footNote = typing
     ? `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`
@@ -519,7 +557,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
       progress={progress}
       onClose={() => nav(`/p/${p.id}`)}
       title="Code from memory"
-      right={score.total > 0 ? <ScoreChip {...score} /> : undefined}
+      right={score.total > 0 ? <ScoreChip correct={score.correct} total={score.total} extra={score.extra} /> : undefined}
     >
       <div className="rebuild">
         <h1 className="sr-only">Code from memory</h1>
@@ -653,7 +691,9 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
           step={`${step}:${lineInChunk}`}
           canCheck={typing ? text.trim().length > 0 : sel !== null}
           onCheck={typing ? checkTyped : checkTap}
-          onContinue={typing ? () => nextChunk({ correct: result?.correct ?? 0, total: result?.total ?? curLines.length }) : continueTap}
+          onContinue={
+            typing ? () => nextChunk({ correct: result?.correct ?? 0, total: result?.total ?? curLines.length, extra: result?.extra ?? 0 }) : continueTap
+          }
           feedback={
             <div className="rebuild-fb">
               <span className="drill-fb-label">This part</span>
@@ -703,7 +743,8 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
   const src = useMemo(() => gapSource(p.solution), [p]);
   // Key lines first; the class / def header stays visible.
   const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: round.current });
-  const total = codeLines(src.lines).length;
+  // Body lines only, as the other modes count them: the class / def header is given.
+  const total = codeLines(src.lines.filter((_, i) => !src.header.includes(i))).length;
   // The score is the first check; later checks show the result again but never raise it.
   const [first, setFirst] = useState<GapsGrade | null>(null);
   const [checks, setChecks] = useState(0);
@@ -712,6 +753,7 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
   // Phones wait for a tap, so the keyboard does not cover the problem on arrival.
   const [autoFocus] = useState(isFinePointer);
   const rootRef = useRef<HTMLDivElement>(null);
+  const gapsRef = useRef<CodeGapsHandle>(null);
 
   // The next visit to this mode (or "Try new gaps") continues from this round.
   useEffect(() => {
@@ -739,7 +781,7 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
             subtitle={
               <>
                 You filled {g.correct} of {g.total} gaps in {p.title} correctly on your first check.
-                {strong ? ' Ready for the real test? Write the whole thing in a blank file.' : ' Try new gaps tomorrow, or rebuild it part by part first.'}
+                {strong ? ' Ready for the real test? Write the whole thing in a blank file.' : ' Each new set of gaps helps it stick.'}
               </>
             }
             stats={[
@@ -801,14 +843,21 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
     }
     sfx(r.perfect ? 'correct' : 'wrong');
   };
+  // "Fix and check again": the gaps come back in this click (flushSync), so the first gap to fix
+  // takes focus inside the tap and a phone opens its keyboard.
+  const retry = () => {
+    const k = ex.gaps.findIndex((_, j) => !ex.grade.results[j]?.ok);
+    flushSync(ex.retry);
+    gapsRef.current?.focus(k >= 0 ? k : undefined);
+  };
   const finish = () => {
     if (!first) return;
     const acc = first.score;
     recordRebuild(p.id, acc, 'gaps');
     const xp = Math.round(XP.gapsMax * acc) + 5;
     awardXp(xp, 'rebuild');
-    // A strong run on a due problem counts as a successful review, as part by part does.
-    reviewProblem(p.id, reviewGrade(acc));
+    // A run on a due problem counts as its review, as part by part does.
+    reviewRun(p.id, acc);
     setDone({ acc, xp });
     sfx('complete');
     if (acc >= READY) confetti();
@@ -866,6 +915,7 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
           locked={ex.locked}
           onSubmit={check}
           autoFocus={autoFocus}
+          ref={gapsRef}
           filename="solution.py"
           meta="Fill the gaps"
           note={note}
@@ -895,7 +945,7 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
               </button>
             </div>
           }
-          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={ex.retry} /> : undefined}
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
         />
       </div>
     </SessionShell>
@@ -943,7 +993,45 @@ function revealCaret(ta: HTMLTextAreaElement, pos: number) {
   window.scrollTo({ top: window.scrollY + y - window.innerHeight / 3, behavior: reduce ? 'auto' : 'smooth' });
 }
 
-function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps & { draft: RefObject<string> }) {
+/** The From scratch attempt kept across a free mode switch: the text, and whether the outline was shown. */
+interface ScratchDraft {
+  text: string;
+  outline: boolean;
+}
+
+/**
+ * The names the solution defines (assignment and loop targets, nested functions and their
+ * parameters), in order of appearance. From scratch is graded line by line against the studied
+ * solution, so the screen names them.
+ */
+function definedNames(body: string[], given: string[]): string[] {
+  const out: string[] = [];
+  const givenText = given.join('\n');
+  const add = (raw: string) => {
+    const n = raw.replace(/[()*\s]/g, '');
+    if (!/^[A-Za-z_]\w*$/.test(n) || n === '_' || n === 'self' || /^__\w+__$/.test(n)) return;
+    if (new RegExp(`\\b${n}\\b`).test(givenText) || out.includes(n)) return;
+    out.push(n);
+  };
+  for (const raw of body) {
+    const code = stripComment(raw).trim();
+    const def = code.match(/^def\s+(\w+)\s*\(([^)]*)\)/);
+    if (def) {
+      add(def[1]);
+      def[2].split(',').forEach((a) => add(a.split(/[:=]/)[0]));
+      continue;
+    }
+    // Plain names only: `seen[x] = i` and `self.x = 1` define nothing new.
+    const assign = code.match(/^([\w\s,()]+?)\s*(?:\/\/|\*\*|>>|<<|[-+*/%|&^@])?=(?!=)/);
+    if (assign) assign[1].split(',').forEach(add);
+    for (const m of code.matchAll(/\bfor\s+([\w\s,()]+?)\s+in\b/g)) m[1].split(',').forEach(add);
+    const as = code.match(/\bas\s+(\w+)\s*:$/);
+    if (as) add(as[1]);
+  }
+  return out;
+}
+
+function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps & { draft: RefObject<ScratchDraft> }) {
   const nav = useNavigate();
   const parsed = parseSolution(p.solution);
   const given = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
@@ -955,18 +1043,20 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
   // "Write the body of twoSum" when the whole answer sits inside the given def; else the rest of the code.
   const lastGiven = given[given.length - 1] ?? '';
   const fn = indent > indentOf(lastGiven) ? lastGiven.match(/^\s*def (\w+)\(/)?.[1] : undefined;
+  const names = useMemo(() => definedNames(body, given), [p]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [text, setTextState] = useState(draft.current);
+  const [text, setTextState] = useState(draft.current.text);
   const setText = (v: string) => {
-    draft.current = v;
+    draft.current.text = v;
     setTextState(v);
   };
   const [grade, setGrade] = useState<Grade | null>(null);
   // The score is the first check; later checks show the diff again but never raise it.
   const [first, setFirst] = useState<{ grade: Grade; outline: boolean } | null>(null);
   const [attempt, setAttempt] = useState(1);
-  const [outline, setOutline] = useState(false);
-  const [outlineUsed, setOutlineUsed] = useState(false);
+  // A draft written with the outline keeps it (and its XP cap) across a free mode switch.
+  const [outline, setOutline] = useState(draft.current.outline);
+  const [outlineUsed, setOutlineUsed] = useState(draft.current.outline);
   const [showPrompt, setShowPrompt] = useState(isWide);
   const [done, setDone] = useState<{ acc: number; xp: number } | null>(null);
   const [autoFocus] = useState(isFinePointer);
@@ -1027,7 +1117,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
                 You wrote {g.correct} of {g.total} lines of {p.title} from a blank file on your first check
                 {g.extra > 0 ? `, plus ${g.extra} extra line${g.extra === 1 ? '' : 's'}.` : '.'}
                 {first!.outline && ` You used the outline, so XP was capped at ${XP.rebuildMax + 5}.`}
-                {!strong && ' Try it again tomorrow, or fill in the gaps first.'}
+                {!strong && ' Filling the gaps first will firm it up.'}
               </>
             }
             stats={[
@@ -1094,14 +1184,17 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
     recordRebuild(p.id, acc, 'scratch');
     const xp = Math.round((first.outline ? XP.rebuildMax : XP.scratchMax) * acc) + 5;
     awardXp(xp, 'rebuild');
-    // A strong rebuild of a due problem counts as a successful review, as part by part does.
-    reviewProblem(p.id, reviewGrade(acc));
+    // A run on a due problem counts as its review, as part by part does.
+    reviewRun(p.id, acc);
     setDone({ acc, xp });
     sfx('complete');
     if (acc >= READY) confetti();
   };
   const toggleOutline = () => {
-    if (!outline && !first) setOutlineUsed(true);
+    if (!outline && !first) {
+      setOutlineUsed(true);
+      draft.current.outline = true;
+    }
     setOutline((o) => !o);
   };
 
@@ -1159,7 +1252,24 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
           p={p}
           modes={modes}
           meta={`${total} lines`}
-          sub="Write the whole solution in a blank file, then check it line by line."
+          sub={
+            <>
+              Write the solution you studied in a blank file, then check it line by line.
+              {names.length > 0 && (
+                <>
+                  {' '}
+                  It is compared with that solution, so use the same names:{' '}
+                  {names.map((n, k) => (
+                    <Fragment key={n}>
+                      {k > 0 && ', '}
+                      <code translate="no">{n}</code>
+                    </Fragment>
+                  ))}
+                  .
+                </>
+              )}
+            </>
+          }
           showPrompt={showPrompt}
           onTogglePrompt={() => setShowPrompt((s) => !s)}
         />

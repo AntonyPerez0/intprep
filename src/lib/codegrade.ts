@@ -1,13 +1,15 @@
 // Grades typed code against an expected answer, line by line, the way a patient reviewer would.
 //
 // - Blank lines and comment-only lines are ignored on both sides.
-// - Lines are compared with normalizeCode: whitespace, quote style, trailing comments and trailing
-//   commas do not matter.
+// - Lines are compared with normalizeCode: spacing around operators and punctuation, quote style,
+//   trailing comments and trailing commas do not matter; string contents and the space between
+//   two words (`for n in`, not `forn in`) do.
 // - Typed and expected lines are aligned with a longest-common-subsequence diff, so one extra or
 //   missing line does not mark every following line wrong.
 // - A matched line is only correct if its indentation, relative to the snippet's base indentation,
 //   matches (Python cares). Lines with the right code but the wrong indentation are reported as
-//   'indent', separately from wrong lines.
+//   'indent', separately from wrong lines. When the editor sits under given code that the answer
+//   must line up with, pass `anchor` (the editor's start column): indentation is then absolute.
 //
 // Pure: no React, no DOM. Display lives in src/components/CodeTyper.tsx.
 
@@ -107,12 +109,29 @@ export function lineKey(line: string): string {
     .replace(/,+$/, '');
 }
 
+/** The smallest indentation among a snippet's code lines (0 if it has none): where an editor for it starts. */
+export function baseIndent(src: string | string[]): number {
+  const lines = codeLines(src);
+  return lines.length ? Math.min(...lines.map(indentOf)) : 0;
+}
+
+export interface GradeOptions {
+  /**
+   * The column the editor starts at, when it sits under given lines the answer must line up with
+   * (a part under the parts before it, a slide's answer under its starter). Typed column 0 is then
+   * this column, so a line typed one level too deep (inside the block above) is a wrong indent.
+   * Leave it out to grade indentation relative to the snippet's own base (a whole solution or
+   * template typed into an empty editor may sit at any consistent depth).
+   */
+  anchor?: number;
+}
+
 /**
  * Grade typed code against the expected code.
  * @param typed    What the learner typed (the textarea value).
  * @param expected The answer: a string or an array of lines (may contain blank and comment lines).
  */
-export function gradeCode(typed: string, expected: string | string[]): Grade {
+export function gradeCode(typed: string, expected: string | string[], opts: GradeOptions = {}): Grade {
   const t = codeLines(typed);
   const e = codeLines(expected);
   const tk = t.map(lineKey);
@@ -156,15 +175,16 @@ export function gradeCode(typed: string, expected: string | string[]): Grade {
   }
   flush();
 
-  // Base indentation. The snippet's base is anchored on its outermost matched line (the matched
-  // pairs whose expected line is least indented); the most common typed-minus-expected offset
-  // among those wins, earliest first on a tie. So typing a body flush-left, or one extra line
-  // with odd indentation, does not shift every other line.
+  // Base indentation. With an anchor, typed column 0 is the editor's column, so the offset
+  // (typed minus expected indentation) is fixed. Otherwise the snippet's base is anchored on its
+  // outermost matched line (the matched pairs whose expected line is least indented); the most
+  // common typed-minus-expected offset among those wins, earliest first on a tie. So typing a
+  // body flush-left, or one extra line with odd indentation, does not shift every other line.
   const matches = steps.filter((s): s is { kind: 'match'; i: number; j: number } => s.kind === 'match');
   const minExpAll = e.length ? Math.min(...e.map(indentOf)) : 0;
   const minGotAll = t.length ? Math.min(...t.map(indentOf)) : 0;
-  let offset = minGotAll - minExpAll;
-  if (matches.length) {
+  let offset = opts.anchor !== undefined ? -opts.anchor : minGotAll - minExpAll;
+  if (matches.length && opts.anchor === undefined) {
     const outer = Math.min(...matches.map((s) => indentOf(e[s.j])));
     const counts = new Map<number, number>();
     let best = 0;
@@ -237,13 +257,13 @@ export function gradeCode(typed: string, expected: string | string[]): Grade {
  * 3. then the fewest extra lines;
  * 4. then the earliest answer.
  */
-export function gradeBest(typed: string, answers: (string | string[])[]): { grade: Grade; index: number } {
+export function gradeBest(typed: string, answers: (string | string[])[], opts: GradeOptions = {}): { grade: Grade; index: number } {
   const EPS = 1e-9;
   const matched = (g: Grade) => g.correct + g.wrongIndent;
   let bestGrade: Grade | null = null;
   let bestIndex = 0;
   answers.forEach((a, index) => {
-    const g = gradeCode(typed, a);
+    const g = gradeCode(typed, a, opts);
     const b = bestGrade;
     const better =
       !b ||
@@ -254,7 +274,7 @@ export function gradeBest(typed: string, answers: (string | string[])[]): { grad
       bestIndex = index;
     }
   });
-  return { grade: bestGrade ?? gradeCode(typed, []), index: bestIndex };
+  return { grade: bestGrade ?? gradeCode(typed, [], opts), index: bestIndex };
 }
 
 /** The pieces of the summary: ["3 of 4 lines correct", "1 extra", "1 wrong indent"]. */

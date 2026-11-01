@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, CircleCheck, CircleX, Check, X, CornerDownLeft, FileCode2 } from 'lucide-react';
 import type { Problem } from '../content/types';
 import { highlightLine } from '../lib/highlight';
@@ -13,6 +13,9 @@ import { DifficultyChip } from './ui';
 // SessionShell measures the bar into --actionbar-h so the session body always clears it.
 
 export type CheckStatus = 'idle' | 'correct' | 'wrong';
+
+/** True while a modal dialog is open: page-wide keys (Enter, number keys) leave the page behind it alone. */
+const modalOpen = () => !!document.querySelector('[aria-modal="true"]');
 
 const PRAISE = ['Correct', 'Nicely done', 'Exactly right', 'Well done', 'Spot on'];
 const ENCOURAGE = ['Not quite', 'Not this time', 'Close, but no'];
@@ -66,6 +69,8 @@ export function ActionBar({
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key !== 'Enter' || e.isComposing) return;
+      // A dialog (e.g. "Switch mode?") owns the keyboard: Enter must not finish the attempt behind it.
+      if (modalOpen()) return;
       const el = e.target as HTMLElement;
       if (el.tagName === 'TEXTAREA' && !(e.metaKey || e.ctrlKey)) return;
       const isOption = el.classList?.contains('choice') || el.classList?.contains('parsons-item');
@@ -80,6 +85,16 @@ export function ActionBar({
 
   const isIdle = status === 'idle';
   const label = isIdle && onCheck ? checkLabel : continueLabel;
+
+  // Checking from the keyboard (Enter in a gap, Ctrl/⌘ + Enter in an editor) swaps the focused
+  // input for the result, which drops focus to <body>. Give it to the primary button (now
+  // Continue), as a click on Check does. Only when focus was lost, so a page's own focus wins.
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (status === 'idle' || modalOpen()) return;
+    const a = document.activeElement;
+    if (!a || a === document.body) primaryRef.current?.focus({ preventScroll: true });
+  }, [status]);
 
   // Double-click guard: re-arm on every step, state or label change (see .buttons.arm-* in shell.css).
   const armKey = `${step ?? ''}|${status}|${label}`;
@@ -103,6 +118,7 @@ export function ActionBar({
           <button
             type="button"
             className={`btn btn-lg ${status === 'wrong' ? 'btn-danger' : status === 'correct' ? 'btn-success' : 'btn-primary'} ${primaryClassName}`}
+            ref={primaryRef}
             disabled={!primaryEnabled}
             onClick={primary}
             autoFocus={!isIdle}
@@ -159,7 +175,7 @@ export function Choices({
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || modalOpen()) return;
       const n = Number(e.key);
       if (!revealedRef.current && n >= 1 && n <= optsRef.current.length) selectRef.current(optsRef.current[n - 1].key);
     };

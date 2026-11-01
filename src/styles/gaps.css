@@ -75,6 +75,33 @@
   opacity: 0.55;
 }
 
+/* A hint too long for its gap (phones, narrow windows): the placeholder would be cut off and
+   cannot scroll, so the whole hint wraps under the input as a comment, aligned with the code. It
+   stays while typing, so rows never change height under the learner's finger. */
+.gaps-row.has-caption {
+  align-items: flex-start; /* the line number stays with the input, not the caption */
+}
+.gaps-row.has-caption .gaps-slot {
+  flex-wrap: wrap;
+  padding-bottom: 4px;
+}
+.gaps-row.has-caption .gaps-input::placeholder {
+  color: transparent;
+}
+.gaps-hint {
+  flex: none;
+  /* As wide as the slot without widening the row (its text wraps instead) */
+  width: 0;
+  min-width: 100%;
+  padding-right: 4px;
+  color: var(--code-comment);
+  font-style: italic;
+  font-size: 0.94em;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* Touch screens: 44px gap rows (other rows keep the code rhythm). The text stays the code's
    size, so a typed line reads like the lines around it; iOS would zoom in on focus for text under
    16px, which main.tsx prevents app-wide with the viewport's maximum-scale (iOS only). */
@@ -88,6 +115,9 @@
     margin-block: 3px;
     line-height: 36px;
     min-width: 14ch;
+  }
+  .gaps-row.has-caption .typer-ln {
+    padding-top: 11px; /* centered on the 44px input */
   }
 }
 

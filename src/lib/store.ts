@@ -373,14 +373,18 @@ export function learnProblem(id: string, difficulty: Difficulty, xp: number) {
   awardXp(first ? xp : Math.round(xp / 4), 'problem');
 }
 
-/** Apply a spaced-repetition review. Only due cards move on the schedule. */
-export function reviewProblem(id: string, grade: Grade, opts: { force?: boolean } = {}) {
+/**
+ * Apply a spaced-repetition review. Only due cards move on the schedule, except that a lapse
+ * ('again') resets a card early, unless `lapse: false` (optional practice such as Code from
+ * memory, which must never lower the schedule of a card that is not due). `force` moves any card.
+ */
+export function reviewProblem(id: string, grade: Grade, opts: { force?: boolean; lapse?: boolean } = {}) {
   update((d) => {
     const p = d.problems[id];
     if (!p?.srs) return;
     p.reviews += 1;
     p.lastGrade = grade;
-    if (opts.force || p.srs.due <= today() || grade === 'again') p.srs = review(p.srs, grade);
+    if (opts.force || p.srs.due <= today() || (grade === 'again' && opts.lapse !== false)) p.srs = review(p.srs, grade);
   });
 }
 

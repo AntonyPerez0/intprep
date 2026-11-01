@@ -236,7 +236,9 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   margin: 32px auto 0;
 }
 .tdrill-ref-meta {
+  flex: none; /* "30 lines" stays on one line; the title beside it wraps instead */
   margin-left: auto;
+  white-space: nowrap;
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-tertiary);

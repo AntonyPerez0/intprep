@@ -68,10 +68,10 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
 | Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
 | Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
-| Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
+| Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (Enter runs the primary action, except while a modal dialog is open; re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; when a check from the keyboard removes the focused input or editor, focus moves to the primary button; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
 | Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
-| End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` |
-| Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
+| End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` (stat values share a bottom line even when a label wraps on a narrow phone) |
+| Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener; `.modal-actions` wrap, and stack full width with the primary on top below 360px), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
 | App chrome | Desktop top bar: streak and gem `.pill-stat`s + avatar; the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
 
 ## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
@@ -84,18 +84,25 @@ For choosing between given lines, use `<Choices code>` instead; for a single key
 (Code from memory only) → Fill the gaps → From scratch / From memory. Without `?mode=` a page opens one rung above
 what the learner has shown: the next rung once the best score on the one below is 80% or more (or they already
 have a score on the top rung). A run of 80% or more makes the next rung the completion's primary action ("Next:
-fill in the gaps", "Now write it from scratch", "Now type it from memory"); a weak From scratch run steps back
-down ("Fill the gaps first").
+Fill the gaps", "Now write it from scratch", "Now type it from memory"); a weak From scratch or From memory run
+steps back down ("Fill the gaps first"). Code from memory is optional practice: it counts as the spaced review
+only for a problem that is due (`reviewProblem(id, grade, { lapse: false })`), so a weak run never resets the
+schedule of a problem that is not.
 
-**Grading** — `gradeCode(typed, expected)` is pure. Blank and comment-only lines are ignored on both sides; lines
-compare with `normalizeCode` (whitespace, quote style, trailing comments and trailing commas do not matter). Typed
-and expected lines are aligned by a longest-common-subsequence diff, so one extra or missing line does not mark
-every following line wrong. A matched line is only correct if its indentation *relative to the snippet's base*
-matches (anchored on the outermost matched line, so typing a body flush-left is fine). It returns `rows` in diff
+**Grading** — `gradeCode(typed, expected, { anchor })` is pure. Blank and comment-only lines are ignored on both
+sides; lines compare with `normalizeCode`: spacing around operators and punctuation, quote style, trailing comments,
+trailing commas and the case of hex digits do not matter, but string contents do (`" "` is not `""`) and so does
+the space between two words (`for n in`, not `forn in`). Typed and expected lines are aligned by a
+longest-common-subsequence diff, so one extra or missing line does not mark every following line wrong. A matched
+line is only correct if its indentation matches: without `anchor`, *relative to the snippet's base* (anchored on
+the outermost matched line, so a whole solution or template may sit at any consistent depth); with `anchor` (the
+editor's start column, when the editor sits under given lines the answer must line up with: a Part by part part,
+a "Your turn" answer), typed column 0 is that column, so a line typed one level too deep is a wrong indent.
+`baseIndent(lines)` is that column (the answer's least indented code line). It returns `rows` in diff
 order (`ok`, `indent` = right code, wrong indentation, `del` = typed line not in the answer, `add` = expected line
 not written; a changed line is a `del` + `add` pair with `paired: true`), plus `correct`, `total`, `extra`,
 `wrong`, `missing`, `wrongIndent`, `perfect`, `score` (0–1, extra lines count against it), `baseGot`/`baseExp`.
-`gradeBest(typed, answers)` diffs against the closest of several accepted answers: the most lines whose code
+`gradeBest(typed, answers, opts)` diffs against the closest of several accepted answers: the most lines whose code
 matches whatever their indentation (`correct + wrongIndent`, so a body typed flush-left stays an indentation slip
 on the answer it copies), then the higher score, then fewer extra lines, then the earliest. Pass clean code as `expected`
 (e.g. chunk lines or `parseSolution(...).code`); `#!` key markers are dropped. Leave read-only lines (the class /
@@ -106,7 +113,7 @@ disabled>`: read-only `given` lines (highlighted, numbered), a numbered gutter a
 that reads as part of the file; `indent` (columns) is where typing starts; rows grow with the text, and the
 textarea is as wide as its longest line, so a long line scrolls the whole file (given lines too) and the code stays
 aligned under the given lines instead of scrolling inside the textarea. Keys: Tab = 4
-spaces, Enter keeps the indent (and indents after `:`), Backspace in leading spaces removes a 4-space indent,
+spaces (with several lines selected, indents them all), Enter keeps the indent (and indents after `:`), Backspace in leading spaces removes a 4-space indent,
 Escape then Tab leaves the editor (announced through `aria-describedby`), Ctrl/⌘ + Enter is left to the
 `ActionBar`. Edits go through the browser's editing, so undo works. `children` render between the given lines and
 the typing area (e.g. Rebuild's instruction comment); add one to `firstLine` per extra row.
@@ -150,7 +157,9 @@ snippet gets 1). Never blanked: blank and comment lines, `pass` / `else:` / `try
 `continue` / a bare `return`, lone brackets, decorators, imports, `def` / `class` headers, docstrings, any line of a
 multi-line statement, and `exclude` (the header the page keeps visible). Key lines go first, then the lines with the
 most logic (conditions, loop headers, assignments that call or index, returns with an expression; an explaining
-trailing comment counts too), spread apart. `seed` is the round of practice: 0 is the canonical set; round n steps
+trailing comment counts too), spread apart. A line whose exact code stays visible elsewhere is avoided (the
+answer would be on screen); repeated lines go blank together when the count allows, and a line with the same
+code as a key line counts as one. `seed` is the round of practice: 0 is the canonical set; round n steps
 away from round n − 1's lines and never repeats its set when another exists. `gapSource(src)` turns an annotated
 solution or a plain template into `{ lines, keyLines, header }` (pass `header` as `exclude`).
 
@@ -160,11 +169,15 @@ label ref>`: the visible lines read-only (highlighted, numbered, dimmed like `gi
 Gap rows keep the 22px rhythm on desktop and grow to 44px on touch screens, with the text at the code's size (no
 iOS zoom: see **Font size and iOS**). The
 placeholder is the line's own trailing comment (`# stop when the pointers meet`); `hints` takes your own per gap or
-`false`; a gap without one says "Type the missing line" if it is the first. `locked` gaps (right at the last check)
+`false`; a gap without one says "Type the missing line" if it is the first. A hint wider than its gap (phones,
+narrow windows; measured) shows in full as a wrapping comment under the input instead (the placeholder cannot
+scroll), and stays while typing so rows never change height. `locked` gaps (right at the last check)
 show as correct and are skipped by the keyboard. `ref` exposes `focus(gap?)`. With `autoFocus`, the first gap is
-focused on mount and for each new set, and the first wrong gap on a retry.
+focused on mount and for each new set; the first wrong gap is focused on every retry (call `retry` inside
+`flushSync` in the click, and then `focus(gap)`, so a phone opens its keyboard).
 
-**Keys** — Enter: next gap; on the last gap, `onSubmit` (without it, Enter is left to the `ActionBar`). Shift+Enter
+**Keys** — Enter: next gap; on the last gap, the first gap still empty, else `onSubmit` (without it, Enter is
+left to the `ActionBar`), so filling the known lines first never spends the scored first check on blanks. Shift+Enter
 or Up: previous gap; Down: next gap (Up and Down keep the caret column). Tab and Shift+Tab move in order. Ctrl/⌘ +
 Enter is left to the `ActionBar`. On touch screens a key bar in the kit's style offers `: ( ) [ ] = _` (no Indent /
 Outdent: indentation is fixed), inserts at the caret of the focused gap without taking focus, and a tap anywhere on a
@@ -205,23 +218,27 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
   accessible name): **Part by part** (one part at a time, cued by its comment), **Fill the gaps** (the problem, the
   given class / def header and the solution with about 30% of its lines blank, key lines first, in a `GapsWindow`;
-  Enter moves to the next gap and checks on the last; "New gaps" while idle) and **From scratch** (the whole body in
-  one blank editor under the given signature; "Show outline" reveals the parts' cues as numbered comments and caps
-  the XP). Without `?mode=` it follows the ladder: From scratch once the fill-the-gaps best is 80% or more (or there
+  Enter moves to the next gap and checks on the last once every gap has text; "New gaps" while idle) and **From
+  scratch** (the whole body in one blank editor under the given signature; the sub names the solution's own names,
+  since it is compared line by line with the solution the learner studied; "Show outline" reveals the parts' cues
+  as numbered comments and caps the XP, also for a draft kept across a free switch). Part by part counts extra
+  lines against the score, as the other modes do. Without `?mode=` it follows the ladder: From scratch once the fill-the-gaps best is 80% or more (or there
   is a scratch score), else Fill the gaps once the part-by-part best is 80% or more, else Part by part. The first
   Check sets the score; "Fix and check again" re-grades without raising it (in Fill the gaps it keeps the text and
-  locks the right gaps). Switching mode after a Check asks first, since it restarts the attempt. Completion: the
-  score, XP, the reference solution and the next rung. Each mode keeps its own best (`rebuildBest`, `gapsBest`,
-  `scratchBest`), shown on the problem page as one "Code from memory, best" list, and every mode updates spaced
-  review. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
+  locks the right gaps). Switching mode after a Check asks first, since it restarts the attempt; after a switch,
+  focus stays on the switch unless the new mode focuses its editor. Completion: the score, XP, the reference
+  solution and the next step. Each mode keeps its own best (`rebuildBest`, `gapsBest`, `scratchBest`), shown on
+  the problem page as one "Code from memory, best" list, and every mode counts as the review of a due problem. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
   (one learned problem to write from memory).
-- **Template drill (`/patterns/:cat/type?mode=gaps|memory`)** — the unit's guide template, in two rungs under a
-  `.seg` switch: **Fill the gaps** (`gapSource(template)`; each gap's hint is its line's comment) and **From memory**
-  (a blank `CodeTyper` with an optional first-word hint that halves the XP). "When to reach for it" cues sit above
+- **Template drill (`/patterns/:cat/type?mode=gaps|memory`)** — "Template practice" in the session header (as its
+  entry points say), the unit's guide template, in two rungs under a `.seg` switch: **Fill the gaps**
+  (`gapSource(template)`; each gap's hint is its line's comment) and **From memory** (a blank `CodeTyper` with an
+  optional first-word hint that halves the XP: the Hint button says so before it is used, and the panel scrolls
+  into view and is announced when it opens). "When to reach for it" cues sit above
   (open on desktop, collapsed on phones). Without `?mode=` it opens Fill the gaps until that best is 80% or more or
   the template has been typed from memory, then From memory. The first check sets the score; "Fix and check again"
   sits in the action bar. Completion: a strong gaps run leads to "Now type it from memory", a perfect from-memory
-  run to "Next template". Entry points read "Practice the template", with the best score (from memory, else
+  run to "Next template", a weak one (under 80%) offers "Fill the gaps first". Entry points read "Practice the template", with the best score (from memory, else
   "Gaps N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
   problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
   Back return to the page that opened it.

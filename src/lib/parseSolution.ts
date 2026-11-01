@@ -84,14 +84,45 @@ export function parseSolution(src: string): ParsedSolution {
   return parsed;
 }
 
-/** Normalize a line of code for "did you type it right?" comparisons. */
+/**
+ * Normalize a line of code for "did you type it right?" comparisons:
+ * - the trailing comment and the quote style (`'a'` / `"a"`) do not matter;
+ * - string contents are kept as written: `" "` is not `""`, and `"Hi there"` is not `"Hithere"`;
+ * - outside strings, spacing around operators and punctuation does not matter (`a+b` is
+ *   `a + b`), but a space between two words does (`for n in` is not `forn in`);
+ * - a trailing comma before `)` or `]` does not matter, nor the case of hex digits (`0xff`).
+ */
 export function normalizeCode(s: string): string {
-  return stripComment(s)
-    .replace(/["']/g, '"') // quote style does not matter
-    .replace(/\s+/g, '') // whitespace does not matter
+  const line = stripComment(s);
+  let out = '';
+  let code = '';
+  let i = 0;
+  while (i < line.length) {
+    const quote = line[i];
+    if (quote !== '"' && quote !== "'") {
+      code += line[i++];
+      continue;
+    }
+    out += normalizeCodePart(code);
+    code = '';
+    let j = i + 1;
+    while (j < line.length && line[j] !== quote) j += line[j] === '\\' ? 2 : 1;
+    // An unterminated string keeps its missing close, so it never matches a finished one.
+    out += `"${line.slice(i + 1, Math.min(j, line.length))}${j < line.length ? '"' : ''}`;
+    i = j + 1;
+  }
+  return out + normalizeCodePart(code);
+}
+
+/** Code between string literals: one space between words, none around anything else. */
+function normalizeCodePart(code: string): string {
+  return code
+    .replace(/\s+/g, ' ')
+    .replace(/ ?([^\w ]) ?/g, '$1')
+    .trim()
     .replace(/,\)/g, ')')
     .replace(/,\]/g, ']')
-    .trim();
+    .replace(/\b0[xX][0-9a-fA-F]+\b/g, (m) => m.toLowerCase());
 }
 
 /** Remove a trailing `# comment`, ignoring `#` characters inside string literals. */

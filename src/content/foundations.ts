@@ -138,9 +138,9 @@ Hello, IntPrep!
         title: 'Your first line of code',
         prompt: 'Write one line that prints the text `Hi there`. Remember that text goes inside quotes.',
         answer: 'print("Hi there")',
-        hint: 'Start with `print(`, put the text inside quotes, then close the bracket.',
+        hint: 'Start with `print(`, put the text inside quotes, then close the parenthesis.',
         explain:
-          '`print(...)` shows whatever is inside the brackets. The quotes tell Python that `Hi there` is text, not a name. Single and double quotes both work.',
+          '`print(...)` shows whatever is inside the parentheses. The quotes tell Python that `Hi there` is text, not a name. Single and double quotes both work.',
         output: 'Hi there',
       },
       {
@@ -921,6 +921,12 @@ count = {}`,
 for ch in word:
     count[ch] = count.get(ch, 0) + 1
 print(count)`,
+        accept: [
+          py`
+for ch in word:
+    count[ch] = 1 + count.get(ch, 0)
+print(count)`,
+        ],
         hint: 'The `print` starts at the left edge, outside the loop. After the line inside the loop, press Enter, then remove the indent (Backspace removes all 4 spaces at once).',
         explain:
           '`count.get(ch, 0)` is the count so far, or 0 the first time a letter shows up. Adding 1 and storing it back counts this letter. The `print` is not indented, so it runs once, after the loop.',
@@ -1312,7 +1318,18 @@ class Solution:
           py`
         best = nums[0]
         for n in nums:
+            best = min(n, best)
+        return best`,
+          py`
+        best = nums[0]
+        for n in nums:
             if n < best:
+                best = n
+        return best`,
+          py`
+        best = nums[0]
+        for n in nums:
+            if best > n:
                 best = n
         return best`,
         ],
@@ -1689,8 +1706,36 @@ def length(nums):
 def length(nums):
     if not nums:
         return 0
+    return length(nums[1:]) + 1`,
+          py`
+def length(nums):
+    if nums == []:
+        return 0
+    return length(nums[1:]) + 1`,
+          py`
+def length(nums):
+    if not nums:
+        return 0
     else:
         return 1 + length(nums[1:])`,
+          py`
+def length(nums):
+    if nums == []:
+        return 0
+    else:
+        return 1 + length(nums[1:])`,
+          py`
+def length(nums):
+    if not nums:
+        return 0
+    else:
+        return length(nums[1:]) + 1`,
+          py`
+def length(nums):
+    if nums == []:
+        return 0
+    else:
+        return length(nums[1:]) + 1`,
         ],
         hint: 'It has the same shape as `total` from earlier: an empty-list base case, then one step plus a call on the rest.',
         explain:
@@ -2202,10 +2247,25 @@ def has_duplicate(nums):
         accept: [
           py`
 def has_duplicate(nums):
+    seen = set()
+    for n in nums:
+        if n in seen:
+            return True
+        else:
+            seen.add(n)
+    return False`,
+          py`
+def has_duplicate(nums):
     return len(set(nums)) < len(nums)`,
           py`
 def has_duplicate(nums):
     return len(set(nums)) != len(nums)`,
+          py`
+def has_duplicate(nums):
+    return len(nums) > len(set(nums))`,
+          py`
+def has_duplicate(nums):
+    return len(nums) != len(set(nums))`,
         ],
         hint: 'The `def` line, an empty set, the loop, an `if n in seen:` that returns `True`, then `seen.add(n)`. After the loop, `return False`.',
         explain:

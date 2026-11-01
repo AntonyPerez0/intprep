@@ -23,7 +23,7 @@ import {
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide, TypeSlide } from '../content/types';
-import { codeLines, gradeBest, indentOf, type Grade } from '../lib/codegrade';
+import { baseIndent, codeLines, gradeBest, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
 import { HighlightedCode, highlightLine } from '../lib/highlight';
@@ -260,7 +260,9 @@ export function LessonPlayer({ mode }: Props) {
   const finePointer = !!window.matchMedia?.('(pointer: fine)').matches;
   const checkCode = () => {
     if (slide.kind !== 'type' || !code.trim()) return;
-    const { grade: g } = gradeBest(code, [slide.answer, ...(slide.accept ?? [])]);
+    // The editor starts at the answer's column, under the starter: indentation is graded from there,
+    // so a line typed one level too deep (inside the block above) is a wrong indent.
+    const { grade: g } = gradeBest(code, [slide.answer, ...(slide.accept ?? [])], { anchor: baseIndent(slide.answer) });
     setGrade(g);
     setTries((t) => t + 1);
     sfx(g.perfect ? 'correct' : 'wrong');
@@ -520,8 +522,8 @@ function TypeSlideView({
   const expected = codeLines(slide.answer);
   const n = expected.length;
   // The answer is written at its real indentation under the starter (a function body is
-  // indented); the editor starts typing at that column.
-  const indent = n ? Math.min(...expected.map(indentOf)) : 0;
+  // indented); the editor starts typing at that column, and grading is anchored there.
+  const indent = baseIndent(expected);
   const done = revealed || !!grade?.perfect;
   const output = slide.output ? <OutputPane text={slide.output} label={done ? 'Output' : 'Expected output'} /> : null;
 

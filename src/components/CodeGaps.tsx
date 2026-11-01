@@ -16,6 +16,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -99,11 +100,12 @@ export interface CodeGapsProps {
   onChange: (values: string[], gap: number) => void;
   /** Show the result: each gap becomes a graded row (correct, or yours + the expected line). */
   revealed?: boolean;
-  /** Enter on the last gap calls this (and the key stops there). Without it, Enter on the last
-   *  gap is left to the page (the ActionBar's Enter = Check). */
+  /** Enter on the last gap calls this once every gap has text (and the key stops there); while a
+   *  gap is still empty, Enter goes to it instead. Without it, Enter on the last gap is left to
+   *  the page (the ActionBar's Enter = Check). */
   onSubmit?: () => void;
-  /** Focus the first gap on mount and when a new set of gaps arrives, and the first gap to fix
-   *  when `revealed` goes back to false. */
+  /** Focus the first gap on mount and when a new set of gaps arrives. (The first gap to fix is
+   *  focused whenever `revealed` goes back to false, with or without it: a retry is a request.) */
   autoFocus?: boolean;
   disabled?: boolean;
   /**
@@ -168,16 +170,52 @@ export function CodeGaps({
 
   useImperativeHandle(ref, () => ({ focus: (k?: number) => focusGap(k ?? editable[0]) }));
 
-  // Focus: the first gap on mount and for each new set; the first gap to fix after a check.
+  // Focus: the first gap on mount and for each new set (with autoFocus: phones wait for a tap, so
+  // the keyboard does not cover the code on arrival); the first gap to fix after "Fix and check
+  // again" always, since the learner asked to type (call it in a flushSync'd click on phones).
   const gapsKey = gaps.join(',');
   const prev = useRef<{ gapsKey: string; revealed: boolean } | null>(null);
   useEffect(() => {
     const was = prev.current;
     prev.current = { gapsKey, revealed };
-    if (!autoFocus || revealed || disabled) return;
-    if (!was || was.gapsKey !== gapsKey) focusGap(editable[0]);
-    else if (was.revealed) focusGap(editable.find((k) => !grade.results[k]?.ok) ?? editable[0]);
+    if (revealed || disabled) return;
+    if (!was || was.gapsKey !== gapsKey) {
+      if (autoFocus) focusGap(editable[0]);
+    } else if (was.revealed) focusGap(editable.find((k) => !grade.results[k]?.ok) ?? editable[0]);
   }, [gapsKey, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A hint longer than its gap (a phone, a narrow window) would be cut off as a placeholder, which
+  // cannot scroll: those gaps show the hint as a wrapping comment under the input instead.
+  const paneRef = useRef<HTMLDivElement>(null);
+  const [longHints, setLongHints] = useState<ReadonlySet<number>>(() => new Set());
+  useLayoutEffect(() => {
+    const pane = paneRef.current;
+    if (!pane || revealed) return;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const measure = () => {
+      const long = new Set<number>();
+      inputs.current.forEach((el, k) => {
+        const text = el?.placeholder;
+        if (!el || !text || !el.isConnected) return;
+        const cs = getComputedStyle(el);
+        const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        let width = text.length * parseFloat(cs.fontSize) * 0.6;
+        if (ctx) {
+          ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          width = ctx.measureText(text).width;
+        }
+        if (width > room + 0.5) long.add(k);
+      });
+      setLongHints((cur) => (cur.size === long.size && [...long].every((k) => cur.has(k)) ? cur : long));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(pane);
+    // Web fonts change the measure once they load.
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => ro.disconnect();
+  }, [gapsKey, revealed, hints]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setValue = (k: number, v: string) => {
     const next = gaps.map((_, j) => (j === k ? v : (values[j] ?? '')));
@@ -191,14 +229,18 @@ export function CodeGaps({
     const nextGap = editable[pos + 1];
     if (e.key === 'Enter') {
       if (e.metaKey || e.ctrlKey) return; // Check: left to the ActionBar
+      // The last gap, with an earlier one still empty (the learner filled the lines they knew
+      // first): Enter goes on to that gap, as "Enter for the next gap" says, instead of spending
+      // the scored first check on blanks. Ctrl/⌘ + Enter and the Check button still check.
+      const empty = nextGap === undefined && !e.shiftKey ? editable.find((j) => !(values[j] ?? '').trim()) : undefined;
       if (e.shiftKey) {
         e.preventDefault();
         e.stopPropagation(); // the ActionBar treats any Enter in an input as Check
         focusGap(prevGap);
-      } else if (nextGap !== undefined) {
+      } else if (nextGap !== undefined || empty !== undefined) {
         e.preventDefault();
         e.stopPropagation();
-        focusGap(nextGap);
+        focusGap(nextGap ?? empty);
       } else if (onSubmit) {
         e.preventDefault();
         e.stopPropagation();
@@ -233,6 +275,7 @@ export function CodeGaps({
       {/* A new pane on reveal, so a sideways scroll from typing a long gap does not carry over */}
       <CodePane key={revealed ? 'graded' : 'typing'} className={`gaps ${revealed ? 'is-revealed' : ''}`}>
         <div
+          ref={paneRef}
           role="group"
           className="gaps-lines"
           aria-label={label ?? `Code with ${missing} missing line${missing === 1 ? '' : 's'}`}
@@ -273,13 +316,16 @@ export function CodeGaps({
 
             const hint = hintFor(k, line);
             const placeholder = hint ?? (first && hints !== false ? 'Type the missing line' : undefined);
+            const caption = !!hint && longHints.has(k);
             first = false;
+            // Enter's label on a phone keyboard: "next" while another gap is still empty.
+            const lastOpen = editable[editable.length - 1] === k && !editable.some((j) => j !== k && !(values[j] ?? '').trim());
             // The description replaces the placeholder for screen readers, so it carries the hint too.
             const ctx = [hint && `Hint: ${hint.replace(/^#\s*/, '')}.`, contextFor(i)].filter(Boolean).join(' ');
             return (
               <div
                 key={i}
-                className={`typer-line gaps-row ${typed ? 'is-filled' : 'is-empty'}`}
+                className={`typer-line gaps-row ${typed ? 'is-filled' : 'is-empty'} ${caption ? 'has-caption' : ''}`}
                 // The whole row is the touch target: a tap on the number or beside the box types here.
                 onClick={(e) => {
                   if (e.target !== inputs.current[k] && !disabled) focusGap(k);
@@ -299,7 +345,7 @@ export function CodeGaps({
                     autoCapitalize="off"
                     autoCorrect="off"
                     autoComplete="off"
-                    enterKeyHint={editable[editable.length - 1] === k ? (onSubmit ? 'done' : 'enter') : 'next'}
+                    enterKeyHint={lastOpen ? (onSubmit ? 'done' : 'enter') : 'next'}
                     translate="no"
                     placeholder={placeholder}
                     value={values[k] ?? ''}
@@ -310,6 +356,12 @@ export function CodeGaps({
                     }}
                     onKeyDown={onKeyDown(k)}
                   />
+                  {/* The whole hint, wrapped, when it does not fit the gap (the description reads it) */}
+                  {caption && (
+                    <span className="gaps-hint" aria-hidden="true">
+                      {hint}
+                    </span>
+                  )}
                   {/* Hidden: read as the input's description only, not twice in browse mode */}
                   {ctx && (
                     <span id={`${uid}-ctx-${k}`} hidden>

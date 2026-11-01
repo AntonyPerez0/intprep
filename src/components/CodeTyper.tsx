@@ -61,9 +61,10 @@ function edit(
 }
 
 /**
- * Editor keys for a code textarea: Tab inserts 4 spaces, Enter keeps the line's indentation (and
- * indents one level after a line ending in ':'), Backspace in leading spaces removes a whole
- * 4-space indent. Ctrl/Cmd+Enter and Shift+Tab are left alone (ActionBar check, focus back).
+ * Editor keys for a code textarea: Tab inserts 4 spaces (or, with several lines selected, indents
+ * every selected line, as code editors do), Enter keeps the line's indentation (and indents one
+ * level after a line ending in ':'), Backspace in leading spaces removes a whole 4-space indent.
+ * Ctrl/Cmd+Enter and Shift+Tab are left alone (ActionBar check, focus back).
  */
 export function codeKeyHandler(e: ReactKeyboardEvent<HTMLTextAreaElement>, setValue: (v: string) => void) {
   if (e.nativeEvent.isComposing) return;
@@ -71,7 +72,8 @@ export function codeKeyHandler(e: ReactKeyboardEvent<HTMLTextAreaElement>, setVa
   const { selectionStart: s, selectionEnd: en, value } = ta;
   if (e.key === 'Tab' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
     e.preventDefault();
-    edit(ta, setValue, s, en, INDENT, s + 4);
+    if (en > s && value.slice(s, en).includes('\n')) shiftLines(ta, setValue, 1);
+    else edit(ta, setValue, s, en, INDENT, s + 4);
   } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
     e.preventDefault();
     const lineStart = value.lastIndexOf('\n', s - 1) + 1;

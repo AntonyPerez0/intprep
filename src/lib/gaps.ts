@@ -8,6 +8,8 @@
 // - Prefers key lines (the `#!` lines of a solution) first, then the lines with the most logic:
 //   conditions, loop headers, assignments that call or index, return expressions.
 // - Spreads the gaps out, so they are rarely next to each other.
+// - Avoids blanking a line whose exact code stays visible elsewhere (the answer would be on screen);
+//   repeated lines are blanked together when the count allows.
 // - Deterministic: the same seed always gives the same gaps. Seed 0 (the default) is the
 //   canonical set. Seeds are rounds of practice (pass the attempt number): seed n avoids the
 //   lines of seed n − 1 where it can and never repeats its set when another set exists, so
@@ -45,8 +47,8 @@ const TRIVIAL =
 /** Line kinds that stay visible: structure, not logic. */
 const STRUCTURE = /^(@|import\s|from\s+\S+\s+import\s|(async\s+)?def\s|class\s|global\s|nonlocal\s|"""|''')/;
 
-/** A right-hand side that only sets something up: `0`, `[]`, `{}`, `set()`, `"0"`, `None`. */
-const LITERAL = /^(-?\d+(\.\d+)?|True|False|None|\[\]|\{\}|\(\)|"[^"]*"|'[^']*'|\w+\(\)|float\(["'][-+]?inf["']\))$/;
+/** A right-hand side that only sets something up: `0`, `0xFFFFFFFF`, `[]`, `{}`, `set()`, `"0"`, `None`. */
+const LITERAL = /^(-?\d+(\.\d+)?|0[xX][0-9a-fA-F]+|True|False|None|\[\]|\{\}|\(\)|"[^"]*"|'[^']*'|\w+\(\)|float\(["'][-+]?inf["']\))$/;
 
 /**
  * Lines that belong to a statement spanning several lines (open brackets, a trailing
@@ -180,9 +182,15 @@ export function gapCount(base: number, candidates: number, { ratio = 0.3, min = 
   return Math.max(0, Math.min(candidates, Math.max(min, Math.min(max, want))));
 }
 
+/** What a learner could copy a blanked line from: each other line of the same code costs this much. */
+const TWIN_COST = 8;
+
 /**
  * Pick `n` lines: highest score first, each pick making its neighbors less attractive.
  * `used` is how recently each line was a gap (1 = last round), so later rounds rotate.
+ * `twins` lists, per candidate, the other lines with exactly the same code: a gap whose answer is
+ * still on screen a few lines away tests nothing, so each visible twin costs `TWIN_COST`. Twins
+ * that are blanked too cost nothing, so repeated lines go blank together when the count allows.
  */
 function select(
   cands: number[],
@@ -192,6 +200,7 @@ function select(
   n: number,
   seed: number,
   used: Map<number, number>,
+  twins: Map<number, number[]>,
   salt = 0,
 ): number[] {
   const rnd = rngFor(seed, salt);
@@ -215,6 +224,7 @@ function select(
         const d = Math.abs(pos.get(i)! - pos.get(c)!);
         sc -= d === 1 ? 4 : d === 2 ? 1.5 : d === 3 ? 0.5 : 0;
       }
+      for (const t of twins.get(i) ?? []) sc += chosen.includes(t) ? TWIN_COST : -TWIN_COST;
       if (sc > bestScore) {
         bestScore = sc;
         best = i;
@@ -262,17 +272,29 @@ export function pickGaps(lines: string[], opts: PickGapsOptions = {}): number[] 
   const n = gapCount(base, cands.length, opts);
   if (n === 0) return [];
 
+  // Lines with the same code (the kit's comparison key), anywhere in the snippet, header included.
+  const byKey = new Map<string, number[]>();
+  lines.forEach((l, i) => {
+    if (codeOf(l) === '') return;
+    const k = lineKey(codeOf(l));
+    byKey.set(k, [...(byKey.get(k) ?? []), i]);
+  });
+  const twins = new Map(cands.map((i) => [i, (byKey.get(lineKey(codeOf(lines[i]))) ?? []).filter((j) => j !== i)]));
+  // The same code as a key line carries the same idea: it is a key line too, so the pair goes
+  // blank together rather than one copy staying on screen as the answer.
+  for (const i of [...keys]) for (const j of twins.get(i) ?? []) if (isCand.has(j)) keys.add(j);
+
   // Seed r is round r of practice: lines that were gaps in recent rounds step back (fading
   // by half each round), and a round never repeats the previous round's set when another exists.
   const rounds = Math.abs(Math.trunc(seed)) % SEED_CYCLE;
   const used = new Map<number, number>();
-  let set = select(cands, pos, weight, keys, n, 0, used);
+  let set = select(cands, pos, weight, keys, n, 0, used, twins);
   for (let r = 1; r <= rounds; r++) {
     const prev = set;
     for (const i of cands) used.set(i, (used.get(i) ?? 0) / 2 + (prev.includes(i) ? 1 : 0));
-    set = select(cands, pos, weight, keys, n, r, used);
+    set = select(cands, pos, weight, keys, n, r, used, twins);
     for (let salt = 1; salt <= 3 && sameSet(set, prev) && n < cands.length; salt++) {
-      set = select(cands, pos, weight, keys, n, r, used, salt);
+      set = select(cands, pos, weight, keys, n, r, used, twins, salt);
     }
     if (sameSet(set, prev) && n < cands.length) {
       // Still the same: swap the weakest gap for the strongest line that was not a gap.

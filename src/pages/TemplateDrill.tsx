@@ -9,6 +9,7 @@
 import '../styles/pages/drills.css';
 import '../styles/pages/template-drill.css';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -39,7 +40,7 @@ import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordTemplate, useProgress, type Progress, type TemplateProgress } from '../lib/store';
 import { ActionBar, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeTyper } from '../components/CodeTyper';
-import { GapsWindow, useGaps } from '../components/CodeGaps';
+import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
 import { Completion, Modal } from '../components/ui';
@@ -71,9 +72,11 @@ export function TemplateDrillRoute() {
   const [run, setRun] = useState(0);
   // Fill the gaps: the round per unit, so "Try new gaps" and coming back bring other lines.
   const rounds = useRef<Record<string, number>>({});
+  // Set when the mode switch changes the drill (it survives the remount of a switch after a check).
+  const switched = useRef(false);
   const g = cat && cat in CATEGORY_BY_ID ? guideFor(cat as CategoryId) : null;
   if (!g) return <Navigate to="/patterns" replace />;
-  return <TemplateDrill key={`${g.category}:${run}`} g={g} onRestart={() => setRun((r) => r + 1)} rounds={rounds} />;
+  return <TemplateDrill key={`${g.category}:${run}`} g={g} onRestart={() => setRun((r) => r + 1)} rounds={rounds} switched={switched} />;
 }
 
 /** The template as the grader sees it: trailing comments dropped, so the diff shows clean code. */
@@ -105,11 +108,11 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 const isFinePointer = () => !!window.matchMedia?.('(pointer: fine)').matches;
 const isWide = () => !!window.matchMedia?.('(min-width: 640px)').matches;
 
-/** "Template from memory", shortened on phones where the header is tight. */
+/** "Template practice" (as its entry points say), shortened on phones where the header is tight. */
 function SessionTitle() {
   return (
     <>
-      <span className="tdrill-title-full">Template from memory</span>
+      <span className="tdrill-title-full">Template practice</span>
       <span className="tdrill-title-short">Template</span>
     </>
   );
@@ -145,7 +148,18 @@ interface DrillProps {
  * Picks the mode (from ?mode=, else the ladder), keeps the URL in sync, and asks before a mode
  * switch after the first Check, since that restarts the attempt.
  */
-function TemplateDrill({ g, onRestart, rounds }: { g: PatternGuide; onRestart: () => void; rounds: RefObject<Record<string, number>> }) {
+function TemplateDrill({
+  g,
+  onRestart,
+  rounds,
+  switched,
+}: {
+  g: PatternGuide;
+  onRestart: () => void;
+  rounds: RefObject<Record<string, number>>;
+  /** True from a press on the mode switch until the new drill has mounted. */
+  switched: RefObject<boolean>;
+}) {
   const loc = useLocation();
   const [params, setParams] = useSearchParams();
   // Decided once per run, so finishing a strong round does not flip a running page.
@@ -166,9 +180,23 @@ function TemplateDrill({ g, onRestart, rounds }: { g: PatternGuide; onRestart: (
   };
   const choose = (m: Mode) => {
     if (m === mode) return;
+    switched.current = true;
     if (checked) setPending(m);
     else setMode(m);
   };
+  const keepGoing = () => {
+    switched.current = false;
+    setPending(null);
+  };
+
+  // After a switch, keep keyboard and screen-reader focus on the switch (now on the new mode's
+  // radio; the pressed one unmounted with the old drill) unless the new drill focused its editor.
+  useEffect(() => {
+    if (!switched.current) return;
+    switched.current = false;
+    const a = document.activeElement;
+    if (!a || a === document.body) document.querySelector<HTMLElement>('.tdrill-seg [aria-checked="true"]')?.focus({ preventScroll: true });
+  }, [mode]);
 
   const shared: DrillProps = {
     g,
@@ -181,7 +209,7 @@ function TemplateDrill({ g, onRestart, rounds }: { g: PatternGuide; onRestart: (
     <>
       {mode === 'gaps' ? <GapsDrill key="gaps" {...shared} rounds={rounds} /> : <MemoryDrill key="memory" {...shared} />}
       {pending && (
-        <Modal onClose={() => setPending(null)} labelledBy="tdrill-switch-title">
+        <Modal onClose={keepGoing} labelledBy="tdrill-switch-title">
           <div className="tdrill-modal">
             <IconTile icon={RotateCcw} />
             <div className="grow">
@@ -193,7 +221,7 @@ function TemplateDrill({ g, onRestart, rounds }: { g: PatternGuide; onRestart: (
           </div>
           <div className="modal-actions">
             {/* Focus the safe choice when the dialog opens. */}
-            <button type="button" className="btn btn-secondary" onClick={() => setPending(null)} autoFocus>
+            <button type="button" className="btn btn-secondary" onClick={keepGoing} autoFocus>
               Keep going
             </button>
             <button type="button" className="btn btn-primary" onClick={() => restart(pending)}>
@@ -351,6 +379,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
   // Phones wait for a tap, so the keyboard does not cover the template on arrival.
   const [autoFocus] = useState(isFinePointer);
   const workRef = useRef<HTMLDivElement>(null);
+  const gapsRef = useRef<CodeGapsHandle>(null);
 
   useEffect(() => {
     rounds.current[g.category] = ex.round;
@@ -383,7 +412,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
                   ? newBest
                     ? ' A new best. Ready to type the whole thing from memory?'
                     : ' Ready to type the whole thing from memory?'
-                  : ' Try new gaps tomorrow. The struggle is what builds memory.'}
+                  : ' Each new set of gaps helps it stick.'}
               </>
             }
             stats={[
@@ -435,6 +464,13 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
       onChecked();
     }
     sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": the gaps come back in this click (flushSync), so the first gap to fix
+  // takes focus inside the tap and a phone opens its keyboard.
+  const retry = () => {
+    const k = ex.gaps.findIndex((_, j) => !ex.grade.results[j]?.ok);
+    flushSync(ex.retry);
+    gapsRef.current?.focus(k >= 0 ? k : undefined);
   };
   const finish = () => {
     if (!first) return;
@@ -494,6 +530,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
             locked={ex.locked}
             onSubmit={check}
             autoFocus={autoFocus}
+            ref={gapsRef}
             label={`${meta.name} template with ${ex.gaps.length} missing line${ex.gaps.length === 1 ? '' : 's'}`}
             filename={`${g.category}.py`}
             meta="Fill the gaps"
@@ -515,7 +552,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
               New gaps
             </button>
           }
-          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={ex.retry} /> : undefined}
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
         />
       </div>
     </SessionShell>
@@ -555,8 +592,17 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
   });
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const workRef = useRef<HTMLDivElement>(null);
+  const hintId = useId();
 
   const status: CheckStatus = grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+
+  // The hint panel sits under the editor, often below the fold or behind the action bar: bring
+  // it into view when it opens (the bar sets the scroll padding), as the outline does in Code from memory.
+  useEffect(() => {
+    if (!hint) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    workRef.current?.querySelector('.tdrill-hint')?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [hint]);
 
   // Back to the editor after "Fix and check again": focus it with the caret at the end.
   const refocus = useRef(false);
@@ -619,6 +665,7 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
         backToUnit={backToUnit}
         next={nextTemplate(g.category, progress)}
         onRetry={() => onRestart()}
+        onGaps={() => onRestart('gaps')}
         onClose={close}
       />
     );
@@ -677,6 +724,10 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
               ) : undefined
             }
           />
+          {/* Mounted up front, so opening the hint (and its XP cost) is announced */}
+          <span className="sr-only" role="status">
+            {hint && !grade ? `Hint shown under the editor: how each line starts.${capped ? ' XP halved for this attempt.' : ''}` : ''}
+          </span>
         </div>
 
         <ActionBar
@@ -699,10 +750,23 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
           }
           secondary={
             !hint ? (
-              <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={showHint}>
-                <Lightbulb aria-hidden="true" />
-                Hint
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn btn-quiet btn-sm tdrill-tool"
+                  onClick={showHint}
+                  title={first ? 'Shows how each line starts' : 'Shows how each line starts. Halves the XP before your first check.'}
+                  aria-describedby={first ? undefined : hintId}
+                >
+                  <Lightbulb aria-hidden="true" />
+                  Hint
+                </button>
+                {!first && (
+                  <span id={hintId} className="sr-only">
+                    Shows how each line starts. Using it before your first check halves the XP.
+                  </span>
+                )}
+              </>
             ) : undefined
           }
           checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fixAgain} /> : undefined}
@@ -721,6 +785,7 @@ function MemoryDone({
   backToUnit,
   next,
   onRetry,
+  onGaps,
   onClose,
 }: {
   g: PatternGuide;
@@ -731,6 +796,8 @@ function MemoryDone({
   backToUnit: boolean;
   next: CategoryMeta | null;
   onRetry: () => void;
+  /** A weak run steps back down the ladder: fill the gaps first. */
+  onGaps: () => void;
   onClose: () => void;
 }) {
   const { grade, xp, newBest } = result;
@@ -771,7 +838,7 @@ function MemoryDone({
               You wrote {grade.correct} of {grade.total} lines of the <strong>{meta.name}</strong> template correctly on the first try
               {grade.extra > 0 ? `, plus ${grade.extra} extra line${grade.extra === 1 ? '' : 's'}.` : '.'}
               {acc < READY
-                ? ' Type it again tomorrow. The struggle is what builds memory.'
+                ? ' Filling the gaps first will firm it up.'
                 : newBest
                   ? ' That is a new best.'
                   : !perfect && attempts > 1
@@ -801,6 +868,12 @@ function MemoryDone({
           ) : (
             <>
               {retryBtn}
+              {acc < READY && (
+                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={onGaps}>
+                  <TextCursorInput aria-hidden="true" />
+                  Fill the gaps first
+                </button>
+              )}
               {nextBtn}
             </>
           )}

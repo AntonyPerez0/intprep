@@ -37,6 +37,10 @@
   height: 14px;
   color: var(--success);
 }
+/* Extra lines typed, which count against the score */
+.rebuild-score-extra {
+  color: var(--danger-text);
+}
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .rebuild-kicker-num {
@@ -349,7 +353,9 @@
   margin: 32px auto 0;
 }
 .rebuild-summary-meta {
+  flex: none; /* "30 lines" stays on one line; the title beside it wraps instead */
   margin-left: auto;
+  white-space: nowrap;
   font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--text-tertiary);

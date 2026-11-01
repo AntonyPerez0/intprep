@@ -51,7 +51,7 @@ MASK = 0xFFFFFFFF                    # 32 one-bits
 def to_int32(x):
     x &= MASK                        # keep only the low 32 bits
     if x > 0x7FFFFFFF:               # bit 31 set: it is a negative number
-        x = ~(x ^ MASK)              # same as x - 2**32
+        x = ~(x ^ MASK)              # back to Python's negative number
     return x`,
     templateNotes: [
       '`x & 1` reads the last bit and `x >> 1` drops it. Together they walk through the bits from right to left.',
