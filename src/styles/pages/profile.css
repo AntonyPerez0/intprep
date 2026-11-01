@@ -40,7 +40,7 @@
   border-radius: 50%;
   background: linear-gradient(140deg, var(--brand-400), var(--brand-700));
   color: var(--text-inverse);
-  font-size: 22px;
+  font-size: var(--fs-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   box-shadow:
@@ -57,7 +57,7 @@
   min-width: 0;
 }
 .profile-name {
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: var(--fs-2xl);
   letter-spacing: -0.025em;
   line-height: 1.2;
   overflow: hidden;
@@ -80,7 +80,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
@@ -136,6 +136,10 @@
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
+.profile-level-next {
+  font-weight: 550;
+  color: var(--text-secondary);
+}
 .profile-id-level .progress {
   flex: none;
 }
@@ -148,17 +152,20 @@
   .profile-avatar {
     width: 56px;
     height: 56px;
-    font-size: 19px;
+    font-size: var(--fs-xl);
   }
+  /* Icon-only on phones, with a 40px touch target. */
   .profile-id-edit {
-    width: 32px;
+    width: 40px;
+    height: 40px;
     padding: 0;
+    border-radius: var(--r-md);
   }
   .profile-id-edit .profile-id-edit-label {
     display: none;
   }
   .profile-id-level {
-    padding: 14px 16px;
+    padding: 16px;
   }
 }
 @container profile (min-width: 760px) {
@@ -173,7 +180,10 @@
   .profile-avatar {
     width: 72px;
     height: 72px;
-    font-size: 24px;
+    font-size: var(--fs-2xl);
+  }
+  .profile-name {
+    font-size: var(--fs-3xl);
   }
   .profile-id-level {
     padding: 20px 24px;
@@ -189,9 +199,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .profile-stats .stat-meta {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: auto;
+  line-height: 1.4;
 }
 .profile-unit {
   margin-left: 4px;
@@ -239,19 +248,23 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 4px 16px;
+}
+/* A swatch and its label wrap together, never apart. */
+.profile-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.profile-legend-scale {
   gap: 3px;
 }
-.profile-legend-word {
-  margin: 0 4px;
+.profile-legend-scale > .profile-heat-cell:first-of-type {
+  margin-left: 5px;
 }
-.profile-legend-word:first-child {
-  margin-left: 0;
-}
-.profile-legend-word:last-child {
-  margin-right: 0;
-}
-.profile-legend-gap {
-  margin-left: 12px;
+.profile-legend-scale > .profile-heat-cell:last-of-type {
+  margin-right: 5px;
 }
 
 /* ── Activity ───────────────────────────────────────────────────────────── */
@@ -260,17 +273,59 @@
   gap: 16px;
   margin-top: 12px;
 }
-@container profile (min-width: 940px) {
+@container profile (min-width: 680px) {
   .profile-activity {
-    grid-template-columns: minmax(0, 1.85fr) minmax(280px, 1fr);
+    grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
   }
 }
 
 /* Practice calendar */
+.profile-cal {
+  position: relative;
+}
 .profile-heat-wrap {
+  position: relative;
   width: 100%;
   min-width: 0;
   overflow: hidden;
+}
+.profile-heat-wrap.is-empty .profile-heat {
+  opacity: 0.55;
+}
+.profile-heat-empty {
+  position: absolute;
+  inset: 16px 0 0;
+  display: grid;
+  place-items: center;
+  padding: 0 8px;
+  pointer-events: none;
+}
+.profile-heat-empty-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-tertiary);
+}
+.profile-heat-empty-box svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.profile-heat-empty-title {
+  font-size: var(--fs-md);
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--text);
+}
+.profile-heat-empty-body {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
 }
 .profile-heat {
   display: grid;
@@ -279,14 +334,14 @@
 }
 .profile-heat-day {
   align-self: center;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1;
   color: var(--text-tertiary);
 }
 .profile-heat-month {
   align-self: start;
   width: 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1;
   white-space: nowrap;
   color: var(--text-tertiary);
@@ -312,6 +367,15 @@
 .profile-heat-cell.is-frozen {
   background: color-mix(in srgb, var(--gem) 45%, var(--surface-active));
 }
+/* Days before the account existed: present for scale, but clearly not "missed". */
+.profile-heat-cell.is-before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+.profile-heat-cell.is-tip {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
 .profile-heat-cell.is-today {
   outline: 1.5px solid var(--text-secondary);
   outline-offset: 1px;
@@ -320,8 +384,29 @@
   visibility: hidden;
 }
 .profile-legend .profile-heat-cell {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
+}
+.profile-heat-tip {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  white-space: nowrap;
+  border-radius: var(--r-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+.profile-heat-tip strong {
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* Last 7 days */
@@ -429,7 +514,7 @@
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-secondary);
@@ -505,25 +590,20 @@
 .profile-ach-meter {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 168px;
-  padding-bottom: 4px;
-  font-size: var(--fs-sm);
-  font-weight: 550;
-  color: var(--text-secondary);
+  width: 160px;
+  padding-bottom: 6px;
+}
+.profile-ach {
+  margin-top: 12px;
+  padding: 8px;
 }
 .profile-medals {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 12px 0 0;
+  gap: 4px;
+  margin: 0;
   padding: 0;
   list-style: none;
-}
-@container profile (min-width: 600px) {
-  .profile-medals {
-    gap: 12px;
-  }
 }
 @container profile (min-width: 940px) {
   .profile-medals {
@@ -535,12 +615,9 @@
   flex-direction: column;
   align-items: center;
   min-width: 0;
-  padding: 18px 12px 14px;
+  padding: 16px 8px;
   text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xs);
+  border-radius: var(--r-md);
 }
 .profile-medal-badge {
   position: relative;
@@ -558,8 +635,8 @@
 }
 .profile-medal-lock {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
+  right: -4px;
+  bottom: -4px;
   display: grid;
   place-items: center;
   width: 20px;
@@ -570,8 +647,8 @@
   color: var(--text-tertiary);
 }
 .profile-medal-lock svg {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
 }
 .profile-medal-title {
   font-size: var(--fs-sm);
@@ -591,8 +668,8 @@
   align-items: center;
   gap: 4px;
   margin-top: auto;
-  padding-top: 10px;
-  font-size: 11px;
+  padding-top: 8px;
+  font-size: var(--fs-xs);
   font-weight: 550;
   line-height: 1;
   color: var(--text-tertiary);
@@ -608,10 +685,6 @@
 .profile-medal.is-locked .profile-medal-foot svg {
   color: var(--gem);
 }
-.profile-medal.is-locked {
-  background: color-mix(in srgb, var(--surface) 55%, var(--canvas));
-  box-shadow: none;
-}
 .profile-medal.is-locked .profile-medal-title {
   color: var(--text-secondary);
 }
@@ -622,14 +695,43 @@
   border-color: var(--border);
   box-shadow: none;
 }
+.profile-ach-more {
+  display: none;
+  justify-content: center;
+  padding: 4px 0 4px;
+  border-top: 1px solid var(--border-subtle);
+  margin: 4px -8px -8px;
+}
+.profile-ach-more .btn {
+  height: 40px;
+  color: var(--text-secondary);
+}
+.profile-ach-more svg {
+  transition: transform var(--dur) var(--ease);
+}
+.profile-ach-more svg.is-flipped {
+  transform: rotate(180deg);
+}
+/* Narrow layouts preview two rows, with a toggle for the rest. */
+@container profile (max-width: 939px) {
+  .profile-medals.is-collapsed > .profile-medal:nth-child(n + 7) {
+    display: none;
+  }
+  .profile-ach-more {
+    display: flex;
+  }
+}
 @container profile (min-width: 600px) and (max-width: 939px) {
+  .profile-medals {
+    gap: 4px 8px;
+  }
   .profile-medal {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-rows: auto auto 1fr;
-    column-gap: 14px;
+    column-gap: 16px;
     align-items: start;
-    padding: 14px 16px;
+    padding: 16px;
     text-align: left;
   }
   .profile-medal-badge {
@@ -649,12 +751,20 @@
   }
   .profile-medal-foot {
     align-self: end;
-    padding-top: 8px;
   }
 }
 @container profile (max-width: 599px) {
+  .profile-ach {
+    padding: 4px;
+  }
+  .profile-ach-more {
+    margin: 4px -4px -4px;
+  }
+  .profile-medals {
+    gap: 0;
+  }
   .profile-medal {
-    padding: 14px 8px 12px;
+    padding: 16px 4px 12px;
   }
   .profile-medals .profile-medal .icon-tile {
     width: 44px;
@@ -665,13 +775,10 @@
     height: 20px;
   }
   .profile-medal-badge {
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .profile-medal-title {
-    font-size: 12.5px;
-  }
-  .profile-medal-desc {
-    font-size: 11.5px;
+    font-size: var(--fs-xs);
   }
 }
 
@@ -686,6 +793,14 @@
   align-items: center;
   gap: 16px;
   padding: 20px;
+}
+@container profile (max-width: 519px) {
+  .profile-shop-item {
+    padding: 16px;
+  }
+  .profile-shop-foot {
+    padding: 12px 16px;
+  }
 }
 .profile-shop-name {
   display: flex;
@@ -721,11 +836,11 @@
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 .profile-slots {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 .profile-slot {
   display: grid;
@@ -759,11 +874,33 @@
   grid-column: 1 / -1;
 }
 .profile-shop-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 24px;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
   background: var(--surface-hover);
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
+}
+.profile-shop-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.profile-shop-balance svg {
+  width: 14px;
+  height: 14px;
+  color: var(--gem);
+}
+.profile-shop-balance strong {
+  font-weight: 600;
+  color: var(--text);
 }
 @container profile (min-width: 520px) {
   .profile-shop-item {
@@ -786,7 +923,7 @@
     grid-column: 3;
     flex-direction: column;
     align-items: flex-end;
-    gap: 6px;
+    gap: 8px;
   }
   .profile-shop-buy {
     grid-column: 4;
@@ -803,7 +940,7 @@
 }
 .profile-group {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 .profile-group-head h3 {
   font-size: var(--fs-md);
@@ -836,10 +973,9 @@
   justify-content: space-between;
   gap: 12px 24px;
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-subtle);
 }
-.profile-row:last-child {
-  border-bottom: 0;
+.profile-row + .profile-row {
+  border-top: 1px solid var(--border-subtle);
 }
 .profile-row-text {
   flex: 1 1 220px;
@@ -868,12 +1004,27 @@
 .profile-row-note {
   padding: 0 20px 16px;
 }
+.profile-row-note:empty {
+  display: none;
+}
+/* The shared switch is 36x20; give it a 44x40 hit area without changing its look. */
+.profile-row .toggle::before {
+  content: '';
+  position: absolute;
+  inset: -10px -4px;
+}
 .profile-name-input {
   width: 260px;
 }
 .profile-seg button {
   height: 32px;
   justify-content: center;
+}
+/* Make the selected segment legible in dark mode, where surface and sunken are close. */
+.profile-seg button.on {
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 0 0 1px var(--border);
 }
 .profile-seg-sub {
   font-weight: 500;
@@ -912,10 +1063,18 @@
     grid-auto-columns: minmax(0, 1fr);
   }
   .profile-row {
-    padding: 14px 16px;
+    padding: 16px;
   }
   .profile-row-note {
-    padding: 0 16px 14px;
+    padding: 0 16px 16px;
+  }
+  /* Phone-sized touch targets. */
+  .profile-seg button {
+    height: 40px;
+  }
+  .profile-row-control .btn-sm {
+    height: 40px;
+    padding: 0 14px;
   }
 }
 @container pform (max-width: 459px) {
@@ -936,7 +1095,7 @@
 .profile-science {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   margin-top: 24px;
   padding: 16px 20px;
 }

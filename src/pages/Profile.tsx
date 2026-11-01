@@ -1,9 +1,10 @@
 import '../styles/pages/profile.css';
-import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -27,7 +28,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { PROBLEMS } from '../content/index';
-import { addDays, lastNDays, parseDay, today } from '../lib/date';
+import { addDays, dayKey, lastNDays, parseDay, today } from '../lib/date';
 import { ACHIEVEMENTS, DAILY_GOALS, GEMS, levelInfo, levelTitle } from '../lib/game';
 import { crowns } from '../lib/srs';
 import {
@@ -116,7 +117,7 @@ function IdentityCard({ p, onEdit }: { p: Progress; onEdit: () => void }) {
         <div className="profile-level-top">
           <span className="profile-level-name">
             <Star aria-hidden="true" />
-            Level {lv.level}
+            Progress to level {lv.level + 1}
           </span>
           <span className="profile-level-nums">
             <strong>{fmt(lv.into)}</strong> / {fmt(lv.cost)} XP
@@ -124,12 +125,10 @@ function IdentityCard({ p, onEdit }: { p: Progress; onEdit: () => void }) {
         </div>
         <ProgressBar value={lv.pct} large label={`Progress to level ${lv.level + 1}`} />
         <div className="profile-level-bottom">
-          <span>
-            {fmt(lv.cost - lv.into)} XP to level {lv.level + 1}
-          </span>
+          <span>{fmt(lv.cost - lv.into)} XP to go</span>
           {nextTitle !== title && (
-            <span className="profile-level-next">
-              Next title: {nextTitle} at level {nextTitleLevel}
+            <span>
+              Next title: <span className="profile-level-next">{nextTitle}</span> at level {nextTitleLevel}
             </span>
           )}
         </div>
@@ -140,9 +139,10 @@ function IdentityCard({ p, onEdit }: { p: Progress; onEdit: () => void }) {
 
 // ── Activity: practice calendar ─────────────────────────────────────────────
 
-const DAY_COL = 28;
+const WEEK_OPTIONS = [52, 40, 32, 26, 20, 16, 12];
+const DAY_COL = 32;
 const GAP = 3;
-const MIN_CELL = 15;
+const MIN_CELL = 13;
 const MAX_CELL = 18;
 const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
 
@@ -154,19 +154,26 @@ function heatLevel(xp: number, goal: number) {
   return 4;
 }
 
+type HeatTip = { d: string; x: number; y: number };
+
 function PracticeCalendar({ p }: { p: Progress }) {
   const [ref, width] = useWidth<HTMLDivElement>();
+  const cardRef = useRef<HTMLElement>(null);
+  const [tip, setTip] = useState<HeatTip | null>(null);
   const avail = Math.max(0, width - DAY_COL - GAP);
-  const weeks = width ? Math.max(12, Math.min(53, Math.floor((avail + GAP) / (MIN_CELL + GAP)))) : 18;
+  const weeks = width ? (WEEK_OPTIONS.find((n) => (avail + GAP) / n - GAP >= MIN_CELL) ?? 12) : 20;
   const cell = width ? Math.min(MAX_CELL, Math.floor(((avail + GAP) / weeks - GAP) * 10) / 10) : 12;
+  useEffect(() => setTip(null), [width]);
 
   const t = today();
+  const joined = dayKey(new Date(p.createdAt));
   const start = addDays(t, -parseDay(t).getDay() - 7 * (weeks - 1));
   const cols = Array.from({ length: weeks }, (_, c) => Array.from({ length: 7 }, (_, r) => addDays(start, c * 7 + r)));
   const monthOf = (k: number) => parseDay(cols[k][0]).getMonth();
   const changes = (k: number) => k > 0 && k < weeks && monthOf(k) !== monthOf(k - 1);
+  // A label needs about two columns of room, so skip one that would start in the last column.
   const months = cols.map((col, c) => {
-    const show = c === 0 ? !changes(1) && !changes(2) : changes(c);
+    const show = c === 0 ? !changes(1) && !changes(2) : changes(c) && c < weeks - 1;
     return show ? parseDay(col[0]).toLocaleDateString(undefined, { month: 'short' }) : '';
   });
 
@@ -174,27 +181,57 @@ function PracticeCalendar({ p }: { p: Progress }) {
   const inWindow = cols.flat().filter((d) => d <= t);
   const active = inWindow.filter((d) => (p.xpByDay[d] ?? 0) > 0).length;
   const anyFrozen = inWindow.some((d) => frozen.has(d) && !(p.xpByDay[d] ?? 0));
-  const label = (d: string) => parseDay(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  const joinedInWindow = joined > inWindow[0];
+  const label = (d: string) => parseDay(d).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const sub = active
+    ? `${plural(active, 'active day')} ${joinedInWindow ? 'since you joined' : `in the last ${weeks} weeks`}`
+    : `Last ${weeks} weeks`;
+
+  const describe = (d: string) => {
+    const xp = p.xpByDay[d] ?? 0;
+    if (xp) return `${fmt(xp)} XP`;
+    if (frozen.has(d)) return 'Streak freeze used';
+    if (d < joined) return 'Before you joined';
+    return 'No practice';
+  };
+
+  const showTip = (target: EventTarget | null) => {
+    const el = (target as Element | null)?.closest?.('[data-d]') as HTMLElement | null;
+    const card = cardRef.current;
+    if (!el || !card) return setTip(null);
+    const c = card.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const x = Math.min(c.width - 88, Math.max(88, r.left + r.width / 2 - c.left));
+    setTip({ d: el.dataset.d!, x, y: r.top - c.top });
+  };
+  const onPointerOver = (e: PointerEvent) => e.pointerType === 'mouse' && showTip(e.target);
+  const onPointerLeave = (e: PointerEvent) => e.pointerType === 'mouse' && setTip(null);
+  const onClick = (e: MouseEvent) => {
+    const el = (e.target as Element).closest?.('[data-d]') as HTMLElement | null;
+    if (!el || el.dataset.d === tip?.d) return setTip(null);
+    showTip(el);
+  };
 
   return (
-    <section className="card profile-card profile-cal" aria-labelledby="profile-cal-title">
+    <section ref={cardRef} className="card profile-card profile-cal" aria-labelledby="profile-cal-title">
       <div className="profile-card-head">
         <div>
           <h3 id="profile-cal-title" className="card-title">
             Practice calendar
           </h3>
-          <div className="card-subtitle">
-            {active ? `${plural(active, 'active day')} in the last ${weeks} weeks` : `No practice yet in the last ${weeks} weeks`}
-          </div>
+          <div className="card-subtitle">{sub}</div>
         </div>
       </div>
 
-      <div ref={ref} className="profile-heat-wrap">
+      <div ref={ref} className={`profile-heat-wrap ${active ? '' : 'is-empty'}`}>
         <div
           className="profile-heat"
           role="img"
           aria-label={`Practice calendar for the last ${weeks} weeks: ${plural(active, 'active day')}`}
           style={{ gridTemplateColumns: `${DAY_COL}px repeat(${weeks}, ${cell}px)`, gridTemplateRows: `16px repeat(7, ${cell}px)` }}
+          onPointerOver={onPointerOver}
+          onPointerLeave={onPointerLeave}
+          onClick={onClick}
         >
           <span />
           {DAY_LABELS.map((d, i) => (
@@ -209,33 +246,54 @@ function PracticeCalendar({ p }: { p: Progress }) {
                 if (d > t) return <span key={d} className="profile-heat-cell is-future" />;
                 const xp = p.xpByDay[d] ?? 0;
                 const isFrozen = xp === 0 && frozen.has(d);
+                const before = xp === 0 && !isFrozen && d < joined;
                 return (
                   <span
                     key={d}
-                    className={`profile-heat-cell ${isFrozen ? 'is-frozen' : ''} ${d === t ? 'is-today' : ''}`}
+                    data-d={d}
+                    className={`profile-heat-cell ${isFrozen ? 'is-frozen' : ''} ${before ? 'is-before' : ''} ${d === t ? 'is-today' : ''} ${tip?.d === d ? 'is-tip' : ''}`}
                     data-l={heatLevel(xp, p.settings.dailyGoal)}
-                    title={`${label(d)} · ${isFrozen ? 'Streak freeze used' : xp ? `${fmt(xp)} XP` : 'No practice'}`}
                   />
                 );
               })}
             </Fragment>
           ))}
         </div>
+        {!active && (
+          <div className="profile-heat-empty">
+            <div className="profile-heat-empty-box">
+              <CalendarDays aria-hidden="true" />
+              <div>
+                <div className="profile-heat-empty-title">No practice yet</div>
+                <div className="profile-heat-empty-body">Each day you earn XP fills in a square.</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
+      {tip && (
+        <div className="profile-heat-tip" role="tooltip" style={{ left: tip.x, top: tip.y }}>
+          <strong>{describe(tip.d)}</strong>
+          <span>{label(tip.d)}</span>
+        </div>
+      )}
+
       <div className="profile-card-foot">
-        <span>Each square is one day, shaded by XP earned.</span>
+        <span>One square per day, shaded by XP earned.</span>
         <span className="profile-legend" aria-hidden="true">
-          <span className="profile-legend-word">Less</span>
-          {[0, 1, 2, 3, 4].map((l) => (
-            <span key={l} className="profile-heat-cell" data-l={l} />
-          ))}
-          <span className="profile-legend-word">More</span>
+          <span className="profile-legend-item profile-legend-scale">
+            Less
+            {[0, 1, 2, 3, 4].map((l) => (
+              <span key={l} className="profile-heat-cell" data-l={l} />
+            ))}
+            More
+          </span>
           {anyFrozen && (
-            <>
-              <span className="profile-heat-cell is-frozen profile-legend-gap" />
-              <span className="profile-legend-word">Freeze</span>
-            </>
+            <span className="profile-legend-item">
+              <span className="profile-heat-cell is-frozen" />
+              Freeze
+            </span>
           )}
         </span>
       </div>
@@ -268,7 +326,7 @@ function WeekChart({ p }: { p: Progress }) {
         </div>
         <div className="profile-week-total">
           <span className="profile-week-total-v">{fmt(total)}</span>
-          <span className="profile-week-total-k">XP this week</span>
+          <span className="profile-week-total-k">XP total</span>
         </div>
       </div>
 
@@ -312,12 +370,18 @@ function WeekChart({ p }: { p: Progress }) {
 
       <div className="profile-card-foot">
         <span className="profile-legend" aria-hidden="true">
-          <span className="profile-key is-met" />
-          <span className="profile-legend-word">Goal met</span>
-          <span className="profile-key profile-legend-gap" />
-          <span className="profile-legend-word">Below goal</span>
-          <span className="profile-key-line profile-legend-gap" />
-          <span className="profile-legend-word">Goal · {goal} XP</span>
+          <span className="profile-legend-item">
+            <span className="profile-key is-met" />
+            Goal met
+          </span>
+          <span className="profile-legend-item">
+            <span className="profile-key" />
+            Below goal
+          </span>
+          <span className="profile-legend-item">
+            <span className="profile-key-line" />
+            Goal · {goal} XP
+          </span>
         </span>
       </div>
     </section>
@@ -326,61 +390,72 @@ function WeekChart({ p }: { p: Progress }) {
 
 // ── Achievements ────────────────────────────────────────────────────────────
 
+/** Medals shown before "Show all" on narrow layouts (two rows of three). */
+const MEDALS_PREVIEW = 6;
+
 function Achievements({ p }: { p: Progress }) {
+  const [expanded, setExpanded] = useState(false);
   const unlocked = ACHIEVEMENTS.filter((a) => p.achievements[a.id]).length;
+  // Earned medals first; otherwise keep the registry's progression order.
+  const ordered = [...ACHIEVEMENTS].sort((a, b) => Number(Boolean(p.achievements[b.id])) - Number(Boolean(p.achievements[a.id])));
   return (
-    <section aria-label="Achievements">
+    <section aria-labelledby="profile-ach-title">
       <SectionHeader
-        title="Achievements"
+        title={<span id="profile-ach-title">Achievements</span>}
         sub={`${unlocked} of ${ACHIEVEMENTS.length} unlocked`}
         right={
           <div className="profile-ach-meter">
-            <ProgressBar value={unlocked / ACHIEVEMENTS.length} label="Achievements unlocked" />
-            <span className="tabular">{Math.round((unlocked / ACHIEVEMENTS.length) * 100)}%</span>
+            <ProgressBar value={unlocked / ACHIEVEMENTS.length} label={`${unlocked} of ${ACHIEVEMENTS.length} achievements unlocked`} />
           </div>
         }
       />
-      <ul className="profile-medals">
-        {ACHIEVEMENTS.map((a) => {
-          const at = p.achievements[a.id];
-          const on = Boolean(at);
-          const I = (ICONS as Record<string, LucideIcon>)[a.icon] ?? ICONS.award;
-          // Real unlocks store a timestamp; very old/placeholder values are shown without a date.
-          const when = on && at > 1e12 ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          return (
-            <li
-              key={a.id}
-              className={`profile-medal ${on ? 'is-on' : 'is-locked'}`}
-              title={on ? `${a.title}: ${a.desc}${when ? ` · unlocked ${when}` : ''}` : `${a.title}: ${a.desc} · reward ${a.gems} gems`}
-            >
-              <span className="profile-medal-badge">
-                <IconTile icon={I} color={on ? 'var(--xp)' : 'var(--text-disabled)'} size="lg" />
-                {!on && (
-                  <span className="profile-medal-lock">
-                    <Lock aria-hidden="true" />
-                  </span>
-                )}
-              </span>
-              <span className="profile-medal-title">{a.title}</span>
-              <span className="profile-medal-desc">{a.desc}</span>
-              <span className="profile-medal-foot">
-                {on ? (
-                  <>
-                    <Check aria-hidden="true" />
-                    <span className="sr-only">Unlocked</span>
-                    <span aria-hidden="true">{when ? when : 'Unlocked'}</span>
-                  </>
-                ) : (
-                  <>
-                    <Gem aria-hidden="true" />
-                    <span className="sr-only">Locked. Reward:</span>+{a.gems}
-                  </>
-                )}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="card profile-ach">
+        <ul id="profile-medals" className={`profile-medals ${expanded ? '' : 'is-collapsed'}`}>
+          {ordered.map((a) => {
+            const at = p.achievements[a.id];
+            const on = Boolean(at);
+            const I = (ICONS as Record<string, LucideIcon>)[a.icon] ?? ICONS.award;
+            // Real unlocks store a timestamp; very old/placeholder values are shown without a date.
+            const when = on && at > 1e12 ? new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+            return (
+              <li key={a.id} className={`profile-medal ${on ? 'is-on' : 'is-locked'}`}>
+                <span className="profile-medal-badge">
+                  <IconTile icon={I} color={on ? 'var(--xp)' : 'var(--text-disabled)'} size="lg" />
+                  {!on && (
+                    <span className="profile-medal-lock">
+                      <Lock aria-hidden="true" />
+                    </span>
+                  )}
+                </span>
+                <span className="profile-medal-title">{a.title}</span>
+                <span className="profile-medal-desc">{a.desc}</span>
+                <span className="profile-medal-foot">
+                  {on ? (
+                    <>
+                      <Check aria-hidden="true" />
+                      <span className="sr-only">Unlocked</span>
+                      <span aria-hidden="true">{when ? when : 'Unlocked'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Gem aria-hidden="true" />
+                      <span className="sr-only">Locked. Reward:</span>+{a.gems}
+                    </>
+                  )}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        {ACHIEVEMENTS.length > MEDALS_PREVIEW && (
+          <div className="profile-ach-more">
+            <button type="button" className="btn btn-quiet btn-sm" aria-expanded={expanded} aria-controls="profile-medals" onClick={() => setExpanded((v) => !v)}>
+              {expanded ? 'Show fewer' : `Show all ${ACHIEVEMENTS.length}`}
+              <ChevronDown className={expanded ? 'is-flipped' : undefined} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -392,16 +467,7 @@ function Shop({ p }: { p: Progress }) {
   const short = Math.max(0, GEMS.freezeCost - p.gems);
   return (
     <section aria-label="Shop">
-      <SectionHeader
-        title="Shop"
-        sub="Spend the gems you earn from lessons, daily goals and achievements."
-        right={
-          <span className="pill-stat gem" aria-label={`Balance: ${p.gems} gems`}>
-            <Gem strokeWidth={2} aria-hidden="true" />
-            {fmt(p.gems)}
-          </span>
-        }
-      />
+      <SectionHeader title="Shop" sub="Spend the gems you earn from lessons, daily goals and achievements." />
       <div className="card pad-0 profile-shop">
         <div className="profile-shop-item">
           <IconTile icon={Snowflake} color="var(--gem)" size="lg" />
@@ -447,11 +513,19 @@ function Shop({ p }: { p: Progress }) {
           </button>
         </div>
         <div className="profile-shop-foot">
-          {full
-            ? `You can hold up to ${GEMS.maxFreezes} freezes. One is used each time you miss a day.`
-            : short > 0
-              ? `You need ${plural(short, 'more gem')}. Finish a lesson or hit your daily goal to earn some.`
-              : 'Holding a freeze means one missed day will not reset your streak.'}
+          <span>
+            {full
+              ? `You can hold up to ${GEMS.maxFreezes} freezes. One is used each time you miss a day.`
+              : short > 0
+                ? `You need ${plural(short, 'more gem')}. Finish a lesson or hit your daily goal to earn some.`
+                : 'Holding a freeze means one missed day will not reset your streak.'}
+          </span>
+          <span className="profile-shop-balance">
+            <Gem aria-hidden="true" />
+            <span>
+              Balance <strong>{fmt(p.gems)}</strong>
+            </span>
+          </span>
         </div>
       </div>
     </section>
@@ -519,7 +593,6 @@ const INPUT_MODES: { id: Progress['settings']['typingMode']; label: string; icon
 
 export function Profile() {
   const p = useProgress();
-  const lv = levelInfo(p.xp);
   const learned = learnedIds(p).length;
   const mastered = Object.values(p.problems).filter((x) => crowns(x.srs) >= 5).length;
   const acc = p.stats.answered ? Math.round((p.stats.correct / p.stats.answered) * 100) : 0;
@@ -528,7 +601,10 @@ export function Profile() {
   const fileRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const resetRef = useRef<HTMLButtonElement>(null);
   const goal = DAILY_GOALS.find((g) => g.xp === p.settings.dailyGoal);
+  const xpToday = p.xpByDay[today()] ?? 0;
+  const streakMeta = practicedToday(p) ? 'Extended today' : p.streak.current > 0 ? 'Extend it today' : 'Start one today';
 
   const download = () => {
     const blob = new Blob([exportProgress()], { type: 'application/json' });
@@ -537,6 +613,11 @@ export function Profile() {
     a.download = `intprep-progress-${today()}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+
+  const closeReset = () => {
+    setConfirmReset(false);
+    resetRef.current?.focus();
   };
 
   const editProfile = () => {
@@ -559,7 +640,7 @@ export function Profile() {
               <span className="profile-unit">{p.streak.current === 1 ? 'day' : 'days'}</span>
             </>
           }
-          meta={practicedToday(p) ? 'Extended today' : 'Keep it going today'}
+          meta={streakMeta}
         />
         <StatCard
           icon="trophy"
@@ -570,9 +651,9 @@ export function Profile() {
               <span className="profile-unit">{p.streak.longest === 1 ? 'day' : 'days'}</span>
             </>
           }
-          meta="Personal best"
+          meta={p.streak.longest > 0 ? 'Personal best' : 'No streak yet'}
         />
-        <StatCard icon="star" accent="var(--xp)" label="Total XP" value={fmt(p.xp)} meta={`Level ${lv.level}`} />
+        <StatCard icon="star" accent="var(--xp)" label="Total XP" value={fmt(p.xp)} meta={xpToday ? `+${fmt(xpToday)} today` : 'None earned today'} />
         <StatCard
           icon="checks"
           label="Learned"
@@ -584,7 +665,7 @@ export function Profile() {
           }
           meta={`${Math.round((learned / PROBLEMS.length) * 100)}% of the curriculum`}
         />
-        <StatCard icon="crown" label="Mastered" value={fmt(mastered)} meta="At full mastery" />
+        <StatCard icon="crown" label="Mastered" value={fmt(mastered)} meta={learned ? `Of ${fmt(learned)} learned` : 'None learned yet'} />
         <StatCard
           icon="target"
           label="Drill accuracy"
@@ -594,7 +675,7 @@ export function Profile() {
       </div>
 
       <section aria-label="Activity">
-        <SectionHeader title="Activity" sub="Your practice over time." />
+        <SectionHeader title="Activity" />
         <div className="profile-activity">
           <PracticeCalendar p={p} />
           <WeekChart p={p} />
@@ -719,9 +800,9 @@ export function Profile() {
                 }}
               />
             </SettingRow>
-            {importResult && (
-              <div className="profile-row-note" role="status">
-                {importResult === 'ok' ? (
+            <div className="profile-row-note" role="status">
+              {importResult &&
+                (importResult === 'ok' ? (
                   <div className="callout callout-success">
                     <CircleCheck aria-hidden="true" />
                     Progress imported.
@@ -731,14 +812,13 @@ export function Profile() {
                     <CircleAlert aria-hidden="true" />
                     That file is not an IntPrep backup.
                   </div>
-                )}
-              </div>
-            )}
+                ))}
+            </div>
           </SettingsGroup>
 
           <SettingsGroup title="Danger zone" desc="Actions here cannot be undone." danger>
             <SettingRow label="Reset all progress" desc="Delete your XP, streak, gems, achievements and review schedule from this browser." inline>
-              <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmReset(true)}>
+              <button ref={resetRef} type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmReset(true)}>
                 <RotateCcw aria-hidden="true" />
                 Reset
               </button>
@@ -757,7 +837,7 @@ export function Profile() {
       </Link>
 
       {confirmReset && (
-        <Modal onClose={() => setConfirmReset(false)} labelledBy="profile-reset-title">
+        <Modal onClose={closeReset} labelledBy="profile-reset-title">
           <div className="profile-modal">
             <IconTile icon={TriangleAlert} color="var(--danger)" />
             <div className="grow">
@@ -771,7 +851,8 @@ export function Profile() {
             </div>
           </div>
           <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setConfirmReset(false)}>
+            {/* Focus the safe choice when the dialog opens. */}
+            <button type="button" className="btn btn-secondary" onClick={closeReset} autoFocus>
               Cancel
             </button>
             <button

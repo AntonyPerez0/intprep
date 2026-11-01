@@ -1,17 +1,17 @@
 import '../styles/pages/science.css';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookMarked, BookOpen, Brain, CalendarCheck, FileText, FlaskConical, Repeat, Route, Shuffle, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BookMarked, FileText, FlaskConical, Route } from 'lucide-react';
 import { SCIENCE } from '../content/science';
 import { IconTile, SCIENCE_ICON } from '../components/icons';
 import { LogoMark } from '../components/ui';
 
-const SHORT_VERSION: { icon: LucideIcon; verb: string; rest: ReactNode }[] = [
-  { icon: BookOpen, verb: 'Learn', rest: ' a pattern with worked examples, broken into small chunks.' },
-  { icon: Brain, verb: 'Retrieve', rest: ' it: guess before you are told, rebuild code from memory, order the steps yourself.' },
-  { icon: CalendarCheck, verb: 'Space', rest: ' it: each problem returns right as you are about to forget it.' },
-  { icon: Shuffle, verb: 'Mix', rest: ' it: reviews and Blitz shuffle patterns so you learn to tell them apart — exactly what an interview asks.' },
-  { icon: Repeat, verb: 'Keep showing up', rest: ': streaks, goals and small wins turn practice into a daily habit.' },
+const SHORT_VERSION: { verb: string; rest: ReactNode }[] = [
+  { verb: 'Learn', rest: ' a pattern with worked examples, broken into small chunks.' },
+  { verb: 'Retrieve', rest: ' it: guess before you are told, rebuild code from memory, order the steps yourself.' },
+  { verb: 'Space', rest: ' it: each problem returns right as you are about to forget it.' },
+  { verb: 'Mix', rest: ' it: reviews and Blitz shuffle patterns so you learn to tell them apart — exactly what an interview asks.' },
+  { verb: 'Keep showing up', rest: ': streaks, goals and small wins turn practice into a daily habit.' },
 ];
 
 const SUMMARY_ID = 'science-summary';
@@ -109,7 +109,7 @@ export function Science() {
               The short version
             </h2>
             <ol className="science-steps">
-              {SHORT_VERSION.map(({ icon: I, verb, rest }, i) => (
+              {SHORT_VERSION.map(({ verb, rest }, i) => (
                 <li key={verb}>
                   <span className="science-step-num" aria-hidden="true">
                     {i + 1}
@@ -118,7 +118,6 @@ export function Science() {
                     <strong>{verb}</strong>
                     {rest}
                   </p>
-                  <I className="science-step-icon" aria-hidden="true" />
                 </li>
               ))}
             </ol>

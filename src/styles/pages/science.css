@@ -28,13 +28,13 @@
   height: 14px;
 }
 .science-title {
-  font-size: clamp(28px, 4.2vw, var(--fs-4xl));
+  font-size: var(--fs-3xl);
   font-weight: 650;
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 .science-lead {
-  margin: 14px 0 0;
+  margin: 16px 0 0;
   font-size: var(--fs-lg);
   line-height: 1.6;
   color: var(--text-secondary);
@@ -44,7 +44,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 0;
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--fs-sm);
@@ -72,6 +72,11 @@
 }
 .science-toc {
   display: none;
+}
+@container science (min-width: 640px) {
+  .science-title {
+    font-size: var(--fs-4xl);
+  }
 }
 @container science (min-width: 900px) {
   .science-layout {
@@ -108,7 +113,7 @@
 .science-steps li {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
   padding: 12px 0;
   border-top: 1px solid var(--border-subtle);
 }
@@ -146,13 +151,6 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
-.science-step-icon {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin-top: 3px;
-  color: var(--text-disabled);
-}
 
 /* ── Principles ─────────────────────────────────────────────────────────── */
 .science-section-head {
@@ -174,8 +172,8 @@
 .science-principle-head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 .science-principle-num {
   font-size: var(--fs-xs);
@@ -198,21 +196,18 @@
 }
 .science-inapp {
   margin-top: 16px;
-  padding: 14px 16px 14px 18px;
+  padding: 16px;
   border-radius: var(--r-md);
   background: var(--surface-hover);
-  border: 1px solid var(--border);
-  box-shadow: inset 2px 0 0 var(--brand);
+  border: 1px solid var(--border-subtle);
 }
 .science-inapp-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 6px;
-  font-size: var(--fs-xs);
+  margin-bottom: 8px;
+  font-size: var(--fs-sm);
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--brand-text);
 }
 .science-inapp p {
@@ -226,7 +221,7 @@
   align-items: flex-start;
   gap: 8px;
   margin-top: 16px;
-  padding-top: 14px;
+  padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
   font-size: var(--fs-sm);
   line-height: 1.5;
@@ -332,6 +327,10 @@
 .science-toc button:hover {
   color: var(--text);
 }
+/* The rail scrolls, so keep the focus ring inside it rather than clipped. */
+.science-toc button:focus-visible {
+  outline-offset: -2px;
+}
 .science-toc button.on {
   color: var(--text);
   font-weight: 550;
@@ -348,9 +347,9 @@
 }
 .science-toc-num {
   flex: none;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
 }
 .science-toc button.on .science-toc-num {
   color: var(--brand-text);
@@ -369,7 +368,7 @@
   }
   .science-summary,
   .science-principle {
-    padding: 18px;
+    padding: 16px;
   }
   .science-principle-head {
     gap: 12px;
@@ -383,14 +382,11 @@
     width: 20px;
     height: 20px;
   }
-  .science-step-icon {
-    display: none;
-  }
   .science-section-head {
     margin-top: 36px;
   }
   .science-cta {
-    padding: 18px;
+    padding: 16px;
   }
   .science-cta .icon-tile {
     display: none;
