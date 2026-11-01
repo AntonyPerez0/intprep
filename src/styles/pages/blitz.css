@@ -411,14 +411,6 @@
   color: var(--danger-text);
 }
 
-/* Header countdown bar (coloured via progressColor) ticks every 0.1s: move it
-   linearly so it doesn't ease in steps. ProgressBar has no instant option. */
-.session:has(.blitz-play) .session-head .progress > div {
-  transition:
-    width 0.1s linear,
-    background var(--dur) var(--ease);
-}
-
 /* ── Play: question & options ───────────────────────────────────────────── */
 .blitz-round {
   animation: blitz-rise 0.22s var(--ease);

@@ -27,6 +27,8 @@ export function ActionBar({
   feedback,
   secondary,
   title,
+  primaryClassName = '',
+  primaryIcon,
 }: {
   status: CheckStatus;
   onCheck?: () => void;
@@ -37,6 +39,10 @@ export function ActionBar({
   feedback?: ReactNode;
   secondary?: ReactNode;
   title?: string;
+  /** Extra class on the primary button (e.g. a test hook such as `blitz-start`). */
+  primaryClassName?: string;
+  /** Leading icon for the idle primary button; replaces the trailing arrow. */
+  primaryIcon?: ReactNode;
 }) {
   const praise = useMemo(() => PRAISE[Math.floor(Math.random() * PRAISE.length)], [status]);
   const enc = useMemo(() => ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)], [status]);
@@ -87,13 +93,14 @@ export function ActionBar({
           {isIdle ? (secondary ?? <span />) : <span />}
           <button
             type="button"
-            className={`btn btn-lg ${status === 'wrong' ? 'btn-danger' : status === 'correct' ? 'btn-success' : 'btn-primary'}`}
+            className={`btn btn-lg ${status === 'wrong' ? 'btn-danger' : status === 'correct' ? 'btn-success' : 'btn-primary'} ${primaryClassName}`}
             disabled={!primaryEnabled}
             onClick={primary}
             autoFocus={!isIdle}
           >
+            {isIdle && primaryIcon}
             {label}
-            {isIdle && onCheck ? null : <ArrowRight />}
+            {isIdle && (onCheck || primaryIcon) ? null : <ArrowRight />}
           </button>
         </div>
       </div>

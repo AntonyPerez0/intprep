@@ -204,7 +204,7 @@ export function ProblemDetail() {
                   <span className="problem-detail-sum-text">
                     <span className="problem-detail-sum-title">Annotated solution</span>
                     <span className="problem-detail-sum-sub">
-                      Python · {parsed.chunks.length} parts · {parsed.lines.length} lines
+                      Python · {parsed.chunks.filter((c) => !c.header).length} parts · {parsed.lines.length} lines
                     </span>
                   </span>
                 </summary>

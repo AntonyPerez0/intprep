@@ -367,30 +367,6 @@
 html:has(.actionbar) {
   scroll-padding-bottom: calc(var(--actionbar-h, 96px) + 16px);
 }
-.combo {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 48px;
-  justify-content: flex-end;
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  color: var(--streak);
-  font-variant-numeric: tabular-nums;
-}
-.combo svg {
-  width: 15px;
-  height: 15px;
-}
-.combo.pop {
-  animation: pop 0.35s var(--ease);
-}
-@keyframes pop {
-  40% {
-    transform: scale(1.25);
-  }
-}
-
 /* Question header inside sessions */
 .kicker {
   display: flex;

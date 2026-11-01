@@ -44,11 +44,26 @@ export function Logo({ to = '/' }: { to?: string }) {
 
 // ── Progress ────────────────────────────────────────────────────────────────
 
-export function ProgressBar({ value, thin, large, color, label }: { value: number; thin?: boolean; large?: boolean; color?: string; label?: string }) {
+/** `linear` suits a countdown that updates every ~100ms: the fill moves steadily instead of easing in steps. */
+export function ProgressBar({
+  value,
+  thin,
+  large,
+  color,
+  label,
+  linear,
+}: {
+  value: number;
+  thin?: boolean;
+  large?: boolean;
+  color?: string;
+  label?: string;
+  linear?: boolean;
+}) {
   const pct = Math.max(0, Math.min(1, value)) * 100;
   return (
     <div
-      className={`progress ${thin ? 'thin' : ''} ${large ? 'lg' : ''}`}
+      className={`progress ${thin ? 'thin' : ''} ${large ? 'lg' : ''} ${linear ? 'linear' : ''}`}
       role="progressbar"
       aria-label={label}
       aria-valuenow={Math.round(pct)}
@@ -263,9 +278,12 @@ export function Modal({ children, onClose, labelledBy }: { children: ReactNode; 
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // Record the opener during the first render: React applies a child's autoFocus at commit,
+  // before effects run, so reading document.activeElement in the effect would see the dialog's
+  // own control instead of the button that opened it.
+  const [opener] = useState(() => document.activeElement as HTMLElement | null);
 
   useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
     const box = ref.current;
     // Respect an autoFocus inside the dialog; otherwise focus its first control.
     if (box && !box.contains(document.activeElement)) {
@@ -298,7 +316,7 @@ export function Modal({ children, onClose, labelledBy }: { children: ReactNode; 
       window.removeEventListener('keydown', onKey);
       if (opener && document.contains(opener)) opener.focus();
     };
-  }, []);
+  }, [opener]);
 
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose?.()}>

@@ -299,7 +299,8 @@
 }
 .profile-heat-empty {
   position: absolute;
-  inset: 16px 0 0;
+  /* Cover the squares only (month row 16px, day column 32px + 3px gap), so no label is hidden. */
+  inset: 16px 0 0 35px;
   display: grid;
   place-items: center;
   padding: 0 8px;
@@ -331,6 +332,7 @@
 .profile-heat-empty-body {
   font-size: var(--fs-xs);
   line-height: 1.45;
+  text-wrap: pretty;
 }
 .profile-heat {
   display: grid;
@@ -358,10 +360,10 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 5%, transparent);
 }
 .profile-heat-cell[data-l='1'] {
-  background: color-mix(in srgb, var(--brand) 26%, var(--surface-active));
+  background: color-mix(in srgb, var(--brand) 32%, var(--surface-active));
 }
 .profile-heat-cell[data-l='2'] {
-  background: color-mix(in srgb, var(--brand) 50%, var(--surface-active));
+  background: color-mix(in srgb, var(--brand) 54%, var(--surface-active));
 }
 .profile-heat-cell[data-l='3'] {
   background: color-mix(in srgb, var(--brand) 76%, var(--surface-active));
@@ -381,9 +383,11 @@
   outline: 2px solid var(--text);
   outline-offset: 1px;
 }
+/* Drawn inside the square (as on the Dashboard) so the wrapper's overflow never clips it. */
 .profile-heat-cell.is-today {
-  outline: 1.5px solid var(--text-secondary);
-  outline-offset: 1px;
+  box-shadow:
+    inset 0 0 0 1.5px var(--text-secondary),
+    inset 0 0 0 3px var(--surface);
 }
 .profile-heat-cell.is-future {
   visibility: hidden;

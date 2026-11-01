@@ -601,7 +601,6 @@ export function Profile() {
   const fileRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef<HTMLElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const resetRef = useRef<HTMLButtonElement>(null);
   const goal = DAILY_GOALS.find((g) => g.xp === p.settings.dailyGoal);
   const xpToday = p.xpByDay[today()] ?? 0;
   const streakMeta = practicedToday(p) ? 'Extended today' : p.streak.current > 0 ? 'Extend it today' : 'Start one today';
@@ -615,12 +614,7 @@ export function Profile() {
     URL.revokeObjectURL(a.href);
   };
 
-  // Return focus to Reset ourselves: the dialog's autoFocus (Cancel) runs before
-  // Modal records its opener, so Modal cannot restore it here.
-  const closeReset = () => {
-    setConfirmReset(false);
-    resetRef.current?.focus();
-  };
+  const closeReset = () => setConfirmReset(false);
 
   const editProfile = () => {
     settingsRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
@@ -820,7 +814,7 @@ export function Profile() {
 
           <SettingsGroup title="Danger zone" desc="Actions here cannot be undone." danger>
             <SettingRow label="Reset all progress" desc="Delete your XP, streak, gems, achievements and review schedule from this browser." inline>
-              <button ref={resetRef} type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmReset(true)}>
+              <button type="button" className="btn btn-danger btn-sm" onClick={() => setConfirmReset(true)}>
                 <RotateCcw aria-hidden="true" />
                 Reset
               </button>

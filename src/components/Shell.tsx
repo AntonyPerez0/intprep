@@ -230,6 +230,7 @@ export function SessionShell({
   onClose,
   title,
   progressColor,
+  progressLinear,
 }: {
   /** 0–1. Pass null to hide the bar (e.g. a lobby before a session starts). */
   progress: number | null;
@@ -240,6 +241,8 @@ export function SessionShell({
   title?: ReactNode;
   /** Colour for the progress bar, e.g. a countdown entering its warning zone. */
   progressColor?: string;
+  /** Move the bar linearly, for a timer that updates many times a second. */
+  progressLinear?: boolean;
 }) {
   const nav = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -264,7 +267,7 @@ export function SessionShell({
             <X size={20} />
           </button>
           {title && <span className="session-title">{title}</span>}
-          {progress === null ? <div className="grow" /> : <ProgressBar value={progress} color={progressColor} label="Progress" />}
+          {progress === null ? <div className="grow" /> : <ProgressBar value={progress} color={progressColor} linear={progressLinear} label="Progress" />}
           {right}
         </div>
       </header>

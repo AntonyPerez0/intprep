@@ -34,7 +34,7 @@ import { awardXp, flagForReview, recordAnswers, recordBlitz, useProgress } from 
 import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
-import { ProblemPrompt } from '../components/interact';
+import { ActionBar, ProblemPrompt } from '../components/interact';
 import { Completion, Kbd, Ring, SectionHeader, StatCard } from '../components/ui';
 
 const DURATION = 60;
@@ -200,22 +200,6 @@ export function Blitz() {
     );
   };
 
-  // Lobby: Enter starts, like the primary action in every other action bar.
-  const startRef = useRef(start);
-  startRef.current = start;
-  useEffect(() => {
-    if (phase !== 'intro') return;
-    const h = (e: KeyboardEvent) => {
-      if (e.key !== 'Enter' || e.isComposing) return;
-      const el = e.target as HTMLElement;
-      if (el.closest('button, a, input, textarea, select')) return;
-      e.preventDefault();
-      startRef.current();
-    };
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [phase]);
-
   // Keyboard: 1–4.
   const answerRef = useRef(answer);
   answerRef.current = answer;
@@ -347,20 +331,19 @@ export function Blitz() {
           </section>
         </div>
 
-        {/* The shared action bar's markup, so the start button keeps its .blitz-start hook. */}
-        <div className="actionbar blitz-actions">
-          <div className="actionbar-inner">
-            <div className="buttons">
-              <span className="blitz-kbd-hint">
-                On a keyboard, press <KeyRange /> to answer
-              </span>
-              <button type="button" className="btn btn-primary btn-lg blitz-start" onClick={start}>
-                <Play aria-hidden="true" />
-                Start
-              </button>
-            </div>
-          </div>
-        </div>
+        {/* Enter starts the round, like the primary action in every other session. */}
+        <ActionBar
+          status="idle"
+          onContinue={start}
+          continueLabel="Start"
+          primaryIcon={<Play aria-hidden="true" />}
+          primaryClassName="blitz-start"
+          secondary={
+            <span className="blitz-kbd-hint">
+              On a keyboard, press <KeyRange /> to answer
+            </span>
+          }
+        />
       </SessionShell>
     );
   }
@@ -486,6 +469,7 @@ export function Blitz() {
     <SessionShell
       progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION}
       progressColor={tone === 'calm' ? undefined : TONE_COLOR[tone]}
+      progressLinear={!zen}
       onClose={() => setPhase('over')}
       title="Pattern Blitz"
     >

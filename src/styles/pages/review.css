@@ -16,7 +16,8 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--streak);
+  /* The number stays in body text for contrast; the flame carries the streak colour. */
+  color: var(--text);
   background: var(--streak-subtle);
   border: 1px solid color-mix(in srgb, var(--streak) 28%, transparent);
   animation: review-combo-in var(--dur) var(--ease);
@@ -24,6 +25,7 @@
 .review-combo svg {
   width: 14px;
   height: 14px;
+  color: var(--streak);
 }
 .review-combo.pop {
   animation: review-combo-pop 0.4s var(--ease);
@@ -60,7 +62,7 @@
 .review-empty .empty p {
   text-wrap: balance;
 }
-.review-empty .empty h3 {
+.review-empty .empty-title {
   font-size: var(--fs-xl);
   letter-spacing: -0.02em;
 }

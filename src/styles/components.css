@@ -616,6 +616,11 @@ textarea.code-input::placeholder {
   background: var(--brand);
   transition: width var(--dur-slow) var(--ease);
 }
+.progress.linear > div {
+  transition:
+    width 0.1s linear,
+    background var(--dur) var(--ease);
+}
 .progress.lg {
   height: 8px;
 }
@@ -1402,6 +1407,16 @@ details.disclosure > summary {
   font-weight: 550;
   font-size: var(--fs-md);
   user-select: none;
+  /* The card clips its children, so the focus outline is drawn just inside the summary,
+     whose corners follow the card's inner radius (square at the bottom while open). */
+  border-radius: calc(var(--r-lg) - 1px);
+}
+details.disclosure[open] > summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+details.disclosure > summary:focus-visible {
+  outline-offset: -2px;
 }
 details.disclosure > summary::-webkit-details-marker {
   display: none;
@@ -1413,6 +1428,7 @@ details.disclosure > summary > svg {
 }
 details.disclosure > summary::after {
   content: '';
+  flex: none;
   margin-left: auto;
   width: 8px;
   height: 8px;

@@ -1238,13 +1238,14 @@
   padding: 0 8px;
   border-radius: var(--r-full);
   background: var(--streak-subtle);
-  color: var(--streak);
+  color: var(--text);
   font-size: var(--fs-xs);
   font-weight: 600;
 }
 .lp-fv-blitz-combo svg {
   width: 12px;
   height: 12px;
+  color: var(--streak);
 }
 .lp-fv-blitz .progress {
   flex: none;
@@ -1693,21 +1694,6 @@
   line-height: 1.65;
   color: var(--text-secondary);
   max-width: 62ch;
-}
-.lp-faq details.disclosure > summary::after {
-  flex: none;
-}
-/* The card clips its children, so the shared outline is drawn just inside the summary,
-   whose corners follow the card's inner radius (square at the bottom while open). */
-.lp-faq details.disclosure > summary {
-  border-radius: calc(var(--r-lg) - 1px);
-}
-.lp-faq details.disclosure[open] > summary {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.lp-faq details.disclosure > summary:focus-visible {
-  outline-offset: -2px;
 }
 
 /* ── Final CTA ──────────────────────────────────────────────────────────── */
