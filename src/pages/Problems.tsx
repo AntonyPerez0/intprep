@@ -78,7 +78,9 @@ export function Problems() {
   }).length;
   const strongCount = PROBLEMS.filter((x) => p.problems[x.id]?.learnedAt && crowns(p.problems[x.id]?.srs) >= 4).length;
 
-  const filtered = q.trim() !== '' || cat !== 'all' || diff !== 'all' || status !== 'all';
+  const searching = q.trim() !== '';
+  const narrowed = cat !== 'all' || diff !== 'all' || status !== 'all';
+  const filtered = searching || narrowed;
   const clear = () => {
     setQ('');
     setCat('all');
@@ -106,7 +108,7 @@ export function Problems() {
               <div className="problems-summary-k">Due now</div>
               <div className="problems-summary-v tabular">{dueCount}</div>
             </div>
-            <div className="problems-summary-item">
+            <div className="problems-summary-item" title="Mastery 4 or higher">
               <div className="problems-summary-k">Strong</div>
               <div className="problems-summary-v tabular">{strongCount}</div>
             </div>
@@ -150,7 +152,7 @@ export function Problems() {
           {DIFFS.map((d) => (
             <button key={d} type="button" className={diff === d ? 'on' : ''} aria-pressed={diff === d} onClick={() => setDiff(d)}>
               {d !== 'all' && <span className={`problems-diff-dot ${d.toLowerCase()}`} aria-hidden="true" />}
-              {d === 'all' ? 'Any level' : d}
+              {d === 'all' ? 'All levels' : d}
             </button>
           ))}
         </div>
@@ -166,7 +168,7 @@ export function Problems() {
               </button>
             ))}
           </div>
-          <div className="problems-table-count">
+          <div className={`problems-table-count ${filtered ? '' : 'is-idle'}`}>
             <span className="text-sm text-secondary" aria-live="polite">
               {rows.length === PROBLEMS.length ? (
                 <>
@@ -178,7 +180,7 @@ export function Problems() {
                 </>
               )}
             </span>
-            {filtered && (
+            {filtered && rows.length > 0 && (
               <button type="button" className="btn btn-quiet btn-sm" onClick={clear}>
                 <FilterX />
                 Clear filters
@@ -192,16 +194,18 @@ export function Problems() {
             icon={SearchX}
             title="No problems match"
             actions={
-              <button type="button" className="btn btn-secondary btn-sm" onClick={clear}>
-                <FilterX />
-                Clear filters
+              <button type="button" className="btn btn-secondary" onClick={clear}>
+                {narrowed ? <FilterX /> : <X />}
+                {narrowed ? 'Clear filters' : 'Clear search'}
               </button>
             }
           >
-            {q.trim() ? (
-              <>Nothing matches “{q.trim()}” with the current filters. Try a shorter search or widen the filters.</>
+            {searching && narrowed ? (
+              <>Nothing matches “{q.trim()}” with these filters. Try a shorter search or clear the filters.</>
+            ) : searching ? (
+              <>No title, number or technique contains “{q.trim()}”. Try a shorter search.</>
             ) : (
-              <>No problem fits this combination of filters yet. Widen the filters to see more.</>
+              <>No problems fit this combination of filters. Clear them to see the full library.</>
             )}
           </EmptyState>
         ) : (
@@ -252,7 +256,9 @@ export function Problems() {
                             <span className="problems-mastery-label">{CROWN_LABELS[n]}</span>
                           </>
                         ) : (
-                          <span className="problems-mastery-none">—</span>
+                          <span className="problems-mastery-none" aria-hidden="true">
+                            —
+                          </span>
                         )}
                       </span>
                     </Link>

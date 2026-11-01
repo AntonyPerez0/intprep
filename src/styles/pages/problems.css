@@ -3,6 +3,11 @@
    ========================================================================== */
 
 /* ── Header summary ─────────────────────────────────────────────────────── */
+/* Keep the title at the same height as the other library pages; the summary
+   hangs from the top instead of pushing the title down. */
+.problems .page-header {
+  align-items: flex-start;
+}
 .problems-summary {
   display: flex;
   align-items: stretch;
@@ -50,6 +55,7 @@
 
 /* ── Toolbar ────────────────────────────────────────────────────────────── */
 .problems-toolbar {
+  container-type: inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -149,7 +155,7 @@
   padding: 0 5px;
   border-radius: var(--r-full);
   background: var(--surface-active);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 11px;
   font-weight: 600;
   line-height: 1;
@@ -157,6 +163,17 @@
 .problems-seg button.on .problems-seg-count {
   background: var(--brand-subtle);
   color: var(--brand-text);
+}
+
+/* Not enough room for all three on one line: search gets its own row, and the
+   pattern select and difficulty control share the second one. */
+@container (max-width: 839px) {
+  .problems-search {
+    flex-basis: 100%;
+  }
+  .problems-select {
+    flex: 1 1 200px;
+  }
 }
 
 /* ── Table ──────────────────────────────────────────────────────────────── */
@@ -192,9 +209,6 @@
 .problems-table-bar strong {
   font-weight: 600;
   color: var(--text);
-}
-.problems-status-seg {
-  border-color: transparent;
 }
 .problems-table .empty {
   padding: 56px 20px;
@@ -444,6 +458,21 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Comfortable touch targets */
+  .problems-toolbar .input {
+    height: 44px;
+  }
+  .problems-search > .input {
+    padding-right: 44px;
+  }
+  .problems-search-clear {
+    width: 40px;
+    height: 40px;
+    right: 2px;
+  }
+  .problems-seg button {
+    height: 40px;
+  }
   .problems-table-bar {
     flex-direction: column;
     align-items: stretch;
@@ -452,6 +481,13 @@
     justify-content: space-between;
     margin-left: 0;
     padding-left: 8px;
+  }
+  /* Unfiltered, the count only repeats the selected status pill: drop the row */
+  .problems-table-count.is-idle {
+    display: none;
+  }
+  .problems .page-header {
+    margin-bottom: 20px;
   }
   .problems-select {
     flex: none;

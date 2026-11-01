@@ -87,7 +87,7 @@ export function Patterns() {
         <input
           className="input"
           type="search"
-          placeholder="Search cues, e.g. “sorted”, “subarray”, “top k”"
+          placeholder="Search cues, e.g. “sorted” or “top k”"
           aria-label="Search recognition cues"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -122,8 +122,10 @@ export function Patterns() {
                 <li key={i}>
                   <button type="button" className="patterns-result" onClick={() => pick(m.cat.id)}>
                     <CategoryIcon id={m.cat.id} color={m.cat.color} size="sm" />
-                    <span className="patterns-result-cue">{inline(m.cue)}</span>
-                    <span className="patterns-result-cat">{m.cat.short}</span>
+                    <span className="patterns-result-text">
+                      <span className="patterns-result-cue">{inline(m.cue)}</span>
+                      <span className="patterns-result-cat">{m.cat.name}</span>
+                    </span>
                     <ChevronRight className="patterns-result-chev" aria-hidden="true" />
                   </button>
                 </li>
@@ -136,7 +138,7 @@ export function Patterns() {
       {wide ? (
         <div className="patterns-panes">
           <nav className="patterns-nav" aria-label="Patterns">
-            <div className="patterns-nav-head">
+            <div className="patterns-nav-head" aria-hidden="true">
               <span>
                 Patterns <span className="patterns-nav-total tabular">{CATEGORIES.length}</span>
               </span>
@@ -156,8 +158,9 @@ export function Patterns() {
                     >
                       <CategoryIcon id={c.id} color={c.color} size="sm" />
                       <span className="patterns-nav-name">{c.name}</span>
-                      <span className="patterns-nav-count tabular" title={`${s.learned} of ${s.total} learned`} aria-label={`${s.learned} of ${s.total} learned`}>
+                      <span className="patterns-nav-count tabular" title={`${s.learned} of ${s.total} learned`}>
                         {s.learned}/{s.total}
+                        <span className="sr-only"> learned</span>
                       </span>
                     </button>
                   </li>
@@ -182,28 +185,37 @@ export function Patterns() {
         </div>
       ) : (
         <div className="patterns-acc">
+          <div className="patterns-acc-top" aria-hidden="true">
+            <span>
+              Patterns <span className="patterns-nav-total tabular">{CATEGORIES.length}</span>
+            </span>
+            <span>Learned</span>
+          </div>
           {CATEGORIES.map((c) => {
             const isOpen = open === c.id;
             const s = unitStats(c, progress);
             return (
               <section key={c.id} id={`pat-${c.id}`} className={`patterns-acc-item ${isOpen ? 'open' : ''}`}>
-                <button
-                  type="button"
-                  className="patterns-acc-head"
-                  onClick={() => select(isOpen ? null : c.id)}
-                  aria-expanded={isOpen}
-                  aria-controls={`pat-body-${c.id}`}
-                >
-                  <CategoryIcon id={c.id} color={c.color} />
-                  <span className="grow">
-                    <span className="patterns-acc-name">{c.name}</span>
-                    <span className="patterns-acc-tagline">{c.tagline}</span>
-                  </span>
-                  <span className="patterns-acc-count tabular" title={`${s.learned} of ${s.total} learned`} aria-label={`${s.learned} of ${s.total} learned`}>
-                    {s.learned}/{s.total}
-                  </span>
-                  <ChevronDown className="patterns-acc-chev" aria-hidden="true" />
-                </button>
+                <h2 className="patterns-acc-h">
+                  <button
+                    type="button"
+                    className="patterns-acc-head"
+                    onClick={() => select(isOpen ? null : c.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={isOpen ? `pat-body-${c.id}` : undefined}
+                  >
+                    <CategoryIcon id={c.id} color={c.color} />
+                    <span className="grow">
+                      <span className="patterns-acc-name">{c.name}</span>
+                      <span className="patterns-acc-tagline">{c.tagline}</span>
+                    </span>
+                    <span className="patterns-acc-count tabular" title={`${s.learned} of ${s.total} learned`}>
+                      {s.learned}/{s.total}
+                      <span className="sr-only"> learned</span>
+                    </span>
+                    <ChevronDown className="patterns-acc-chev" aria-hidden="true" />
+                  </button>
+                </h2>
                 {isOpen && (
                   <div className="patterns-acc-body" id={`pat-body-${c.id}`}>
                     <PatternBody c={c} progress={progress} />
