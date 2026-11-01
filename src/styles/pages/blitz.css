@@ -15,13 +15,8 @@
   margin: 0 2px;
 }
 
-/* The lobby is not a session in progress, so the header's empty progress
-   track would only add noise. Keep its space so the header doesn't shift. */
-.session:has(.blitz-lobby) .session-head .progress {
-  visibility: hidden;
-}
-
-/* ── Lobby ──────────────────────────────────────────────────────────────── */
+/* ── Lobby ────────────────────────────────────────────────────────────────
+   Sized like the shared EmptyState / Completion: a 48px tile, a 24px title. */
 .blitz-lobby {
   display: flex;
   flex-direction: column;
@@ -34,55 +29,29 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 12px 0 16px;
-}
-.blitz-hero-mark {
-  display: inline-flex;
-  border-radius: var(--r-xl);
-  box-shadow:
-    0 0 0 6px var(--brand-subtle),
-    var(--shadow-md);
-  animation: blitz-pop-in 0.5s var(--ease);
-}
-.blitz-hero-meta {
-  margin-top: 24px;
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  font-variant-numeric: tabular-nums;
+  padding: 4px 0 8px;
 }
 .blitz-hero h1 {
-  margin-top: 8px;
-  font-size: clamp(30px, 4.4vw, var(--fs-4xl));
-  font-weight: 650;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
+  margin-top: 16px;
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 .blitz-lede {
   max-width: 440px;
-  margin: 12px 0 0;
-  text-wrap: pretty;
+  margin: 8px 0 0;
+  text-wrap: balance;
   font-size: var(--fs-base);
   line-height: 1.6;
   color: var(--text-secondary);
 }
 
-/* Stat cards */
+/* Stat cards (shared StatCard) */
 .blitz-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-}
-.blitz-stat .stat-value {
-  font-size: var(--fs-3xl);
-}
-.blitz-stat-icon {
-  color: var(--text-tertiary);
-}
-.blitz-stat-icon.is-xp {
-  color: var(--xp);
 }
 
 /* Setup card */
@@ -96,6 +65,9 @@
   gap: 16px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-subtle);
+}
+.blitz-setting:last-child {
+  border-bottom: 0;
 }
 .blitz-setting-text {
   min-width: 0;
@@ -119,35 +91,17 @@
   justify-content: center;
   white-space: nowrap;
 }
-.blitz-seg button.on {
-  background: var(--surface-raised);
-  box-shadow:
-    var(--shadow-sm),
-    0 0 0 1px var(--border-strong);
-}
-.blitz-setup-foot {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 12px;
-  padding: 20px;
-  background: var(--surface-hover);
-}
-.blitz-start {
-  width: 100%;
-  height: 48px;
-  font-size: var(--fs-base);
-  border-radius: var(--r-md);
-}
+
+/* Start lives in the fixed action bar like every session's primary action;
+   the keyboard hint sits on its left, as in the insight drill. */
 .blitz-kbd-hint {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
-@media (hover: none), (max-width: 599px) {
+@media (hover: none), (max-width: 639px) {
   .blitz-kbd-hint {
     display: none;
   }
@@ -198,22 +152,7 @@
 
 @media (max-width: 599px) {
   .blitz-hero {
-    padding: 0 0 8px;
-  }
-  .blitz-hero-mark .icon-tile {
-    width: 52px;
-    height: 52px;
-    border-radius: var(--r-lg);
-  }
-  .blitz-hero-mark {
-    border-radius: var(--r-lg);
-  }
-  .blitz-hero-mark .icon-tile svg {
-    width: 26px;
-    height: 26px;
-  }
-  .blitz-hero-meta {
-    margin-top: 20px;
+    padding: 0 0 4px;
   }
   .blitz-setting {
     flex-direction: column;
@@ -228,9 +167,6 @@
   .blitz-seg button {
     height: 40px;
     font-size: var(--fs-md);
-  }
-  .blitz-setup-foot {
-    padding: 16px;
   }
   .blitz-rules {
     grid-template-columns: 1fr;
@@ -417,42 +353,19 @@
   justify-content: flex-end;
 }
 .blitz-ring {
-  --ring-c: var(--brand);
-  position: relative;
+  --blitz-ring-track: var(--surface-active);
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
 }
-.blitz-ring svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.blitz-ring-track {
-  stroke: var(--surface-active);
-}
-:root[data-theme='dark'] .blitz-ring-track {
-  stroke: var(--border-strong);
+:root[data-theme='dark'] .blitz-ring {
+  --blitz-ring-track: var(--border-strong);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .blitz-ring-track {
-    stroke: var(--border-strong);
+  :root:not([data-theme='light']) .blitz-ring {
+    --blitz-ring-track: var(--border-strong);
   }
 }
-.blitz-ring-bar {
-  stroke: var(--ring-c);
-  transition:
-    stroke-dashoffset 0.1s linear,
-    stroke var(--dur) var(--ease);
-}
-.blitz-ring.is-warning {
-  --ring-c: var(--warning);
-}
 .blitz-ring.is-danger {
-  --ring-c: var(--danger);
   animation: blitz-pulse 1s var(--ease) infinite;
 }
 @keyframes blitz-pulse {
@@ -465,7 +378,6 @@
   }
 }
 .blitz-ring-label {
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -499,17 +411,12 @@
   color: var(--danger-text);
 }
 
-/* Header countdown bar mirrors the ring's urgency. */
+/* Header countdown bar (coloured via progressColor) ticks every 0.1s: move it
+   linearly so it doesn't ease in steps. ProgressBar has no instant option. */
 .session:has(.blitz-play) .session-head .progress > div {
   transition:
     width 0.1s linear,
     background var(--dur) var(--ease);
-}
-.session:has(.blitz-play.is-warning) .session-head .progress > div {
-  background: var(--warning);
-}
-.session:has(.blitz-play.is-danger) .session-head .progress > div {
-  background: var(--danger);
 }
 
 /* ── Play: question & options ───────────────────────────────────────────── */
@@ -557,7 +464,8 @@
 }
 
 /* Feedback strip — always occupies space so nothing jumps, and sticks to the
-   bottom edge when the options run below the fold (phones). */
+   bottom edge when the options run below the fold (tablets; phones reorder it
+   above the options, see below). */
 .blitz-feedback {
   position: sticky;
   bottom: calc(12px + env(safe-area-inset-bottom));
@@ -693,9 +601,6 @@
     padding-top: 8px;
     padding-bottom: 8px;
   }
-  .blitz-feedback {
-    margin-top: 12px;
-  }
   .blitz-hud-center {
     gap: 12px;
   }
@@ -724,19 +629,38 @@
   .blitz-pips span {
     width: 9px;
   }
-  .blitz-ring {
-    width: 54px;
-    height: 54px;
-  }
   .blitz-ring-num {
     font-size: var(--fs-lg);
   }
   .blitz-ring-num.is-small {
     font-size: var(--fs-sm);
   }
-  .blitz-feedback.is-correct,
-  .blitz-feedback.is-wrong {
-    box-shadow: var(--shadow-lg);
+}
+
+/* Phones: options are tapped with a thumb under time pressure, so they must not
+   move between questions. The round fills the viewport and the options sit on
+   its bottom edge; the result strip sits just above them and grows upward into
+   the free space, so neither a longer prompt nor a longer answer moves them. */
+@media (max-width: 639px) {
+  .session:has(.blitz-play) .session-body {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .blitz-play {
+    /* viewport − header (56px + hairline) − body padding (28px top, 16px bottom) */
+    min-height: calc(100dvh - 57px - env(safe-area-inset-top) - 44px - env(safe-area-inset-bottom));
+  }
+  .blitz-round {
+    margin-bottom: 12px;
+  }
+  .blitz-feedback {
+    order: 1;
+    position: relative;
+    bottom: auto;
+    margin-top: auto;
+  }
+  .blitz-choices {
+    order: 2;
+    margin-top: 12px;
   }
 }
 
@@ -879,15 +803,3 @@
   color: var(--text-secondary);
 }
 
-@keyframes blitz-pop-in {
-  0% {
-    transform: scale(0.7);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}

@@ -309,6 +309,9 @@ const RATINGS: { grade: Grade; label: string; tone: string; fallback: string }[]
   { grade: 'easy', label: 'Easy', tone: 'brand', fallback: 'Longer gap' },
 ];
 
+/** Matches the drill-arm animation delay in drills.css. */
+const RATE_ARM_MS = 350;
+
 /** Precise enough that neighbouring grades never read the same ("in 56 days" vs "in 70 days"). */
 function fmtInterval(days: number) {
   const one = (n: number) => n.toFixed(1).replace(/\.0$/, '');
@@ -334,11 +337,38 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
   // rating group so keyboard and screen-reader users land on the next decision.
   const revealRef = useRef<HTMLDivElement>(null);
   const rateRef = useRef<HTMLDivElement>(null);
+  const revealedAt = useRef(0);
   useEffect(() => {
     if (!revealed) return;
+    revealedAt.current = performance.now();
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     revealRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
     rateRef.current?.focus({ preventScroll: true });
+  }, [revealed]);
+  // Keyboard parity with the other drills: Enter reveals, then 1–4 rate.
+  const rateRefFn = useRef(rate);
+  rateRefFn.current = rate;
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+      if (!revealed) {
+        // Let a focused button or link handle its own Enter.
+        if (e.key !== 'Enter' || el.closest('button, a')) return;
+        e.preventDefault();
+        setRevealed(true);
+        return;
+      }
+      const n = Number(e.key);
+      if (!(n >= 1 && n <= RATINGS.length) || e.repeat) return;
+      // Same arming delay as the pointer: a fast double press can't rate by accident.
+      if (performance.now() - revealedAt.current < RATE_ARM_MS) return;
+      e.preventDefault();
+      rateRefFn.current(RATINGS[n - 1].grade);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
   }, [revealed]);
   return (
     <section className="drill" data-drill="insight" data-problem={p.id}>
@@ -413,7 +443,7 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
                 </span>
               </div>
               <div className="drill-rate-grid">
-                {RATINGS.map((r) => (
+                {RATINGS.map((r, k) => (
                   <div className="drill-rate-option" key={r.grade}>
                     <button
                       type="button"
@@ -423,6 +453,10 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
                     >
                       {r.label}
                     </button>
+                    {/* Shortcut digit drawn over the button, outside it, so its label stays exactly "Got it" */}
+                    <span className="num drill-rate-num" aria-hidden="true">
+                      {k + 1}
+                    </span>
                     <span className="drill-rate-next" id={`rate-${r.grade}`}>
                       {next ? fmtInterval(next[r.grade]) : r.fallback}
                     </span>
@@ -512,7 +546,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         <div className="callout callout-brand drill-explain">
           <MessageSquareText aria-hidden="true" />
           <div>
-            <div className="drill-fb-label">This step</div>
+            <div className="drill-fb-label">This part</div>
             {inline(explain)}
           </div>
         </div>

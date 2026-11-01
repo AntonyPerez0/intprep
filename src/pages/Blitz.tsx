@@ -11,7 +11,6 @@ import {
   CircleCheck,
   CircleX,
   Flame,
-  Gamepad2,
   Leaf,
   Play,
   Repeat2,
@@ -36,7 +35,7 @@ import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { ProblemPrompt } from '../components/interact';
-import { Completion, Kbd, SectionHeader } from '../components/ui';
+import { Completion, Kbd, Ring, SectionHeader, StatCard } from '../components/ui';
 
 const DURATION = 60;
 const ZEN_QUESTIONS = 20;
@@ -49,32 +48,18 @@ interface Answer {
 
 const multiplier = (streak: number) => Math.min(4, 1 + Math.floor(streak / 3));
 
+type Tone = 'calm' | 'warning' | 'danger';
+const TONE_COLOR: Record<Tone, string> = { calm: 'var(--brand)', warning: 'var(--warning)', danger: 'var(--danger)' };
+
 /** Circular gauge for the HUD: time left (timed) or questions done (Zen). */
-function HudRing({ value, tone, label, children }: { value: number; tone: 'calm' | 'warning' | 'danger'; label: string; children: ReactNode }) {
-  const size = 56;
-  const stroke = 4;
-  const r = (size - stroke) / 2;
-  const c = 2 * Math.PI * r;
-  const v = Math.max(0, Math.min(1, value));
+function HudRing({ value, tone, label, children }: { value: number; tone: Tone; label: string; children: ReactNode }) {
   return (
     <div className={`blitz-ring is-${tone}`} aria-label={label} role="img">
-      <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        <circle className="blitz-ring-track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} fill="none" />
-        <circle
-          className="blitz-ring-bar"
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - v)}
-        />
-      </svg>
-      <div className="blitz-ring-label" aria-hidden="true">
-        {children}
-      </div>
+      <Ring value={value} size={56} stroke={4} instant color={TONE_COLOR[tone]} track="var(--blitz-ring-track)">
+        <span className="blitz-ring-label" aria-hidden="true">
+          {children}
+        </span>
+      </Ring>
     </div>
   );
 }
@@ -215,6 +200,22 @@ export function Blitz() {
     );
   };
 
+  // Lobby: Enter starts, like the primary action in every other action bar.
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => {
+    if (phase !== 'intro') return;
+    const h = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      const el = e.target as HTMLElement;
+      if (el.closest('button, a, input, textarea, select')) return;
+      e.preventDefault();
+      startRef.current();
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [phase]);
+
   // Keyboard: 1–4.
   const answerRef = useRef(answer);
   answerRef.current = answer;
@@ -232,45 +233,34 @@ export function Blitz() {
     const { blitzBest, blitzPlays } = progress.stats;
     const startedLocked = startedUnits.length < 8;
     return (
-      <SessionShell progress={0} onClose={() => nav('/')} title="Pattern Blitz">
+      <SessionShell progress={null} onClose={() => nav('/')} title="Pattern Blitz">
         <div className="blitz-lobby">
           <header className="blitz-hero">
-            <span className="blitz-hero-mark">
-              <IconTile icon={Zap} size="xl" solid />
-            </span>
-            <div className="blitz-hero-meta">
-              {CATEGORIES.length} patterns <span className="blitz-sep">·</span> {PROBLEMS.length} problems
-            </div>
+            <IconTile icon={Zap} size="lg" />
             <h1>Pattern Blitz</h1>
-            <p className="blitz-lede">Read each problem and pick the pattern that solves it. Spotting the pattern is half of every interview.</p>
+            <p className="blitz-lede">
+              Read each problem and pick which of the {CATEGORIES.length} patterns solves it. Spotting the pattern is half of every interview.
+            </p>
           </header>
 
           <div className="blitz-stats">
-            <div className="card pad-sm stat blitz-stat">
-              <div className="stat-label">
-                <Trophy className="blitz-stat-icon is-xp" strokeWidth={2} aria-hidden="true" />
-                Personal best
-              </div>
-              <div className="stat-value">
-                {blitzBest > 0 ? (
+            <StatCard
+              icon="trophy"
+              accent="var(--xp)"
+              label="Personal best"
+              value={
+                blitzBest > 0 ? (
                   blitzBest
                 ) : (
                   <>
                     <span aria-hidden="true">—</span>
                     <span className="sr-only">None yet</span>
                   </>
-                )}
-              </div>
-              <div className="stat-meta">{blitzBest > 0 ? 'Points in a timed round' : 'Not set yet'}</div>
-            </div>
-            <div className="card pad-sm stat blitz-stat">
-              <div className="stat-label">
-                <Gamepad2 className="blitz-stat-icon" strokeWidth={2} aria-hidden="true" />
-                Games played
-              </div>
-              <div className="stat-value">{blitzPlays}</div>
-              <div className="stat-meta">Timed rounds</div>
-            </div>
+                )
+              }
+              meta={blitzBest > 0 ? 'Points in a timed round' : 'Not set yet'}
+            />
+            <StatCard icon="timer" label="Games played" value={blitzPlays} meta="Timed rounds" />
           </div>
 
           <section className="card pad-0 blitz-setup" aria-label="Game setup">
@@ -324,16 +314,6 @@ export function Blitz() {
                 </button>
               </div>
             </div>
-
-            <div className="blitz-setup-foot">
-              <button type="button" className="btn btn-primary btn-lg blitz-start" onClick={start}>
-                <Play aria-hidden="true" />
-                Start
-              </button>
-              <div className="blitz-kbd-hint">
-                On a keyboard, press <KeyRange /> to answer
-              </div>
-            </div>
           </section>
 
           <section className="blitz-rules" aria-label="How scoring works">
@@ -365,6 +345,21 @@ export function Blitz() {
               </div>
             </div>
           </section>
+        </div>
+
+        {/* The shared action bar's markup, so the start button keeps its .blitz-start hook. */}
+        <div className="actionbar blitz-actions">
+          <div className="actionbar-inner">
+            <div className="buttons">
+              <span className="blitz-kbd-hint">
+                On a keyboard, press <KeyRange /> to answer
+              </span>
+              <button type="button" className="btn btn-primary btn-lg blitz-start" onClick={start}>
+                <Play aria-hidden="true" />
+                Start
+              </button>
+            </div>
+          </div>
         </div>
       </SessionShell>
     );
@@ -483,12 +478,17 @@ export function Blitz() {
 
   // ── Play ──────────────────────────────────────────────────────────────────
   const mult = multiplier(streak);
-  const tone: 'calm' | 'warning' | 'danger' = zen ? 'calm' : timeLeft <= 5 ? 'danger' : timeLeft <= 10 ? 'warning' : 'calm';
+  const tone: Tone = zen ? 'calm' : timeLeft <= 5 ? 'danger' : timeLeft <= 10 ? 'warning' : 'calm';
   const questionNo = flash ? answers.length : answers.length + 1;
   const pips = mult >= 4 ? 3 : streak % 3;
   const secs = Math.ceil(timeLeft);
   return (
-    <SessionShell progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION} onClose={() => setPhase('over')} title="Pattern Blitz">
+    <SessionShell
+      progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION}
+      progressColor={tone === 'calm' ? undefined : TONE_COLOR[tone]}
+      onClose={() => setPhase('over')}
+      title="Pattern Blitz"
+    >
       <div className={`blitz-play is-${tone}`}>
         <div className="blitz-hud">
           <div className="blitz-hud-cell blitz-hud-score">

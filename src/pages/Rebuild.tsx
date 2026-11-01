@@ -1,5 +1,5 @@
-// "Code it from memory": rebuild the solution chunk by chunk, guided only by
-// the plain-English explanation of each chunk. Type it (desktop) or pick each
+// "Code it from memory": rebuild the solution part by part, guided only by
+// the plain-English explanation of each part (a chunk of the parsed solution). Type it (desktop) or pick each
 // line (touch). Retrieval + generation, the strongest way to make code stick.
 
 import '../styles/pages/rebuild.css';
@@ -93,7 +93,7 @@ function Rebuild({ p }: { p: Problem }) {
   const body = parsed.chunks.map((c, i) => ({ c, i })).filter(({ c }) => !c.header);
   const header = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
   const [typing, setTyping] = useState(() => preferTyping(settings.typingMode));
-  const [step, setStep] = useState(0); // index into body
+  const [step, setStep] = useState(0); // index into body (the current part)
   const [lineInChunk, setLineInChunk] = useState(0); // tap mode
   const [text, setText] = useState('');
   const [status, setStatus] = useState<CheckStatus>('idle');
@@ -130,7 +130,7 @@ function Rebuild({ p }: { p: Problem }) {
     return shuffle([tapLine, ...opts]);
   }, [tapLine]); // eslint-disable-line
 
-  // Keep the current step in view as the file grows.
+  // Keep the current part in view as the file grows.
   const at = useRef(`${step}:${lineInChunk}`);
   useEffect(() => {
     const key = `${step}:${lineInChunk}`;
@@ -245,7 +245,7 @@ function Rebuild({ p }: { p: Problem }) {
   const given = [...header, ...doneLines];
   const indent = Math.min(indentOf(curLines[0] ?? ''), 16);
   const firstNew = given.length + 2; // after the instruction comment
-  const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this step
+  const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this part
   const rows = Math.max(3, curLines.length + 1, text.split('\n').length);
   const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
   const tapIndent = (tapLine ?? '').match(/^\s*/)?.[0] ?? '';
@@ -259,7 +259,7 @@ function Rebuild({ p }: { p: Problem }) {
   let footRight: ReactNode = typing ? (
     <span className="rebuild-keys">Tab to indent · Ctrl/⌘ + Enter to check</span>
   ) : null;
-  if (!typing) footLeft = `Line ${lineInChunk + 1} of ${curLines.length} in this step`;
+  if (!typing) footLeft = `Line ${lineInChunk + 1} of ${curLines.length} in this part`;
   if (result) {
     const ok = result.correct === result.total && result.rows.length === result.total;
     const extra = result.rows.length - result.total;
@@ -278,19 +278,17 @@ function Rebuild({ p }: { p: Problem }) {
       onClose={() => nav(`/p/${p.id}`)}
       title="Code from memory"
       right={
-        <span className="rebuild-score-slot">
-          {score.total > 0 && (
-            <span className="rebuild-score" title="Lines right on the first try">
-              <Check strokeWidth={2.4} aria-hidden="true" />
-              <span aria-hidden="true">
-                {score.correct}/{score.total}
-              </span>
-              <span className="sr-only">
-                {score.correct} of {score.total} lines right
-              </span>
+        score.total > 0 ? (
+          <span className="rebuild-score" title="Lines right on the first try">
+            <Check strokeWidth={2.4} aria-hidden="true" />
+            <span aria-hidden="true">
+              {score.correct}/{score.total}
             </span>
-          )}
-        </span>
+            <span className="sr-only">
+              {score.correct} of {score.total} lines right
+            </span>
+          </span>
+        ) : undefined
       }
     >
       <div className="rebuild">
@@ -303,7 +301,7 @@ function Rebuild({ p }: { p: Problem }) {
               <span className="rebuild-kicker-num">#{p.num}</span>
             </div>
             <div className="drill-meta">
-              {totalLines} lines · {body.length} steps
+              {totalLines} lines · {body.length} parts
             </div>
           </div>
           <div className="rebuild-title-row">
@@ -322,7 +320,7 @@ function Rebuild({ p }: { p: Problem }) {
               {showPrompt ? 'Hide problem' : 'Show problem'}
             </button>
           </div>
-          <p className="drill-sub">Rebuild the solution one step at a time. The highlighted comment says what to write next.</p>
+          <p className="drill-sub">Rebuild the solution one part at a time. The highlighted comment says what to write next.</p>
         </header>
 
         {showPrompt && (
@@ -334,10 +332,10 @@ function Rebuild({ p }: { p: Problem }) {
         <CodeWindow
           className={`rebuild-editor ${status !== 'idle' ? `is-${status}` : ''}`}
           right={
-            <span className="rebuild-steps" role="img" aria-label={`Step ${step + 1} of ${body.length}`}>
+            <span className="rebuild-steps" role="img" aria-label={`Part ${step + 1} of ${body.length}`}>
               <span className="rebuild-steps-label">
-                Step {step + 1}
-                <span className="rebuild-steps-of">/{body.length}</span>
+                Part {step + 1}
+                <span className="rebuild-steps-of"> of {body.length}</span>
               </span>
               <span className="rebuild-steps-track" aria-hidden="true">
                 {body.map((_, k) => (
@@ -419,13 +417,13 @@ function Rebuild({ p }: { p: Problem }) {
                   </div>
                   <textarea
                     className="input code-input"
-                    aria-label={`Code for step ${step + 1}`}
+                    aria-label={`Code for part ${step + 1}`}
                     autoFocus
                     spellCheck={false}
                     autoCapitalize="off"
                     autoCorrect="off"
                     rows={rows}
-                    placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this step`}
+                    placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`}
                     value={text}
                     disabled={status !== 'idle'}
                     onChange={(e) => setText(e.target.value)}
@@ -534,7 +532,7 @@ function Rebuild({ p }: { p: Problem }) {
           onContinue={typing ? () => nextChunk({ correct: result?.correct ?? 0, total: result?.total ?? curLines.length }) : continueTap}
           feedback={
             <div className="rebuild-fb">
-              <span className="drill-fb-label">This step</span>
+              <span className="drill-fb-label">This part</span>
               <span>{inline(cur.c.explain)}</span>
             </div>
           }
