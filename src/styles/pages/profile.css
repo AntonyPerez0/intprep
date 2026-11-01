@@ -209,6 +209,10 @@
   letter-spacing: 0;
   color: var(--text-tertiary);
 }
+/* "11/150": the denominator sits close, as on the Dashboard */
+.profile-unit.profile-of {
+  margin-left: 2px;
+}
 @container profile (min-width: 600px) {
   .profile-stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -289,7 +293,8 @@
   min-width: 0;
   overflow: hidden;
 }
-.profile-heat-wrap.is-empty .profile-heat {
+/* Fade only the squares; the day and month labels keep their contrast. */
+.profile-heat-wrap.is-empty .profile-heat-cell {
   opacity: 0.55;
 }
 .profile-heat-empty {
@@ -1007,24 +1012,12 @@
 .profile-row-note:empty {
   display: none;
 }
-/* The shared switch is 36x20; give it a 44x40 hit area without changing its look. */
-.profile-row .toggle::before {
-  content: '';
-  position: absolute;
-  inset: -10px -4px;
-}
 .profile-name-input {
   width: 260px;
 }
 .profile-seg button {
   height: 32px;
   justify-content: center;
-}
-/* Make the selected segment legible in dark mode, where surface and sunken are close. */
-.profile-seg button.on {
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 0 0 1px var(--border);
 }
 .profile-seg-sub {
   font-weight: 500;
@@ -1033,13 +1026,6 @@
 }
 .seg button.on .profile-seg-sub {
   color: var(--text-secondary);
-}
-.profile-callout-danger {
-  background: var(--danger-subtle);
-  border-color: var(--danger-border);
-}
-.profile-callout-danger > svg {
-  color: var(--danger);
 }
 @container pform (max-width: 599px) {
   .profile-row:not(.is-inline) {

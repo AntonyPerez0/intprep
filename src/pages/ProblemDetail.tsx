@@ -267,7 +267,7 @@ export function ProblemDetail() {
 
         <div className="problem-detail-side">
           <section className={`card problem-detail-card problem-detail-status ${learned ? '' : 'problem-detail-status-new'}`} aria-labelledby="problem-detail-status">
-            <h2 id="problem-detail-status" className="problem-detail-card-title">
+            <h2 id="problem-detail-status" className="card-title problem-detail-card-title">
               Your progress
             </h2>
             <div className="problem-detail-mastery">
@@ -298,7 +298,7 @@ export function ProblemDetail() {
           </section>
 
           <section className="card problem-detail-card problem-detail-pattern" aria-labelledby="problem-detail-pattern">
-            <h2 id="problem-detail-pattern" className="problem-detail-card-title">
+            <h2 id="problem-detail-pattern" className="card-title problem-detail-card-title">
               Pattern
             </h2>
             <Link to={`/unit/${cat.id}`} className="problem-detail-unit">
@@ -316,8 +316,8 @@ export function ProblemDetail() {
 
           <nav className="card pad-0 problem-detail-card problem-detail-nav" aria-label="Previous and next problem">
             <div className="problem-detail-nav-head">
-              <span>Problem library</span>
-              <span className="tabular">
+              <span className="card-title">Problem library</span>
+              <span className="card-subtitle tabular">
                 {idx + 1} of {PROBLEMS.length}
               </span>
             </div>

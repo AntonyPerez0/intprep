@@ -1,10 +1,10 @@
 import '../styles/pages/science.css';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookMarked, FileText, FlaskConical, Route } from 'lucide-react';
+import { ArrowRight, BookMarked, FlaskConical, Route } from 'lucide-react';
 import { SCIENCE } from '../content/science';
 import { IconTile, SCIENCE_ICON } from '../components/icons';
-import { LogoMark } from '../components/ui';
+import { LogoMark, PageHeader, SectionHeader } from '../components/ui';
 
 const SHORT_VERSION: { verb: string; rest: ReactNode }[] = [
   { verb: 'Learn', rest: ' a pattern with worked examples, broken into small chunks.' },
@@ -86,26 +86,25 @@ export function Science() {
 
   return (
     <div className="science">
-      <header className="science-hero">
-        <div className="science-eyebrow">
-          <FlaskConical aria-hidden="true" />
-          Learning science
-        </div>
-        <h1 className="science-title">Why this works</h1>
-        <p className="science-lead">
-          IntPrep is designed around decades of research on how people learn and remember — and on what makes practice something you want to come back to.
-        </p>
-        <ul className="science-meta" aria-label="About this page">
-          <li>{SCIENCE.length} principles</li>
-          <li>{SOURCES} cited sources</li>
-          <li>About {READ_MIN} min read</li>
-        </ul>
-      </header>
+      <PageHeader
+        eyebrow="Learning science"
+        title="Why this works"
+        sub={
+          <>
+            IntPrep is designed around decades of research on how people learn and remember — and on what makes practice something you want to come back to.
+            <ul className="science-meta" aria-label="About this page">
+              <li>{SCIENCE.length} principles</li>
+              <li>{SOURCES} cited sources</li>
+              <li>About {READ_MIN} min read</li>
+            </ul>
+          </>
+        }
+      />
 
       <div className="science-layout">
         <div className="science-article">
           <section id={SUMMARY_ID} className="card science-summary" aria-labelledby="science-summary-title">
-            <h2 id="science-summary-title" className="science-h2">
+            <h2 id="science-summary-title" className="h3">
               The short version
             </h2>
             <ol className="science-steps">
@@ -123,10 +122,7 @@ export function Science() {
             </ol>
           </section>
 
-          <div className="science-section-head">
-            <h2 className="science-h2">The principles</h2>
-            <p>What the research found, and where you meet it in IntPrep.</p>
-          </div>
+          <SectionHeader title="The principles" sub="What the research found, and where you meet it in IntPrep." />
 
           <div className="science-principles">
             {SCIENCE.map((s, i) => (
@@ -175,14 +171,6 @@ export function Science() {
               <ArrowRight aria-hidden="true" />
             </Link>
           </section>
-
-          <aside className="science-footnote">
-            <FileText aria-hidden="true" />
-            <p>
-              The full write-up, with evidence strength, caveats and complete references for every principle, is in <code>docs/LEARNING_SCIENCE.md</code> in
-              the project repository.
-            </p>
-          </aside>
         </div>
 
         <nav className="science-toc" aria-label="On this page">

@@ -37,6 +37,7 @@
 .problems-summary-k {
   font-size: var(--fs-xs);
   font-weight: 500;
+  white-space: nowrap;
   color: var(--text-tertiary);
 }
 .problems-summary-v {
@@ -183,7 +184,9 @@
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
-  overflow: hidden;
+  /* clip, not hidden: rounds the corners without creating a scroll container,
+     so the column header can stick to the top bar on desktop. */
+  overflow: clip;
 }
 .problems-table-bar {
   display: flex;
@@ -230,9 +233,11 @@
 .problems-row {
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
+  /* The meta line runs under the difficulty column too; the narrow mastery
+     meter sits over its end (see .problems-meta padding). */
   grid-template-areas:
     'status title diff'
-    'status meta mastery';
+    'status meta meta';
   align-items: center;
   column-gap: 12px;
   row-gap: 4px;
@@ -245,9 +250,11 @@
   background: var(--surface-hover);
 }
 .problems-row:focus-visible {
-  outline: none;
-  border-radius: 0;
-  box-shadow: inset 0 0 0 2px var(--brand-500);
+  outline-offset: -2px;
+}
+/* Match the table's corner so hover and the focus ring follow it */
+.problems-rows > li:last-child > .problems-row {
+  border-radius: 0 0 calc(var(--r-lg) - 1px) calc(var(--r-lg) - 1px);
 }
 .problems-status {
   grid-area: status;
@@ -274,6 +281,7 @@
 }
 .problems-meta {
   grid-area: meta;
+  padding-right: 40px; /* mastery meter (28px) + gap */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -281,15 +289,19 @@
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
 }
+/* The technique gives way first; a long pattern name ellipsizes past 60%. */
 .problems-meta-cat {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   flex: none;
+  min-width: 0;
+  max-width: 60%;
   color: var(--text-secondary);
 }
 .problems-meta-cat::before {
   content: '';
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -304,7 +316,7 @@
   justify-self: end;
 }
 .problems-mastery {
-  grid-area: mastery;
+  grid-area: 2 / 3;
   justify-self: end;
   display: inline-flex;
   align-items: center;
@@ -324,7 +336,7 @@
 @container (min-width: 640px) and (max-width: 979px) {
   .problems-thead {
     display: grid;
-    grid-template-columns: 22px minmax(0, 1fr) 180px 84px 64px;
+    grid-template-columns: 22px minmax(0, 1fr) 180px 64px 84px;
     column-gap: 16px;
     align-items: center;
     height: 36px;
@@ -339,16 +351,22 @@
     display: none;
   }
   .problems-row {
-    grid-template-columns: 22px minmax(0, 1fr) 180px 84px 64px;
+    grid-template-columns: 22px minmax(0, 1fr) 180px 64px 84px;
     grid-template-areas:
-      'status title cat diff mastery'
-      'status meta cat diff mastery';
+      'status title cat mastery diff'
+      'status meta cat mastery diff';
     column-gap: 16px;
     row-gap: 2px;
     padding: 10px 16px;
   }
+  .problems-meta {
+    padding-right: 0;
+  }
   .problems-meta-cat {
     display: none;
+  }
+  .problems-mastery {
+    grid-area: mastery;
   }
   .problems-cat {
     grid-area: cat;
@@ -377,7 +395,7 @@
 @container (min-width: 980px) {
   .problems-thead,
   .problems-row {
-    grid-template-columns: 22px minmax(0, 2.3fr) minmax(0, 1.9fr) minmax(0, 1.5fr) 84px 124px;
+    grid-template-columns: 22px minmax(0, 2.3fr) minmax(0, 1.9fr) minmax(0, 1.5fr) 124px 84px;
     grid-template-areas: none;
     column-gap: 16px;
   }
@@ -440,6 +458,14 @@
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
+/* Desktop: keep the column header in view under the top bar while scrolling. */
+@media (min-width: 1024px) {
+  .problems-thead {
+    position: sticky;
+    top: var(--topbar-h);
+    z-index: 2;
+  }
+}
 @media (max-width: 1023px) {
   .problems .page-header > .row {
     flex: 1 1 100%;
@@ -447,8 +473,10 @@
   .problems-summary {
     width: 100%;
   }
+  /* Columns share the spare room but start from their content, so the longer
+     "Strong or better" label keeps to one line on phones. */
   .problems-summary-item {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
     padding: 10px 14px;
   }
