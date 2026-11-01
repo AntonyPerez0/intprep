@@ -1,34 +1,51 @@
-import { useMemo, useState } from 'react';
+import '../styles/pages/lesson-player.css';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { ArrowRight, BookOpen, FileCode2, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
-import { HighlightedCode } from '../lib/highlight';
+import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
-import { completeLesson } from '../lib/store';
+import { completeLesson, getProgress } from '../lib/store';
 import { ActionBar, Choices, type CheckStatus } from '../components/interact';
 import { SessionShell } from '../components/Shell';
+import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
+import { Badge, Completion } from '../components/ui';
+
+/** A slide plus optional presentation hints (eyebrow label, Lucide icon, file name, card footer). */
+type PlayerSlide = Slide & { eyebrow?: string; icon?: LucideIcon; file?: string; foot?: { label: string; text: string } };
 
 /** Turn a pattern guide into a short slide lesson. */
-function guideSlides(g: PatternGuide): Slide[] {
+function guideSlides(g: PatternGuide): PlayerSlide[] {
   const meta = CATEGORY_BY_ID[g.category];
   const [q1, ...restQ] = g.quiz;
   return [
-    { kind: 'text', title: `${meta.icon} ${meta.name}`, body: g.summary },
-    { kind: 'text', title: '🧠 Picture it like this', body: g.analogy },
-    { kind: 'text', title: '🔎 When to reach for it', body: g.whenToUse.map((w) => `- ${w}`).join('\n') },
+    { kind: 'text', eyebrow: 'The pattern', icon: CATEGORY_ICON[g.category], title: meta.name, body: g.summary },
+    { kind: 'text', eyebrow: 'Analogy', icon: Lightbulb, title: 'Picture it like this', body: g.analogy },
+    { kind: 'text', eyebrow: 'Recognise it', icon: ScanSearch, title: 'When to reach for it', body: g.whenToUse.map((w) => `- ${w}`).join('\n') },
     ...(q1 ? [{ kind: 'quiz' as const, ...q1 }] : []),
     {
       kind: 'code',
-      title: '🧰 The reusable template',
+      eyebrow: 'Template',
+      icon: Wrench,
+      file: 'template.py',
+      title: 'The reusable template',
       body: 'Most problems in this unit are a variation of this shape. You will see it again and again.',
       code: g.template,
     },
-    { kind: 'text', title: '📝 Template notes', body: g.templateNotes.map((n) => `- ${n}`).join('\n') + `\n\n**Typical cost:** ${g.complexity}` },
+    {
+      kind: 'text',
+      eyebrow: 'Template',
+      icon: NotebookPen,
+      title: 'Template notes',
+      body: g.templateNotes.map((n) => `- ${n}`).join('\n'),
+      foot: { label: 'Typical cost', text: g.complexity },
+    },
     ...restQ.map((q) => ({ kind: 'quiz' as const, ...q })),
   ];
 }
@@ -44,11 +61,27 @@ export function LessonPlayer({ mode }: Props) {
   const lesson = useMemo(() => {
     if (mode === 'foundation') {
       const l = FOUNDATIONS.find((x) => x.id === lessonId);
-      return l ? { key: `f:${l.id}`, title: l.title, slides: l.slides, back: '/learn#foundations', icon: l.icon } : null;
+      return l
+        ? {
+            key: `f:${l.id}`,
+            title: l.title,
+            slides: l.slides as PlayerSlide[],
+            back: '/learn#foundations',
+            Icon: LESSON_ICON[l.id] ?? BookOpen,
+            kind: `Foundations · Lesson ${FOUNDATIONS.indexOf(l) + 1}`,
+          }
+        : null;
     }
     const g = guideFor(cat as CategoryId);
     return g
-      ? { key: `g:${g.category}`, title: `${CATEGORY_BY_ID[g.category].name}`, slides: guideSlides(g), back: `/unit/${g.category}`, icon: CATEGORY_BY_ID[g.category].icon }
+      ? {
+          key: `g:${g.category}`,
+          title: `${CATEGORY_BY_ID[g.category].name}`,
+          slides: guideSlides(g),
+          back: `/unit/${g.category}`,
+          Icon: CATEGORY_ICON[g.category],
+          kind: 'Pattern intro',
+        }
       : null;
   }, [mode, lessonId, cat]);
 
@@ -60,6 +93,8 @@ export function LessonPlayer({ mode }: Props) {
   const [firstTry, setFirstTry] = useState<Record<number, boolean>>({});
   const [done, setDone] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
+  // Captured once so the completion screen shows the XP actually awarded (repeats earn a third).
+  const [repeat] = useState(() => (lesson ? !!getProgress().lessonsDone[lesson.key] : false));
 
   if (!lesson) return <Navigate to="/learn" replace />;
 
@@ -87,58 +122,72 @@ export function LessonPlayer({ mode }: Props) {
 
   if (done) {
     const correctFirst = Object.values(firstTry).filter(Boolean).length;
+    const awarded = repeat ? Math.round(xpEarned / 3) : xpEarned;
+    const stats = [
+      { label: 'XP earned', value: `+${awarded}` },
+      ...(quizCount > 0
+        ? [
+            {
+              label: 'First try',
+              value: (
+                <>
+                  {correctFirst}
+                  <span className="lplayer-of">/{quizCount}</span>
+                </>
+              ),
+            },
+          ]
+        : []),
+      { label: 'Slides', value: lesson.slides.length },
+    ];
     return (
-      <SessionShell progress={1} onClose={() => nav(lesson.back)}>
-        <div className="complete">
-          <div className="trophy">{lesson.icon}</div>
-          <h1 style={{ marginTop: 12 }}>Lesson complete!</h1>
-          <p className="muted">{lesson.title}</p>
-          <div className="reward-tiles">
-            <div className="reward" style={{ ['--c' as string]: 'var(--gold)' }}>
-              <div className="rk">XP</div>
-              <div className="rv">+{xpEarned}</div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--green)' }}>
-              <div className="rk">First try</div>
-              <div className="rv">
-                {correctFirst}/{quizCount}
-              </div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--blue)' }}>
-              <div className="rk">Slides</div>
-              <div className="rv">{lesson.slides.length}</div>
-            </div>
-          </div>
-          <div className="stack" style={{ maxWidth: 360, margin: '0 auto' }}>
+      <SessionShell progress={1} onClose={() => nav(lesson.back)} title={lesson.title}>
+        <div className="lplayer-done">
+          <Completion
+            icon={lesson.Icon}
+            tone="success"
+            title="Lesson complete"
+            subtitle={
+              <>
+                <span className="lplayer-done-kind">{lesson.kind}</span>
+                <strong>{lesson.title}</strong>
+              </>
+            }
+            stats={stats}
+          >
             {mode === 'foundation' ? (
               (() => {
                 const i = FOUNDATIONS.findIndex((l) => l.id === lessonId);
                 const nxt = FOUNDATIONS[i + 1];
                 return nxt ? (
-                  <Link to={`/foundations/${nxt.id}`} className="btn btn-green btn-block">
-                    Next: {nxt.title}
+                  <Link to={`/foundations/${nxt.id}`} className="btn btn-primary btn-lg btn-block">
+                    <span className="truncate">Next: {nxt.title}</span>
+                    <ArrowRight />
                   </Link>
                 ) : (
-                  <Link to="/unit/arrays-hashing" className="btn btn-green btn-block">
-                    Start Unit 1: Arrays &amp; Hashing
+                  <Link to="/unit/arrays-hashing" className="btn btn-primary btn-lg btn-block">
+                    <span className="truncate">Start Unit 1: Arrays &amp; Hashing</span>
+                    <ArrowRight />
                   </Link>
                 );
               })()
             ) : (
-              <Link to={lesson.back} className="btn btn-green btn-block">
+              <Link to={lesson.back} className="btn btn-primary btn-lg btn-block">
                 Start the problems
+                <ArrowRight />
               </Link>
             )}
-            <Link to="/" className="btn btn-ghost btn-block">
-              Home
+            <Link to="/" className="btn btn-secondary btn-lg btn-block">
+              Back to dashboard
             </Link>
-          </div>
+          </Completion>
         </div>
       </SessionShell>
     );
   }
 
   const isQuiz = slide.kind === 'quiz';
+  const isRequeue = pos >= lesson.slides.length;
   const check = () => {
     if (!isQuiz || sel === null) return;
     const ok = Number(sel) === slide.answer;
@@ -148,13 +197,42 @@ export function LessonPlayer({ mode }: Props) {
     if (!ok) setQueue((q) => [...q, idx]); // ask again later
   };
 
+  // Eyebrow: quizzes say what they are; guide slides carry their own label; foundation slides say where
+  // they sit in the course (the lesson title is already in the header).
+  const quizNo = isQuiz ? lesson.slides.slice(0, idx + 1).filter((s) => s.kind === 'quiz').length : 0;
+  const KickerIcon = isQuiz ? ListChecks : (slide.icon ?? lesson.Icon);
+  const kicker = isQuiz ? `Check your understanding · ${quizNo} of ${quizCount}` : (slide.eyebrow ?? lesson.kind);
+
   return (
-    <SessionShell progress={pos / total} onClose={() => nav(lesson.back)}>
-      <div className="kicker">
-        {lesson.icon} {lesson.title}
-        {pos >= lesson.slides.length && <span className="chip brand">Review a missed one</span>}
+    <SessionShell
+      progress={pos / total}
+      onClose={() => nav(lesson.back)}
+      title={lesson.title}
+      right={
+        <span className="lplayer-count">
+          <span className="sr-only">
+            Slide {pos + 1} of {total}
+          </span>
+          <span aria-hidden="true">
+            {pos + 1}
+            <span className="lplayer-count-total">/{total}</span>
+          </span>
+        </span>
+      }
+    >
+      <div className={`lplayer lplayer-${slide.kind}`}>
+        <div className="kicker lplayer-kicker">
+          <KickerIcon strokeWidth={2} />
+          <span>{kicker}</span>
+          {isRequeue && (
+            <Badge tone="warning" pill>
+              <RotateCcw />
+              Missed earlier
+            </Badge>
+          )}
+        </div>
+        <SlideView slide={slide} sel={sel} setSel={setSel} status={status} animKey={pos} />
       </div>
-      <SlideView slide={slide} sel={sel} setSel={setSel} status={status} />
       <ActionBar
         status={isQuiz ? status : 'idle'}
         onCheck={isQuiz ? check : undefined}
@@ -172,52 +250,73 @@ function SlideView({
   sel,
   setSel,
   status,
+  animKey,
 }: {
-  slide: Slide;
+  slide: PlayerSlide;
   sel: string | null;
   setSel: (s: string) => void;
   status: CheckStatus;
+  animKey: number;
 }) {
   const order = useMemo(() => (slide.kind === 'quiz' ? shuffle(slide.options.map((_, i) => i)) : []), [slide]);
   if (slide.kind === 'text') {
     return (
-      <div className="stack" key={slide.body}>
-        {slide.title && <h2 className="q-title">{slide.title}</h2>}
-        <div style={{ fontSize: '1.05rem' }}>
-          <Md text={slide.body} />
+      <div className="lplayer-slide" key={animKey}>
+        {slide.title && <h1 className="q-title">{slide.title}</h1>}
+        <div className="lplayer-card">
+          <Md text={slide.body} className="lplayer-prose" />
+          {slide.foot && (
+            <div className="lplayer-card-foot">
+              <Gauge aria-hidden="true" />
+              <div>
+                <span className="lplayer-card-foot-label">{slide.foot.label}</span>
+                {inline(slide.foot.text)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
   if (slide.kind === 'code') {
     return (
-      <div className="stack">
-        {slide.title && <h2 className="q-title">{slide.title}</h2>}
-        {slide.body && <Md text={slide.body} />}
-        <HighlightedCode code={slide.code} />
-        {slide.output && (
-          <div>
-            <div className="tiny muted" style={{ fontWeight: 800, marginBottom: 4 }}>
-              OUTPUT
-            </div>
-            <pre className="code" style={{ background: 'var(--surface-2)', color: 'var(--text)', border: '1px solid var(--border)' }}>
-              {slide.output.split('\n').map((l, i) => (
-                <div className="code-line" key={i}>
-                  {l || ' '}
-                </div>
-              ))}
-            </pre>
+      <div className="lplayer-slide" key={animKey}>
+        {slide.title && <h1 className="q-title">{slide.title}</h1>}
+        {slide.body && <Md text={slide.body} className="lplayer-lede" />}
+        <div className="lplayer-codewin">
+          <div className="lplayer-codewin-head">
+            <FileCode2 />
+            <span>{slide.file ?? 'example.py'}</span>
+            <span className="lplayer-codewin-lang">Python</span>
           </div>
-        )}
+          <SlideCode code={slide.code} />
+          {slide.output && (
+            <div className="lplayer-output">
+              <div className="lplayer-output-head">
+                <Terminal />
+                Output
+              </div>
+              <pre className="lplayer-output-body">
+                {slide.output.split('\n').map((l, i) => (
+                  <div key={i}>{l || ' '}</div>
+                ))}
+              </pre>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
   return (
-    <div className="stack">
-      <div className="q-title">
+    <div className="lplayer-slide" key={animKey}>
+      <div className="q-title lplayer-question" role="heading" aria-level={1}>
         <Md text={slide.q} />
       </div>
-      {slide.code && <HighlightedCode code={slide.code} />}
+      {slide.code && (
+        <div className="lplayer-codewin lplayer-quiz-code">
+          <SlideCode code={slide.code} />
+        </div>
+      )}
       <Choices
         options={order.map((i) => ({ key: String(i), label: inline(slide.options[i]) }))}
         selected={sel}
@@ -229,5 +328,45 @@ function SlideView({
         revealed={status !== 'idle'}
       />
     </div>
+  );
+}
+
+// ── Code ────────────────────────────────────────────────────────────────────
+
+/**
+ * Number literals the shared tokenizer cannot match (`1_000_000`, `0xFFFFFFFF`): it skips the
+ * characters it has no token for, so `1_000_000` rendered as `_000_000`. Strings and comments are
+ * matched first so digits inside them are never split out. Remove once lib/highlight handles these.
+ */
+const PY_LITERAL = /("""[\s\S]*?"""|'''[\s\S]*?'''|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*'|#.*$)|\b(0[xXoObB][\da-fA-F_]+|\d+(?:_\d+)+(?:\.\d+)?)\b/g;
+
+function highlightPy(line: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let from = 0;
+  for (const m of line.matchAll(PY_LITERAL)) {
+    if (!m[2]) continue; // a string or comment: leave it in the run for the shared highlighter
+    const at = m.index ?? 0;
+    if (at > from) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from, at))}</Fragment>);
+    out.push(
+      <span key={out.length} className="tk-num">
+        {m[2]}
+      </span>,
+    );
+    from = at + m[2].length;
+  }
+  if (from < line.length) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from))}</Fragment>);
+  return out;
+}
+
+/** Same markup as HighlightedCode from lib/highlight, with the literal fix above. */
+function SlideCode({ code }: { code: string }) {
+  return (
+    <pre className="code">
+      {code.split('\n').map((l, i) => (
+        <div key={i} className="code-line">
+          {l === '' ? '\u00a0' : highlightPy(l)}
+        </div>
+      ))}
+    </pre>
   );
 }
