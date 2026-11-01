@@ -296,7 +296,7 @@ class Solution:
         },
         { input: 'height = [4, 4]', output: '4' },
       ],
-      signals: ['choose **two positions** to maximise something', 'area = width × the smaller height', 'O(n) wanted, not every pair'],
+      signals: ['choose **two positions** to maximize something', 'area = width × the smaller height', 'O(n) wanted, not every pair'],
       hints: [
         'Start with the widest container possible: the first and last walls.',
         'Moving either wall inward makes the container narrower. Which wall should move so the height has a chance to grow?',

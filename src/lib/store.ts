@@ -19,16 +19,21 @@ export interface ProblemProgress {
   rebuildBest?: number;
   /** Best Code from memory score, the whole solution from scratch (0–1). */
   scratchBest?: number;
-  /** When this problem was last written from memory (either mode). */
+  /** Best Code from memory score, fill the gaps (0–1). Optional: older saves do not have it. */
+  gapsBest?: number;
+  /** When this problem was last written from memory (any mode). */
   rebuiltAt?: number;
 }
 
 export interface TemplateProgress {
-  /** Best first-try accuracy, 0–1. */
+  /** Best first-try accuracy from memory, 0–1 (0 with `tries` 0 when only the gaps were done). */
   best: number;
+  /** From-memory attempts. */
   tries: number;
-  /** When it was last typed (ms). */
+  /** When it was last practiced, either way (ms). */
   at: number;
+  /** Best first-check accuracy filling the gaps, 0–1. Optional: older saves do not have it. */
+  gapsBest?: number;
 }
 
 export type Experience = 'none' | 'some' | 'comfortable';
@@ -403,29 +408,50 @@ export function recordBlitz(score: number) {
   return best;
 }
 
-/** A finished Code from memory session: part by part (default) or the whole solution from scratch. */
-export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'scratch' = 'parts') {
+/**
+ * A finished Code from memory session: part by part (default), fill the gaps, or the whole
+ * solution from scratch.
+ */
+export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gaps' | 'scratch' = 'parts') {
   update((d) => {
     d.stats.rebuilds += 1;
     if (accuracy >= 1) d.stats.perfectRebuilds += 1;
     const p = d.problems[id];
     if (!p) return;
     if (mode === 'scratch') p.scratchBest = Math.max(p.scratchBest ?? 0, accuracy);
+    else if (mode === 'gaps') p.gapsBest = Math.max(p.gapsBest ?? 0, accuracy);
     else p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
     p.rebuiltAt = Date.now();
   });
 }
 
-/** Record a "Template from memory" attempt for a unit. Returns true on a new best. */
-export function recordTemplate(cat: string, accuracy: number): boolean {
+/**
+ * Record a template drill for a unit: typed from memory (default) or by filling the gaps.
+ * Returns true on a new best for that mode.
+ */
+export function recordTemplate(cat: string, accuracy: number, mode: 'memory' | 'gaps' = 'memory'): boolean {
   const prev = state.templates?.[cat];
-  const best = !prev || accuracy > prev.best;
+  const best = mode === 'gaps' ? prev?.gapsBest === undefined || accuracy > prev.gapsBest : !prev?.tries || accuracy > prev.best;
   update((d) => {
     const t = (d.templates ??= {});
     const cur = t[cat];
-    t[cat] = { best: Math.max(cur?.best ?? 0, accuracy), tries: (cur?.tries ?? 0) + 1, at: Date.now() };
+    const base = { best: cur?.best ?? 0, tries: cur?.tries ?? 0, at: Date.now(), ...(cur?.gapsBest !== undefined ? { gapsBest: cur.gapsBest } : {}) };
+    t[cat] =
+      mode === 'gaps'
+        ? { ...base, gapsBest: Math.max(cur?.gapsBest ?? 0, accuracy) }
+        : { ...base, best: Math.max(cur?.best ?? 0, accuracy), tries: base.tries + 1 };
   });
   return best;
+}
+
+/**
+ * The template score to show next to "Practice the template": the from-memory best once the
+ * template has been typed from memory, else the fill-the-gaps best, else null.
+ */
+export function templateScore(t: TemplateProgress | undefined): { mode: 'memory' | 'gaps'; best: number } | null {
+  if (t && t.tries > 0) return { mode: 'memory', best: t.best };
+  if (t?.gapsBest !== undefined) return { mode: 'gaps', best: t.gapsBest };
+  return null;
 }
 
 // ── Settings & data ─────────────────────────────────────────────────────────

@@ -1,14 +1,28 @@
 import '../styles/pages/patterns.css';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, ChevronDown, ChevronRight, Gauge, GraduationCap, Keyboard, Lightbulb, Search, SearchX, Trophy, X } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  Gauge,
+  GraduationCap,
+  Keyboard,
+  Lightbulb,
+  Search,
+  SearchX,
+  TextCursorInput,
+  Trophy,
+  X,
+} from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID, type CategoryMeta } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { Difficulty } from '../content/types';
 import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { isDue } from '../lib/srs';
-import { useProgress, type Progress } from '../lib/store';
+import { templateScore, useProgress, type Progress } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon } from '../components/icons';
 import { CodeWindow } from '../components/interact';
@@ -246,7 +260,8 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
   const g = guideFor(c.id);
   const s = unitStats(c, progress);
   const introDone = !!progress.lessonsDone[`g:${c.id}`];
-  const typed = progress.templates?.[c.id];
+  // The best template score so far: typed from memory, else filling the gaps.
+  const typed = templateScore(progress.templates?.[c.id]);
 
   const actions = (
     <div className="patterns-actions">
@@ -333,16 +348,19 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
         <div className="patterns-template-head">
           <h3>Template</h3>
           {typed && (
-            <span className="patterns-best" title="Your best first try at typing it from memory">
-              <Trophy strokeWidth={2.2} aria-hidden="true" />
-              <span className="sr-only">Typed from memory, best first try: </span>
-              <span aria-hidden="true">Best </span>
+            <span
+              className={`patterns-best is-${typed.mode}`}
+              title={typed.mode === 'memory' ? 'Your best first try typing it from memory' : 'Your best first check filling the gaps'}
+            >
+              {typed.mode === 'memory' ? <Trophy strokeWidth={2.2} aria-hidden="true" /> : <TextCursorInput strokeWidth={2.2} aria-hidden="true" />}
+              <span className="sr-only">{typed.mode === 'memory' ? 'Typed from memory, best first try: ' : 'Filled the gaps, best first check: '}</span>
+              <span aria-hidden="true">{typed.mode === 'memory' ? 'Best ' : 'Gaps '}</span>
               {Math.round(typed.best * 100)}%
             </span>
           )}
           <Link to={`/patterns/${c.id}/type`} state={{ from: `/patterns?p=${c.id}` }} className="btn btn-secondary btn-sm patterns-type">
             <Keyboard aria-hidden="true" />
-            Type it from memory
+            Practice the template
           </Link>
         </div>
         <CodeWindow className="patterns-code" filename={`${c.id}.py`}>

@@ -81,7 +81,7 @@ def solve(nums):
         'Keep a set. If the current number is already in it, you found a duplicate.',
       ],
       brute:
-        'Compare every pair `(i, j)` with two nested loops — **O(n²)** time. Sorting first and checking neighbours is **O(n log n)**: better, but we can do linear.',
+        'Compare every pair `(i, j)` with two nested loops — **O(n²)** time. Sorting first and checking neighbors is **O(n log n)**: better, but we can do linear.',
       insight:
         'Remember every number you have seen in a **set**. The first time a number is already in the set, it is a duplicate.',
       mnemonic: 'Seen it before? Duplicate. Otherwise, remember it.',
@@ -593,13 +593,13 @@ class Solution:
       hints: [
         'Sorting makes this easy but costs O(n log n). Which structure lets you ask "is x + 1 here?" in O(1)?',
         'Put everything in a set. From any number you can walk upward: x + 1, x + 2, ...',
-        'Only start walking from numbers whose left neighbour `x - 1` is **not** in the set. Those are the starts of runs.',
+        'Only start walking from numbers whose left neighbor `x - 1` is **not** in the set. Those are the starts of runs.',
       ],
       brute:
         'Sort the list and scan for runs — **O(n log n)**. Or walk upward with a set from *every* number, which repeats the same walks again and again and can reach **O(n²)**.',
       insight:
         'Put all numbers in a set and only start counting at a number `x` whose `x - 1` is missing — the **start** of a run. Every number is then walked over at most once, so the total is O(n).',
-      mnemonic: 'No left neighbour? Start of a run — count upward.',
+      mnemonic: 'No left neighbor? Start of a run — count upward.',
       steps: [
         'Put every number into a set.',
         'Loop over the numbers in the set.',
@@ -613,7 +613,7 @@ class Solution:
         #@ A set gives O(1) "is x present?" checks, and duplicates collapse into one.
         num_set = set(nums)
         longest = 0
-        #@ Only start counting from a number that BEGINS a run: its left neighbour is missing.
+        #@ Only start counting from a number that BEGINS a run: its left neighbor is missing.
         for n in num_set:
             if n - 1 not in num_set:  #!
                 #@ Walk right while the next number exists, measuring the run.

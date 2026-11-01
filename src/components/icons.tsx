@@ -238,7 +238,7 @@ export function Icon({ name, size = 16, strokeWidth = 1.75, ...rest }: { name: I
   return <C size={size} strokeWidth={strokeWidth} aria-hidden="true" {...rest} />;
 }
 
-/** Category icon inside a tinted tile using the category colour. */
+/** Category icon inside a tinted tile using the category color. */
 export function CategoryIcon({
   id,
   color,

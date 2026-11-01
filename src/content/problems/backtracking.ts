@@ -3,7 +3,7 @@ import { py, type CategoryContent } from '../types';
 const content: CategoryContent = {
   guide: {
     category: 'backtracking',
-    summary: `**Backtracking** is an organised way to try *every* possibility. You build an answer one piece at a time, and as soon as a piece leads nowhere you take it back and try the next option.
+    summary: `**Backtracking** is an organized way to try *every* possibility. You build an answer one piece at a time, and as soon as a piece leads nowhere you take it back and try the next option.
 
 Picture a **decision tree**. The root is an empty answer. Each branch is one choice ("add 3", "skip 3", "put a queen in column 2"). A path from the root down to a leaf is one complete candidate. Backtracking is simply a depth-first walk over that tree.
 
@@ -486,20 +486,20 @@ class Solution:
       ],
       hints: [
         'The word must start somewhere. Try every cell as the starting point.',
-        'From a matching cell, the next letter must be in one of the four neighbours. That is a recursive search.',
-        'Mark the current cell as used (overwrite it with a placeholder), search the four neighbours for the next letter, then put the letter back before returning.',
+        'From a matching cell, the next letter must be in one of the four neighbors. That is a recursive search.',
+        'Mark the current cell as used (overwrite it with a placeholder), search the four neighbors for the next letter, then put the letter back before returning.',
       ],
       brute:
         'List every path in the grid and compare its letters to the word: exponential in the size of the grid, roughly **O(4^(m·n))**. Backtracking only follows a path while its letters keep matching.',
       insight:
-        'Start a DFS from every cell. Each step must land on the next letter of the word. Mark the cell as used while you explore its neighbours, and **restore it on the way back** so other paths may use it.',
+        'Start a DFS from every cell. Each step must land on the next letter of the word. Mark the cell as used while you explore its neighbors, and **restore it on the way back** so other paths may use it.',
       mnemonic: 'Match, mark, search four ways, unmark.',
       steps: [
         'In dfs(r, c, k), return True once k equals the length of the word.',
         'Return False if the cell is off the grid or does not match word[k].',
         'Temporarily overwrite the cell so this path cannot reuse it.',
-        'Search the four neighbours for letter k + 1.',
-        'Restore the cell and return whether any neighbour succeeded.',
+        'Search the four neighbors for letter k + 1.',
+        'Restore the cell and return whether any neighbor succeeded.',
         'Try every cell of the board as the starting point.',
       ],
       solution: py`
@@ -518,7 +518,7 @@ class Solution:
                 return False
             #@ Choose: mark this cell as used for the rest of this path.
             board[r][c] = "*"  #!
-            #@ Explore: look for the next letter in the four neighbours.
+            #@ Explore: look for the next letter in the four neighbors.
             found = (dfs(r + 1, c, k + 1) or dfs(r - 1, c, k + 1) or
                      dfs(r, c + 1, k + 1) or dfs(r, c - 1, k + 1))
             #@ Un-choose: put the letter back so other paths can use this cell.

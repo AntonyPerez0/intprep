@@ -11,7 +11,7 @@
 // - Deterministic: the same seed always gives the same gaps. Seed 0 (the default) is the
 //   canonical set. Seeds are rounds of practice (pass the attempt number): seed n avoids the
 //   lines of seed n − 1 where it can and never repeats its set when another set exists, so
-//   "new gaps" practises other lines.
+//   "new gaps" practices other lines.
 //
 // Pure: no React, no DOM. The editor lives in src/components/CodeGaps.tsx.
 
@@ -181,7 +181,7 @@ export function gapCount(base: number, candidates: number, { ratio = 0.3, min = 
 }
 
 /**
- * Pick `n` lines: highest score first, each pick making its neighbours less attractive.
+ * Pick `n` lines: highest score first, each pick making its neighbors less attractive.
  * `used` is how recently each line was a gap (1 = last round), so later rounds rotate.
  */
 function select(
@@ -195,7 +195,7 @@ function select(
   salt = 0,
 ): number[] {
   const rnd = rngFor(seed, salt);
-  // Seed 0: key lines always first, no randomness. Later rounds: key lines are still favoured,
+  // Seed 0: key lines always first, no randomness. Later rounds: key lines are still favored,
   // but lines that were gaps recently step back and comparable lines take turns.
   const keyBonus = seed === 0 ? 40 : 3;
   const jitter = seed === 0 ? 0 : 4 + salt * 3;

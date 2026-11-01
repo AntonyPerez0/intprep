@@ -84,7 +84,7 @@ export function parseSolution(src: string): ParsedSolution {
   return parsed;
 }
 
-/** Normalise a line of code for "did you type it right?" comparisons. */
+/** Normalize a line of code for "did you type it right?" comparisons. */
 export function normalizeCode(s: string): string {
   return stripComment(s)
     .replace(/["']/g, '"') // quote style does not matter

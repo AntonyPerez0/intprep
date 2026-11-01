@@ -38,7 +38,7 @@ import { CategoryIcon } from '../components/icons';
 import { Badge, Crowns, DifficultyChip, freeMirrorUrl, leetcodeUrl, ProgressBar } from '../components/ui';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const pct = (v: number | undefined) => (v !== undefined ? `${Math.round(v * 100)}%` : 'Not yet');
+const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 export function ProblemDetail() {
   const { id } = useParams();
@@ -109,7 +109,7 @@ export function ProblemDetail() {
             {learned ? rebuildBtn : lessonBtn}
             {learned ? lessonBtn : rebuildBtn}
             <a className="btn btn-quiet problem-detail-external" href={p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id)} target="_blank" rel="noreferrer">
-              {p.premium ? 'Practise free' : 'LeetCode'}
+              {p.premium ? 'Practice free' : 'LeetCode'}
               <ExternalLink aria-hidden="true" />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
@@ -280,24 +280,47 @@ export function ProblemDetail() {
               </div>
             </div>
             {learned ? (
-              <dl className="problem-detail-kv">
-                <div>
-                  <dt>Next review</dt>
-                  <dd className={due ? 'problem-detail-due' : undefined}>{pp?.srs ? cap(friendlyDue(pp.srs.due)) : '—'}</dd>
+              <>
+                <dl className="problem-detail-kv">
+                  <div>
+                    <dt>Next review</dt>
+                    <dd className={due ? 'problem-detail-due' : undefined}>{pp?.srs ? cap(friendlyDue(pp.srs.due)) : '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Reviews</dt>
+                    <dd className="tabular">{pp?.reviews ?? 0}</dd>
+                  </div>
+                </dl>
+                <div className="problem-detail-memory" role="group" aria-labelledby="problem-detail-memory">
+                  <div className="problem-detail-memory-head" id="problem-detail-memory">
+                    Code from memory, best
+                  </div>
+                  {/* The ladder, most support first */}
+                  <dl className="problem-detail-ladder">
+                    {(
+                      [
+                        ['Part by part', pp?.rebuildBest],
+                        ['Fill the gaps', pp?.gapsBest],
+                        ['From scratch', pp?.scratchBest],
+                      ] as const
+                    ).map(([label, v]) => (
+                      <div key={label} className={v === undefined ? 'is-empty' : v >= 0.8 ? 'is-strong' : undefined}>
+                        <dt>{label}</dt>
+                        <dd className="tabular">
+                          {v === undefined ? (
+                            <>
+                              <span aria-hidden="true">—</span>
+                              <span className="sr-only">Not yet</span>
+                            </>
+                          ) : (
+                            pct(v)
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
                 </div>
-                <div>
-                  <dt>Reviews</dt>
-                  <dd className="tabular">{pp?.reviews ?? 0}</dd>
-                </div>
-                <div>
-                  <dt>Best rebuild</dt>
-                  <dd className="tabular">{pct(pp?.rebuildBest)}</dd>
-                </div>
-                <div>
-                  <dt>Best from scratch</dt>
-                  <dd className="tabular">{pct(pp?.scratchBest)}</dd>
-                </div>
-              </dl>
+              </>
             ) : (
               <p className="problem-detail-status-note">Finish the guided lesson to add this problem to your daily review, timed for just before you would forget it.</p>
             )}
@@ -422,7 +445,7 @@ function AnnotatedSolution({ parsed }: { parsed: ParsedSolution }) {
       <div className="problem-detail-solution-bar">
         <span className="problem-detail-legend">
           <span className="problem-detail-legend-dot" aria-hidden="true" />
-          Key lines to memorise
+          Key lines to memorize
         </span>
         <button type="button" className="btn btn-secondary btn-sm" onClick={copy}>
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}

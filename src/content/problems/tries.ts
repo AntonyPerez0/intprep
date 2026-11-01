@@ -261,11 +261,11 @@ class WordDictionary:
         {
           input: 'board = [["c", "a", "t"], ["x", "r", "s"], ["d", "o", "g"]], words = ["cats", "dog", "rot", "arc"]',
           output: '["cats", "dog"]',
-          note: '"rot" fails because o and t are not neighbours; in "arc", r and c only touch diagonally.',
+          note: '"rot" fails because o and t are not neighbors; in "arc", r and c only touch diagonally.',
         },
         { input: 'board = [["a", "b"], ["c", "d"]], words = ["abdc", "abcd"]', output: '["abdc"]' },
       ],
-      signals: ['find **many** words in one grid', 'paths through neighbouring cells, no cell reused', 'the words share prefixes'],
+      signals: ['find **many** words in one grid', 'paths through neighboring cells, no cell reused', 'the words share prefixes'],
       hints: [
         'Searching the grid separately for every word repeats a lot of work. What do "cat" and "cats" have in common?',
         'Put all the words in a trie. Then one DFS from each cell can follow the trie and look for every word at once.',
@@ -281,7 +281,7 @@ class WordDictionary:
         'Start a DFS from every cell of the board, beginning at the trie root.',
         'If the letter in the cell is not a child of the current trie node, stop.',
         'If the new node holds a word, add it to the results and clear it.',
-        'Mark the cell as used, explore its four neighbours, then restore its letter.',
+        'Mark the cell as used, explore its four neighbors, then restore its letter.',
         'Delete trie nodes that have no children and no word left.',
       ],
       solution: py`
@@ -316,7 +316,7 @@ class Solution:
             if node.word is not None:
                 found.append(node.word)
                 node.word = None
-            #@ Mark the cell as used, explore the four neighbours, then put the letter back.
+            #@ Mark the cell as used, explore the four neighbors, then put the letter back.
             board[r][c] = "*"  #!
             for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
                 if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != "*":

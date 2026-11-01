@@ -404,7 +404,7 @@ class Solution:
       pitfalls: [
         'Without the mask, Python ints grow forever: with a negative number the carry keeps moving left and the loop never ends.',
         'Forgetting to convert back: masked results are between 0 and 2³² − 1, so -4 comes out as 4294967292 unless you handle bit 31.',
-        'In Java or C++ you do not need the mask. Fixed-size ints wrap around on their own, which is exactly the behaviour we imitate here.',
+        'In Java or C++ you do not need the mask. Fixed-size ints wrap around on their own, which is exactly the behavior we imitate here.',
       ],
     },
     {

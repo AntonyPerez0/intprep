@@ -34,7 +34,7 @@ def solve(nums):
       'Greedy looks at each element once and never backtracks, so it is usually **O(n)** time and **O(1)** space, plus O(n log n) if you sort first.',
       'Before trusting greedy, hunt for a tiny counter-example with 2–4 elements. If you find one, switch to DP.',
       'The **reset** is where the insight lives: Kadane drops a negative sum, Gas Station restarts after an empty tank, Partition Labels cuts when the current part closes.',
-      'Initialise `best` with care: starting at `0` makes an all-negative input wrongly return 0. Start from the first element or `-inf`.',
+      'Initialize `best` with care: starting at `0` makes an all-negative input wrongly return 0. Start from the first element or `-inf`.',
     ],
     complexity: 'Usually O(n) time and O(1) extra space; O(n log n) when you sort first.',
     quiz: [

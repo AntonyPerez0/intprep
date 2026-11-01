@@ -1,6 +1,9 @@
-// "Code it from memory", in two modes (/p/:id/rebuild?mode=parts|scratch):
+// "Code it from memory", in three modes (/p/:id/rebuild?mode=parts|gaps|scratch), a ladder from
+// most to least support:
 // - Part by part: rebuild the solution one chunk at a time, guided only by the plain-English
 //   explanation of each part. Type it (desktop) or pick each line (touch).
+// - Fill the gaps: the whole solution is shown with about 30% of its lines blank (key lines
+//   first); type the missing lines, then check them one by one.
 // - From scratch: the whole solution in one blank editor under the given signature, graded line by
 //   line. An optional outline (the parts' explanations) helps, and caps the XP.
 // Retrieval + generation, the strongest way to make code stick.
@@ -10,6 +13,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type Reac
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   CircleCheck,
   CodeXml,
@@ -21,8 +25,10 @@ import {
   ListOrdered,
   ListTree,
   PencilLine,
+  RefreshCw,
   RotateCcw,
   Sprout,
+  TextCursorInput,
   TrendingUp,
   Trophy,
 } from 'lucide-react';
@@ -33,29 +39,45 @@ import { confetti } from '../lib/confetti';
 import { mutateLine, sameCode } from '../lib/drills';
 import { XP } from '../lib/game';
 import { codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
+import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { inline } from '../lib/markdown';
 import { normalizeCode, parseSolution } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
-import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress } from '../lib/store';
+import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
 import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { GapsWindow, useGaps } from '../components/CodeGaps';
 import { codeOptions } from '../components/Drills';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
 import { Completion, DifficultyChip, Kbd, Modal } from '../components/ui';
 
-type Mode = 'parts' | 'scratch';
+type Mode = 'parts' | 'gaps' | 'scratch';
 
-const MODES: { id: Mode; label: string; icon: typeof ListOrdered }[] = [
-  { id: 'parts', label: 'Part by part', icon: ListOrdered },
-  { id: 'scratch', label: 'From scratch', icon: PencilLine },
+/** The ladder, most support first. `short` is the label on the narrowest phones. */
+const MODES: { id: Mode; label: string; short: string; icon: typeof ListOrdered }[] = [
+  { id: 'parts', label: 'Part by part', short: 'Parts', icon: ListOrdered },
+  { id: 'gaps', label: 'Fill the gaps', short: 'Gaps', icon: TextCursorInput },
+  { id: 'scratch', label: 'From scratch', short: 'Scratch', icon: PencilLine },
 ];
-const MODE_LABEL: Record<Mode, string> = { parts: 'Part by part', scratch: 'From scratch' };
+const MODE_LABEL: Record<Mode, string> = { parts: 'Part by part', gaps: 'Fill the gaps', scratch: 'From scratch' };
+const isMode = (m: string | null): m is Mode => m === 'parts' || m === 'gaps' || m === 'scratch';
 
-/** A part-by-part best at or above this makes From scratch the default (and the next step). */
-const READY_FOR_SCRATCH = 0.8;
+/** A best score at or above this moves the learner up the ladder (default mode and next step). */
+const READY = 0.8;
+
+/**
+ * The default mode, one rung above what the learner has shown they can do: From scratch once
+ * their fill-the-gaps best is strong (or they have written it from scratch before), Fill the gaps
+ * once part by part is strong, else Part by part.
+ */
+function ladderMode(pp: ProblemProgress | undefined): Mode {
+  if ((pp?.gapsBest ?? 0) >= READY || pp?.scratchBest !== undefined) return 'scratch';
+  if ((pp?.rebuildBest ?? 0) >= READY) return 'gaps';
+  return 'parts';
+}
 
 export function RebuildRoute() {
   const { id } = useParams();
@@ -87,22 +109,24 @@ interface SessionProps {
 }
 
 /**
- * Picks the mode (from ?mode=, else From scratch once part by part is strong), keeps the URL in
- * sync, and restarts the session on a mode switch after the first Check, with a confirmation.
+ * Picks the mode (from ?mode=, else the ladder: see `ladderMode`), keeps the URL in sync, and
+ * restarts the session on a mode switch after the first Check, with a confirmation.
  */
 function Rebuild({ p }: { p: Problem }) {
   const [params, setParams] = useSearchParams();
-  // Decided once per visit, so finishing a strong part-by-part run does not flip a running page.
-  const [auto] = useState<Mode>(() => ((getProgress().problems[p.id]?.rebuildBest ?? 0) >= READY_FOR_SCRATCH ? 'scratch' : 'parts'));
+  // Decided once per visit, so finishing a strong run does not flip a running page.
+  const [auto] = useState<Mode>(() => ladderMode(getProgress().problems[p.id]));
   const asked = params.get('mode');
-  const mode: Mode = asked === 'scratch' || asked === 'parts' ? asked : auto;
+  const mode: Mode = isMode(asked) ? asked : auto;
   const [run, setRun] = useState(0);
   const session = `${mode}-${run}`;
   const [checkedIn, setCheckedIn] = useState<string | null>(null);
   const checked = checkedIn === session;
   const [pending, setPending] = useState<Mode | null>(null);
-  // The From scratch draft survives a free switch to Part by part and back (before any Check).
+  // The From scratch draft survives a free switch to another mode and back (before any Check).
   const draft = useRef('');
+  // Fill the gaps: the round of gaps, so "Try new gaps" and a return to the mode bring new lines.
+  const gapRound = useRef(0);
 
   const setMode = (m: Mode) => setParams({ mode: m }, { replace: true });
   const restart = (m: Mode = mode) => {
@@ -126,7 +150,13 @@ function Rebuild({ p }: { p: Problem }) {
 
   return (
     <>
-      {mode === 'scratch' ? <ScratchSession key={session} {...shared} draft={draft} /> : <PartsSession key={session} {...shared} />}
+      {mode === 'scratch' ? (
+        <ScratchSession key={session} {...shared} draft={draft} />
+      ) : mode === 'gaps' ? (
+        <GapsSession key={session} {...shared} round={gapRound} />
+      ) : (
+        <PartsSession key={session} {...shared} />
+      )}
       {pending && (
         <Modal onClose={() => setPending(null)} labelledBy="rebuild-switch-title">
           <div className="rebuild-modal">
@@ -173,7 +203,11 @@ function ModeSwitch({ mode, onChange, restarts }: ModeSwitchProps) {
           return (
             <button key={m.id} type="button" role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => onChange(m.id)}>
               <Icon aria-hidden="true" />
-              {m.label}
+              {/* The narrowest phones show the short name; the full one stays the accessible name. */}
+              <span className="rebuild-seg-long">{m.label}</span>
+              <span className="rebuild-seg-short" aria-hidden="true">
+                {m.short}
+              </span>
             </button>
           );
         })}
@@ -246,16 +280,16 @@ function PromptPanel({ p, show }: { p: Problem; show: boolean }) {
   );
 }
 
-/** "4/6" lines right on the first check, in the session header. */
-function ScoreChip({ correct, total }: { correct: number; total: number }) {
+/** "4/6" lines (or gaps) right on the first check, in the session header. */
+function ScoreChip({ correct, total, unit = 'lines' }: { correct: number; total: number; unit?: 'lines' | 'gaps' }) {
   return (
-    <span className="rebuild-score" title="Lines right on the first try">
+    <span className="rebuild-score" title={`${unit === 'gaps' ? 'Gaps' : 'Lines'} right on the first try`}>
       <Check strokeWidth={2.4} aria-hidden="true" />
       <span aria-hidden="true">
         {correct}/{total}
       </span>
       <span className="sr-only">
-        {correct} of {total} lines right
+        {correct} of {total} {unit} right
       </span>
     </span>
   );
@@ -277,8 +311,8 @@ function SolutionDisclosure({ p }: { p: Problem }) {
 
 function doneLook(acc: number) {
   return {
-    icon: acc >= 1 ? Trophy : acc >= READY_FOR_SCRATCH ? CircleCheck : acc >= 0.5 ? TrendingUp : Sprout,
-    tone: (acc >= 1 ? 'warning' : acc >= READY_FOR_SCRATCH ? 'success' : 'brand') as 'warning' | 'success' | 'brand',
+    icon: acc >= 1 ? Trophy : acc >= READY ? CircleCheck : acc >= 0.5 ? TrendingUp : Sprout,
+    tone: (acc >= 1 ? 'warning' : acc >= READY ? 'success' : 'brand') as 'warning' | 'success' | 'brand',
   };
 }
 
@@ -350,7 +384,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     reviewProblem(p.id, reviewGrade(acc));
     setDone(true);
     sfx('complete');
-    if (acc >= READY_FOR_SCRATCH) confetti();
+    if (acc >= READY) confetti();
   };
 
   const nextChunk = (add: { correct: number; total: number }) => {
@@ -369,7 +403,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   if (done) {
     const acc = score.total ? score.correct / score.total : 0;
     const pct = Math.round(acc * 100);
-    const ready = acc >= READY_FOR_SCRATCH;
+    const ready = acc >= READY;
     const look = doneLook(acc);
     return (
       <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
@@ -381,7 +415,9 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
             subtitle={
               <>
                 You rebuilt {score.correct} of {score.total} lines of {p.title} correctly on the first try.
-                {ready ? ' Ready for the real test? Write the whole thing in a blank file.' : ' Rebuild it again tomorrow. The struggle is what builds memory.'}
+                {ready
+                  ? ' Next rung: the whole solution with a few lines left blank for you to fill in.'
+                  : ' Rebuild it again tomorrow. The struggle is what builds memory.'}
               </>
             }
             stats={[
@@ -392,9 +428,9 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
           >
             {ready ? (
               <>
-                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('scratch')}>
-                  <PencilLine aria-hidden="true" />
-                  Now write it from scratch
+                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('gaps')}>
+                  Next: fill in the gaps
+                  <ArrowRight aria-hidden="true" />
                 </button>
                 <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart()}>
                   <RotateCcw aria-hidden="true" />
@@ -644,6 +680,228 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   );
 }
 
+// ── Fill the gaps ───────────────────────────────────────────────────────────
+
+/** Bring the first gap to fix (or the whole code) into view once checked, above the action bar. */
+function useRevealScroll(root: RefObject<HTMLDivElement | null>, revealed: boolean, perfect: boolean) {
+  useEffect(() => {
+    if (!revealed) return;
+    const pane = root.current?.querySelector<HTMLElement>('.gaps');
+    const target = pane?.querySelector<HTMLElement>('.diff.del') ?? pane;
+    if (!target) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // After the action bar has grown with its feedback (it sets the scroll padding).
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => target.scrollIntoView({ block: perfect ? 'nearest' : 'center', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [revealed]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & { round: RefObject<number> }) {
+  const nav = useNavigate();
+  const src = useMemo(() => gapSource(p.solution), [p]);
+  // Key lines first; the class / def header stays visible.
+  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: round.current });
+  const total = codeLines(src.lines).length;
+  // The score is the first check; later checks show the result again but never raise it.
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [checks, setChecks] = useState(0);
+  const [showPrompt, setShowPrompt] = useState(isWide);
+  const [done, setDone] = useState<{ acc: number; xp: number } | null>(null);
+  // Phones wait for a tap, so the keyboard does not cover the problem on arrival.
+  const [autoFocus] = useState(isFinePointer);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // The next visit to this mode (or "Try new gaps") continues from this round.
+  useEffect(() => {
+    round.current = ex.round;
+  }, [ex.round]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRevealScroll(rootRef, ex.revealed, ex.grade.perfect);
+
+  if (done) {
+    const g = first!;
+    const pct = Math.round(done.acc * 100);
+    const strong = done.acc >= READY;
+    const look = doneLook(done.acc);
+    const newGaps = () => {
+      round.current = ex.round + 1;
+      onRestart();
+    };
+    return (
+      <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
+        <div className="rebuild-done">
+          <Completion
+            icon={look.icon}
+            tone={look.tone}
+            title={done.acc >= 1 ? 'Every gap right' : strong ? 'Nearly perfect' : done.acc >= 0.5 ? 'Getting there' : 'Good effort'}
+            subtitle={
+              <>
+                You filled {g.correct} of {g.total} gaps in {p.title} correctly on your first check.
+                {strong ? ' Ready for the real test? Write the whole thing in a blank file.' : ' Try new gaps tomorrow, or rebuild it part by part first.'}
+              </>
+            }
+            stats={[
+              { label: 'Accuracy', value: `${pct}%` },
+              { label: 'Gaps correct', value: `${g.correct}/${g.total}` },
+              { label: 'XP earned', value: `+${done.xp}` },
+            ]}
+          >
+            {strong ? (
+              <>
+                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('scratch')}>
+                  <PencilLine aria-hidden="true" />
+                  Now write it from scratch
+                </button>
+                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={newGaps}>
+                  <RefreshCw aria-hidden="true" />
+                  Try new gaps
+                </button>
+                <Link to={`/p/${p.id}`} className="btn btn-quiet btn-block">
+                  <ArrowLeft aria-hidden="true" />
+                  Back to problem
+                </Link>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={newGaps}>
+                  <RefreshCw aria-hidden="true" />
+                  Try new gaps
+                </button>
+                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart('parts')}>
+                  <ListOrdered aria-hidden="true" />
+                  Practice part by part
+                </button>
+                <Link to={`/p/${p.id}`} className="btn btn-quiet btn-block">
+                  <ArrowLeft aria-hidden="true" />
+                  Back to problem
+                </Link>
+              </>
+            )}
+          </Completion>
+          <SolutionDisclosure p={p} />
+        </div>
+      </SessionShell>
+    );
+  }
+
+  const g = ex.grade;
+  const status: CheckStatus = ex.revealed ? (g.perfect ? 'correct' : 'wrong') : 'idle';
+  const canCheck = ex.filled > 0;
+
+  // Enter on the last gap and Ctrl/⌘ + Enter both land here.
+  const check = () => {
+    if (ex.revealed || !canCheck) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      onChecked();
+    }
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  const finish = () => {
+    if (!first) return;
+    const acc = first.score;
+    recordRebuild(p.id, acc, 'gaps');
+    const xp = Math.round(XP.gapsMax * acc) + 5;
+    awardXp(xp, 'rebuild');
+    // A strong run on a due problem counts as a successful review, as part by part does.
+    reviewProblem(p.id, reviewGrade(acc));
+    setDone({ acc, xp });
+    sfx('complete');
+    if (acc >= READY) confetti();
+  };
+
+  const pctFirst = first ? Math.round(first.score * 100) : 0;
+  const isFirst = checks === 1;
+  let fbTitle: string | undefined;
+  let fbBody: ReactNode;
+  if (ex.revealed && isFirst) {
+    fbBody = g.perfect
+      ? `All ${g.total} gaps right on the first check.`
+      : 'Your first check sets the score. Fix the marked lines to practice, or continue.';
+  } else if (ex.revealed) {
+    fbTitle = g.perfect ? 'All gaps right now' : undefined;
+    fbBody = g.perfect
+      ? `Your score stays at ${pctFirst}% from the first check, and the fix still counts as practice.`
+      : `${gapsSummary(g)}. Your score stays at ${pctFirst}% from the first check.`;
+  }
+
+  const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
+  const leftNote = left === ex.gaps.length ? `${left} line${left === 1 ? '' : 's'} missing` : `${left} to fix`;
+  const note = first ? `${leftNote} · score kept from check 1` : `${leftNote} · up to ${XP.gapsMax + 5} XP`;
+
+  return (
+    <SessionShell
+      progress={ex.revealed ? 1 : ex.filled / Math.max(1, ex.gaps.length)}
+      onClose={() => nav(`/p/${p.id}`)}
+      title="Code from memory"
+      right={first ? <ScoreChip correct={first.correct} total={first.total} unit="gaps" /> : undefined}
+    >
+      <div ref={rootRef} className="rebuild rebuild-gaps">
+        <h1 className="sr-only">Code from memory</h1>
+        <RebuildHead
+          p={p}
+          modes={modes}
+          meta={`${total} lines · ${ex.gaps.length} gaps`}
+          sub={
+            first && !ex.revealed
+              ? 'Fix the lines that were off, then check again. Your first check already set the score.'
+              : 'Most of the solution is here. Type each missing line, then check them.'
+          }
+          showPrompt={showPrompt}
+          onTogglePrompt={() => setShowPrompt((s) => !s)}
+        />
+
+        <PromptPanel p={p} show={showPrompt} />
+
+        <GapsWindow
+          lines={src.lines}
+          gaps={ex.gaps}
+          values={ex.values}
+          onChange={(v) => ex.setValues(v)}
+          revealed={ex.revealed}
+          locked={ex.locked}
+          onSubmit={check}
+          autoFocus={autoFocus}
+          filename="solution.py"
+          meta="Fill the gaps"
+          note={note}
+          className="rebuild-editor"
+        />
+
+        <ActionBar
+          status={status}
+          step={`${ex.round}:${checks}`}
+          canCheck={canCheck}
+          onCheck={check}
+          onContinue={finish}
+          title={fbTitle}
+          feedback={
+            ex.revealed && (
+              <div className="rebuild-fb">
+                <span className="drill-fb-label">{isFirst ? 'First check' : `Check ${checks}`}</span>
+                <span>{fbBody}</span>
+              </div>
+            )
+          }
+          secondary={
+            <div className="rebuild-tools">
+              <button type="button" className="btn btn-quiet btn-sm" onClick={ex.fresh} title="Blank a different set of lines">
+                <RefreshCw aria-hidden="true" />
+                <span className="rebuild-tool-label">New gaps</span>
+              </button>
+            </div>
+          }
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={ex.retry} /> : undefined}
+        />
+      </div>
+    </SessionShell>
+  );
+}
+
 // ── From scratch ────────────────────────────────────────────────────────────
 
 /**
@@ -755,7 +1013,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
   if (done) {
     const g = first!.grade;
     const pct = Math.round(done.acc * 100);
-    const strong = done.acc >= READY_FOR_SCRATCH;
+    const strong = done.acc >= READY;
     const look = doneLook(done.acc);
     return (
       <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
@@ -769,7 +1027,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
                 You wrote {g.correct} of {g.total} lines of {p.title} from a blank file on your first check
                 {g.extra > 0 ? `, plus ${g.extra} extra line${g.extra === 1 ? '' : 's'}.` : '.'}
                 {first!.outline && ` You used the outline, so XP was capped at ${XP.rebuildMax + 5}.`}
-                {!strong && ' Try it again tomorrow, or rebuild it part by part first.'}
+                {!strong && ' Try it again tomorrow, or fill in the gaps first.'}
               </>
             }
             stats={[
@@ -795,9 +1053,9 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
                   <RotateCcw aria-hidden="true" />
                   Try again
                 </button>
-                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart('parts')}>
-                  <ListOrdered aria-hidden="true" />
-                  Practice part by part
+                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart('gaps')}>
+                  <TextCursorInput aria-hidden="true" />
+                  Fill the gaps first
                 </button>
                 <Link to={`/p/${p.id}`} className="btn btn-quiet btn-block">
                   <ArrowLeft aria-hidden="true" />
@@ -840,7 +1098,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
     reviewProblem(p.id, reviewGrade(acc));
     setDone({ acc, xp });
     sfx('complete');
-    if (acc >= READY_FOR_SCRATCH) confetti();
+    if (acc >= READY) confetti();
   };
   const toggleOutline = () => {
     if (!outline && !first) setOutlineUsed(true);
@@ -962,19 +1220,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps 
               )}
             </div>
           }
-          checkedSecondary={
-            status === 'wrong' ? (
-              <button type="button" className="btn btn-secondary btn-lg rebuild-fix" onClick={fix} aria-label="Fix and check again">
-                <PencilLine aria-hidden="true" />
-                <span className="rebuild-fix-long" aria-hidden="true">
-                  Fix and check again
-                </span>
-                <span className="rebuild-fix-short" aria-hidden="true">
-                  Fix it
-                </span>
-              </button>
-            ) : undefined
-          }
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
         />
       </div>
     </SessionShell>

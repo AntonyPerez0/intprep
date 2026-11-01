@@ -55,7 +55,7 @@ def biggest_first(nums):
         explain: 'Python heaps are min-heaps: popping always gives the smallest item.',
       },
       {
-        q: 'How do you get max-heap behaviour from `heapq`?',
+        q: 'How do you get max-heap behavior from `heapq`?',
         options: [
           'Call `heapq.maxheap(h)` first',
           'Push negated values and negate them again when you pop',
@@ -320,7 +320,7 @@ class Solution:
       pattern: 'Max-heap + cooldown queue',
       alsoAccept: ['greedy'],
       prompt:
-        'A CPU must run a list of tasks, each labelled with a letter. Every task takes one time unit. After a task runs, the **same** letter must wait at least `n` units before it runs again; the CPU may sit idle meanwhile. Return the **minimum** number of time units needed to finish every task.',
+        'A CPU must run a list of tasks, each labeled with a letter. Every task takes one time unit. After a task runs, the **same** letter must wait at least `n` units before it runs again; the CPU may sit idle meanwhile. Return the **minimum** number of time units needed to finish every task.',
       examples: [
         { input: 'tasks = ["X", "X", "X", "Y"], n = 1', output: '5', note: 'X → Y → X → idle → X.' },
         { input: 'tasks = ["P", "Q", "P", "R", "Q", "P"], n = 2', output: '7', note: 'P → Q → R → P → Q → idle → P.' },

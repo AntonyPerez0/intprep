@@ -227,19 +227,28 @@ export function gradeCode(typed: string, expected: string | string[]): Grade {
 }
 
 /**
- * Grade against several accepted answers (e.g. equivalent solutions) and keep the best match:
- * a perfect grade first, then the highest score, then the fewest extra lines, then the earliest answer.
+ * Grade against several accepted answers (e.g. equivalent solutions) and keep the closest one, to
+ * diff against. Closest means, in order:
+ * 1. the most lines whose code matches, whatever their indentation (`correct + wrongIndent`): a
+ *    loop typed with its body flush-left is closest to the answer it copies, shown as an
+ *    indentation slip, not to an alternative that scores higher only because a different line
+ *    anchors the indentation;
+ * 2. then the higher score (a perfect grade always wins here);
+ * 3. then the fewest extra lines;
+ * 4. then the earliest answer.
  */
 export function gradeBest(typed: string, answers: (string | string[])[]): { grade: Grade; index: number } {
+  const EPS = 1e-9;
+  const matched = (g: Grade) => g.correct + g.wrongIndent;
   let bestGrade: Grade | null = null;
   let bestIndex = 0;
   answers.forEach((a, index) => {
     const g = gradeCode(typed, a);
+    const b = bestGrade;
     const better =
-      !bestGrade ||
-      (g.perfect && !bestGrade.perfect) ||
-      (g.perfect === bestGrade.perfect &&
-        (g.score > bestGrade.score + 1e-9 || (Math.abs(g.score - bestGrade.score) <= 1e-9 && g.extra < bestGrade.extra)));
+      !b ||
+      matched(g) > matched(b) ||
+      (matched(g) === matched(b) && (g.score > b.score + EPS || (Math.abs(g.score - b.score) <= EPS && g.extra < b.extra)));
     if (better) {
       bestGrade = g;
       bestIndex = index;

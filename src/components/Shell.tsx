@@ -58,7 +58,7 @@ export function StreakStat() {
     <span
       className={`pill-stat streak ${hot ? '' : 'cold'}`}
       role="img"
-      title={hot ? `${p.streak.current}-day streak — extended today` : `${p.streak.current}-day streak — practise today to extend it`}
+      title={hot ? `${p.streak.current}-day streak — extended today` : `${p.streak.current}-day streak — practice today to extend it`}
       aria-label={`${p.streak.current} day streak`}
     >
       <Flame strokeWidth={2} aria-hidden="true" />
@@ -239,7 +239,7 @@ export function SessionShell({
   onClose?: () => void;
   /** Optional short label shown next to the close button (desktop). */
   title?: ReactNode;
-  /** Colour for the progress bar, e.g. a countdown entering its warning zone. */
+  /** Color for the progress bar, e.g. a countdown entering its warning zone. */
   progressColor?: string;
   /** Move the bar linearly, for a timer that updates many times a second. */
   progressLinear?: boolean;

@@ -7,7 +7,7 @@ export interface CategoryMeta {
   short: string;
   /** @deprecated Emoji — do not render. Use CATEGORY_ICON from components/icons.tsx. */
   icon: string;
-  /** Accent colour for the unit (works on light and dark backgrounds). */
+  /** Accent color for the unit (works on light and dark backgrounds). */
   color: string;
   /** Units that should be completed first (the classic roadmap order). */
   prereqs: CategoryId[];

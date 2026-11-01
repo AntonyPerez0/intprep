@@ -115,7 +115,7 @@ export function CommandPalette() {
     listRef.current?.querySelector('.cmdk-item.active')?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
-  // Modal behaviour: Escape closes from anywhere, Tab stays inside, focus returns on close.
+  // Modal behavior: Escape closes from anywhere, Tab stays inside, focus returns on close.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {

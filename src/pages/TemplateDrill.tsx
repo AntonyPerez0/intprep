@@ -1,11 +1,15 @@
-// "Template from memory": type a pattern's reusable template into a blank editor, then compare it
-// line by line. The first check sets the score; the learner may fix their text and check again.
-// Pure recall of the shape you reach for in every problem of the unit.
+// Template practice (/patterns/:cat/type?mode=gaps|memory): the unit's reusable template, in two
+// rungs of the same ladder as Code from memory.
+// - Fill the gaps: the template is shown with about 30% of its lines blank; type the missing ones.
+// - From memory: type the whole template into a blank editor, then compare it line by line.
+// In both, the first check sets the score and the learner may fix their answer and check again.
+// Without ?mode= it opens Fill the gaps until that is strong (80%+) or the template has been typed
+// from memory before.
 
 import '../styles/pages/drills.css';
 import '../styles/pages/template-drill.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,9 +17,11 @@ import {
   CodeXml,
   Lightbulb,
   PencilLine,
+  RefreshCw,
   RotateCcw,
   ScanSearch,
   Sprout,
+  TextCursorInput,
   TrendingUp,
   Trophy,
 } from 'lucide-react';
@@ -25,29 +31,49 @@ import type { CategoryId, PatternGuide } from '../content/types';
 import { codeLines, gradeCode, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
+import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { HighlightedCode } from '../lib/highlight';
 import { inline } from '../lib/markdown';
 import { stripComment } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
-import { awardXp, recordTemplate, useProgress, type Progress } from '../lib/store';
+import { awardXp, getProgress, recordTemplate, useProgress, type Progress, type TemplateProgress } from '../lib/store';
 import { ActionBar, type CheckStatus } from '../components/interact';
-import { CodeTyper } from '../components/CodeTyper';
-import { CATEGORY_ICON } from '../components/icons';
+import { CheckedAction, CodeTyper } from '../components/CodeTyper';
+import { GapsWindow, useGaps } from '../components/CodeGaps';
+import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
-import { Completion } from '../components/ui';
+import { Completion, Modal } from '../components/ui';
 
 /** Where a drill was opened from, so Close and Back return there. Pass it as router state. */
 export interface TemplateDrillState {
   from?: string;
 }
 
+type Mode = 'gaps' | 'memory';
+
+const MODES: { id: Mode; label: string; icon: typeof PencilLine }[] = [
+  { id: 'gaps', label: 'Fill the gaps', icon: TextCursorInput },
+  { id: 'memory', label: 'From memory', icon: PencilLine },
+];
+const MODE_LABEL: Record<Mode, string> = { gaps: 'Fill the gaps', memory: 'From memory' };
+
+/** A score at or above this moves the learner up the ladder (default mode and next step). */
+const READY = 0.8;
+
+/** Fill the gaps until it is strong or the template has been typed from memory, then From memory. */
+function ladderMode(t: TemplateProgress | undefined): Mode {
+  return (t?.gapsBest ?? 0) >= READY || (t?.tries ?? 0) > 0 ? 'memory' : 'gaps';
+}
+
 export function TemplateDrillRoute() {
   const { cat } = useParams();
-  // "Try again" starts a fresh round; a new unit (Next template) remounts too.
-  const [round, setRound] = useState(0);
+  // "Try again" and a mode switch after a check start a fresh run; a new unit (Next template) remounts too.
+  const [run, setRun] = useState(0);
+  // Fill the gaps: the round per unit, so "Try new gaps" and coming back bring other lines.
+  const rounds = useRef<Record<string, number>>({});
   const g = cat && cat in CATEGORY_BY_ID ? guideFor(cat as CategoryId) : null;
   if (!g) return <Navigate to="/patterns" replace />;
-  return <TemplateDrill key={`${g.category}:${round}`} g={g} onRetry={() => setRound((r) => r + 1)} />;
+  return <TemplateDrill key={`${g.category}:${run}`} g={g} onRestart={() => setRun((r) => r + 1)} rounds={rounds} />;
 }
 
 /** The template as the grader sees it: trailing comments dropped, so the diff shows clean code. */
@@ -68,7 +94,7 @@ function lineStart(line: string): string {
   return indent + head + (rest.startsWith(' ') ? ' …' : '…');
 }
 
-/** The next unit to practise: the next one whose pattern intro is done, else simply the next unit. */
+/** The next unit to practice: the next one whose pattern intro is done, else simply the next unit. */
 function nextTemplate(cat: CategoryId, p: Progress): CategoryMeta | null {
   const i = CATEGORIES.findIndex((c) => c.id === cat);
   const ring = [...CATEGORIES.slice(i + 1), ...CATEGORIES.slice(0, i)].filter((c) => guideFor(c.id));
@@ -76,6 +102,8 @@ function nextTemplate(cat: CategoryId, p: Progress): CategoryMeta | null {
 }
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+const isFinePointer = () => !!window.matchMedia?.('(pointer: fine)').matches;
+const isWide = () => !!window.matchMedia?.('(min-width: 640px)').matches;
 
 /** "Template from memory", shortened on phones where the header is tight. */
 function SessionTitle() {
@@ -87,21 +115,426 @@ function SessionTitle() {
   );
 }
 
-interface Result {
+/** Where Close and Back go: the page that opened the drill, else the Pattern guide. */
+function useBack(g: PatternGuide) {
+  const loc = useLocation();
+  const from = (loc.state as TemplateDrillState | null)?.from;
+  const back = from ?? `/patterns?p=${g.category}`;
+  return { back, backToUnit: back.startsWith('/unit') };
+}
+
+// ── Mode controller ─────────────────────────────────────────────────────────
+
+interface ModeSwitchProps {
+  mode: Mode;
+  onChange: (m: Mode) => void;
+  /** True once the current attempt has been checked: switching then restarts it. */
+  restarts: boolean;
+}
+
+interface DrillProps {
+  g: PatternGuide;
+  modes: ModeSwitchProps;
+  /** Called on the first Check: from then on, switching mode restarts the drill. */
+  onChecked: () => void;
+  /** Start a fresh run, in `mode` (default: the current one). */
+  onRestart: (mode?: Mode) => void;
+}
+
+/**
+ * Picks the mode (from ?mode=, else the ladder), keeps the URL in sync, and asks before a mode
+ * switch after the first Check, since that restarts the attempt.
+ */
+function TemplateDrill({ g, onRestart, rounds }: { g: PatternGuide; onRestart: () => void; rounds: RefObject<Record<string, number>> }) {
+  const loc = useLocation();
+  const [params, setParams] = useSearchParams();
+  // Decided once per run, so finishing a strong round does not flip a running page.
+  const [auto] = useState<Mode>(() => ladderMode(getProgress().templates?.[g.category]));
+  const asked = params.get('mode');
+  const mode: Mode = asked === 'gaps' || asked === 'memory' ? asked : auto;
+  const [checked, setChecked] = useState(false);
+  const [pending, setPending] = useState<Mode | null>(null);
+
+  // Keep the router state, so Close still returns to the page that opened the drill.
+  const setMode = (m: Mode) => setParams({ mode: m }, { replace: true, state: loc.state });
+  const restart = (m: Mode = mode) => {
+    setPending(null);
+    // Pin the mode in the URL: the fresh run re-reads the ladder, and a strong round must not
+    // turn "Try new gaps" into From memory.
+    if (asked !== m) setMode(m);
+    onRestart();
+  };
+  const choose = (m: Mode) => {
+    if (m === mode) return;
+    if (checked) setPending(m);
+    else setMode(m);
+  };
+
+  const shared: DrillProps = {
+    g,
+    modes: { mode, onChange: choose, restarts: checked },
+    onChecked: () => setChecked(true),
+    onRestart: restart,
+  };
+
+  return (
+    <>
+      {mode === 'gaps' ? <GapsDrill key="gaps" {...shared} rounds={rounds} /> : <MemoryDrill key="memory" {...shared} />}
+      {pending && (
+        <Modal onClose={() => setPending(null)} labelledBy="tdrill-switch-title">
+          <div className="tdrill-modal">
+            <IconTile icon={RotateCcw} />
+            <div className="grow">
+              <h2 id="tdrill-switch-title" className="modal-title">
+                Switch to {MODE_LABEL[pending]}?
+              </h2>
+              <p>You will start over in {MODE_LABEL[pending]}. This attempt ends here, with no score or XP.</p>
+            </div>
+          </div>
+          <div className="modal-actions">
+            {/* Focus the safe choice when the dialog opens. */}
+            <button type="button" className="btn btn-secondary" onClick={() => setPending(null)} autoFocus>
+              Keep going
+            </button>
+            <button type="button" className="btn btn-primary" onClick={() => restart(pending)}>
+              Switch and restart
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+// ── Shared pieces ───────────────────────────────────────────────────────────
+
+function ModeSwitch({ mode, onChange, restarts }: ModeSwitchProps) {
+  const id = useId();
+  return (
+    <div className="tdrill-modes">
+      <div className="seg tdrill-seg" role="radiogroup" aria-label="How to practice it" aria-describedby={restarts ? `${id}-note` : undefined}>
+        {MODES.map((m) => {
+          const on = m.id === mode;
+          const Icon = m.icon;
+          return (
+            <button key={m.id} type="button" role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => onChange(m.id)}>
+              <Icon aria-hidden="true" />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+      {restarts && (
+        <span id={`${id}-note`} className="tdrill-modes-note">
+          <RotateCcw aria-hidden="true" />
+          Switching starts a new attempt
+        </span>
+      )}
+    </div>
+  );
+}
+
+function DrillHead({ g, modes, title, sub }: { g: PatternGuide; modes: ModeSwitchProps; title: string; sub: ReactNode }) {
+  const meta = CATEGORY_BY_ID[g.category];
+  const CatIcon = CATEGORY_ICON[g.category];
+  return (
+    <header className="drill-head">
+      <div className="drill-eyebrow">
+        <div className="kicker">
+          <CatIcon strokeWidth={2} aria-hidden="true" />
+          <span>{meta.name}</span>
+        </div>
+        <div className="drill-meta">
+          Pattern {CATEGORIES.indexOf(meta) + 1} of {CATEGORIES.length}
+        </div>
+      </div>
+      <h1 className="q-title">{title}</h1>
+      <ModeSwitch {...modes} />
+      <p className="drill-sub">{sub}</p>
+    </header>
+  );
+}
+
+/** "When to reach for it": open on desktop, a single row on phones. */
+function Cues({ g }: { g: PatternGuide }) {
+  const [open, setOpen] = useState(isWide);
+  return (
+    <details className="disclosure tdrill-cues" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>
+        <ScanSearch aria-hidden="true" />
+        When to reach for it
+        <span className="tdrill-cues-count tabular" aria-hidden="true">
+          {g.whenToUse.length}
+        </span>
+      </summary>
+      <ul className="tdrill-cue-list" role="list">
+        {g.whenToUse.map((w, i) => (
+          <li key={i}>
+            <ArrowRight aria-hidden="true" />
+            <span>{inline(w)}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+/** The best score so far in this mode, in the session header. */
+function BestChip({ best, mode }: { best: number | undefined; mode: Mode }) {
+  if (best === undefined) return null;
+  const what = mode === 'gaps' ? 'Your best first check filling the gaps' : 'Your best first try for this template';
+  return (
+    <span className="tdrill-best" title={what}>
+      <Trophy strokeWidth={2.2} aria-hidden="true" />
+      <span className="sr-only">{what}: </span>
+      <span aria-hidden="true">Best </span>
+      {pct(best)}
+    </span>
+  );
+}
+
+/** Once checked, bring the result into view if any of it is hidden behind the header or the bar. */
+function useResultScroll(ref: RefObject<HTMLElement | null>, checked: unknown) {
+  useEffect(() => {
+    if (!checked) return;
+    // Waits a beat so the taller feedback bar has been measured into --actionbar-h (the page's
+    // bottom padding), otherwise the scroll stops short.
+    const t = window.setTimeout(() => {
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const bar = document.querySelector<HTMLElement>('.actionbar')?.offsetHeight ?? 0;
+      if (r.top >= 64 && r.bottom <= window.innerHeight - bar) return;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      // A tall result: start with the first line to fix rather than the top of the window.
+      const target = r.height > window.innerHeight - bar - 80 ? (el.querySelector<HTMLElement>('.diff.del, .diff.indent') ?? el) : el;
+      target.scrollIntoView({ block: target === el ? 'start' : 'center', behavior: reduce ? 'auto' : 'smooth' });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [checked]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+function doneLook(acc: number) {
+  return {
+    icon: acc >= 1 ? Trophy : acc >= READY ? CircleCheck : acc >= 0.5 ? TrendingUp : Sprout,
+    tone: (acc >= 1 ? 'warning' : acc >= READY ? 'success' : 'brand') as 'warning' | 'success' | 'brand',
+  };
+}
+
+function Reference({ g, open }: { g: PatternGuide; open: boolean }) {
+  const meta = CATEGORY_BY_ID[g.category];
+  return (
+    <details className="disclosure tdrill-ref" open={open}>
+      <summary>
+        <CodeXml aria-hidden="true" />
+        The {meta.name} template
+        <span className="tdrill-ref-meta">{g.template.split('\n').length} lines</span>
+      </summary>
+      <HighlightedCode code={g.template} />
+    </details>
+  );
+}
+
+// ── Fill the gaps ───────────────────────────────────────────────────────────
+
+function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+  const nav = useNavigate();
+  const { back, backToUnit } = useBack(g);
+  const meta = CATEGORY_BY_ID[g.category];
+  const src = useMemo(() => gapSource(g.template), [g]);
+  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: rounds.current[g.category] ?? 0 });
+  // Read once: the best before this round, so the header and "New best" do not move mid-drill.
+  const [prevBest] = useState(() => getProgress().templates?.[g.category]?.gapsBest);
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [checks, setChecks] = useState(0);
+  const [result, setResult] = useState<{ grade: GapsGrade; xp: number; newBest: boolean } | null>(null);
+  // Phones wait for a tap, so the keyboard does not cover the template on arrival.
+  const [autoFocus] = useState(isFinePointer);
+  const workRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    rounds.current[g.category] = ex.round;
+  }, [ex.round]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useResultScroll(workRef, ex.revealed);
+
+  const close = () => nav(back);
+
+  if (result) {
+    const { grade, xp, newBest } = result;
+    const acc = grade.score;
+    const strong = acc >= READY;
+    const look = doneLook(acc);
+    const newGaps = () => {
+      rounds.current[g.category] = ex.round + 1;
+      onRestart();
+    };
+    return (
+      <SessionShell progress={1} onClose={close} title={<SessionTitle />}>
+        <div className="tdrill-done">
+          <Completion
+            icon={look.icon}
+            tone={look.tone}
+            title={grade.perfect ? 'Every gap right' : strong ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
+            subtitle={
+              <>
+                You filled {grade.correct} of {grade.total} gaps in the <strong>{meta.name}</strong> template correctly on your first check.
+                {strong
+                  ? newBest
+                    ? ' A new best. Ready to type the whole thing from memory?'
+                    : ' Ready to type the whole thing from memory?'
+                  : ' Try new gaps tomorrow. The struggle is what builds memory.'}
+              </>
+            }
+            stats={[
+              { label: 'Accuracy', value: pct(acc) },
+              {
+                label: 'Gaps correct',
+                value: (
+                  <>
+                    {grade.correct}
+                    <span className="tdrill-of">/{grade.total}</span>
+                  </>
+                ),
+              },
+              { label: 'XP earned', value: `+${xp}` },
+            ]}
+          >
+            {strong && (
+              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('memory')}>
+                <PencilLine aria-hidden="true" />
+                Now type it from memory
+              </button>
+            )}
+            <button type="button" className={`btn btn-lg btn-block ${strong ? 'btn-secondary' : 'btn-primary'}`} onClick={newGaps}>
+              <RefreshCw aria-hidden="true" />
+              Try new gaps
+            </button>
+            <Link to={back} className="btn btn-quiet btn-lg btn-block">
+              <ArrowLeft aria-hidden="true" />
+              {backToUnit ? 'Back to unit' : 'Back to Pattern guide'}
+            </Link>
+          </Completion>
+          <Reference g={g} open={!grade.perfect} />
+        </div>
+      </SessionShell>
+    );
+  }
+
+  const grade = ex.grade;
+  const status: CheckStatus = ex.revealed ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+  const canCheck = ex.filled > 0;
+
+  // Enter on the last gap and Ctrl/⌘ + Enter both land here.
+  const check = () => {
+    if (ex.revealed || !canCheck) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      onChecked();
+    }
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  const finish = () => {
+    if (!first) return;
+    const acc = first.score;
+    recordTemplate(g.category, acc, 'gaps');
+    const xp = Math.max(2, Math.round(XP.templateGapsMax * acc));
+    awardXp(xp, 'template');
+    setResult({ grade: first, xp, newBest: prevBest !== undefined && acc > prevBest });
+    sfx('complete');
+    if (acc >= READY) confetti();
+  };
+
+  const pctFirst = first ? pct(first.score) : '';
+  const isFirst = checks === 1;
+  let title: string | undefined;
+  let feedback: string | undefined;
+  if (ex.revealed && isFirst) {
+    feedback = grade.perfect
+      ? `All ${grade.total} gaps right on the first check.`
+      : 'Your first check sets the score. Lines with a plus show the template: fix yours, or continue.';
+  } else if (ex.revealed) {
+    title = grade.perfect ? 'All fixed' : undefined;
+    feedback = grade.perfect
+      ? `Every gap matches now. Your score stays at ${pctFirst} from the first check.`
+      : `${gapsSummary(grade)}. Your score stays at ${pctFirst} from the first check.`;
+  }
+
+  const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
+  const leftNote = left === ex.gaps.length ? `${left} line${left === 1 ? '' : 's'} missing` : `${left} to fix`;
+
+  return (
+    <SessionShell
+      progress={ex.revealed ? 1 : ex.filled / Math.max(1, ex.gaps.length)}
+      onClose={close}
+      title={<SessionTitle />}
+      right={<BestChip best={prevBest} mode="gaps" />}
+    >
+      <div className="tdrill">
+        <DrillHead
+          g={g}
+          modes={modes}
+          title="Fill in the template"
+          sub={
+            first && !ex.revealed
+              ? 'Fix the lines that were off, then check again. Your first check already set the score.'
+              : 'Most of the template is here. Type each missing line, then check them.'
+          }
+        />
+        <Cues g={g} />
+        <div ref={workRef} className="tdrill-work">
+          <GapsWindow
+            lines={src.lines}
+            gaps={ex.gaps}
+            values={ex.values}
+            onChange={(v) => ex.setValues(v)}
+            revealed={ex.revealed}
+            locked={ex.locked}
+            onSubmit={check}
+            autoFocus={autoFocus}
+            label={`${meta.name} template with ${ex.gaps.length} missing line${ex.gaps.length === 1 ? '' : 's'}`}
+            filename={`${g.category}.py`}
+            meta="Fill the gaps"
+            note={first ? `${leftNote} · score kept from check 1` : leftNote}
+            className="tdrill-editor"
+          />
+        </div>
+        <ActionBar
+          status={status}
+          step={`${ex.round}:${checks}`}
+          canCheck={canCheck}
+          onCheck={check}
+          onContinue={finish}
+          title={title}
+          feedback={feedback}
+          secondary={
+            <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={ex.fresh} title="Blank a different set of lines">
+              <RefreshCw aria-hidden="true" />
+              New gaps
+            </button>
+          }
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={ex.retry} /> : undefined}
+        />
+      </div>
+    </SessionShell>
+  );
+}
+
+// ── From memory ─────────────────────────────────────────────────────────────
+
+interface MemoryResult {
   grade: Grade;
   xp: number;
   newBest: boolean;
 }
 
-function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void }) {
+function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
   const nav = useNavigate();
-  const loc = useLocation();
+  const { back, backToUnit } = useBack(g);
   const progress = useProgress();
   const meta = CATEGORY_BY_ID[g.category];
-  const CatIcon = CATEGORY_ICON[g.category];
-  const from = (loc.state as TemplateDrillState | null)?.from;
-  const back = from ?? `/patterns?p=${g.category}`;
-  const backToUnit = back.startsWith('/unit');
 
   const answer = useMemo(() => answerLines(g.template), [g]);
   const lines = useMemo(() => codeLines(answer), [answer]);
@@ -114,10 +547,12 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
   const [attempt, setAttempt] = useState(0);
   const [hint, setHint] = useState(false);
   const [capped, setCapped] = useState(false); // a hint before the first check halves the XP
-  const [result, setResult] = useState<Result | null>(null);
-  const [cuesOpen, setCuesOpen] = useState(() => !!window.matchMedia?.('(min-width: 640px)').matches);
+  const [result, setResult] = useState<MemoryResult | null>(null);
   // Read once: the best before this round, so the header and "New best" do not move mid-drill.
-  const [prevBest] = useState(() => progress.templates?.[g.category]?.best);
+  const [prevBest] = useState(() => {
+    const t = progress.templates?.[g.category];
+    return t && t.tries > 0 ? t.best : undefined;
+  });
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const workRef = useRef<HTMLDivElement>(null);
 
@@ -134,29 +569,17 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
     ta.setSelectionRange(ta.value.length, ta.value.length);
   }, [grade]);
 
-  // Once checked, bring the result (and "Fix and check again") into view if any of it is hidden.
-  // Waits a beat so the taller feedback bar has been measured into --actionbar-h (the page's
-  // bottom padding), otherwise the scroll stops short.
-  useEffect(() => {
-    if (!grade) return;
-    const t = window.setTimeout(() => {
-      const el = workRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const bar = document.querySelector<HTMLElement>('.actionbar')?.offsetHeight ?? 0;
-      if (r.top >= 64 && r.bottom <= window.innerHeight - bar) return;
-      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      el.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
-    }, 80);
-    return () => window.clearTimeout(t);
-  }, [grade]);
+  useResultScroll(workRef, grade);
 
   const check = () => {
     const r = gradeCode(text, answer);
     setGrade(r);
     setLatest(r);
     setAttempt((a) => a + 1);
-    if (!first) setFirst(r);
+    if (!first) {
+      setFirst(r);
+      onChecked();
+    }
     sfx(r.perfect ? 'correct' : 'wrong');
   };
 
@@ -180,14 +603,14 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
     awardXp(xp, 'template');
     setResult({ grade: scored, xp, newBest: prevBest !== undefined && acc > prevBest });
     sfx('complete');
-    if (acc >= 0.8) confetti();
+    if (acc >= READY) confetti();
   };
 
   const close = () => nav(back);
 
   if (result) {
     return (
-      <Done
+      <MemoryDone
         g={g}
         meta={meta}
         result={result}
@@ -195,7 +618,7 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
         back={back}
         backToUnit={backToUnit}
         next={nextTemplate(g.category, progress)}
-        onRetry={onRetry}
+        onRetry={() => onRestart()}
         onClose={close}
       />
     );
@@ -209,94 +632,50 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
       progress={latest ? latest.correct / Math.max(1, latest.total) : Math.min(1, written / Math.max(1, total))}
       onClose={close}
       title={<SessionTitle />}
-      right={
-        prevBest !== undefined ? (
-          <span className="tdrill-best" title="Your best first try for this template">
-            <Trophy strokeWidth={2.2} aria-hidden="true" />
-            <span className="sr-only">Your best first try: </span>
-            <span aria-hidden="true">Best </span>
-            {pct(prevBest)}
-          </span>
-        ) : undefined
-      }
+      right={<BestChip best={prevBest} mode="memory" />}
     >
       <div className="tdrill">
-        <header className="drill-head">
-          <div className="drill-eyebrow">
-            <div className="kicker">
-              <CatIcon strokeWidth={2} aria-hidden="true" />
-              <span>{meta.name}</span>
-            </div>
-            <div className="drill-meta">
-              Pattern {CATEGORIES.indexOf(meta) + 1} of {CATEGORIES.length}
-            </div>
-          </div>
-          <h1 className="q-title">Write the template from memory</h1>
-          <p className="drill-sub">
-            {fixing
+        <DrillHead
+          g={g}
+          modes={modes}
+          title="Write the template from memory"
+          sub={
+            fixing
               ? 'Fix the lines that were off, then check again. Your first try already set the score.'
-              : 'Type it without looking, then check it line by line. Comments are optional.'}
-          </p>
-        </header>
-
-        <details className="disclosure tdrill-cues" open={cuesOpen} onToggle={(e) => setCuesOpen(e.currentTarget.open)}>
-          <summary>
-            <ScanSearch aria-hidden="true" />
-            When to reach for it
-            <span className="tdrill-cues-count tabular" aria-hidden="true">
-              {g.whenToUse.length}
-            </span>
-          </summary>
-          <ul className="tdrill-cue-list" role="list">
-            {g.whenToUse.map((w, i) => (
-              <li key={i}>
-                <ArrowRight aria-hidden="true" />
-                <span>{inline(w)}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-
-        <div ref={workRef} className="tdrill-work">
-          {status === 'wrong' && (
-            <div className="tdrill-retry">
-              <p>Your first try sets the score. Fixing it now still helps it stick.</p>
-              <button type="button" className="btn btn-secondary" onClick={fixAgain}>
-                <PencilLine aria-hidden="true" />
-                Fix and check again
-              </button>
-            </div>
-          )}
-
-          <CodeTyper
-          value={text}
-          onChange={setText}
-          grade={grade}
-          label={`${meta.name} template`}
-          textareaRef={taRef}
-          autoFocus
-          minRows={Math.min(total + 1, 14)}
-          filename={`${g.category}.py`}
-          meta="From memory"
-          note={`${total} lines to write`}
-          placeholder={`Write the ${meta.name} template here`}
-          className="tdrill-editor"
-          after={
-            hint && !grade ? (
-              <div className="tdrill-hint">
-                <div className="tdrill-hint-label">
-                  <Lightbulb aria-hidden="true" />
-                  Hint: how each line starts
-                  {capped && <span className="tdrill-hint-cap">XP halved</span>}
-                </div>
-                {lines.map((l, i) => (
-                  <div key={i} className="tdrill-hint-line">
-                    {lineStart(l)}
-                  </div>
-                ))}
-              </div>
-            ) : undefined
+              : 'Type it without looking, then check it line by line. Comments are optional.'
           }
+        />
+        <Cues g={g} />
+        <div ref={workRef} className="tdrill-work">
+          <CodeTyper
+            value={text}
+            onChange={setText}
+            grade={grade}
+            label={`${meta.name} template`}
+            textareaRef={taRef}
+            autoFocus
+            minRows={Math.min(total + 1, 14)}
+            filename={`${g.category}.py`}
+            meta="From memory"
+            note={`${total} lines to write`}
+            placeholder={`Write the ${meta.name} template here`}
+            className="tdrill-editor"
+            after={
+              hint && !grade ? (
+                <div className="tdrill-hint">
+                  <div className="tdrill-hint-label">
+                    <Lightbulb aria-hidden="true" />
+                    Hint: how each line starts
+                    {capped && <span className="tdrill-hint-cap">XP halved</span>}
+                  </div>
+                  {lines.map((l, i) => (
+                    <div key={i} className="tdrill-hint-line">
+                      {lineStart(l)}
+                    </div>
+                  ))}
+                </div>
+              ) : undefined
+            }
           />
         </div>
 
@@ -309,7 +688,9 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
           title={status === 'correct' && attempt > 1 ? 'All fixed' : undefined}
           feedback={
             status === 'wrong'
-              ? 'Lines with a plus show the template. Fix yours from memory, or continue.'
+              ? attempt > 1
+                ? 'Lines with a plus show the template. Your first try still sets the score.'
+                : 'Your first try sets the score. Lines with a plus show the template: fix yours from memory, or continue.'
               : status === 'correct'
                 ? attempt > 1
                   ? 'Every line matches now. Your first try still sets the score.'
@@ -318,19 +699,20 @@ function TemplateDrill({ g, onRetry }: { g: PatternGuide; onRetry: () => void })
           }
           secondary={
             !hint ? (
-              <button type="button" className="btn btn-quiet btn-sm tdrill-hint-btn" onClick={showHint}>
+              <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={showHint}>
                 <Lightbulb aria-hidden="true" />
                 Hint
               </button>
             ) : undefined
           }
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fixAgain} /> : undefined}
         />
       </div>
     </SessionShell>
   );
 }
 
-function Done({
+function MemoryDone({
   g,
   meta,
   result,
@@ -343,7 +725,7 @@ function Done({
 }: {
   g: PatternGuide;
   meta: CategoryMeta;
-  result: Result;
+  result: MemoryResult;
   attempts: number;
   back: string;
   backToUnit: boolean;
@@ -354,10 +736,11 @@ function Done({
   const { grade, xp, newBest } = result;
   const acc = grade.score;
   const perfect = grade.perfect;
+  const look = doneLook(acc);
+  // The next unit opens in its own default mode, and Close there returns to the same kind of page.
   const nextState: TemplateDrillState | undefined = next
     ? { from: backToUnit ? `/unit/${next.id}` : `/patterns?p=${next.id}` }
     : undefined;
-  const templateLines = g.template.split('\n').length;
 
   const retryBtn = (
     <button type="button" className={`btn btn-lg btn-block ${perfect ? 'btn-secondary' : 'btn-primary'}`} onClick={onRetry}>
@@ -380,14 +763,14 @@ function Done({
     <SessionShell progress={1} onClose={onClose} title={<SessionTitle />}>
       <div className="tdrill-done">
         <Completion
-          icon={perfect ? Trophy : acc >= 0.8 ? CircleCheck : acc >= 0.5 ? TrendingUp : Sprout}
-          tone={perfect ? 'warning' : acc >= 0.8 ? 'success' : 'brand'}
-          title={perfect ? 'Flawless from memory' : acc >= 0.8 ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
+          icon={look.icon}
+          tone={look.tone}
+          title={perfect ? 'Flawless from memory' : acc >= READY ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
           subtitle={
             <>
               You wrote {grade.correct} of {grade.total} lines of the <strong>{meta.name}</strong> template correctly on the first try
               {grade.extra > 0 ? `, plus ${grade.extra} extra line${grade.extra === 1 ? '' : 's'}.` : '.'}
-              {acc < 0.8
+              {acc < READY
                 ? ' Type it again tomorrow. The struggle is what builds memory.'
                 : newBest
                   ? ' That is a new best.'
@@ -426,15 +809,7 @@ function Done({
             {backToUnit ? 'Back to unit' : 'Back to Pattern guide'}
           </Link>
         </Completion>
-
-        <details className="disclosure tdrill-ref" open={!perfect}>
-          <summary>
-            <CodeXml aria-hidden="true" />
-            The {meta.name} template
-            <span className="tdrill-ref-meta">{templateLines} lines</span>
-          </summary>
-          <HighlightedCode code={g.template} />
-        </details>
+        <Reference g={g} open={!perfect} />
       </div>
     </SessionShell>
   );

@@ -3,7 +3,7 @@
    A code editor that reads as part of the file (numbered gutter + borderless
    textarea), the line-by-line diff shown after checking, the typing window's
    status bar, and a touch key bar (Indent / Outdent / symbols) for phones.
-   Lives inside a <CodeWindow>; colours are --code-* tokens (code is always dark).
+   Lives inside a <CodeWindow>; colors are --code-* tokens (code is always dark).
    ========================================================================== */
 
 /* ── Window: focus ring while typing, status border once checked ──────────── */
@@ -231,7 +231,7 @@
   display: inline-block;
   width: 6px;
   height: 6px;
-  margin: calc((1lh - 6px) / 2) 6px 0 0; /* centred on the first line */
+  margin: calc((1lh - 6px) / 2) 6px 0 0; /* centered on the first line */
   vertical-align: top;
   border-radius: 50%;
 }
@@ -305,4 +305,26 @@
 /* A wider gap between Indent / Outdent and the symbols */
 .typer-key-first {
   margin-left: 6px;
+}
+
+/* ── Action bar: the second button once checked (<CheckedAction>) ───────────
+   "Fix and check again" beside Continue; the narrowest phones say "Fix it". */
+.typer-action-short {
+  display: none;
+}
+@media (max-width: 479px) {
+  .actionbar .typer-action {
+    padding-inline: 16px;
+  }
+  .actionbar .typer-action svg {
+    display: none;
+  }
+}
+@media (max-width: 379px) {
+  .typer-action-long {
+    display: none;
+  }
+  .typer-action-short {
+    display: inline;
+  }
 }

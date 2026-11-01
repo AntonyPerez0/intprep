@@ -1,7 +1,7 @@
 import '../styles/pages/unit.css';
 import { useState, type CSSProperties } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, TextCursorInput, Trophy } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
@@ -10,7 +10,7 @@ import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { nextStep, unitProgress, unitUnlocked } from '../lib/path';
 import { crowns, isDue } from '../lib/srs';
-import { useProgress } from '../lib/store';
+import { templateScore, useProgress } from '../lib/store';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { CodeWindow } from '../components/interact';
 import { Crowns, DifficultyChip, ProgressBar } from '../components/ui';
@@ -60,9 +60,10 @@ export function Unit() {
   const templateLines = guide ? guide.template.split('\n').length : 0;
   const templateLong = templateLines > TEMPLATE_PREVIEW_LINES;
   const templateOpen = expandedFor === meta.id;
-  const typedBest = p.templates?.[meta.id]?.best;
+  // The best template score so far: typed from memory, else filling the gaps.
+  const typed = templateScore(p.templates?.[meta.id]);
 
-  // Primary action: learn the pattern first, then the next problem, then practise.
+  // Primary action: learn the pattern first, then the next problem, then practice.
   const guideCta = guide && (
     <Link key="guide" to={`/unit/${meta.id}/intro`} className={`btn btn-lg ${guideDone ? 'btn-secondary' : 'btn-primary'}`}>
       <BookOpen />
@@ -75,13 +76,13 @@ export function Unit() {
       <ArrowRight />
     </Link>
   );
-  const practiseCta = learnedHere > 0 && (
-    <Link key="practise" to={`/review?unit=${meta.id}`} className={`btn btn-lg ${firstTodo ? 'btn-secondary' : 'btn-primary'}`}>
+  const practiceCta = learnedHere > 0 && (
+    <Link key="practice" to={`/review?unit=${meta.id}`} className={`btn btn-lg ${firstTodo ? 'btn-secondary' : 'btn-primary'}`}>
       <Repeat2 />
-      Practise this unit
+      Practice this unit
     </Link>
   );
-  const ctas = guide && !guideDone ? [guideCta, nextCta, practiseCta] : firstTodo ? [nextCta, guideCta, practiseCta] : [practiseCta, guideCta];
+  const ctas = guide && !guideDone ? [guideCta, nextCta, practiceCta] : firstTodo ? [nextCta, guideCta, practiceCta] : [practiceCta, guideCta];
 
   const status = complete ? (
     <span className="badge badge-success">
@@ -227,17 +228,20 @@ export function Unit() {
           <div className="unit-template">
             <div className="unit-template-head">
               <h3 className="unit-label">Template</h3>
-              {typedBest !== undefined && (
-                <span className="unit-type-best" title="Your best first try at typing it from memory">
-                  <Trophy strokeWidth={2.2} aria-hidden="true" />
-                  <span className="sr-only">Typed from memory, best first try: </span>
-                  <span aria-hidden="true">Best </span>
-                  {Math.round(typedBest * 100)}%
+              {typed && (
+                <span
+                  className={`unit-type-best is-${typed.mode}`}
+                  title={typed.mode === 'memory' ? 'Your best first try typing it from memory' : 'Your best first check filling the gaps'}
+                >
+                  {typed.mode === 'memory' ? <Trophy strokeWidth={2.2} aria-hidden="true" /> : <TextCursorInput strokeWidth={2.2} aria-hidden="true" />}
+                  <span className="sr-only">{typed.mode === 'memory' ? 'Typed from memory, best first try: ' : 'Filled the gaps, best first check: '}</span>
+                  <span aria-hidden="true">{typed.mode === 'memory' ? 'Best ' : 'Gaps '}</span>
+                  {Math.round(typed.best * 100)}%
                 </span>
               )}
               <Link to={`/patterns/${meta.id}/type`} state={{ from: `/unit/${meta.id}` }} className="btn btn-secondary btn-sm unit-type-btn">
                 <Keyboard />
-                Type it from memory
+                Practice the template
               </Link>
             </div>
             <CodeWindow filename={`${meta.id}.py`} meta={`${templateLines} lines`}>
@@ -332,7 +336,7 @@ export function Unit() {
         )}
       </section>
 
-      {/* ── Neighbouring units ─────────────────────────────────────────── */}
+      {/* ── Neighboring units ─────────────────────────────────────────── */}
       <nav className="unit-pager" aria-label="Other units">
         {prevUnit ? (
           <Link to={`/unit/${prevUnit.id}`} className="unit-pager-link">

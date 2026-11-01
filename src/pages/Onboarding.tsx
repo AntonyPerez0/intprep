@@ -174,7 +174,7 @@ export function OnboardingPage() {
                     Pick a daily goal
                   </h1>
                   <p className="ob-sub">
-                    Practise on any day to keep your streak alive. Reach your goal to earn {GEMS.dailyGoal} gems. Small and steady wins.
+                    Practice on any day to keep your streak alive. Reach your goal to earn {GEMS.dailyGoal} gems. Small and steady wins.
                   </p>
                   <div className="ob-options ob-goals">
                     {DAILY_GOALS.map((g) => {
@@ -222,7 +222,7 @@ export function OnboardingPage() {
                     <PlanRow
                       icon={Flame}
                       label="Streak"
-                      value="Practise on any day to keep it"
+                      value="Practice on any day to keep it"
                       detail={
                         streak.freezes > 0
                           ? `You start with ${streak.freezes === 1 ? 'a streak freeze' : `${streak.freezes} streak freezes`} and ${gems} gems to buy more.`

@@ -8,6 +8,7 @@
 //   <TyperFooter>  the window's status bar; its result summary is an aria-live region
 //   <TyperWindow>  CodeWindow with the typing frame (focus ring, green/red border once checked)
 //   <CodeTyper>    all of the above in one: editor while typing, diff once `grade` is set
+//   <CheckedAction> the ActionBar's `checkedSecondary` after a miss ("Fix and check again")
 // Lower-level: <CodePane>, <CodeLine>, <GivenLines>, <DiffSign>, <GradeSummary>, <TouchKeys>,
 // codeKeyHandler. Documented in docs/DESIGN.md ("Typing kit").
 
@@ -21,14 +22,14 @@ import {
   type Ref,
   type RefObject,
 } from 'react';
-import { Check, ListIndentDecrease, ListIndentIncrease, Minus, MoveHorizontal, Plus } from 'lucide-react';
+import { Check, ListIndentDecrease, ListIndentIncrease, Minus, MoveHorizontal, PencilLine, Plus } from 'lucide-react';
 import { gradeSummaryParts, reindent, type Grade } from '../lib/codegrade';
 import { highlightLine } from '../lib/highlight';
 import { CodeWindow, type CheckStatus } from './interact';
 
 const INDENT = '    ';
 
-// ── Keyboard behaviour ──────────────────────────────────────────────────────
+// ── Keyboard behavior ──────────────────────────────────────────────────────
 
 /**
  * Replace value[from..to) with `text` and put the selection at [selStart, selEnd], synchronously.
@@ -564,5 +565,37 @@ export function CodeTyper({
       )}
       {after}
     </TyperWindow>
+  );
+}
+
+// ── Action bar ──────────────────────────────────────────────────────────────
+
+/**
+ * The second button of a typing screen's ActionBar once a check is wrong: pass it as
+ * `checkedSecondary`, left of Continue (or Try again). "Fix and check again" by default; also
+ * "Show answer" on a beginner slide. The narrowest phones show `short` ("Fix it") so both buttons
+ * fit; the full label stays the accessible name.
+ */
+export function CheckedAction({
+  onClick,
+  label = 'Fix and check again',
+  short = 'Fix it',
+  icon = <PencilLine aria-hidden="true" />,
+}: {
+  onClick: () => void;
+  label?: string;
+  short?: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <button type="button" className="btn btn-secondary btn-lg typer-action" onClick={onClick} aria-label={label}>
+      {icon}
+      <span className="typer-action-long" aria-hidden="true">
+        {label}
+      </span>
+      <span className="typer-action-short" aria-hidden="true">
+        {short}
+      </span>
+    </button>
   );
 }

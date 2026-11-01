@@ -7,23 +7,23 @@ with taste: precise, quiet, confident.
 
 ## Principles
 
-1. **Calm by default, colour with purpose.** Neutral surfaces; one brand colour (indigo) for primary actions and
-   selection; status colours only for status. Gamification accents (streak orange, gem cyan, XP amber) appear
+1. **Calm by default, color with purpose.** Neutral surfaces; one brand color (indigo) for primary actions and
+   selection; status colors only for status. Gamification accents (streak orange, gem cyan, XP amber) appear
    small, next to an icon and a label — never as big gradient slabs.
 2. **Hierarchy through type and space, not decoration.** Inter, tight letter-spacing on headings, generous
    whitespace, 4px spacing grid. No ALL-CAPS buttons, no heavy drop shadows, no 3D "chunky" buttons.
 3. **One icon language.** Lucide stroke icons only (`src/components/icons.tsx`). **No emoji anywhere in the UI.**
    Content files have legacy emoji `icon` fields — never render them; use `CATEGORY_ICON`, `LESSON_ICON`,
    `SCIENCE_ICON`, `ICONS`.
-4. **Real data, honestly presented.** Numbers are tabular, labelled, and true. No fake testimonials, user counts,
+4. **Real data, honestly presented.** Numbers are tabular, labeled, and true. No fake testimonials, user counts,
    company logos or endorsements. Not affiliated with LeetCode, NeetCode or any employer — say so in the footer.
 5. **Mobile is first-class.** Design at 390px wide first, then scale up. Touch targets ≥ 40px (on touch screens
    default `.btn` and `.input` grow to 40px, and `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an
-   invisible 40px hit area automatically). Hover colours live inside `@media (hover: hover)` so a tap never leaves a
+   invisible 40px hit area automatically). Hover colors live inside `@media (hover: hover)` so a tap never leaves a
    sticky hover. Never cause horizontal page scroll (code blocks scroll inside themselves). Nothing may sit hidden
    behind a fixed bar: the tab bar and action bar set `scroll-padding-bottom`, and `.session-body` clears the
    action bar at its measured height.
-6. **Both themes, always.** Use tokens only. Never hard-code a colour except category colours passed as `--c`.
+6. **Both themes, always.** Use tokens only. Never hard-code a color except category colors passed as `--c`.
    Check every screen in light *and* dark.
 7. **Accessible.** WCAG AA contrast (white text only on the solid fills below), a solid 2px `:focus-visible`
    outline that follows each element's radius, `aria-label` on icon-only buttons (and `role="img"` when a plain
@@ -38,8 +38,8 @@ with taste: precise, quiet, confident.
 | Surfaces | `--canvas` (app bg), `--surface` (cards), `--surface-raised` (popovers), `--surface-sunken` (wells, tracks), `--surface-hover`, `--surface-active` |
 | Borders | `--border` (default hairline), `--border-strong` (inputs, buttons), `--border-subtle` (row dividers) |
 | Text | `--text`, `--text-secondary`, `--text-tertiary` (smallest readable text; ≥ 4.5:1 on every surface incl. sunken and brand-subtle), `--text-disabled` (disabled controls and decorative marks only — never labels, headings or placeholders) |
-| Brand | `--brand`, `--brand-hover`, `--brand-text` (brand-coloured text), `--brand-subtle` (tinted bg), `--brand-border`, plus `--brand-50…800` |
-| Status | `--success/-text/-subtle/-border`, same for `warning`, `danger`, `info`. `--success`/`--danger` are icon and stroke colours |
+| Brand | `--brand`, `--brand-hover`, `--brand-text` (brand-colored text), `--brand-subtle` (tinted bg), `--brand-border`, plus `--brand-50…800` |
+| Status | `--success/-text/-subtle/-border`, same for `warning`, `danger`, `info`. `--success`/`--danger` are icon and stroke colors |
 | Solid fills | White text goes only on `--brand` (button-safe in both themes; `--brand-hover` darkens), `--success-solid(-hover)` and `--danger-solid(-hover)` — buttons, count badges, answer numbers |
 | Game accents | `--streak(-subtle)`, `--gem(-subtle)`, `--xp(-subtle)` |
 | Radius | `--r-xs 4` `--r-sm 6` `--r-md 8` `--r-lg 12` `--r-xl 16` `--r-full` |
@@ -66,9 +66,9 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Lists | `.list` + `.list-row` (`.title`, `.meta`, `.chevron`), `.status-dot(.learned/.due)` |
 | Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon) |
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
-| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colours on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
+| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
 | Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
-| Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked, e.g. "Fix and check again"), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
+| Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
 | Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` |
 | Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
@@ -76,9 +76,16 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 
 ## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
 
-Use it wherever the learner types code: Code from memory (part by part, or the whole solution from scratch),
-typing a pattern template from memory, and beginner "Your turn" slides of 1–5 lines. For choosing between given
-lines, use `<Choices code>` instead; for a single key line, the key-line drill's input.
+Use it wherever the learner types code: Code from memory (part by part, filling the gaps, or the whole solution
+from scratch), the template drill (filling the gaps, or from memory), and beginner "Your turn" slides of 1–5 lines.
+For choosing between given lines, use `<Choices code>` instead; for a single key line, the key-line drill's input.
+
+**The ladder** — Code from memory and the template drill offer the same rungs, most support first: Part by part
+(Code from memory only) → Fill the gaps → From scratch / From memory. Without `?mode=` a page opens one rung above
+what the learner has shown: the next rung once the best score on the one below is 80% or more (or they already
+have a score on the top rung). A run of 80% or more makes the next rung the completion's primary action ("Next:
+fill in the gaps", "Now write it from scratch", "Now type it from memory"); a weak From scratch run steps back
+down ("Fill the gaps first").
 
 **Grading** — `gradeCode(typed, expected)` is pure. Blank and comment-only lines are ignored on both sides; lines
 compare with `normalizeCode` (whitespace, quote style, trailing comments and trailing commas do not matter). Typed
@@ -88,7 +95,9 @@ matches (anchored on the outermost matched line, so typing a body flush-left is 
 order (`ok`, `indent` = right code, wrong indentation, `del` = typed line not in the answer, `add` = expected line
 not written; a changed line is a `del` + `add` pair with `paired: true`), plus `correct`, `total`, `extra`,
 `wrong`, `missing`, `wrongIndent`, `perfect`, `score` (0–1, extra lines count against it), `baseGot`/`baseExp`.
-`gradeBest(typed, answers)` keeps the best match among several accepted answers. Pass clean code as `expected`
+`gradeBest(typed, answers)` diffs against the closest of several accepted answers: the most lines whose code
+matches whatever their indentation (`correct + wrongIndent`, so a body typed flush-left stays an indentation slip
+on the answer it copies), then the higher score, then fewer extra lines, then the earliest. Pass clean code as `expected`
 (e.g. chunk lines or `parseSolution(...).code`); `#!` key markers are dropped. Leave read-only lines (the class /
 def header) out of `expected` and show them as `given`.
 
@@ -118,6 +127,16 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
 · 1 wrong indent") in a polite live region. Keep the footer mounted while typing so the result is announced.
 `<CodeTyper>` combines all of it: the editor while `grade` is null, the diff once it is set.
 
+**Action bar** — the first check sets the score; later checks only show the result. After a miss, pass
+`<CheckedAction onClick>` as the `ActionBar`'s `checkedSecondary`: "Fix and check again" by default ("Fix it" below
+380px, the full label stays the accessible name), or `label="Show answer" short="Answer" icon={<Eye />}`. Keep
+the `step` prop changing with each check (e.g. `` `${round}:${checks}` ``) so the double-click guard re-arms.
+
+**Font size and iOS** — every code input (editor, gaps, typed key line) uses the 12.5–13px code size. iOS Safari
+zooms the page when an input under 16px gets focus, so `main.tsx` adds `maximum-scale=1` to the viewport meta at
+startup on iOS only (iPhone, iPad, and iPadOS's Mac user agent with touch). iOS still allows pinch zoom; Android
+would honor it and lose pinch zoom, so it keeps the plain viewport. Do not enlarge code inputs to avoid zoom.
+
 ### Fill in the gaps (`components/CodeGaps.tsx`, `lib/gaps.ts`)
 
 The middle rung between reading a worked example and writing it from scratch: the whole snippet is shown and the
@@ -138,7 +157,8 @@ solution or a plain template into `{ lines, keyLines, header }` (pass `header` a
 **Editor** — `<CodeGaps lines gaps values onChange revealed onSubmit autoFocus disabled locked hints start keyBar
 label ref>`: the visible lines read-only (highlighted, numbered, dimmed like `given`), each gap a single-line
 `input.gaps-input` that starts at its line's indentation (the learner never types indentation) and fills the row.
-Gap rows keep the 22px rhythm on desktop and grow to 44px with 16px text on touch screens (no iOS zoom). The
+Gap rows keep the 22px rhythm on desktop and grow to 44px on touch screens, with the text at the code's size (no
+iOS zoom: see **Font size and iOS**). The
 placeholder is the line's own trailing comment (`# stop when the pointers meet`); `hints` takes your own per gap or
 `false`; a gap without one says "Type the missing line" if it is the first. `locked` gaps (right at the last check)
 show as correct and are skipped by the keyboard. `ref` exposes `focus(gap?)`. With `autoFocus`, the first gap is
@@ -168,7 +188,7 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
   card, a code snippet, a streak/goal widget) — not an image; "How it works" in 3 steps; feature grid; the 18
   patterns as a curriculum grid; "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
   (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof.
-- **Onboarding (`/onboarding`)** — centred, focused, step indicator; welcome + name → experience (radio cards with
+- **Onboarding (`/onboarding`)** — centered, focused, step indicator; welcome + name → experience (radio cards with
   icons) → daily goal (radio cards) → plan summary → **"Start learning"**.
 - **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card; a "Today" panel (goal ring, streak,
   reviews due); KPI row (learned /150, strong, accuracy, level); activity heatmap; roadmap progress by unit; quick
@@ -179,20 +199,32 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar.
   Desktop may use two columns where it helps (e.g. code + explanation). Foundation lessons mix in "Your turn"
   slides (`kind: 'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the
-  explanation; a miss offers "Try again" (keeps the text) and "Show answer" (the answer, then Continue; the slide
-  comes back once at the end of the lesson).
-- **Code from memory (`/p/:id/rebuild?mode=parts|scratch`)** — a `.seg` switch under the title: **Part by part**
-  (one part at a time, cued by its comment) and **From scratch** (the whole body in one blank editor under the given
-  signature; "Show outline" reveals the parts' cues as numbered comments and caps the XP). Without `?mode=` it opens
-  From scratch once the part-by-part best is 80% or more. The first Check sets the score; "Fix and check again"
-  re-grades without raising it. Switching mode after a Check asks first, since it restarts the attempt. A strong
-  part-by-part run's next step is "Now write it from scratch". Entry points: the problem page (Code from memory,
-  Write it from scratch) and the dashboard's review card (one learned problem to write from memory).
-- **Template from memory (`/patterns/:cat/type`)** — the unit's guide template typed into a blank `CodeTyper`:
-  "When to reach for it" cues (open on desktop, collapsed on phones), an optional first-word hint (halves the
-  XP), then the diff. The first check sets the score; "Fix and check again" sits above the diff. Linked from
-  the Pattern guide and Unit template headings (with the best score) and the pattern intro's completion. Pass
-  `state={{ from }}` so Close and Back return to the page that opened it.
+  explanation; a miss offers "Try again" (the primary: keeps the text) and, left of it in the action bar, "Show
+  answer" (the answer, then Continue; the slide comes back once at the end of the lesson).
+- **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
+  (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
+  accessible name): **Part by part** (one part at a time, cued by its comment), **Fill the gaps** (the problem, the
+  given class / def header and the solution with about 30% of its lines blank, key lines first, in a `GapsWindow`;
+  Enter moves to the next gap and checks on the last; "New gaps" while idle) and **From scratch** (the whole body in
+  one blank editor under the given signature; "Show outline" reveals the parts' cues as numbered comments and caps
+  the XP). Without `?mode=` it follows the ladder: From scratch once the fill-the-gaps best is 80% or more (or there
+  is a scratch score), else Fill the gaps once the part-by-part best is 80% or more, else Part by part. The first
+  Check sets the score; "Fix and check again" re-grades without raising it (in Fill the gaps it keeps the text and
+  locks the right gaps). Switching mode after a Check asks first, since it restarts the attempt. Completion: the
+  score, XP, the reference solution and the next rung. Each mode keeps its own best (`rebuildBest`, `gapsBest`,
+  `scratchBest`), shown on the problem page as one "Code from memory, best" list, and every mode updates spaced
+  review. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
+  (one learned problem to write from memory).
+- **Template drill (`/patterns/:cat/type?mode=gaps|memory`)** — the unit's guide template, in two rungs under a
+  `.seg` switch: **Fill the gaps** (`gapSource(template)`; each gap's hint is its line's comment) and **From memory**
+  (a blank `CodeTyper` with an optional first-word hint that halves the XP). "When to reach for it" cues sit above
+  (open on desktop, collapsed on phones). Without `?mode=` it opens Fill the gaps until that best is 80% or more or
+  the template has been typed from memory, then From memory. The first check sets the score; "Fix and check again"
+  sits in the action bar. Completion: a strong gaps run leads to "Now type it from memory", a perfect from-memory
+  run to "Next template". Entry points read "Practice the template", with the best score (from memory, else
+  "Gaps N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
+  problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
+  Back return to the page that opened it.
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,
@@ -200,7 +232,8 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
 
 ## Copy & tone
 
-Sentence case everywhere ("Start review", not "START REVIEW"). Short, specific, encouraging, adult. Avoid
+Sentence case everywhere ("Start review", not "START REVIEW"). American English spelling everywhere, UI and
+content alike (practice, color, behavior, neighbor, optimize, math). Short, specific, encouraging, adult. Avoid
 exclamation marks except on genuine celebrations ("Problem learned" is enough). No emoji. Name things
 consistently: Dashboard, Learning path, Daily review, Pattern Blitz, Problem library, Pattern guide, Code from
 memory, Learning science.
@@ -211,7 +244,8 @@ Automated tests drive the UI through these hooks — keep them working:
 
 - Classes: `.session`, `.session-body` (a `<main>`), `.complete`, `.choice` (+`.selected/.correct/.wrong`), `.actionbar`
   (+`.correct/.wrong`), `.actionbar .buttons > .btn:last-child` (primary action), `.parsons-slot`,
-  `.parsons-bank .parsons-item`, `textarea.code-input`, `.session-body input.input` (typed key line),
+  `.parsons-bank .parsons-item`, `textarea.code-input`, `input.gaps-input` (one per gap, `aria-label` "Line N,
+  missing"), `.session-body input.input` (typed key line),
   `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button).
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
@@ -226,4 +260,4 @@ Automated tests drive the UI through these hooks — keep them working:
 - Do not edit shared files (`src/styles/{base,components,shell}.css`, `src/components/*`, `src/lib/*`,
   `src/content/*`, `App.tsx`, `main.tsx`) unless that file is assigned to you. If a shared change is needed,
   build it locally in your page and note it.
-- Keep behaviour, routes, data flow and store calls exactly as they are — this is a visual redesign.
+- Keep behavior, routes, data flow and store calls exactly as they are — this is a visual redesign.

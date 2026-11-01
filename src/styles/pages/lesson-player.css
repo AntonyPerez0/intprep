@@ -313,9 +313,6 @@
 }
 
 /* Action bar: the explanation, then a way out when stuck */
-.lplayer-type-fb .btn {
-  margin-top: 10px;
-}
 .lplayer-tools {
   display: flex;
   align-items: center;

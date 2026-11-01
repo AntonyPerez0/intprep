@@ -10,6 +10,18 @@ import './styles/components.css';
 import './styles/shell.css';
 import App from './App';
 
+// iOS Safari zooms the page in when an input with text smaller than 16px gets focus, and every
+// code input here (editors, gaps, typed key lines) uses the 12.5–13px code size. On iOS only,
+// maximum-scale=1 stops that focus zoom without making the code bigger: iOS still lets people
+// pinch to zoom (it ignores maximum-scale for gestures), whereas Android would honor it and lose
+// pinch zoom, so Android and desktop keep the plain viewport. iPadOS asks for desktop sites with a
+// Mac user agent, so a Mac with a touch screen counts as an iPad.
+const ua = navigator.userAgent;
+if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
+  const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+  if (viewport && !/maximum-scale/.test(viewport.content)) viewport.content += ', maximum-scale=1';
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

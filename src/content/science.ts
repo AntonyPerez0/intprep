@@ -21,7 +21,7 @@ export const SCIENCE: SciencePrinciple[] = [
     title: "Retrieval practice",
     icon: "🧠",
     finding:
-      "Pulling an answer out of memory strengthens it far more than rereading. Students who practised recalling a text remembered much more a week later than students who reread it, even though rereading looked better on a test five minutes later.",
+      "Pulling an answer out of memory strengthens it far more than rereading. Students who practiced recalling a text remembered much more a week later than students who reread it, even though rereading looked better on a test five minutes later.",
     source: "Roediger & Karpicke (2006), Psychological Science",
     howWeUseIt:
       "Almost every drill makes you produce the answer before you see it: name the pattern, recall the key insight, fill in the key line, or rebuild the whole solution from memory.",
@@ -41,10 +41,10 @@ export const SCIENCE: SciencePrinciple[] = [
     title: "Mix it up",
     icon: "🔀",
     finding:
-      "Mixing different problem types in one session feels harder than practising one type at a time, but it teaches you to tell similar problems apart and pick the right strategy. A meta-analysis found a moderate benefit, largest for easily confused categories.",
+      "Mixing different problem types in one session feels harder than practicing one type at a time, but it teaches you to tell similar problems apart and pick the right strategy. A meta-analysis found a moderate benefit, largest for easily confused categories.",
     source: "Brunmair & Richter (2019), Psychological Bulletin",
     howWeUseIt:
-      "Units teach one pattern at a time. Then the daily drill and Pattern Blitz shuffle patterns together, so you practise the real interview skill: spotting which pattern a new problem needs.",
+      "Units teach one pattern at a time. Then the daily drill and Pattern Blitz shuffle patterns together, so you practice the real interview skill: spotting which pattern a new problem needs.",
   },
   {
     id: "pretesting",
@@ -64,7 +64,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Beginners learn problem solving faster from fully worked examples than from struggling alone, because it frees working memory. As skill grows, guidance should fade: help that aids novices can hold more experienced learners back.",
     source: "Renkl & Atkinson (2003); Kalyuga et al. (2003), Educational Psychologist",
     howWeUseIt:
-      "Lessons walk from brute force to key insight to step-by-step code. Progressive hints let you take only the help you need, and drills climb from recognising a solution to rebuilding it unaided.",
+      "Lessons walk from brute force to key insight to step-by-step code. Progressive hints let you take only the help you need, and drills climb from recognizing a solution to rebuilding it unaided.",
   },
   {
     id: "chunking",
@@ -74,7 +74,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Experts see meaningful chunks, not single pieces: chess masters recall real positions at a glance but not random ones. Expert programmers likewise think in reusable plans, freeing working memory for what is new in a problem.",
     source: "Chase & Simon (1973), Cognitive Psychology",
     howWeUseIt:
-      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained in small labelled chunks, so you learn the plan behind the code.",
+      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained in small labeled chunks, so you learn the plan behind the code.",
   },
   {
     id: "self-explanation",
@@ -94,7 +94,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Putting the scrambled lines of a solution in order took students significantly less time than writing or fixing the same code, with no difference in learning or in retention a week later.",
     source: "Ericson, Margulieux & Rick (2017), Koli Calling",
     howWeUseIt:
-      "Order-the-steps quizzes and Parsons drills are a stepping stone between recognising a solution and rebuilding it from memory.",
+      "Order-the-steps quizzes and Parsons drills are a stepping stone between recognizing a solution and rebuilding it from memory.",
   },
   {
     id: "desirable-difficulties",
@@ -151,9 +151,9 @@ export const SCIENCE: SciencePrinciple[] = [
     title: "Habits and forgiving streaks",
     icon: "🔥",
     finding:
-      "Daily repetition in a consistent context makes a behaviour automatic, often in about two months, and missing a single day did not derail it. Goals with a small emergency reserve that costs something to use keep people going longer.",
+      "Daily repetition in a consistent context makes a behavior automatic, often in about two months, and missing a single day did not derail it. Goals with a small emergency reserve that costs something to use keep people going longer.",
     source: "Lally et al. (2010), Eur. J. Social Psychology; Sharif & Shu (2017), J. Marketing Research",
     howWeUseIt:
-      "Your streak rewards showing up each day. Streak freezes, bought with gems you earn by practising, cover the odd missed day, because one slip should never undo a habit.",
+      "Your streak rewards showing up each day. Streak freezes, bought with gems you earn by practicing, cover the odd missed day, because one slip should never undo a habit.",
   },
 ];

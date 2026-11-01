@@ -1,8 +1,9 @@
 /* ==========================================================================
-   Template from memory — src/pages/TemplateDrill.tsx (/patterns/:cat/type)
-   Header (drills.css anatomy) → "when to reach for it" cues → the typing kit
-   (src/styles/typer.css) → after a miss, "Fix and check again". Completion
-   shows the score and the reference template.
+   Template from memory — src/pages/TemplateDrill.tsx (/patterns/:cat/type?mode=gaps|memory)
+   Header (drills.css anatomy) with the mode switch (Fill the gaps / From
+   memory) → "when to reach for it" cues → the typing kit (src/styles/typer.css,
+   gaps.css). After a miss, "Fix and check again" sits in the action bar.
+   Completion shows the score and the reference template.
    ========================================================================== */
 
 .tdrill {
@@ -121,55 +122,75 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   }
 }
 
-/* ── Result: "Fix and check again" sits right above the diff ───────────── */
-.tdrill-work {
+/* ── Mode switch (Fill the gaps / From memory) ─────────────────────────── */
+.tdrill-modes {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-margin-top: calc(72px + env(safe-area-inset-top));
-}
-.tdrill-retry {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  padding: 10px 10px 10px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  box-shadow: var(--shadow-xs);
-  animation: tdrill-in var(--dur) var(--ease);
+  gap: 8px 14px;
+  margin: 6px 0 2px;
 }
-.tdrill-retry p {
-  margin: 0;
-  font-size: var(--fs-sm);
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-.tdrill-retry .btn {
+.tdrill-seg {
   flex: none;
+  flex-wrap: nowrap;
 }
-@media (max-width: 559px) {
-  .tdrill-retry {
+.tdrill-seg button {
+  justify-content: center;
+  white-space: nowrap;
+}
+.tdrill-modes-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.tdrill-modes-note svg {
+  flex: none;
+  width: 13px;
+  height: 13px;
+}
+/* Phones: the switch spans the column like a pair of tabs, with the touch-size buttons */
+@media (max-width: 639px) {
+  .tdrill-modes {
     flex-direction: column;
     align-items: stretch;
-    padding: 12px;
-    text-align: center;
   }
-  .tdrill-retry .btn {
-    height: 44px;
+  .tdrill-seg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tdrill-seg button {
+    min-width: 0;
+    height: 40px;
+    padding-inline: 8px;
+    font-size: var(--fs-md);
+  }
+  .tdrill-modes-note {
+    justify-content: center;
   }
 }
-@keyframes tdrill-in {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
+
+/* Switching after a check: confirm dialog */
+.tdrill-modal {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .tdrill-retry {
-    animation: none;
-  }
+.tdrill-modal .modal-title {
+  margin-top: 6px;
+}
+.tdrill-modal p {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+/* ── The exercise: scrolled into view once checked ──────────────────────── */
+.tdrill-work {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
 }
 
 /* ── Session title: shorter on phones ───────────────────────────────────── */
@@ -186,7 +207,7 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
 }
 
 /* ── Action bar extras ──────────────────────────────────────────────────── */
-.tdrill .actionbar .buttons > .tdrill-hint-btn:first-child {
+.tdrill .actionbar .buttons > .tdrill-tool:first-child {
   margin-left: -12px;
 }
 

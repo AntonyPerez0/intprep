@@ -1,10 +1,11 @@
 /* ==========================================================================
-   Code from memory — src/pages/Rebuild.tsx (/p/:id/rebuild?mode=parts|scratch)
-   A mode switch (Part by part / From scratch), then an editor: file tab, the
-   given code, and the typing kit (src/styles/typer.css: typing area, inline
-   diff, status bar). Part by part adds the current step as a highlighted
-   comment (or, in tap mode, the line being chosen); From scratch can show the
-   whole plan as numbered comments (the outline).
+   Code from memory — src/pages/Rebuild.tsx (/p/:id/rebuild?mode=parts|gaps|scratch)
+   A mode switch (Part by part / Fill the gaps / From scratch), then an editor:
+   file tab, the given code, and the typing kit (src/styles/typer.css: typing
+   area, inline diff, status bar; src/styles/gaps.css for Fill the gaps). Part
+   by part adds the current step as a highlighted comment (or, in tap mode, the
+   line being chosen); From scratch can show the whole plan as numbered
+   comments (the outline).
    ========================================================================== */
 
 .rebuild {
@@ -94,7 +95,10 @@
   width: 13px;
   height: 13px;
 }
-/* Phones: the switch spans the column like a pair of tabs, with the touch-size buttons */
+.rebuild-seg-short {
+  display: none;
+}
+/* Phones: the switch spans the column like a row of tabs, with the touch-size buttons */
 @media (max-width: 639px) {
   .rebuild-modes {
     flex-direction: column;
@@ -102,14 +106,37 @@
   }
   .rebuild-seg {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .rebuild-seg button {
+    min-width: 0;
     height: 40px;
+    padding-inline: 8px;
     font-size: var(--fs-md);
   }
   .rebuild-modes-note {
     justify-content: center;
+  }
+}
+/* The three names fit with their icons down to here; below, the names alone */
+@media (max-width: 459px) {
+  .rebuild-seg button svg {
+    display: none;
+  }
+}
+/* The narrowest phones: short names ("Parts", "Gaps", "Scratch"); the full name stays the
+   accessible name */
+@media (max-width: 379px) {
+  .rebuild-seg-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .rebuild-seg-short {
+    display: inline;
   }
 }
 
@@ -312,27 +339,6 @@
   flex-direction: column;
   gap: 4px;
 }
-/* "Fix and check again" beside Continue once checked; the narrowest phones say "Fix it" */
-.rebuild-fix-short {
-  display: none;
-}
-@media (max-width: 479px) {
-  .actionbar .rebuild-fix {
-    padding-inline: 16px;
-  }
-  .actionbar .rebuild-fix svg {
-    display: none;
-  }
-}
-@media (max-width: 379px) {
-  .rebuild-fix-long {
-    display: none;
-  }
-  .rebuild-fix-short {
-    display: inline;
-  }
-}
-
 /* ── Completion ─────────────────────────────────────────────────────────── */
 .rebuild-done .complete .lead {
   max-width: 460px;

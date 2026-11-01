@@ -4,10 +4,10 @@
    diff rows, status bar, touch keys) with a single-line input in place of
    each missing line. The input starts at the line's indentation, so its text
    lines up with the code above and below; the learner never types indentation.
-   Colours are --code-* tokens (code is always dark).
+   Colors are --code-* tokens (code is always dark).
    ========================================================================== */
 
-/* ── A gap: the line number in the fill-in colour, an input where the code goes ── */
+/* ── A gap: the line number in the fill-in color, an input where the code goes ── */
 .gaps-row {
   align-items: center;
   cursor: text;
@@ -75,8 +75,9 @@
   opacity: 0.55;
 }
 
-/* Touch screens: 44px gap rows (other rows keep the code rhythm) and 16px text, which also
-   keeps iOS from zooming the page when a gap is focused. */
+/* Touch screens: 44px gap rows (other rows keep the code rhythm). The text stays the code's
+   size, so a typed line reads like the lines around it; iOS would zoom in on focus for text under
+   16px, which main.tsx prevents app-wide with the viewport's maximum-scale (iOS only). */
 @media (pointer: coarse) {
   .gaps-row {
     min-height: 44px;
@@ -85,23 +86,13 @@
     --gap-pad: 8px;
     height: 38px;
     margin-block: 3px;
-    font-size: 16px;
     line-height: 36px;
     min-width: 14ch;
-  }
-  /* The hint keeps the code's size (it is a comment), so more of it fits */
-  .gaps-input::placeholder {
-    font-size: 12.5px;
-  }
-}
-@media (pointer: coarse) and (min-width: 640px) {
-  .gaps-input::placeholder {
-    font-size: 13px;
   }
 }
 
 /* ── After checking: the kit's diff rows ─────────────────────────────────── */
-/* Every row as wide as the longest line, so row colours run the full width when the code is
+/* Every row as wide as the longest line, so row colors run the full width when the code is
    scrolled sideways. (While typing, gaps fill the visible width instead, so the caret stays in view.) */
 .gaps.is-revealed .gaps-lines {
   width: max-content;

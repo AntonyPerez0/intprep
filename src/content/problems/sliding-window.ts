@@ -3,17 +3,17 @@ import { py, type CategoryContent } from '../types';
 const content: CategoryContent = {
   guide: {
     category: 'sliding-window',
-    summary: `A **window** is a run of neighbouring items: \`s[l..r]\`, from a left edge \`l\` to a right edge \`r\`. Many problems ask for the longest, shortest or best such run.
+    summary: `A **window** is a run of neighboring items: \`s[l..r]\`, from a left edge \`l\` to a right edge \`r\`. Many problems ask for the longest, shortest or best such run.
 
 The brute force tries every start and every end and recounts each piece from scratch — O(n²) or worse. A **sliding window** never starts over. Move \`r\` right to **add** one item; move \`l\` right to **drop** one item. Keep a small summary of what is inside (a count, a set, a sum) and update it by just those two items.
 
 Each item enters the window once and leaves at most once, so the whole scan is **O(n)**.
 
-Two flavours: a **fixed-size** window (always \`k\` long: add one, drop one) and a **variable-size** window (grow until the rule breaks, then shrink until it holds again).`,
+Two flavors: a **fixed-size** window (always \`k\` long: add one, drop one) and a **variable-size** window (grow until the rule breaks, then shrink until it holds again).`,
     analogy:
       'Reading a long scroll through a cardboard frame. You slide the frame along: one word appears on the right as one disappears on the left. You never re-read the whole scroll to know what is in the frame.',
     whenToUse: [
-      'The answer is a **contiguous** subarray or substring (neighbouring items, no skipping)',
+      'The answer is a **contiguous** subarray or substring (neighboring items, no skipping)',
       'The question says **longest / shortest / maximum / minimum** run that follows a rule',
       'There is a fixed size: "every block of `k` items" → **fixed window**',
       'A rule about what is inside: "no repeats", "at most k changes", "contains all of t" → **variable window**',
@@ -135,7 +135,7 @@ class Solution:
       category: 'sliding-window',
       pattern: 'Variable window with a set',
       prompt:
-        'Given a string `s`, return the length of the longest **substring** (a run of neighbouring characters) in which no character appears twice.',
+        'Given a string `s`, return the length of the longest **substring** (a run of neighboring characters) in which no character appears twice.',
       examples: [
         { input: 's = "abcbda"', output: '4', note: '"cbda" has four different characters.' },
         { input: 's = "zzzz"', output: '1' },
@@ -387,7 +387,7 @@ class Solution:
       pattern: 'Monotonic decreasing deque',
       alsoAccept: ['stack', 'heap'],
       prompt:
-        'You get a list `nums` and a window size `k`. A window covering `k` neighbouring numbers starts at the left end and slides right one step at a time. Return a list of the **largest number in each window position**.',
+        'You get a list `nums` and a window size `k`. A window covering `k` neighboring numbers starts at the left end and slides right one step at a time. Return a list of the **largest number in each window position**.',
       examples: [
         { input: 'nums = [2, 5, 1, 3, 4, 0], k = 3', output: '[5, 5, 4, 4]', note: 'Windows: [2, 5, 1], [5, 1, 3], [1, 3, 4], [3, 4, 0].' },
         { input: 'nums = [9, 8, 7, 6], k = 2', output: '[9, 8, 7]' },

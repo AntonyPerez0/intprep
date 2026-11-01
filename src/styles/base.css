@@ -33,7 +33,7 @@
   --brand-800: #3730a3;
   --brand: var(--brand-600);
   --brand-hover: var(--brand-700);
-  --brand-text: var(--brand-700); /* brand-coloured text on light surfaces */
+  --brand-text: var(--brand-700); /* brand-colored text on light surfaces */
   --brand-subtle: var(--brand-50);
   --brand-border: var(--brand-200);
 
@@ -51,7 +51,7 @@
   --danger-subtle: #fef2f2;
   --danger-border: #fecaca;
   /* Solid fills under white text (buttons, count badges, answer numbers). --success and
-     --danger are tuned as icon/stroke colours and are too light for white text. */
+     --danger are tuned as icon/stroke colors and are too light for white text. */
   --success-solid: #15803d;
   --success-solid-hover: #166534;
   --danger-solid: #dc2626;

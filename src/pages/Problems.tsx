@@ -93,7 +93,7 @@ export function Problems() {
     <div className="problems">
       <PageHeader
         title="Problem library"
-        sub={`The ${PROBLEMS.length} classic interview problems, organised by the ${CATEGORIES.length} patterns that solve them.`}
+        sub={`The ${PROBLEMS.length} classic interview problems, organized by the ${CATEGORIES.length} patterns that solve them.`}
         right={
           <div className="problems-summary" aria-label="Your progress">
             <div className="problems-summary-item problems-summary-progress">

@@ -13,7 +13,7 @@ export const FOUNDATIONS: Lesson[] = [
     id: 'how-to-learn',
     title: 'How IntPrep Works',
     icon: '🧭',
-    blurb: 'Learn a pattern, practise it, then drill it a little every day.',
+    blurb: 'Learn a pattern, practice it, then drill it a little every day.',
     minutes: 4,
     slides: [
       {
@@ -35,7 +35,7 @@ This beginner track gives you just enough Python and computer-science basics to 
       {
         kind: 'text',
         title: "Test yourself, don't reread",
-        body: `Rereading feels productive because the page looks familiar. But *recognising* an answer is not the same as *recalling* it, and in an interview there is no page.
+        body: `Rereading feels productive because the page looks familiar. But *recognizing* an answer is not the same as *recalling* it, and in an interview there is no page.
 
 Every time you pull an idea out of memory (answering a quiz, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep quizzes you constantly, starting now.`,
       },
@@ -57,7 +57,7 @@ Every time you pull an idea out of memory (answering a quiz, filling in a missin
         title: 'Spaced repetition',
         body: `Memories fade on a predictable curve, but each time you successfully recall something, it fades more slowly.
 
-So IntPrep spaces your reviews out. Nail a drill and its next review moves further away: a day, then a few days, then a week or more. Miss it and it comes back sooner. You never have to plan what to revise. Just clear today's drills.`,
+So IntPrep spaces your reviews out. Nail a drill and its next review moves further away: a day, then a few days, then a week or more. Miss it and it comes back sooner. You never have to plan what to review. Just clear today's drills.`,
       },
       {
         kind: 'text',
@@ -122,7 +122,7 @@ Every few slides it is **your turn**: you write a few lines yourself, and IntPre
       {
         kind: 'code',
         title: 'print shows a value',
-        body: '`print(...)` displays a value. Text goes in quotes; numbers and maths do not.',
+        body: '`print(...)` displays a value. Text goes in quotes; numbers and math do not.',
         code: py`
 print("Hello, IntPrep!")
 print(42)
@@ -146,7 +146,7 @@ Hello, IntPrep!
       {
         kind: 'code',
         title: 'Variables',
-        body: 'A **variable** is a name for a value. `=` means *store the value on the right under the name on the left*. It is not maths equality.',
+        body: 'A **variable** is a name for a value. `=` means *store the value on the right under the name on the left*. It is not math equality.',
         code: py`
 score = 10
 score = score + 5   # read the old value, add 5, store it back
@@ -1235,7 +1235,7 @@ print(collect([4, 9, 1]))`,
       },
       {
         kind: 'text',
-        title: 'Classes bundle data and behaviour',
+        title: 'Classes bundle data and behavior',
         body: `A **class** is a blueprint for objects. Each object (an **instance**) carries its own data in **attributes**, and has functions attached to it called **methods**.
 
 You will meet classes in two places: the \`class Solution:\` wrapper LeetCode puts around every answer, and node types like \`ListNode\` and \`TreeNode\` that linked lists and trees are built from.`,
@@ -1774,7 +1774,7 @@ print(fib(50, {}))`,
       {
         kind: 'text',
         title: 'Pick the right tool',
-        body: `A **data structure** is a way of organising data so that certain operations are fast. Many interview *aha* moments are really *use this structure instead*.
+        body: `A **data structure** is a way of organizing data so that certain operations are fast. Many interview *aha* moments are really *use this structure instead*.
 
 Here is a quick tour. Each one gets a full unit later; for now, remember **what it is great at** and the cost of its key operations.`,
       },
@@ -1959,7 +1959,7 @@ print(heapq.heappop(h))`,
       {
         kind: 'code',
         title: 'Graph: adjacency list',
-        body: 'A graph is nodes joined by edges: cities and roads, people and friendships, courses and prerequisites. Store each node’s neighbours in a list. Visiting everything with BFS or DFS costs O(V + E). A grid is a graph too.',
+        body: 'A graph is nodes joined by edges: cities and roads, people and friendships, courses and prerequisites. Store each node’s neighbors in a list. Visiting everything with BFS or DFS costs O(V + E). A grid is a graph too.',
         code: py`
 from collections import defaultdict
 
@@ -2039,7 +2039,7 @@ print(graph[2])`,
 - Work examples by hand
 - Brute force first
 - Spot the pattern
-- Optimise, then code
+- Optimize, then code
 - Test with edge cases
 - State the complexity
 
@@ -2115,7 +2115,7 @@ Other common signals:
       },
       {
         kind: 'code',
-        title: 'Steps 5 and 6: optimise and code',
+        title: 'Steps 5 and 6: optimize and code',
         body: 'Explain the idea **before** you type, then write clean code with clear names. Now it is O(n) time and O(n) space.',
         code: py`
 def first_repeat(s):
@@ -2183,7 +2183,7 @@ Throughout, **think out loud**. Interviewers grade your reasoning, not just the 
         ],
         answer: 1,
         explain:
-          'Testing out loud shows rigour and often catches a real bug. Finding and fixing it yourself is a strong signal.',
+          'Testing out loud shows rigor and often catches a real bug. Finding and fixing it yourself is a strong signal.',
       },
       {
         kind: 'type',

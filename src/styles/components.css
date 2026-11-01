@@ -1397,7 +1397,7 @@ button.list-row {
 }
 .parsons-item > svg {
   flex: none;
-  margin-top: 2px; /* centre on the first line of text */
+  margin-top: 2px; /* center on the first line of text */
 }
 .parsons-item .idx {
   flex: none;

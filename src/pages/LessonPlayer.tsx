@@ -23,7 +23,7 @@ import {
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide, TypeSlide } from '../content/types';
-import { codeLines, gradeBest, gradeCode, indentOf, type Grade } from '../lib/codegrade';
+import { codeLines, gradeBest, indentOf, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
 import { HighlightedCode, highlightLine } from '../lib/highlight';
@@ -32,7 +32,7 @@ import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { completeLesson, getProgress } from '../lib/store';
 import { ActionBar, Choices, CodeWindow, type CheckStatus } from '../components/interact';
-import { CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
 import { Badge, Completion } from '../components/ui';
@@ -47,7 +47,7 @@ function guideSlides(g: PatternGuide): PlayerSlide[] {
   return [
     { kind: 'text', eyebrow: 'The pattern', icon: CATEGORY_ICON[g.category], title: meta.name, body: g.summary },
     { kind: 'text', eyebrow: 'Analogy', icon: Lightbulb, title: 'Picture it like this', body: g.analogy },
-    { kind: 'text', eyebrow: 'Recognise it', icon: ScanSearch, title: 'When to reach for it', body: g.whenToUse.map((w) => `- ${w}`).join('\n') },
+    { kind: 'text', eyebrow: 'Recognize it', icon: ScanSearch, title: 'When to reach for it', body: g.whenToUse.map((w) => `- ${w}`).join('\n') },
     ...(q1 ? [{ kind: 'quiz' as const, ...q1 }] : []),
     {
       kind: 'code',
@@ -147,7 +147,7 @@ export function LessonPlayer({ mode }: Props) {
   const total = queue.length;
   const quizCount = lesson.slides.filter((s) => s.kind === 'quiz').length;
   const typeCount = lesson.slides.filter((s) => s.kind === 'type').length;
-  // Quizzes and "Your turn" slides both count towards "First try".
+  // Quizzes and "Your turn" slides both count toward "First try".
   const scoredCount = quizCount + typeCount;
 
   const advance = () => {
@@ -230,11 +230,11 @@ export function LessonPlayer({ mode }: Props) {
                 </Link>
                 <Link to={`/patterns/${cat}/type`} state={{ from: lesson.back }} className="btn btn-secondary btn-lg btn-block">
                   <Keyboard />
-                  Type the template from memory
+                  Practice the template
                 </Link>
               </>
             )}
-            <Link to="/" className="btn btn-secondary btn-lg btn-block">
+            <Link to="/" className={`btn btn-lg btn-block ${mode === 'foundation' ? 'btn-secondary' : 'btn-quiet'}`}>
               Back to dashboard
             </Link>
           </Completion>
@@ -260,7 +260,7 @@ export function LessonPlayer({ mode }: Props) {
   const finePointer = !!window.matchMedia?.('(pointer: fine)').matches;
   const checkCode = () => {
     if (slide.kind !== 'type' || !code.trim()) return;
-    const g = gradeTyped(code, [slide.answer, ...(slide.accept ?? [])]);
+    const { grade: g } = gradeBest(code, [slide.answer, ...(slide.accept ?? [])]);
     setGrade(g);
     setTries((t) => t + 1);
     sfx(g.perfect ? 'correct' : 'wrong');
@@ -356,18 +356,10 @@ export function LessonPlayer({ mode }: Props) {
           onContinue={typeStatus === 'wrong' ? tryAgain : advance}
           continueLabel={typeStatus === 'wrong' ? 'Try again' : 'Continue'}
           title={grade && onlyIndentWrong(grade) ? 'Right code, wrong indentation' : undefined}
-          feedback={
-            grade ? (
-              <div className="lplayer-type-fb">
-                <Md text={slide.explain} />
-                {!grade.perfect && (
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={revealAnswer}>
-                    <Eye aria-hidden="true" />
-                    Show answer
-                  </button>
-                )}
-              </div>
-            ) : undefined
+          feedback={grade ? <Md text={slide.explain} /> : undefined}
+          // A miss: "Show answer" left of "Try again", as "Fix and check again" sits on the other typing screens.
+          checkedSecondary={
+            typeStatus === 'wrong' ? <CheckedAction onClick={revealAnswer} label="Show answer" short="Answer" icon={<Eye aria-hidden="true" />} /> : undefined
           }
           secondary={
             !revealed && ((slide.hint && !hint) || tries > 0) ? (
@@ -405,24 +397,6 @@ export function LessonPlayer({ mode }: Props) {
 
 /** Every line is there and in order; only the indentation of some is off. */
 const onlyIndentWrong = (g: Grade) => !g.perfect && g.wrongIndent > 0 && g.correct + g.wrongIndent === g.total && g.extra === 0;
-
-/**
- * Grade against the answer and every accepted alternative, and diff against the closest one.
- * "Closest" counts lines with the right code first, whatever their indentation: a loop typed with
- * its body flush-left is closest to the answer it copies (shown as an indentation slip), not to an
- * alternative that happens to score higher because a different line anchors the indentation.
- */
-function gradeTyped(typed: string, answers: string[]): Grade {
-  const { grade: best } = gradeBest(typed, answers);
-  if (best.perfect) return best;
-  let pick = best;
-  for (const a of answers) {
-    const g = gradeCode(typed, a);
-    const lines = (x: Grade) => x.correct + x.wrongIndent;
-    if (lines(g) > lines(pick) || (lines(g) === lines(pick) && g.score > pick.score + 1e-9)) pick = g;
-  }
-  return pick;
-}
 
 function SlideView({
   slide,

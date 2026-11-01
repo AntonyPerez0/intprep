@@ -472,7 +472,7 @@ export interface GapsState {
 export function useGaps(lines: string[], opts: Omit<PickGapsOptions, 'seed'> & { round?: number } = {}): GapsState {
   const { round: startRound = 0, keyLines, exclude, ratio, min, max } = opts;
   const [round, setRound] = useState(startRound);
-  // Keyed on content, so callers need not memoise `lines` or the options.
+  // Keyed on content, so callers need not memoize `lines` or the options.
   const linesKey = lines.join('\n');
   const optsKey = JSON.stringify([keyLines, exclude, ratio, min, max]);
   const gaps = useMemo(

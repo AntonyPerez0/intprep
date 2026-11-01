@@ -53,7 +53,7 @@ def merge_sweep(intervals):
           'Python can only compare sorted lists',
         ],
         answer: 1,
-        explain: 'Once sorted, an interval can only overlap its neighbours, so you never need to compare every pair.',
+        explain: 'Once sorted, an interval can only overlap its neighbors, so you never need to compare every pair.',
       },
       {
         q: 'You are assigning meetings to rooms and want the room that frees up soonest. What should you keep?',
@@ -188,7 +188,7 @@ class Solution:
       complexityWhy: 'Sorting is O(n log n) and the merge pass is O(n). The merged list can hold all n intervals.',
       pitfalls: [
         'Writing `last[1] = end` instead of `max(last[1], end)` breaks when one interval sits inside another, like `[1, 10]` and `[2, 3]`.',
-        'Forgetting to sort first: overlapping intervals might not be neighbours.',
+        'Forgetting to sort first: overlapping intervals might not be neighbors.',
         'Using `<` instead of `<=` fails to merge touching intervals like `[1, 3]` and `[3, 4]`.',
       ],
     },
@@ -260,7 +260,7 @@ class Solution:
       difficulty: 'Easy',
       category: 'intervals',
       premium: true,
-      pattern: 'Sort by start, compare neighbours',
+      pattern: 'Sort by start, compare neighbors',
       prompt:
         'Each meeting is a pair `[start, end]`. Can one person attend **all** of them? Return `True` if no two meetings overlap. A meeting that ends at 5 and another that starts at 5 do not clash.',
       examples: [
@@ -275,29 +275,29 @@ class Solution:
       ],
       brute: 'Compare every pair of meetings to see if they overlap: **O(n²)**.',
       insight:
-        'Sort by start time. Then you only need to compare **neighbours**: if any meeting starts before the previous one ends, there is a clash.',
+        'Sort by start time. Then you only need to compare **neighbors**: if any meeting starts before the previous one ends, there is a clash.',
       mnemonic: 'Sort by start; any start before the previous end? Clash.',
       steps: [
         'Sort the meetings by start time.',
         'Loop from the second meeting to the last.',
         'If a meeting starts before the previous one ends, return False.',
-        'If no neighbours clash, return True.',
+        'If no neighbors clash, return True.',
       ],
       solution: py`
 class Solution:
     def canAttendMeetings(self, intervals: List[List[int]]) -> bool:
-        #@ Sort meetings by start time so we only need to compare neighbours.
+        #@ Sort meetings by start time so we only need to compare neighbors.
         intervals.sort(key=lambda iv: iv[0])  #!
         #@ Check each meeting against the one right before it.
         for i in range(1, len(intervals)):
             #@ Starting before the previous meeting ends means being in two places at once.
             if intervals[i][0] < intervals[i - 1][1]:  #!
                 return False
-        #@ No neighbours clash, so every meeting fits.
+        #@ No neighbors clash, so every meeting fits.
         return True`,
       time: 'O(n log n)',
       space: 'O(1)',
-      complexityWhy: 'Sorting is O(n log n); the neighbour check is one O(n) pass with no extra storage.',
+      complexityWhy: 'Sorting is O(n log n); the neighbor check is one O(n) pass with no extra storage.',
       pitfalls: [
         'Using `<=` wrongly rejects back-to-back meetings like `[1, 3]` and `[3, 5]`.',
         'Forgetting to sort: in the original order, two clashing meetings may be far apart in the list.',

@@ -539,6 +539,61 @@
 .problem-detail-kv dd.problem-detail-due {
   color: var(--warning-text);
 }
+/* Code from memory: the best score on each rung of the ladder, most support first */
+.problem-detail-memory {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+.problem-detail-memory-head {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.problem-detail-ladder {
+  margin: 4px 0 0;
+}
+.problem-detail-ladder > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+.problem-detail-ladder dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+/* A small rung marker: hollow until there is a score, green once it is 80% or more */
+.problem-detail-ladder dt::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+.problem-detail-ladder > .is-empty dt::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--border-strong);
+}
+.problem-detail-ladder > .is-strong dt::before {
+  background: var(--success);
+}
+.problem-detail-ladder dd {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  color: var(--text);
+  text-align: right;
+}
+.problem-detail-ladder > .is-empty dd {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
 /* Code from memory, the hard way: right under the best scores */
 .problem-detail-scratch {
   margin-top: 16px;

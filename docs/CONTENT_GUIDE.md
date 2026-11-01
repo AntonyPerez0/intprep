@@ -7,7 +7,7 @@ Read these first:
 
 ## Audience and voice
 Learners start with little or no coding experience and want to become interview-ready.
-Plain English, short sentences, explain *why* not just *what*. Friendly and encouraging, no fluff.
+Plain English with American spelling (practice, color, neighbor, optimize), short sentences, explain *why* not just *what*. Friendly and encouraging, no fluff.
 
 ## Rules
 1. **Original wording.** Paraphrase every problem in your own words. Never copy LeetCode statements or

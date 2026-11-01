@@ -627,7 +627,7 @@ class Solution:
       mnemonic: 'The dict finds the node; the list keeps the order.',
       steps: [
         'Store the capacity, a dict of key to node, and left/right sentinel nodes linked to each other.',
-        'Write remove(node) to unlink a node from its two neighbours.',
+        'Write remove(node) to unlink a node from its two neighbors.',
         'Write insert(node) to add a node just before the right sentinel (most recent).',
         'get: if the key exists, move its node to the right end and return its value; otherwise return -1.',
         'put: remove any old node for the key, then insert a new node and store it in the dict.',
@@ -649,7 +649,7 @@ class LRUCache:
         self.left, self.right = Node(0, 0), Node(0, 0)
         self.left.next, self.right.prev = self.right, self.left
 
-    #@ Helper: unlink a node by connecting its two neighbours to each other.
+    #@ Helper: unlink a node by connecting its two neighbors to each other.
     def remove(self, node):
         prev, nxt = node.prev, node.next
         prev.next, nxt.prev = nxt, prev  #!

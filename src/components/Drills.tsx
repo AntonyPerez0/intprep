@@ -282,7 +282,7 @@ const RATINGS: { grade: Grade; label: string; tone: string; fallback: string }[]
 /** Matches the drill-arm animation delay in drills.css. */
 const RATE_ARM_MS = 350;
 
-/** Precise enough that neighbouring grades never read the same ("in 56 days" vs "in 70 days"). */
+/** Precise enough that neighboring grades never read the same ("in 56 days" vs "in 70 days"). */
 function fmtInterval(days: number) {
   const one = (n: number) => n.toFixed(1).replace(/\.0$/, '');
   if (days <= 1) return 'in 1 day';

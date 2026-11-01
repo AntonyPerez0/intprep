@@ -332,7 +332,7 @@ details.disclosure.drill-code-disclosure > .code {
   .drill-rate-num {
     display: grid;
   }
-  /* Symmetric room for the digit keeps the label centred over its caption */
+  /* Symmetric room for the digit keeps the label centered over its caption */
   .drill-rate-btn {
     padding: 0 34px;
   }

@@ -595,7 +595,7 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  padding: 6px 12px 6px 23px; /* dot centre lines up with the icon tile above */
+  padding: 6px 12px 6px 23px; /* dot center lines up with the icon tile above */
   color: var(--text);
   text-decoration: none !important;
   transition: background var(--dur-fast);
@@ -744,7 +744,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 16px 0 18px; /* chevron centre lines up with the icon tile */
+  padding: 0 16px 0 18px; /* chevron center lines up with the icon tile */
   border-top: 1px solid var(--border-subtle);
 }
 @media (min-width: 640px) {

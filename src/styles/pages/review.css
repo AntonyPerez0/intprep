@@ -16,7 +16,7 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  /* The number stays in body text for contrast; the flame carries the streak colour. */
+  /* The number stays in body text for contrast; the flame carries the streak color. */
   color: var(--text);
   background: var(--streak-subtle);
   border: 1px solid color-mix(in srgb, var(--streak) 28%, transparent);

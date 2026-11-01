@@ -95,7 +95,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
   const [done, setDone] = useState(false);
   const [popKey, setPopKey] = useState(0);
 
-  const title = mode.kind === 'unit' ? `${CATEGORY_BY_ID[mode.cat].name} practice` : mode.kind === 'ahead' ? 'Practise ahead' : 'Daily review';
+  const title = mode.kind === 'unit' ? `${CATEGORY_BY_ID[mode.cat].name} practice` : mode.kind === 'ahead' ? 'Practice ahead' : 'Daily review';
 
   const onDone = useMemo(
     () => (r: DrillResult) => {
@@ -104,7 +104,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
       setCombo(nextCombo);
       setBestCombo((b) => Math.max(b, nextCombo));
 
-      // XP: full for due problems, half for practising ahead, a little for retries.
+      // XP: full for due problems, half for practicing ahead, a little for retries.
       let gained = 0;
       if (r.correct) {
         const base = card.retry ? XP.drillCorrect / 2 : dueAtStart.has(card.problemId) ? XP.drillCorrect : XP.drillCorrect / 2;
@@ -356,7 +356,7 @@ function nextReview(key: string) {
   return { relative, date };
 }
 
-/** Same words and colours as the self-rating buttons ("Forgot", "Fuzzy", "Got it", "Easy"). */
+/** Same words and colors as the self-rating buttons ("Forgot", "Fuzzy", "Got it", "Easy"). */
 const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'success' | 'brand' }> = {
   again: { label: 'Forgot', tone: 'danger' },
   hard: { label: 'Fuzzy', tone: 'warning' },

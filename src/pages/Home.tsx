@@ -289,11 +289,11 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     );
   } else if (learned) {
     title = 'All caught up';
-    body = 'Nothing is due today. Practise ahead with a few extra cards, or come back when reviews are due.';
+    body = 'Nothing is due today. Practice ahead with a few extra cards, or come back when reviews are due.';
     foot = upcoming ? `Next review ${friendlyDue(upcoming)}` : null;
     action = (
       <Link to="/review?ahead=1" className="btn btn-secondary home-review-cta">
-        Practise ahead
+        Practice ahead
       </Link>
     );
   } else {
@@ -343,7 +343,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
 interface MemoryPick {
   id: string;
   why: 'due' | 'weak' | 'never' | 'stale';
-  /** Best Code from memory score in either mode (0–1), if any. */
+  /** Best Code from memory score in any mode (0–1), if any. */
   best?: number;
   /** When it was last written from memory, if known. */
   at?: number;
@@ -358,7 +358,9 @@ function pickMemory(p: Progress): MemoryPick | null {
   const rows = Object.entries(p.problems).filter(([id, x]) => x.learnedAt && PROBLEM_BY_ID[id]);
   if (!rows.length) return null;
   const bestOf = (x: Progress['problems'][string]) =>
-    x.rebuildBest === undefined && x.scratchBest === undefined ? undefined : Math.max(x.rebuildBest ?? 0, x.scratchBest ?? 0);
+    x.rebuildBest === undefined && x.gapsBest === undefined && x.scratchBest === undefined
+      ? undefined
+      : Math.max(x.rebuildBest ?? 0, x.gapsBest ?? 0, x.scratchBest ?? 0);
   const pick = (id: string, why: MemoryPick['why']): MemoryPick => ({ id, why, best: bestOf(p.problems[id]), at: p.problems[id].rebuiltAt });
 
   const due = rows
@@ -457,7 +459,7 @@ function TodayPanel({ p, xp }: { p: Progress; xp: number }) {
           <IconTile icon={ICONS.flame} color={s.current > 0 ? 'var(--streak)' : 'var(--text-tertiary)'} size="sm" />
           <div className="grow">
             <div className="home-today-k">Current streak</div>
-            <div className="home-today-sub">{s.longest > 0 ? `Best ${plural(s.longest, 'day')}` : 'Practise today to start one'}</div>
+            <div className="home-today-sub">{s.longest > 0 ? `Best ${plural(s.longest, 'day')}` : 'Practice today to start one'}</div>
           </div>
           <div className="home-today-v tabular">
             {s.current}
@@ -508,7 +510,7 @@ function WeekStrip({ p }: { p: Progress }) {
           const isFrozen = !done && frozen.has(d);
           const before = !done && !isFrozen && d < joined;
           const state = done ? 'is-done' : isFrozen ? 'is-frozen' : d === t ? 'is-open' : before ? 'is-before' : 'is-missed';
-          const what = done ? 'practised' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : before ? 'before you joined' : 'missed';
+          const what = done ? 'practiced' : isFrozen ? 'streak freeze' : d === t ? 'not yet' : before ? 'before you joined' : 'missed';
           const label = parseDay(d).toLocaleDateString(undefined, { weekday: 'long' });
           return (
             <li key={d} className={`home-day ${state} ${d === t ? 'is-today' : ''}`}>

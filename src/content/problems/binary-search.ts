@@ -521,7 +521,7 @@ class Solution:
         'The binary search runs over the cut positions of the shorter list only, and each step does O(1) work.',
       pitfalls: [
         'Binary search the **shorter** list. Otherwise `j` can go negative or past the end of B.',
-        'Use minus/plus infinity for a missing neighbour when a cut is at the very start or end of a list.',
+        'Use minus/plus infinity for a missing neighbor when a cut is at the very start or end of a list.',
         'With an odd total, the median is the bigger of the two left numbers. That is why `half` rounds up: `(total + 1) // 2`.',
       ],
     },

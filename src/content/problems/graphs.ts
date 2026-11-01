@@ -3,9 +3,9 @@ import { py, type CategoryContent } from '../types';
 const content: CategoryContent = {
   guide: {
     category: 'graphs',
-    summary: `A **graph** is a set of **nodes** (things) joined by **edges** (connections). Cities and roads, people and friendships, courses and prerequisites: all graphs. A grid is a graph too, where each cell is a node whose neighbours are the cells up, down, left and right.
+    summary: `A **graph** is a set of **nodes** (things) joined by **edges** (connections). Cities and roads, people and friendships, courses and prerequisites: all graphs. A grid is a graph too, where each cell is a node whose neighbors are the cells up, down, left and right.
 
-We usually store a graph as an **adjacency list**: for each node, the list of its neighbours. Building it from a list of edges is the first step of most problems.
+We usually store a graph as an **adjacency list**: for each node, the list of its neighbors. Building it from a list of edges is the first step of most problems.
 
 To explore, use **DFS** (go deep down one path, with recursion or a stack) or **BFS** (spread outward ring by ring, with a queue). Both need a **visited** set so no node is processed twice; without it, a cycle makes you loop forever. BFS has a bonus: the first time it reaches a node is along a **shortest path** (fewest edges).
 
@@ -77,7 +77,7 @@ def union(a, b):
     return True`,
     templateNotes: [
       'Mark a node visited when you **add** it to the queue, not when you pop it. Otherwise the same node can be queued many times.',
-      'Grids need no adjacency list: the neighbours of `(r, c)` come from the four direction pairs. Always bounds-check before reading `grid[r][c]`.',
+      'Grids need no adjacency list: the neighbors of `(r, c)` come from the four direction pairs. Always bounds-check before reading `grid[r][c]`.',
       'Recursive DFS is the shortest to write, but a huge grid can exceed Python recursion depth. BFS or an explicit stack is the safe swap.',
       "Kahn's algorithm repeatedly takes a node with no remaining prerequisites. Nodes that never reach in-degree 0 sit on a cycle.",
       '`union` returns `False` when both ends already share a leader: that edge closes a cycle. Counting successful unions counts merges between components.',
@@ -116,7 +116,7 @@ def union(a, b):
           'Nodes on a cycle all wait for each other, so their in-degree never drops to 0 and they never enter the queue. Separate pieces are fine: they still get ordered.',
       },
       {
-        q: 'Rotten oranges infect their neighbours every minute. Where should the BFS start?',
+        q: 'Rotten oranges infect their neighbors every minute. Where should the BFS start?',
         options: [
           'From the top-left cell',
           'From one rotten orange, then from the next one',
@@ -162,7 +162,7 @@ def union(a, b):
       steps: [
         'Write dfs(r, c) to flood-fill one island.',
         'In dfs, stop if the cell is off the grid or is water.',
-        'Sink the cell (turn it into "0"), then call dfs on its four neighbours.',
+        'Sink the cell (turn it into "0"), then call dfs on its four neighbors.',
         'Loop over every cell of the grid.',
         'On each remaining "1", add one to the count and call dfs to sink that island.',
       ],
@@ -179,7 +179,7 @@ class Solution:
                 return
             #@ Sink this cell so it is never counted or visited again.
             grid[r][c] = "0"  #!
-            #@ Spread to the four neighbours: down, up, right, left.
+            #@ Spread to the four neighbors: down, up, right, left.
             dfs(r + 1, c)
             dfs(r - 1, c)
             dfs(r, c + 1)
@@ -200,7 +200,7 @@ class Solution:
         'Every cell is looked at by the scan once and sunk by a DFS at most once. If the whole grid is land, the recursion can go m·n deep.',
       pitfalls: [
         'The grid holds strings: compare with `"1"`, not the number `1`.',
-        'Counting diagonal neighbours: only up, down, left and right connect.',
+        'Counting diagonal neighbors: only up, down, left and right connect.',
         'A huge all-land grid can exceed Python recursion depth; BFS with a deque or an explicit stack avoids that.',
         'If you may not change the input, use a `visited` set instead of sinking.',
       ],
@@ -226,17 +226,17 @@ class Solution:
       hints: [
         'This is Number of Islands, but instead of counting islands you measure each one.',
         'Make the DFS return how many cells it sank.',
-        'Area from (r, c) = 1 + the areas returned by the four neighbour calls (water and off-grid cells return 0). Keep the maximum over all starting cells.',
+        'Area from (r, c) = 1 + the areas returned by the four neighbor calls (water and off-grid cells return 0). Keep the maximum over all starting cells.',
       ],
       brute:
         'For every land cell, run a fresh search with its own visited set to measure its island: **O((m·n)²)**, because a big island is re-measured once for every cell it has.',
       insight:
-        'Let the flood fill **return a count**: 1 for the current cell plus whatever its four neighbours return. Sink cells as you go so each one is counted once, and keep the largest total.',
-      mnemonic: 'Area = 1 + four neighbour areas; keep the max.',
+        'Let the flood fill **return a count**: 1 for the current cell plus whatever its four neighbors return. Sink cells as you go so each one is counted once, and keep the largest total.',
+      mnemonic: 'Area = 1 + four neighbor areas; keep the max.',
       steps: [
         'Write dfs(r, c) that returns the area it sinks.',
         'Return 0 for off-grid cells and water.',
-        'Sink the cell, then return 1 plus the dfs of its four neighbours.',
+        'Sink the cell, then return 1 plus the dfs of its four neighbors.',
         'Call dfs from every cell and keep the largest result.',
       ],
       solution: py`
@@ -252,7 +252,7 @@ class Solution:
                 return 0
             #@ Sink this cell so it is counted exactly once.
             grid[r][c] = 0  #!
-            #@ This cell plus everything reachable through its four neighbours.
+            #@ This cell plus everything reachable through its four neighbors.
             return 1 + dfs(r + 1, c) + dfs(r - 1, c) + dfs(r, c + 1) + dfs(r, c - 1)  #!
 
         #@ Try every cell; water and already-sunk land simply return 0.
@@ -266,7 +266,7 @@ class Solution:
       complexityWhy:
         'Each cell is sunk at most once, and every other dfs call returns immediately. The recursion can hold every cell of one huge island.',
       pitfalls: [
-        'Forgetting to sink the cell before recursing: neighbours call back into it forever.',
+        'Forgetting to sink the cell before recursing: neighbors call back into it forever.',
         'This grid holds the integers `1` and `0`, unlike Number of Islands, which uses strings.',
         'Very large islands can exceed Python recursion depth; an explicit stack or BFS avoids it.',
       ],
@@ -279,7 +279,7 @@ class Solution:
       category: 'graphs',
       pattern: 'DFS with an original → copy hash map',
       prompt:
-        'You get one node of a **connected, undirected graph**. Each `Node` has a `val` and a list `neighbors`. Return a **deep copy** of the whole graph: brand-new nodes with the same values and the same connections, none of them pointing at an original node. (Examples show the graph as `adjList`, where entry `i` lists the neighbours of the node with value `i + 1`.)',
+        'You get one node of a **connected, undirected graph**. Each `Node` has a `val` and a list `neighbors`. Return a **deep copy** of the whole graph: brand-new nodes with the same values and the same connections, none of them pointing at an original node. (Examples show the graph as `adjList`, where entry `i` lists the neighbors of the node with value `i + 1`.)',
       examples: [
         {
           input: 'adjList = [[2, 3], [1, 3], [1, 2]]',
@@ -288,22 +288,22 @@ class Solution:
         },
         { input: 'adjList = [[2], [1]]', output: '[[2], [1]]', note: 'Two nodes joined by one edge.' },
       ],
-      signals: ['"deep copy" or "clone"', 'nodes with neighbour lists (a graph that may have cycles)', 'the same node can be reached in several ways'],
+      signals: ['"deep copy" or "clone"', 'nodes with neighbor lists (a graph that may have cycles)', 'the same node can be reached in several ways'],
       hints: [
-        'Copying a node means copying its neighbours too, which suggests recursion. But a cycle would make plain recursion loop forever.',
+        'Copying a node means copying its neighbors too, which suggests recursion. But a cycle would make plain recursion loop forever.',
         'Remember which original nodes you have already copied, and reuse those copies.',
-        'Use a dict original → copy. In dfs(node): if the node is in the dict, return its copy; otherwise create the copy, store it **before** visiting neighbours, then append dfs(neighbour) for each neighbour.',
+        'Use a dict original → copy. In dfs(node): if the node is in the dict, return its copy; otherwise create the copy, store it **before** visiting neighbors, then append dfs(neighbor) for each neighbor.',
       ],
       brute:
         'Copying recursively with no memory never finishes on a cycle (1 → 2 → 1 → …), and copying a node each time it is reached creates several different clones of it. A map from original to copy is required; with it, the work is **O(V + E)**.',
       insight:
         'Keep a hash map from **original node → its copy**. It doubles as the visited set: create and store a copy the first time you see a node, and whenever you meet that node again, reuse the stored copy.',
-      mnemonic: 'Map old to new; store the copy before visiting neighbours.',
+      mnemonic: 'Map old to new; store the copy before visiting neighbors.',
       steps: [
         'Create an empty dict from original node to copy.',
         'In dfs(node), return the stored copy if the node was already copied.',
         'Otherwise create a new node with the same value and store it in the dict.',
-        "For each neighbour, append dfs(neighbour) to the copy's neighbour list.",
+        "For each neighbor, append dfs(neighbor) to the copy's neighbor list.",
         'Return dfs(node), or None if the graph is empty.',
       ],
       solution: py`
@@ -317,10 +317,10 @@ class Solution:
             #@ Already copied? Reuse that copy, which also stops cycles.
             if original in clones:  #!
                 return clones[original]
-            #@ Make the copy and record it BEFORE visiting neighbours.
+            #@ Make the copy and record it BEFORE visiting neighbors.
             copy = Node(original.val)
             clones[original] = copy  #!
-            #@ Connect the copy to the copies of every neighbour.
+            #@ Connect the copy to the copies of every neighbor.
             for neighbor in original.neighbors:
                 copy.neighbors.append(dfs(neighbor))  #!
             return copy
@@ -332,8 +332,8 @@ class Solution:
       complexityWhy:
         'Each node is copied once and each edge is followed once from each end. The dict holds V copies and the recursion can be V deep.',
       pitfalls: [
-        'Storing the copy *after* processing neighbours: a cycle reaches the node again before it is in the dict, so you recurse forever.',
-        'Appending the original neighbour instead of its copy: the new graph would point back into the old one.',
+        'Storing the copy *after* processing neighbors: a cycle reaches the node again before it is in the dict, so you recurse forever.',
+        'Appending the original neighbor instead of its copy: the new graph would point back into the old one.',
         'Handle `node is None` (an empty graph).',
       ],
     },
@@ -369,8 +369,8 @@ class Solution:
       steps: [
         'Put the position of every gate into a queue.',
         'Pop a cell from the front of the queue.',
-        'Look at its four neighbours.',
-        'If a neighbour is an empty room still at INF, set it to this cell value + 1.',
+        'Look at its four neighbors.',
+        'If a neighbor is an empty room still at INF, set it to this cell value + 1.',
         'Push that room onto the queue so it spreads further.',
       ],
       solution: py`
@@ -388,7 +388,7 @@ class Solution:
         #@ Cells come out in order of distance from their nearest gate.
         while queue:
             r, c = queue.popleft()
-            #@ Look at the four neighbours of this cell.
+            #@ Look at the four neighbors of this cell.
             for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
                 #@ Only empty rooms not reached yet; walls, gates and filled rooms are skipped.
                 if 0 <= nr < rows and 0 <= nc < cols and rooms[nr][nc] == INF:
@@ -398,7 +398,7 @@ class Solution:
       time: 'O(m · n)',
       space: 'O(m · n)',
       complexityWhy:
-        'Each room enters the queue at most once, at the moment it gets its distance, and each pop checks 4 neighbours. The queue can hold O(m·n) cells.',
+        'Each room enters the queue at most once, at the moment it gets its distance, and each pop checks 4 neighbors. The queue can hold O(m·n) cells.',
       pitfalls: [
         'Running one BFS per gate: correct, but much slower, and you must keep the minimum each time.',
         'Using DFS: it may reach a room along a long path first, so the first value written is not the shortest.',
@@ -422,11 +422,11 @@ class Solution:
         },
         { input: 'grid = [[1, 0, 2]]', output: '-1', note: 'The empty cell keeps the left orange safe forever.' },
       ],
-      signals: ['something spreads to neighbours "every minute"', '"minimum time until all…"', 'several starting points at once', 'return -1 if it is impossible'],
+      signals: ['something spreads to neighbors "every minute"', '"minimum time until all…"', 'several starting points at once', 'return -1 if it is impossible'],
       hints: [
         'All rotten oranges spread at the same time. Which traversal moves outward one "ring" per step?',
         'Start a BFS with every rotten orange in the queue, and process the queue one whole level (one minute) at a time.',
-        'Count the fresh oranges first. Each minute, rot the fresh neighbours of everything in the current level, subtract them from the count, and add a minute. Stop when the count hits 0 or the queue is empty.',
+        'Count the fresh oranges first. Each minute, rot the fresh neighbors of everything in the current level, subtract them from the count, and add a minute. Stop when the count hits 0 or the queue is empty.',
       ],
       brute:
         'Simulate minute by minute, scanning the whole grid each time to find the rotten oranges: **O((m·n)²)** in the worst case, because there can be about m·n minutes.',
@@ -437,7 +437,7 @@ class Solution:
         'Queue every rotten orange and count the fresh ones.',
         'While fresh oranges remain and the queue is not empty, start a new minute.',
         'Process exactly the oranges that were in the queue when the minute began.',
-        'Rot each fresh neighbour, lower the fresh count and queue it.',
+        'Rot each fresh neighbor, lower the fresh count and queue it.',
         'After the level, add one to the minutes.',
         'Return the minutes if no fresh oranges remain, otherwise -1.',
       ],
@@ -461,7 +461,7 @@ class Solution:
             #@ Only the oranges that were rotten when this minute began spread now.
             for _ in range(len(queue)):  #!
                 r, c = queue.popleft()
-                #@ Rot each fresh neighbour and queue it for the next minute.
+                #@ Rot each fresh neighbor and queue it for the next minute.
                 for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
                     if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1:
                         grid[nr][nc] = 2
@@ -488,7 +488,7 @@ class Solution:
       category: 'graphs',
       pattern: 'Reverse DFS inward from the borders',
       prompt:
-        'An island is given as a grid of `heights`. The **Pacific** touches its top and left edges; the **Atlantic** touches its bottom and right edges. Rain flows from a cell to a neighbour (up, down, left, right) whose height is **less than or equal** to it, and from an edge cell straight into the ocean beside it. Return the coordinates `[r, c]` of every cell from which water can reach **both** oceans.',
+        'An island is given as a grid of `heights`. The **Pacific** touches its top and left edges; the **Atlantic** touches its bottom and right edges. Rain flows from a cell to a neighbor (up, down, left, right) whose height is **less than or equal** to it, and from an edge cell straight into the ocean beside it. Return the coordinates `[r, c]` of every cell from which water can reach **both** oceans.',
       examples: [
         {
           input: 'heights = [[1, 2, 3], [8, 9, 4], [7, 6, 5]]',
@@ -501,21 +501,21 @@ class Solution:
           note: 'A single row touches both the top and the bottom edge, so every cell borders both oceans.',
         },
       ],
-      signals: ['water flowing to "both" edges or oceans', 'flow goes to neighbours of lower or equal height', 'asked for every cell that can reach a border'],
+      signals: ['water flowing to "both" edges or oceans', 'flow goes to neighbors of lower or equal height', 'asked for every cell that can reach a border'],
       hints: [
         'Simulating the flow from every cell is slow. Can you think about it backwards, starting from the oceans?',
-        'Water flows downhill to the ocean. In reverse, start at the ocean and walk **uphill**, to neighbours whose height is greater than or equal to the current one.',
+        'Water flows downhill to the ocean. In reverse, start at the ocean and walk **uphill**, to neighbors whose height is greater than or equal to the current one.',
         'DFS from all Pacific border cells into one set, and from all Atlantic border cells into another. Return the cells in both sets.',
       ],
       brute:
         'From each of the m·n cells, run a DFS downhill to see which oceans it can reach: **O((m·n)²)**.',
       insight:
-        '**Reverse the flow.** Start from the border cells of each ocean and climb to neighbours that are **at least as high**. Every cell you reach can drain into that ocean. Do it once per ocean and keep the cells both searches reached.',
+        '**Reverse the flow.** Start from the border cells of each ocean and climb to neighbors that are **at least as high**. Every cell you reach can drain into that ocean. Do it once per ocean and keep the cells both searches reached.',
       mnemonic: 'Climb inward from each ocean; answer = cells both reach.',
       steps: [
         'Create one reachable set for each ocean.',
         'In dfs(r, c, seen, prev_height), stop off the grid, on a seen cell, or when the cell is lower than prev_height.',
-        'Add the cell to the set and DFS into its four neighbours with its own height.',
+        'Add the cell to the set and DFS into its four neighbors with its own height.',
         'Start Pacific searches from the top row and left column, Atlantic searches from the bottom row and right column.',
         'Return every cell that is in both sets.',
       ],
@@ -607,7 +607,7 @@ class Solution:
         def dfs(r, c):
             if r < 0 or c < 0 or r >= rows or c >= cols or board[r][c] != "O":
                 return
-            #@ Mark it "T" (temporarily safe) and spread to the four neighbours.
+            #@ Mark it "T" (temporarily safe) and spread to the four neighbors.
             board[r][c] = "T"  #!
             dfs(r + 1, c)
             dfs(r - 1, c)
@@ -645,7 +645,7 @@ class Solution:
       category: 'graphs',
       pattern: 'Cycle detection with three DFS states',
       prompt:
-        'There are `numCourses` courses labelled `0` to `numCourses - 1`. Each pair `[a, b]` in `prerequisites` means you must take course `b` **before** course `a`. Return `True` if it is possible to finish every course, or `False` if the requirements go round in a circle.',
+        'There are `numCourses` courses labeled `0` to `numCourses - 1`. Each pair `[a, b]` in `prerequisites` means you must take course `b` **before** course `a`. Return `True` if it is possible to finish every course, or `False` if the requirements go round in a circle.',
       examples: [
         { input: 'numCourses = 3, prerequisites = [[1, 0], [2, 1]]', output: 'True', note: 'Take 0, then 1, then 2.' },
         {
@@ -798,7 +798,7 @@ class Solution:
       premium: true,
       pattern: 'Edge count + connectivity check',
       prompt:
-        'You get `n` nodes labelled `0` to `n - 1` and a list of undirected `edges`. Return `True` if these edges make a valid **tree**: everything is connected and there are **no cycles**. Otherwise return `False`.',
+        'You get `n` nodes labeled `0` to `n - 1` and a list of undirected `edges`. Return `True` if these edges make a valid **tree**: everything is connected and there are **no cycles**. Otherwise return `False`.',
       examples: [
         { input: 'n = 4, edges = [[0, 1], [0, 2], [2, 3]]', output: 'True' },
         {
@@ -822,7 +822,7 @@ class Solution:
         'If the number of edges is not n − 1, return False.',
         'Build an undirected adjacency list.',
         'Traverse from node 0 with a stack, recording every node seen.',
-        'Push each neighbour that has not been seen yet.',
+        'Push each neighbor that has not been seen yet.',
         'Return True only if all n nodes were seen.',
       ],
       solution: py`
@@ -841,7 +841,7 @@ class Solution:
         stack = [0]
         while stack:
             node = stack.pop()
-            #@ Push each neighbour we have not reached yet.
+            #@ Push each neighbor we have not reached yet.
             for nb in graph[node]:
                 if nb not in seen:
                     seen.add(nb)
@@ -868,7 +868,7 @@ class Solution:
       premium: true,
       pattern: 'Union-find',
       prompt:
-        'There are `n` nodes labelled `0` to `n - 1` and a list of undirected `edges`. Return how many **connected components** the graph has: separate groups in which every node can reach every other node of the group.',
+        'There are `n` nodes labeled `0` to `n - 1` and a list of undirected `edges`. Return how many **connected components** the graph has: separate groups in which every node can reach every other node of the group.',
       examples: [
         {
           input: 'n = 6, edges = [[0, 1], [2, 3], [3, 4]]',
@@ -1021,13 +1021,13 @@ class Solution:
       signals: ['"shortest transformation sequence"', 'change one letter at a time', 'every step must be a word from a dictionary', 'fewest steps, so BFS'],
       hints: [
         'Treat each word as a node, with an edge between words that differ in exactly one letter. What is the question now?',
-        'Shortest path with equal-cost steps means BFS. The slow part is finding neighbours: comparing every pair of words costs O(n² · L).',
-        'Group words by wildcard patterns: `hot` belongs to `*ot`, `h*t` and `ho*`. Two words are neighbours exactly when they share a pattern.',
+        'Shortest path with equal-cost steps means BFS. The slow part is finding neighbors: comparing every pair of words costs O(n² · L).',
+        'Group words by wildcard patterns: `hot` belongs to `*ot`, `h*t` and `ho*`. Two words are neighbors exactly when they share a pattern.',
       ],
       brute:
         'Compare every pair of words to find the ones that differ by one letter, then BFS. Building that graph is **O(n² · L)**, too slow for thousands of words.',
       insight:
-        'BFS from `beginWord`, because each BFS level adds one more word to the ladder. Find neighbours quickly with **wildcard patterns**: words that share a pattern such as `h*t` differ only in that one position.',
+        'BFS from `beginWord`, because each BFS level adds one more word to the ladder. Find neighbors quickly with **wildcard patterns**: words that share a pattern such as `h*t` differ only in that one position.',
       mnemonic: 'Bucket words by wildcard; BFS until you reach the end word.',
       steps: [
         'Return 0 if endWord is not in the word list.',
@@ -1056,7 +1056,7 @@ class Solution:
             #@ BFS reaches the end word first along a shortest ladder.
             if word == endWord:  #!
                 return length
-            #@ Neighbours are the words sharing one of this word's patterns.
+            #@ Neighbors are the words sharing one of this word's patterns.
             for i in range(len(word)):
                 for nxt in buckets[word[:i] + "*" + word[i + 1:]]:
                     #@ Mark words when queuing them, so none enters the queue twice.

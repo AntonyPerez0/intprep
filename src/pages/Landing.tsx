@@ -171,7 +171,7 @@ const TWO_SUM_FOCUS = TWO_SUM_LINES.findIndex((l) => l.key);
 // Real distractors the drill engine uses for Arrays & Hashing.
 const PREVIEW_CHOICES: CategoryId[] = ['two-pointers', 'arrays-hashing', 'sliding-window', 'greedy'];
 
-/** The Dashboard's "Last 7 days" strip: circles with a flame per practised day, today solid. */
+/** The Dashboard's "Last 7 days" strip: circles with a flame per practiced day, today solid. */
 function MockWeek({ frozen = -1 }: { frozen?: number }) {
   const days = lastNDays(7);
   return (
@@ -544,7 +544,7 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
     kind: 'rebuild',
     icon: Keyboard,
     title: 'Code from memory',
-    body: 'Rebuild whole solutions from plain-English cues. Type them on desktop, or tap the right next line on your phone.',
+    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file.',
   },
   {
     kind: 'blitz',

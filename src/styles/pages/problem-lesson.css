@@ -78,7 +78,7 @@
   gap: 12px;
   margin-bottom: 16px;
 }
-/* Centre the tile on a one-line title + subtitle; stay top-aligned when they wrap. */
+/* Center the tile on a one-line title + subtitle; stay top-aligned when they wrap. */
 .plesson-card-head > .icon-tile {
   margin-top: 6px;
 }

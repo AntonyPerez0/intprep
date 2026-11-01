@@ -7,11 +7,11 @@ const content: CategoryContent = {
 
 Common pairs: a position in each of two strings, a row and a column, an index and an amount still to make, or a day and a "mode" (holding a stock or not).
 
-**Draw the grid.** Each cell \`dp[i][j]\` is one small subproblem. The recurrence says which neighbouring cells it is built from (below, right, diagonal...), and the final answer sits in a corner.
+**Draw the grid.** Each cell \`dp[i][j]\` is one small subproblem. The recurrence says which neighboring cells it is built from (below, right, diagonal...), and the final answer sits in a corner.
 
 There are two ways to fill it. **Top-down:** write the recursive function \`dp(i, j)\` and put \`@cache\` on it, so each cell is computed only once. **Bottom-up:** make a 2-D list and fill it with two loops, in an order where every cell the formula reads is already filled.`,
     analogy:
-      'A 2-D DP table is a spreadsheet where every cell holds a formula pointing at its neighbours. Fill the cells in an order where the neighbours are already done, and the corner cell holds your answer.',
+      'A 2-D DP table is a spreadsheet where every cell holds a formula pointing at its neighbors. Fill the cells in an order where the neighbors are already done, and the corner cell holds your answer.',
     whenToUse: [
       'Two strings or arrays are compared letter by letter (common subsequence, edit distance, interleaving) → state `(i, j)` = position in each',
       'You move through a grid, usually only right or down → state `(row, col)`',
@@ -504,7 +504,7 @@ class Solution:
       hints: [
         'Can a strictly increasing path ever visit the same cell twice? What does that mean for a visited set?',
         'The longest path starting at a cell does not depend on how you got there. Compute it once and reuse it.',
-        'Memoize `longest(r, c)` = 1 + the best `longest` of any bigger neighbour, then try every cell as a start.',
+        'Memoize `longest(r, c)` = 1 + the best `longest` of any bigger neighbor, then try every cell as a start.',
       ],
       brute:
         'Run a fresh DFS from every cell that explores every increasing path. Paths overlap heavily, so the same cells are explored again and again: **exponential** in the worst case.',
@@ -514,7 +514,7 @@ class Solution:
       steps: [
         'Define a cached longest(r, c): the longest increasing path that starts at cell (r, c).',
         'Start with best = 1, the cell on its own.',
-        'For each of the four neighbours inside the grid with a larger value, update best with 1 + longest(neighbour).',
+        'For each of the four neighbors inside the grid with a larger value, update best with 1 + longest(neighbor).',
         'Return best from longest(r, c).',
         'Answer with the maximum of longest(r, c) over every cell.',
       ],
@@ -528,10 +528,10 @@ class Solution:
         def longest(r, c):
             #@ The cell by itself is a path of length 1.
             best = 1
-            #@ Look at the four neighbours: down, up, right, left.
+            #@ Look at the four neighbors: down, up, right, left.
             for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nr, nc = r + dr, c + dc
-                #@ Step only to a neighbour inside the grid with a strictly bigger value, and extend that neighbour's best path by this cell.
+                #@ Step only to a neighbor inside the grid with a strictly bigger value, and extend that neighbor's best path by this cell.
                 if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] > matrix[r][c]:  #!
                     best = max(best, 1 + longest(nr, nc))  #!
             return best
@@ -540,9 +540,9 @@ class Solution:
       time: 'O(m · n)',
       space: 'O(m · n)',
       complexityWhy:
-        'Each cell is computed once and looks at 4 neighbours. The cache, and in the worst case the recursion stack, holds m × n entries.',
+        'Each cell is computed once and looks at 4 neighbors. The cache, and in the worst case the recursion stack, holds m × n entries.',
       pitfalls: [
-        'Using `>=` instead of `>` lets the path step onto equal neighbours, and the recursion can bounce between them forever.',
+        'Using `>=` instead of `>` lets the path step onto equal neighbors, and the recursion can bounce between them forever.',
         'Try **every** cell as a start; the longest path need not begin at (0, 0).',
         'A long snake-shaped path recurses thousands of levels deep. In Python you may need `sys.setrecursionlimit`, or a topological-sort (peel the grid layer by layer) version.',
       ],
@@ -639,7 +639,7 @@ class Solution:
       brute:
         'Recursively try all three edits whenever the characters differ: about **O(3^(m+n))**.',
       insight:
-        'Look at `word1[i]` and `word2[j]`. Equal? Free: move on in both. Different? Pay 1 for the cheapest of **delete** (`i + 1`), **insert** (`j + 1`) or **replace** (both + 1). Each cell depends on its lower, right and diagonal neighbours.',
+        'Look at `word1[i]` and `word2[j]`. Equal? Free: move on in both. Different? Pay 1 for the cheapest of **delete** (`i + 1`), **insert** (`j + 1`) or **replace** (both + 1). Each cell depends on its lower, right and diagonal neighbors.',
       mnemonic: 'Match is free; else 1 + min(delete, insert, replace).',
       steps: [
         'Make an (m + 1) × (n + 1) grid.',
@@ -673,7 +673,7 @@ class Solution:
         return dp[0][0]`,
       time: 'O(m · n)',
       space: 'O(m · n)',
-      complexityWhy: 'One O(1) minimum over three neighbours for each of the (m + 1)(n + 1) cells.',
+      complexityWhy: 'One O(1) minimum over three neighbors for each of the (m + 1)(n + 1) cells.',
       pitfalls: [
         'Forgetting the edge base cases (cost = letters left over) makes answers too small.',
         'All three edits must be in the `min`; dropping one (say, replace) can only make answers worse.',
@@ -688,25 +688,25 @@ class Solution:
       category: 'dp-2d',
       pattern: 'Interval DP: choose the last balloon',
       prompt:
-        'Balloons in a row carry the numbers in `nums`. Bursting a balloon earns `left × value × right` coins, where left and right are its **current** neighbours (use 1 if a side has none). After a burst, its two neighbours become next to each other. Burst every balloon and return the **maximum** total coins.',
+        'Balloons in a row carry the numbers in `nums`. Bursting a balloon earns `left × value × right` coins, where left and right are its **current** neighbors (use 1 if a side has none). After a burst, its two neighbors become next to each other. Burst every balloon and return the **maximum** total coins.',
       examples: [
         { input: 'nums = [2, 4, 3]', output: '33', note: 'Burst 4 (2·4·3 = 24), then 2 (1·2·3 = 6), then 3 (1·3·1 = 3).' },
         { input: 'nums = [6]', output: '6' },
       ],
       signals: [
-        'the value of an action depends on neighbours that change as you go',
+        'the value of an action depends on neighbors that change as you go',
         '"maximum coins" over every possible order',
         'small n (a few hundred) hints at O(n³)',
       ],
       hints: [
         'If you choose which balloon to burst FIRST, why are the left and right sides still tangled together afterwards?',
-        'Flip it: choose which balloon bursts LAST between two walls. When it finally pops, who are its neighbours?',
+        'Flip it: choose which balloon bursts LAST between two walls. When it finally pops, who are its neighbors?',
         'Pad with 1s and memoize `best(l, r)` = the max over k of `best(l, k) + a[l] * a[k] * a[r] + best(k, r)`.',
       ],
       brute: 'Try every order of bursting: **O(n!)** orders.',
       insight:
-        'Choose which balloon `k` bursts **last** in the gap between `l` and `r`. Everything else in the gap is gone by then, so its neighbours are exactly `l` and `r`, and `k` splits the gap into two **independent** smaller gaps.',
-      mnemonic: 'Pick the last to pop; its neighbours are the walls.',
+        'Choose which balloon `k` bursts **last** in the gap between `l` and `r`. Everything else in the gap is gone by then, so its neighbors are exactly `l` and `r`, and `k` splits the gap into two **independent** smaller gaps.',
+      mnemonic: 'Pick the last to pop; its neighbors are the walls.',
       steps: [
         'Add a 1 to both ends of nums.',
         'Define a cached best(l, r): the most coins from bursting every balloon strictly between l and r.',
@@ -718,14 +718,14 @@ class Solution:
       solution: py`
 class Solution:
     def maxCoins(self, nums: List[int]) -> int:
-        #@ Pad both ends with a 1: a missing neighbour counts as 1, and the pads act as walls that are never burst.
+        #@ Pad both ends with a 1: a missing neighbor counts as 1, and the pads act as walls that are never burst.
         balloons = [1] + nums + [1]
         #@ best(l, r) = most coins from bursting every balloon strictly BETWEEN l and r, while l and r are still standing.
         @cache
         def best(l, r):
             #@ An empty gap earns nothing; this is also our starting value.
             coins = 0
-            #@ Try each k as the LAST balloon to burst in this gap. By then everything else in the gap is gone, so its neighbours are exactly l and r.
+            #@ Try each k as the LAST balloon to burst in this gap. By then everything else in the gap is gone, so its neighbors are exactly l and r.
             for k in range(l + 1, r):
                 last = balloons[l] * balloons[k] * balloons[r]  #!
                 #@ Before k pops, the left gap (l, k) and the right gap (k, r) are solved separately, because k stands between them the whole time.
@@ -737,7 +737,7 @@ class Solution:
       space: 'O(n²)',
       complexityWhy: 'There are about n²/2 gaps (l, r), and each one tries up to n choices of k.',
       pitfalls: [
-        'Choosing the FIRST balloon to burst does not split the problem: its neighbours later depend on what else is gone.',
+        'Choosing the FIRST balloon to burst does not split the problem: its neighbors later depend on what else is gone.',
         'Forgetting the padding 1s makes the edge balloons awkward to score.',
         'O(n³) is slow in Python. A bottom-up table filled by gap length (short gaps first) runs faster than recursion for n = 300.',
       ],

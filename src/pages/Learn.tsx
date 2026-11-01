@@ -39,7 +39,7 @@ function listJoin(xs: string[]) {
 
 /**
  * Scrolls a section under the sticky header. In-page jumps glide; the glide is
- * driven here (not by the browser) so it can be cancelled when the page
+ * driven here (not by the browser) so it can be canceled when the page
  * unmounts or the user takes over — a native smooth scroll in flight survives
  * the shell's scroll-to-top and leaves the next page part-scrolled. Reduced
  * motion always jumps.
