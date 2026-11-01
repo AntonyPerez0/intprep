@@ -3,8 +3,8 @@ import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type R
 import { Link } from 'react-router-dom';
 import { CalendarDays } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
-import { FOUNDATIONS, PROBLEMS } from '../content/index';
-import { addDays, dayKey, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
+import { FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS } from '../content/index';
+import { addDays, dayKey, daysBetween, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
 import { GEMS, levelInfo, levelTitle } from '../lib/game';
 import { inline } from '../lib/markdown';
 import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
@@ -66,7 +66,7 @@ export function Home() {
         <div className="home-hero">
           <ContinueCard p={p} next={next} />
           <GetStarted p={p} learned={learned} next={next} />
-          <ReviewCard p={p} due={due.length} learned={learned} />
+          <ReviewCard p={p} due={due.length} learned={learned} memory={pickMemory(p)} />
           <TodayPanel p={p} xp={x} />
         </div>
 
@@ -266,7 +266,7 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
 
 // ── Daily review ────────────────────────────────────────────────────────────
 
-function ReviewCard({ p, due, learned }: { p: Progress; due: number; learned: number }) {
+function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; learned: number; memory: MemoryPick | null }) {
   const t = today();
   const tomorrow = Math.max(0, dueProblemIds(p, addDays(t, 1)).length - due);
   const upcoming = Object.values(p.problems)
@@ -333,7 +333,79 @@ function ReviewCard({ p, due, learned }: { p: Progress; due: number; learned: nu
         </div>
         <div className="home-review-action">{action}</div>
       </div>
+      {memory && <MemoryRow pick={memory} />}
     </section>
+  );
+}
+
+// ── Code from memory suggestion (inside the review card) ───────────────────
+
+interface MemoryPick {
+  id: string;
+  why: 'due' | 'weak' | 'never' | 'stale';
+  /** Best Code from memory score in either mode (0–1), if any. */
+  best?: number;
+  /** When it was last written from memory, if known. */
+  at?: number;
+}
+
+/**
+ * One learned problem worth writing from memory: one due today first, else the lowest best score
+ * (below 80%), else the one written longest ago, or never. Null until something is learned.
+ */
+function pickMemory(p: Progress): MemoryPick | null {
+  const t = today();
+  const rows = Object.entries(p.problems).filter(([id, x]) => x.learnedAt && PROBLEM_BY_ID[id]);
+  if (!rows.length) return null;
+  const bestOf = (x: Progress['problems'][string]) =>
+    x.rebuildBest === undefined && x.scratchBest === undefined ? undefined : Math.max(x.rebuildBest ?? 0, x.scratchBest ?? 0);
+  const pick = (id: string, why: MemoryPick['why']): MemoryPick => ({ id, why, best: bestOf(p.problems[id]), at: p.problems[id].rebuiltAt });
+
+  const due = rows
+    .filter(([, x]) => x.srs && x.srs.due <= t)
+    .sort(([, a], [, b]) => (a.srs!.due < b.srs!.due ? -1 : a.srs!.due > b.srs!.due ? 1 : (bestOf(a) ?? -1) - (bestOf(b) ?? -1)));
+  if (due.length) return pick(due[0][0], 'due');
+
+  const weak = rows.filter(([, x]) => (bestOf(x) ?? 1) < 0.8).sort(([, a], [, b]) => bestOf(a)! - bestOf(b)!);
+  if (weak.length) return pick(weak[0][0], 'weak');
+
+  // Never written sorts first; an older save without a timestamp counts from when it was learned.
+  const when = (x: Progress['problems'][string]) => x.rebuiltAt ?? (bestOf(x) === undefined ? 0 : (x.learnedAt ?? 0));
+  const [id, x] = [...rows].sort(([, a], [, b]) => when(a) - when(b) || (a.learnedAt ?? 0) - (b.learnedAt ?? 0))[0];
+  return pick(id, bestOf(x) === undefined ? 'never' : 'stale');
+}
+
+function ago(ms: number) {
+  const d = daysBetween(dayKey(new Date(ms)), today());
+  return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
+}
+
+function MemoryRow({ pick }: { pick: MemoryPick }) {
+  const q = PROBLEM_BY_ID[pick.id];
+  const pct = pick.best !== undefined ? Math.round(pick.best * 100) : 0;
+  const why =
+    pick.why === 'due'
+      ? 'Due for review today. A strong attempt counts as its review.'
+      : pick.why === 'weak'
+        ? `Your best so far is ${pct}%. Each attempt makes it stick.`
+        : pick.why === 'never'
+          ? 'You have not written it from memory yet. Start part by part.'
+          : pick.at
+            ? `Best ${pct}%, last written ${ago(pick.at)}. Keep it fresh.`
+            : `Best ${pct}%. Keep it fresh.`;
+  return (
+    <div className="home-memory">
+      <Link to={`/p/${q.id}/rebuild`} className="home-memory-link">
+        <span className="home-memory-icon">
+          <IconTile icon={ICONS.keyboard} />
+        </span>
+        <span className="home-memory-text">
+          <span className="home-memory-title">Write {q.title} from memory</span>
+          <span className="home-memory-why">{why}</span>
+        </span>
+        <Icon name="chevron" className="home-memory-chevron" />
+      </Link>
+    </div>
   );
 }
 

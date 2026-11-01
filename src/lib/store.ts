@@ -15,7 +15,12 @@ export interface ProblemProgress {
   srs?: SrsCard;
   reviews: number;
   lastGrade?: Grade;
+  /** Best Code from memory score, part by part (0–1). */
   rebuildBest?: number;
+  /** Best Code from memory score, the whole solution from scratch (0–1). */
+  scratchBest?: number;
+  /** When this problem was last written from memory (either mode). */
+  rebuiltAt?: number;
 }
 
 export type Experience = 'none' | 'some' | 'comfortable';
@@ -388,12 +393,16 @@ export function recordBlitz(score: number) {
   return best;
 }
 
-export function recordRebuild(id: string, accuracy: number) {
+/** A finished Code from memory session: part by part (default) or the whole solution from scratch. */
+export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'scratch' = 'parts') {
   update((d) => {
     d.stats.rebuilds += 1;
     if (accuracy >= 1) d.stats.perfectRebuilds += 1;
     const p = d.problems[id];
-    if (p) p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
+    if (!p) return;
+    if (mode === 'scratch') p.scratchBest = Math.max(p.scratchBest ?? 0, accuracy);
+    else p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
+    p.rebuiltAt = Date.now();
   });
 }
 

@@ -316,13 +316,17 @@ export function CodeEditor({
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const escaped = useRef(false);
   const first = firstLine ?? start + given.length;
-  const rows = Math.max(minRows, value.split('\n').length);
+  const lines = value.split('\n');
+  const rows = Math.max(minRows, lines.length);
+  // The textarea is as wide as its longest line, so a long line scrolls the whole pane
+  // (given lines included) instead of the textarea alone, and the code stays aligned.
+  const cols = lines.reduce((m, l) => Math.max(m, l.replace(/\t/g, INDENT).length), 0);
   return (
     <>
       <CodePane>
         <GivenLines lines={given} start={start} />
         {children}
-        <div className="typer-input" style={{ ['--indent' as string]: `${indent}ch` }}>
+        <div className="typer-input" style={{ ['--indent' as string]: `${indent}ch`, ['--cols' as string]: cols }}>
           <div className="typer-gutter" aria-hidden="true">
             {Array.from({ length: rows }, (_, k) => (
               <span key={k}>{first + k}</span>

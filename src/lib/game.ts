@@ -16,6 +16,8 @@ export const XP = {
   comboBonus: 2,
   sessionBonus: 10,
   rebuildMax: 35,
+  /** Code from memory, the whole solution from scratch (with the outline shown, rebuildMax caps it). */
+  scratchMax: 50,
   blitzPerCorrect: 2,
 };
 

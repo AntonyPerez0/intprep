@@ -539,6 +539,10 @@
 .problem-detail-kv dd.problem-detail-due {
   color: var(--warning-text);
 }
+/* Code from memory, the hard way: right under the best scores */
+.problem-detail-scratch {
+  margin-top: 16px;
+}
 .problem-detail-status-note {
   margin: 14px 0 0;
   padding-top: 12px;
