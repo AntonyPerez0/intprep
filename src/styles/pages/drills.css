@@ -1,0 +1,542 @@
+/* ==========================================================================
+   Drill cards — src/components/Drills.tsx
+   Used by Daily review, problem lessons and Code from memory.
+   Anatomy: eyebrow → question title → content → answers → action bar.
+   ========================================================================== */
+
+.drill {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* The fixed action bar's inner column lines up with the session column
+   (.session-body is 760px wide including 16px side padding). */
+.drill .actionbar-inner {
+  max-width: 728px;
+}
+
+/* Quiet secondary actions sit flush with the content edge */
+.drill .actionbar .buttons > .btn-quiet:first-child {
+  margin-left: -12px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.drill-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drill-eyebrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  min-height: 22px;
+}
+.drill-eyebrow .kicker {
+  margin: 0;
+  gap: 6px;
+}
+.drill-eyebrow .badge svg {
+  width: 12px;
+  height: 12px;
+}
+.drill-meta {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.drill-head .q-title {
+  margin: 0;
+  text-wrap: balance;
+}
+.drill-sub {
+  margin: 0;
+  max-width: 600px;
+  text-wrap: pretty;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+/* The variable the question hinges on ("time" / "space"): a token, not a link */
+.drill-key {
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  color: var(--brand-text);
+  background: var(--brand-subtle);
+  box-shadow: inset 0 0 0 1px var(--brand-border);
+}
+
+/* ── Answer area ────────────────────────────────────────────────────────── */
+.drill-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+  margin-bottom: 10px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.drill-keys {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+@media (hover: hover) and (pointer: fine) {
+  .drill-keys {
+    display: inline-flex;
+  }
+}
+.drill-optional {
+  margin-left: 6px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.drill .choice .choice-icon .icon-tile {
+  width: 28px;
+  height: 28px;
+}
+/* Code options: a shortcut number like every other choice list */
+.drill-code-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.drill-code-opt .num {
+  font-family: var(--font-sans);
+}
+.drill-code-text {
+  min-width: 0;
+  white-space: pre;
+}
+.drill-note-input {
+  min-height: 92px;
+}
+.drill-line-input {
+  height: 44px;
+  font-size: 13px;
+}
+
+/* Callout that explains the step around a key line */
+.drill-explain {
+  font-size: var(--fs-md);
+}
+.drill-explain .drill-fb-label {
+  color: var(--brand-text);
+  margin-bottom: 2px;
+}
+
+/* ── Code window (editor frame) ─────────────────────────────────────────── */
+.drill-window {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  min-width: 0;
+}
+.drill-window-head {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  height: 38px;
+  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+  border-bottom: 1px solid var(--code-border);
+}
+.drill-window-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: -1px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--code-text);
+  background: var(--code-bg);
+  border-right: 1px solid var(--code-border);
+}
+.drill-window-tab::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--brand-400);
+}
+.drill-window-tab svg {
+  width: 14px;
+  height: 14px;
+  color: var(--code-builtin);
+}
+.drill-window-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--code-comment);
+  white-space: nowrap;
+}
+.drill-window-body .code {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.drill-window-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  padding: 4px 14px;
+  font-size: 11.5px;
+  color: var(--code-comment);
+  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+  border-top: 1px solid var(--code-border);
+}
+
+/* Complexity: code behind a disclosure */
+.drill-code-disclosure > summary {
+  font-size: var(--fs-md);
+}
+.drill-summary-meta {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+details.disclosure.drill-code-disclosure > summary::after {
+  margin-left: 4px;
+}
+/* Code sits flush in the disclosure: one frame, not a card inside a card */
+details.disclosure.drill-code-disclosure > .code {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+/* ── Insight reveal ─────────────────────────────────────────────────────── */
+.drill-reveal {
+  gap: 12px;
+  animation: drill-rise var(--dur-slow) var(--ease);
+  /* Clear the sticky header above and the rating bar below when scrolled into view */
+  scroll-margin: 72px 0 184px;
+}
+@keyframes drill-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.drill-note {
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface-sunken);
+  border: 1px dashed var(--border-strong);
+}
+.drill-note-text {
+  margin-top: 4px;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.drill-reveal .insight-label {
+  flex-wrap: wrap;
+  row-gap: 2px;
+}
+.drill-insight-key {
+  white-space: nowrap;
+}
+@media (max-width: 479px) {
+  .drill-reveal .drill-insight-pattern {
+    flex-basis: 100%;
+    margin-left: 20px;
+    padding-left: 0;
+    border-left: 0;
+    white-space: normal;
+  }
+}
+.drill-insight-pattern {
+  margin-left: 2px;
+  padding-left: 8px;
+  border-left: 1px solid var(--brand-border);
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drill-insight-text {
+  font-size: var(--fs-base);
+  font-weight: 550;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* ── Self-rating action bar ─────────────────────────────────────────────── */
+.drill-hint {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}
+.drill-hint svg {
+  width: 16px;
+  height: 16px;
+  color: var(--brand-text);
+}
+@media (min-width: 640px) {
+  .drill-hint {
+    display: inline-flex;
+  }
+}
+.drill-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: drill-rise var(--dur) var(--ease);
+}
+.drill-rate:focus {
+  outline: none;
+}
+/* The ratings replace "Show answer" under the pointer. Arm them a beat later so
+   a double-click on "Show answer" can't rate the card by accident. */
+.drill-rate-grid {
+  /* A delay (not a duration) so reduced-motion settings keep the guard */
+  animation: drill-arm 1ms 0.35s backwards;
+}
+@keyframes drill-arm {
+  from {
+    pointer-events: none;
+  }
+}
+.drill-rate-q {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+.drill-rate-q-meta {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.drill-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.drill-rate-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  text-align: center;
+}
+.drill-rate-btn {
+  --tone: var(--success);
+  width: 100%;
+  padding: 0 8px;
+  font-weight: 600;
+}
+.drill-rate-btn::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.drill-rate-btn:hover {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 8%, var(--surface));
+}
+.drill-rate-btn.tone-danger {
+  --tone: var(--danger);
+}
+.drill-rate-btn.tone-warning {
+  --tone: var(--warning);
+}
+.drill-rate-btn.tone-success {
+  --tone: var(--success);
+}
+.drill-rate-btn.tone-brand {
+  --tone: var(--brand);
+}
+.drill-rate-next {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+@media (max-width: 479px) {
+  .drill-rate-grid {
+    gap: 6px;
+  }
+  .drill-rate-btn {
+    padding: 0 4px;
+    gap: 6px;
+  }
+  .drill-rate-btn::before {
+    width: 6px;
+    height: 6px;
+  }
+  .drill-rate-q-meta {
+    display: none;
+  }
+}
+
+/* ── Feedback (inside the action bar) ───────────────────────────────────── */
+.drill-fb {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.drill-fb-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.drill-fb-answer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.drill-fb-answer .icon-tile.sm {
+  width: 26px;
+  height: 26px;
+}
+.drill-fb-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--brand-text);
+}
+.drill-fb-sep {
+  margin: 0 6px;
+  color: var(--text-disabled);
+}
+.drill-clues {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.drill-clues .drill-fb-label {
+  margin-right: 2px;
+}
+/* Your line vs the expected line (key-line feedback) */
+.drill-diff {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.drill-diff-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 4px 12px 4px 10px;
+}
+.drill-diff-row + .drill-diff-row {
+  border-top: 1px solid var(--border-subtle);
+}
+.drill-diff-row.del {
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+.drill-diff-row.add {
+  background: color-mix(in srgb, var(--success) 8%, var(--surface));
+}
+.drill-diff-sign {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.drill-diff-row.del .drill-diff-sign {
+  color: var(--danger-text);
+}
+.drill-diff-row.add .drill-diff-sign {
+  color: var(--success-text);
+}
+.drill-diff-code {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  word-break: normal;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: pre;
+  overflow-x: auto;
+  background: none;
+  border: 0;
+}
+.drill-diff-row.del .drill-diff-code {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+.drill-diff-tag {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.drill-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.drill-cost-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.drill-cost-item .mono {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+.drill-cost-item.is-asked {
+  color: var(--text);
+  font-weight: 550;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
+}
+.drill .actionbar .steps-list li {
+  padding: 8px 12px;
+  font-size: var(--fs-sm);
+  animation: none;
+}
