@@ -51,9 +51,11 @@ npm run validate   # check all content + compile every Python solution (needs py
 
 ## Deploy (free) with GitHub Pages
 
-The repo includes `.github/workflows/deploy.yml`. It validates the content, builds the site and publishes it whenever
-`main` changes. One-time setup: in your GitHub repo go to **Settings → Pages → Build and deployment → Source** and
-choose **GitHub Actions**. The site uses hash-based URLs and relative asset paths, so it works under
+Live site: **https://antonyperez0.github.io/intprep/**
+
+The repo includes `.github/workflows/deploy.yml`. Every push validates the content and builds the site; pushes to the
+repository's default branch also publish it (you can also run it by hand from the **Actions** tab). One-time setup: in
+your GitHub repo go to **Settings → Pages → Build and deployment → Source** and choose **GitHub Actions**. The site uses hash-based URLs and relative asset paths, so it works under
 `https://<user>.github.io/<repo>/` with no extra configuration. Any static host (Netlify, Vercel, Cloudflare Pages) also
 works: serve the `dist/` folder.
 
