@@ -1,0 +1,893 @@
+/* ==========================================================================
+   Pattern Blitz (/blitz) — lobby, in-game HUD, results
+   All classes prefixed .blitz-; tokens only.
+   ========================================================================== */
+
+.blitz-sep {
+  color: var(--text-disabled);
+}
+
+/* Inline "1–4" key range */
+.blitz-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0 2px;
+}
+
+/* The lobby is not a session in progress, so the header's empty progress
+   track would only add noise. Keep its space so the header doesn't shift. */
+.session:has(.blitz-lobby) .session-head .progress {
+  visibility: hidden;
+}
+
+/* ── Lobby ──────────────────────────────────────────────────────────────── */
+.blitz-lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.blitz-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 0 16px;
+}
+.blitz-hero-mark {
+  display: inline-flex;
+  border-radius: var(--r-xl);
+  box-shadow:
+    0 0 0 6px var(--brand-subtle),
+    var(--shadow-md);
+  animation: blitz-pop-in 0.5s var(--ease);
+}
+.blitz-hero-meta {
+  margin-top: 24px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.blitz-hero h1 {
+  margin-top: 8px;
+  font-size: clamp(30px, 4.4vw, var(--fs-4xl));
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+.blitz-lede {
+  max-width: 440px;
+  margin: 12px 0 0;
+  text-wrap: pretty;
+  font-size: var(--fs-base);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* Stat cards */
+.blitz-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.blitz-stat .stat-value {
+  font-size: var(--fs-3xl);
+}
+.blitz-stat-icon {
+  color: var(--text-tertiary);
+}
+.blitz-stat-icon.is-xp {
+  color: var(--xp);
+}
+
+/* Setup card */
+.blitz-setup {
+  overflow: hidden;
+}
+.blitz-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.blitz-setting-text {
+  min-width: 0;
+}
+.blitz-setting-label {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text);
+}
+.blitz-setting-help {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+.blitz-seg {
+  flex: none;
+  flex-wrap: nowrap;
+}
+.blitz-seg button {
+  justify-content: center;
+  white-space: nowrap;
+}
+.blitz-seg button.on {
+  background: var(--surface-raised);
+  box-shadow:
+    var(--shadow-sm),
+    0 0 0 1px var(--border-strong);
+}
+.blitz-setup-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 20px;
+  background: var(--surface-hover);
+}
+.blitz-start {
+  width: 100%;
+  height: 48px;
+  font-size: var(--fs-base);
+  border-radius: var(--r-md);
+}
+.blitz-kbd-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+@media (hover: none), (max-width: 599px) {
+  .blitz-kbd-hint {
+    display: none;
+  }
+}
+
+/* Scoring rules */
+.blitz-rules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.blitz-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.blitz-rule-icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.blitz-rule-icon svg {
+  width: 15px;
+  height: 15px;
+}
+.blitz-rule-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+}
+.blitz-rule-body {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 599px) {
+  .blitz-hero {
+    padding: 0 0 8px;
+  }
+  .blitz-hero-mark .icon-tile {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--r-lg);
+  }
+  .blitz-hero-mark {
+    border-radius: var(--r-lg);
+  }
+  .blitz-hero-mark .icon-tile svg {
+    width: 26px;
+    height: 26px;
+  }
+  .blitz-hero-meta {
+    margin-top: 20px;
+  }
+  .blitz-setting {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .blitz-seg {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .blitz-seg button {
+    height: 40px;
+    font-size: var(--fs-md);
+  }
+  .blitz-setup-foot {
+    padding: 16px;
+  }
+  .blitz-rules {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+/* ── Play: HUD ──────────────────────────────────────────────────────────── */
+.blitz-play {
+  display: flex;
+  flex-direction: column;
+}
+.blitz-hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 14px 20px;
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--dur) var(--ease);
+}
+.blitz-play.is-warning .blitz-hud {
+  border-color: var(--warning-border);
+}
+.blitz-play.is-danger .blitz-hud {
+  border-color: var(--danger-border);
+}
+.blitz-hud-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.blitz-hud-center {
+  display: flex;
+  align-items: stretch;
+  gap: 24px;
+}
+.blitz-hud-center .blitz-hud-cell {
+  align-items: center;
+  min-width: 64px;
+}
+.blitz-hud-divider {
+  width: 1px;
+  background: var(--border-subtle);
+}
+.blitz-hud-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 16px;
+  line-height: 16px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.blitz-hud-value {
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+.blitz-score {
+  font-size: var(--fs-4xl);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.blitz-pop {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--success-text);
+  pointer-events: none;
+  opacity: 0;
+  animation: blitz-float 0.9s var(--ease) forwards;
+}
+@keyframes blitz-float {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.blitz-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-2xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  transition: color var(--dur) var(--ease);
+}
+.blitz-streak svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-disabled);
+  transition: color var(--dur) var(--ease);
+}
+.blitz-streak.is-live {
+  color: var(--text);
+}
+.blitz-streak.is-hot svg {
+  color: var(--streak);
+  fill: color-mix(in srgb, var(--streak) 18%, transparent);
+}
+
+.blitz-mult-wrap {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.blitz-mult {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  font-size: var(--fs-md);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.blitz-mult.is-active {
+  border-color: var(--brand-border);
+  background: var(--brand-subtle);
+  color: var(--brand-text);
+  animation: blitz-bump 0.35s var(--ease);
+}
+@keyframes blitz-bump {
+  40% {
+    transform: scale(1.15);
+  }
+}
+.blitz-pips {
+  display: flex;
+  gap: 3px;
+}
+.blitz-pips span {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  transition: background var(--dur) var(--ease);
+}
+.blitz-pips span.on {
+  background: var(--brand);
+}
+
+/* Timer / question ring */
+.blitz-hud-timer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.blitz-ring {
+  --ring-c: var(--brand);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+}
+.blitz-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.blitz-ring-track {
+  stroke: var(--surface-active);
+}
+:root[data-theme='dark'] .blitz-ring-track {
+  stroke: var(--border-strong);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .blitz-ring-track {
+    stroke: var(--border-strong);
+  }
+}
+.blitz-ring-bar {
+  stroke: var(--ring-c);
+  transition:
+    stroke-dashoffset 0.1s linear,
+    stroke var(--dur) var(--ease);
+}
+.blitz-ring.is-warning {
+  --ring-c: var(--warning);
+}
+.blitz-ring.is-danger {
+  --ring-c: var(--danger);
+  animation: blitz-pulse 1s var(--ease) infinite;
+}
+@keyframes blitz-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.06);
+  }
+}
+.blitz-ring-label {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+.blitz-ring-num {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.blitz-ring-num.is-small {
+  font-size: var(--fs-md);
+}
+.blitz-ring-of {
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  color: var(--text-tertiary);
+}
+.blitz-ring-unit {
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.blitz-ring.is-warning .blitz-ring-num {
+  color: var(--warning-text);
+}
+.blitz-ring.is-danger .blitz-ring-num {
+  color: var(--danger-text);
+}
+
+/* Header countdown bar mirrors the ring's urgency. */
+.session:has(.blitz-play) .session-head .progress > div {
+  transition:
+    width 0.1s linear,
+    background var(--dur) var(--ease);
+}
+.session:has(.blitz-play.is-warning) .session-head .progress > div {
+  background: var(--warning);
+}
+.session:has(.blitz-play.is-danger) .session-head .progress > div {
+  background: var(--danger);
+}
+
+/* ── Play: question & options ───────────────────────────────────────────── */
+.blitz-round {
+  animation: blitz-rise 0.22s var(--ease);
+}
+@keyframes blitz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.blitz-q-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.blitz-q-head .kicker {
+  margin-bottom: 0;
+}
+.blitz-q-count {
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+.blitz-choices {
+  margin-top: 16px;
+}
+.blitz-choice {
+  min-height: 56px;
+}
+.blitz-choice-name {
+  line-height: 1.35;
+}
+.blitz-choice .choice-mark {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.blitz-choice .icon-tile {
+  transition: opacity var(--dur-fast);
+}
+
+/* Feedback strip — always occupies space so nothing jumps, and sticks to the
+   bottom edge when the options run below the fold (phones). */
+.blitz-feedback {
+  position: sticky;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 48px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--text);
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.blitz-feedback.is-idle {
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+.blitz-feedback-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+@media (hover: none), (max-width: 599px) {
+  .blitz-feedback-hint {
+    visibility: hidden;
+  }
+}
+.blitz-feedback.is-correct {
+  align-items: center;
+  background:
+    linear-gradient(var(--success-subtle), var(--success-subtle)),
+    var(--surface);
+  border-color: var(--success-border);
+}
+.blitz-feedback.is-wrong {
+  background:
+    linear-gradient(var(--danger-subtle), var(--danger-subtle)), var(--surface);
+  border-color: var(--danger-border);
+}
+.blitz-feedback-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+.blitz-feedback.is-correct .blitz-feedback-icon {
+  margin-top: 0;
+  color: var(--success);
+}
+.blitz-feedback.is-wrong .blitz-feedback-icon {
+  color: var(--danger);
+}
+.blitz-feedback-title {
+  font-weight: 600;
+}
+.blitz-feedback.is-correct .blitz-feedback-title {
+  color: var(--success-text);
+}
+.blitz-feedback-gain {
+  font-weight: 650;
+  color: var(--success-text);
+}
+.blitz-feedback-meta {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.blitz-feedback-body {
+  min-width: 0;
+}
+.blitz-feedback-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+.blitz-feedback-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+.blitz-feedback.is-wrong .blitz-feedback-title {
+  color: var(--text);
+}
+.blitz-feedback-pattern {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.blitz-feedback-problem {
+  font-weight: 550;
+  color: var(--text);
+}
+.blitz-feedback-clues {
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.blitz-clues-label {
+  margin-right: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 599px) {
+  .blitz-hud {
+    gap: 8px;
+    padding: 10px 12px 10px 16px;
+    margin-bottom: 16px;
+  }
+  .blitz-hud-value {
+    height: 34px;
+  }
+  .blitz-choices {
+    margin-top: 12px;
+  }
+  .blitz-choice {
+    min-height: 48px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  .blitz-feedback {
+    margin-top: 12px;
+  }
+  .blitz-hud-center {
+    gap: 12px;
+  }
+  .blitz-hud-center .blitz-hud-cell {
+    min-width: 56px;
+  }
+  .blitz-hud-label {
+    letter-spacing: 0.04em;
+  }
+  .blitz-score {
+    font-size: var(--fs-3xl);
+  }
+  .blitz-streak {
+    font-size: var(--fs-xl);
+  }
+  .blitz-streak svg {
+    width: 17px;
+    height: 17px;
+  }
+  .blitz-mult {
+    min-width: 36px;
+    height: 24px;
+    padding: 0 6px;
+    font-size: var(--fs-sm);
+  }
+  .blitz-pips span {
+    width: 9px;
+  }
+  .blitz-ring {
+    width: 54px;
+    height: 54px;
+  }
+  .blitz-ring-num {
+    font-size: var(--fs-lg);
+  }
+  .blitz-ring-num.is-small {
+    font-size: var(--fs-sm);
+  }
+  .blitz-feedback.is-correct,
+  .blitz-feedback.is-wrong {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+.blitz-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.blitz-results > .complete {
+  width: 100%;
+}
+.blitz-results .complete .lead,
+.blitz-misses .section-title h2 + div {
+  text-wrap: pretty;
+}
+/* No stats row when nothing was answered: keep the actions off the subtitle. */
+.blitz-results .complete .lead + .complete-actions {
+  margin-top: 28px;
+}
+.blitz-of {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.blitz-misses,
+.blitz-clean {
+  width: 100%;
+  max-width: 560px;
+}
+.blitz-misses .section-title {
+  margin-top: 40px;
+}
+.blitz-misses .section-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.blitz-count {
+  min-width: 22px;
+  justify-content: center;
+}
+.blitz-clean {
+  margin-top: 32px;
+}
+.blitz-miss {
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.blitz-miss:hover {
+  text-decoration: none;
+}
+.blitz-miss .icon-tile {
+  margin-top: 1px;
+}
+.blitz-miss .title {
+  padding-top: 4px;
+  line-height: 20px;
+  color: var(--text);
+}
+.blitz-miss-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+}
+.blitz-miss .chevron {
+  flex: none;
+  margin-top: 6px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.blitz-miss:hover .chevron {
+  transform: translateX(2px);
+  color: var(--text-tertiary);
+}
+.blitz-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.blitz-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.blitz-pick svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+.blitz-pick.is-wrong {
+  color: var(--danger-text);
+  background: var(--danger-subtle);
+  border-color: var(--danger-border);
+}
+.blitz-pick-name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.blitz-pick.is-right {
+  color: var(--success-text);
+  background: var(--success-subtle);
+  border-color: var(--success-border);
+}
+.blitz-picks-arrow {
+  width: 13px;
+  height: 13px;
+  color: var(--text-disabled);
+}
+.blitz-picks-answer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 599px) {
+  .blitz-picks-arrow {
+    display: none;
+  }
+}
+.blitz-clues {
+  margin-top: 8px;
+  font-size: var(--fs-sm);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+@keyframes blitz-pop-in {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

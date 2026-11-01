@@ -1,20 +1,42 @@
 // Pattern Blitz: 60 seconds of rapid-fire "which pattern is this?".
 // Pure discrimination practice across all units — the skill interviews test.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import '../styles/pages/blitz.css';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CATEGORY_BY_ID } from '../content/categories';
+import {
+  ArrowRight,
+  Check,
+  ChevronRight,
+  CircleCheck,
+  CircleX,
+  Flame,
+  Gamepad2,
+  Leaf,
+  Play,
+  Repeat2,
+  RotateCcw,
+  Timer,
+  TrendingUp,
+  Trophy,
+  X,
+  Zap,
+} from 'lucide-react';
+import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEMS } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { acceptedCategories, patternChoices } from '../lib/drills';
 import { XP } from '../lib/game';
-import { inline, Md } from '../lib/markdown';
+import { inline } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, flagForReview, recordAnswers, recordBlitz, useProgress } from '../lib/store';
 import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
+import { CategoryIcon, IconTile } from '../components/icons';
+import { ProblemPrompt } from '../components/interact';
+import { Completion, Kbd, SectionHeader } from '../components/ui';
 
 const DURATION = 60;
 const ZEN_QUESTIONS = 20;
@@ -26,6 +48,60 @@ interface Answer {
 }
 
 const multiplier = (streak: number) => Math.min(4, 1 + Math.floor(streak / 3));
+
+/** Circular gauge for the HUD: time left (timed) or questions done (Zen). */
+function HudRing({ value, tone, label, children }: { value: number; tone: 'calm' | 'warning' | 'danger'; label: string; children: ReactNode }) {
+  const size = 56;
+  const stroke = 4;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(1, value));
+  return (
+    <div className={`blitz-ring is-${tone}`} aria-label={label} role="img">
+      <svg viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle className="blitz-ring-track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} fill="none" />
+        <circle
+          className="blitz-ring-bar"
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - v)}
+        />
+      </svg>
+      <div className="blitz-ring-label" aria-hidden="true">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function KeyRange() {
+  return (
+    <span className="blitz-keys">
+      <Kbd>1</Kbd>
+      <span aria-hidden="true">–</span>
+      <span className="sr-only">to</span>
+      <Kbd>4</Kbd>
+    </span>
+  );
+}
+
+function Clues({ p }: { p: Problem }) {
+  return (
+    <>
+      {p.signals.map((s, k) => (
+        <span key={k}>
+          {k > 0 && <span className="blitz-sep"> · </span>}
+          {inline(s)}
+        </span>
+      ))}
+    </>
+  );
+}
 
 export function Blitz() {
   const progress = useProgress();
@@ -88,6 +164,11 @@ export function Blitz() {
   useEffect(() => {
     if (phase === 'play') settled.current = false;
   }, [phase]);
+  // Display only: the best before this round, for the results subtitle.
+  const prevBest = useRef(progress.stats.blitzBest);
+  useEffect(() => {
+    if (phase === 'play') prevBest.current = progress.stats.blitzBest;
+  }, [phase]); // eslint-disable-line
 
   useEffect(() => {
     if (phase !== 'play' || zen) return;
@@ -146,177 +227,400 @@ export function Blitz() {
     return () => window.removeEventListener('keydown', h);
   }, [phase, options]);
 
+  // ── Lobby ─────────────────────────────────────────────────────────────────
   if (phase === 'intro') {
+    const { blitzBest, blitzPlays } = progress.stats;
+    const startedLocked = startedUnits.length < 8;
     return (
-      <SessionShell progress={0} onClose={() => nav('/')}>
-        <div className="complete">
-          <div className="trophy">⚡</div>
-          <h1 style={{ marginTop: 10 }}>Pattern Blitz</h1>
-          <p className="muted" style={{ maxWidth: 480, margin: '0 auto 16px' }}>
-            You get {DURATION} seconds. Read each problem and tap the pattern that solves it. Right answers in a row build a multiplier up to ×4. Learning to <em>spot</em> the pattern is
-            half of every interview.
-          </p>
-          <div className="seg" style={{ marginBottom: 10 }}>
-            <button type="button" className={!zen ? 'on' : ''} onClick={() => setZen(false)}>
-              ⏱️ Timed
-            </button>
-            <button type="button" className={zen ? 'on' : ''} onClick={() => setZen(true)}>
-              🧘 Zen ({ZEN_QUESTIONS} Qs, no timer)
-            </button>
+      <SessionShell progress={0} onClose={() => nav('/')} title="Pattern Blitz">
+        <div className="blitz-lobby">
+          <header className="blitz-hero">
+            <span className="blitz-hero-mark">
+              <IconTile icon={Zap} size="xl" solid />
+            </span>
+            <div className="blitz-hero-meta">
+              {CATEGORIES.length} patterns <span className="blitz-sep">·</span> {PROBLEMS.length} problems
+            </div>
+            <h1>Pattern Blitz</h1>
+            <p className="blitz-lede">Read each problem and pick the pattern that solves it. Spotting the pattern is half of every interview.</p>
+          </header>
+
+          <div className="blitz-stats">
+            <div className="card pad-sm stat blitz-stat">
+              <div className="stat-label">
+                <Trophy className="blitz-stat-icon is-xp" strokeWidth={2} aria-hidden="true" />
+                Personal best
+              </div>
+              <div className="stat-value">
+                {blitzBest > 0 ? (
+                  blitzBest
+                ) : (
+                  <>
+                    <span aria-hidden="true">—</span>
+                    <span className="sr-only">None yet</span>
+                  </>
+                )}
+              </div>
+              <div className="stat-meta">{blitzBest > 0 ? 'Points in a timed round' : 'Not set yet'}</div>
+            </div>
+            <div className="card pad-sm stat blitz-stat">
+              <div className="stat-label">
+                <Gamepad2 className="blitz-stat-icon" strokeWidth={2} aria-hidden="true" />
+                Games played
+              </div>
+              <div className="stat-value">{blitzPlays}</div>
+              <div className="stat-meta">Timed rounds</div>
+            </div>
           </div>
-          <br />
-          <div className="seg" style={{ marginBottom: 18 }}>
-            <button type="button" className={scope === 'all' ? 'on' : ''} onClick={() => setScope('all')}>
-              All {PROBLEMS.length} problems
-            </button>
-            <button type="button" className={scope === 'started' ? 'on' : ''} onClick={() => setScope('started')} disabled={startedUnits.length < 8}>
-              Units I've started
-            </button>
-          </div>
-          <div className="card flat small" style={{ maxWidth: 420, margin: '0 auto 20px' }}>
-            🏆 Personal best: <strong>{progress.stats.blitzBest}</strong> · Games played: {progress.stats.blitzPlays}
-          </div>
-          <button type="button" className="btn btn-orange" style={{ minWidth: 220 }} onClick={start}>
-            Start
-          </button>
-          <div className="tiny faint" style={{ marginTop: 12 }}>
-            Tip: on a keyboard, press <span className="kbd">1</span>–<span className="kbd">4</span>
-          </div>
+
+          <section className="card pad-0 blitz-setup" aria-label="Game setup">
+            <div className="blitz-setting">
+              <div className="blitz-setting-text">
+                <div className="blitz-setting-label" id="blitz-mode-label">
+                  Mode
+                </div>
+                <div className="blitz-setting-help">
+                  {zen ? `${ZEN_QUESTIONS} questions, no clock. Each miss shows its clues.` : `${DURATION} seconds. Score as many as you can.`}
+                </div>
+              </div>
+              <div className="seg blitz-seg" role="radiogroup" aria-labelledby="blitz-mode-label">
+                <button type="button" role="radio" aria-checked={!zen} className={!zen ? 'on' : ''} onClick={() => setZen(false)}>
+                  <Timer aria-hidden="true" />
+                  Timed
+                </button>
+                <button type="button" role="radio" aria-checked={zen} className={zen ? 'on' : ''} onClick={() => setZen(true)}>
+                  <Leaf aria-hidden="true" />
+                  Zen
+                </button>
+              </div>
+            </div>
+
+            <div className="blitz-setting">
+              <div className="blitz-setting-text">
+                <div className="blitz-setting-label" id="blitz-scope-label">
+                  Questions
+                </div>
+                <div className="blitz-setting-help">
+                  {scope === 'started' && !startedLocked
+                    ? `${startedUnits.length} problems from units you've started.`
+                    : startedLocked
+                      ? `All ${PROBLEMS.length} problems for now. Learn a few more to narrow it to your units.`
+                      : `All ${PROBLEMS.length} problems, every pattern mixed.`}
+                </div>
+              </div>
+              <div className="seg blitz-seg" role="radiogroup" aria-labelledby="blitz-scope-label">
+                <button type="button" role="radio" aria-checked={scope === 'all'} className={scope === 'all' ? 'on' : ''} onClick={() => setScope('all')}>
+                  All {PROBLEMS.length}
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={scope === 'started'}
+                  className={scope === 'started' ? 'on' : ''}
+                  onClick={() => setScope('started')}
+                  disabled={startedLocked}
+                >
+                  Units I've started
+                </button>
+              </div>
+            </div>
+
+            <div className="blitz-setup-foot">
+              <button type="button" className="btn btn-primary btn-lg blitz-start" onClick={start}>
+                <Play aria-hidden="true" />
+                Start
+              </button>
+              <div className="blitz-kbd-hint">
+                On a keyboard, press <KeyRange /> to answer
+              </div>
+            </div>
+          </section>
+
+          <section className="blitz-rules" aria-label="How scoring works">
+            <div className="blitz-rule">
+              <span className="blitz-rule-icon">
+                <Check aria-hidden="true" />
+              </span>
+              <div>
+                <div className="blitz-rule-title">10 points a hit</div>
+                <div className="blitz-rule-body">Each correct answer also earns {XP.blitzPerCorrect} XP.</div>
+              </div>
+            </div>
+            <div className="blitz-rule">
+              <span className="blitz-rule-icon">
+                <TrendingUp aria-hidden="true" />
+              </span>
+              <div>
+                <div className="blitz-rule-title">Streaks multiply</div>
+                <div className="blitz-rule-body">Every 3 in a row adds ×1, up to ×4.</div>
+              </div>
+            </div>
+            <div className="blitz-rule">
+              <span className="blitz-rule-icon">
+                <Repeat2 aria-hidden="true" />
+              </span>
+              <div>
+                <div className="blitz-rule-title">Misses come back</div>
+                <div className="blitz-rule-body">Learned problems you miss join today's review.</div>
+              </div>
+            </div>
+          </section>
         </div>
       </SessionShell>
     );
   }
 
+  // ── Results ───────────────────────────────────────────────────────────────
   if (phase === 'over') {
     const correct = answers.filter((a) => a.ok).length;
     const misses = answers.filter((a) => !a.ok);
+    const accuracy = answers.length ? Math.round((correct / answers.length) * 100) : 0;
+    const summary = `${accuracy}% accuracy, longest streak ${best}.`;
+    const subtitle =
+      answers.length === 0
+        ? 'No answers this round, so nothing was scored.'
+        : newBest
+          ? `${summary} ${prevBest.current > 0 ? `Up from ${prevBest.current}.` : 'Your first recorded best.'}`
+          : zen
+            ? `${summary} Zen rounds don't affect your best.`
+            : `${summary} Your best is ${progress.stats.blitzBest}.`;
     return (
-      <SessionShell progress={1} onClose={() => nav('/')}>
-        <div className="complete">
-          <div className="trophy">{newBest ? '🏆' : '⏱️'}</div>
-          <h1 style={{ marginTop: 10 }}>{newBest ? 'New personal best!' : zen ? 'Zen round done' : "Time's up!"}</h1>
-          <div className="reward-tiles">
-            <div className="reward" style={{ ['--c' as string]: 'var(--orange)' }}>
-              <div className="rk">Score</div>
-              <div className="rv">{score}</div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--green)' }}>
-              <div className="rk">Correct</div>
-              <div className="rv">
-                {correct}/{answers.length}
-              </div>
-            </div>
-            <div className="reward" style={{ ['--c' as string]: 'var(--gold)' }}>
-              <div className="rk">XP</div>
-              <div className="rv">+{correct * XP.blitzPerCorrect}</div>
-            </div>
-          </div>
-          {misses.length > 0 && (
-            <div style={{ textAlign: 'left' }}>
-              <h3>Learn from the misses</h3>
-              <p className="small muted">Misses on problems you have learned are added to today's review.</p>
-              <div className="stack" style={{ gap: 10, marginBottom: 20 }}>
-                {misses.map((m, i) => (
-                  <Link key={i} to={`/p/${m.p.id}`} className="card flat" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <div className="row between wrap">
-                      <strong>{m.p.title}</strong>
-                      <span className="small">
-                        <span style={{ color: 'var(--red)', textDecoration: 'line-through' }}>{CATEGORY_BY_ID[m.picked].short}</span> →{' '}
-                        <span style={{ color: 'var(--green)', fontWeight: 800 }}>{CATEGORY_BY_ID[m.p.category].short}</span>
-                      </span>
-                    </div>
-                    <div className="small muted" style={{ marginTop: 4 }}>
-                      Clues: {m.p.signals.map((s, k) => <span key={k}>{k > 0 && ' · '}{inline(s)}</span>)}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="stack" style={{ maxWidth: 360, margin: '0 auto' }}>
-            <button type="button" className="btn btn-orange btn-block" onClick={start}>
+      <SessionShell progress={1} onClose={() => nav('/')} title="Pattern Blitz">
+        <div className="blitz-results">
+          <Completion
+            icon={newBest ? Trophy : zen ? Leaf : Timer}
+            tone={newBest ? 'warning' : 'brand'}
+            title={newBest ? 'New personal best' : zen ? 'Zen round complete' : "Time's up"}
+            subtitle={subtitle}
+            stats={
+              answers.length === 0
+                ? undefined
+                : [
+                    { label: 'Score', value: score },
+                    {
+                      label: 'Correct',
+                      value: (
+                        <>
+                          {correct}
+                          <span className="blitz-of">/{answers.length}</span>
+                        </>
+                      ),
+                    },
+                    {
+                      label: 'XP earned',
+                      value: `+${correct * XP.blitzPerCorrect}`,
+                    },
+                  ]
+            }
+          >
+            <button type="button" className="btn btn-primary btn-lg btn-block" onClick={start}>
+              <RotateCcw aria-hidden="true" />
               Play again
             </button>
-            <Link to="/" className="btn btn-ghost btn-block">
-              Home
+            <Link to="/" className="btn btn-secondary btn-lg btn-block">
+              Back to dashboard
             </Link>
-          </div>
+          </Completion>
+
+          {misses.length > 0 ? (
+            <section className="blitz-misses">
+              <SectionHeader
+                title={
+                  <>
+                    Learn from the misses
+                    <span className="badge badge-danger tabular blitz-count">{misses.length}</span>
+                  </>
+                }
+                sub="Misses on problems you've learned are added to today's review."
+              />
+              <div className="list">
+                {misses.map((m, i) => {
+                  const right = CATEGORY_BY_ID[m.p.category];
+                  const picked = CATEGORY_BY_ID[m.picked];
+                  return (
+                    <Link key={i} to={`/p/${m.p.id}`} className="list-row blitz-miss">
+                      <CategoryIcon id={right.id} color={right.color} size="sm" />
+                      <div className="grow">
+                        <div className="title blitz-miss-title" title={m.p.title}>
+                          {m.p.title}
+                        </div>
+                        <div className="blitz-picks">
+                          <span className="blitz-pick is-wrong">
+                            <X aria-hidden="true" />
+                            <span className="sr-only">You picked </span>
+                            <span className="blitz-pick-name">{picked.name}</span>
+                          </span>
+                          <span className="blitz-picks-answer">
+                            <ArrowRight className="blitz-picks-arrow" aria-hidden="true" />
+                            <span className="blitz-pick is-right">
+                              <Check aria-hidden="true" />
+                              <span className="sr-only">Correct pattern </span>
+                              {right.name}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="blitz-clues">
+                          <span className="blitz-clues-label">Clues</span>
+                          <Clues p={m.p} />
+                        </div>
+                      </div>
+                      <ChevronRight className="chevron" size={16} aria-hidden="true" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          ) : answers.length > 0 ? (
+            <div className="callout callout-success blitz-clean">
+              <CircleCheck aria-hidden="true" />
+              <span>No misses this round. Every pattern you picked was right.</span>
+            </div>
+          ) : null}
         </div>
       </SessionShell>
     );
   }
 
+  // ── Play ──────────────────────────────────────────────────────────────────
   const mult = multiplier(streak);
+  const tone: 'calm' | 'warning' | 'danger' = zen ? 'calm' : timeLeft <= 5 ? 'danger' : timeLeft <= 10 ? 'warning' : 'calm';
+  const questionNo = flash ? answers.length : answers.length + 1;
+  const pips = mult >= 4 ? 3 : streak % 3;
+  const secs = Math.ceil(timeLeft);
   return (
-    <SessionShell
-      progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION}
-      onClose={() => setPhase('over')}
-      right={
-        zen ? (
-          <span className="timer">
-            {answers.length}/{ZEN_QUESTIONS}
-          </span>
-        ) : (
-          <span className={`timer ${timeLeft <= 10 ? 'low' : ''}`}>{Math.ceil(timeLeft)}s</span>
-        )
-      }
-    >
-      <div className="row between" style={{ marginBottom: 10, position: 'relative' }}>
-        <div style={{ fontWeight: 900, fontSize: '1.4rem' }}>{score}</div>
-        {pops.map((p) => (
-          <span key={p.id} className="score-pop" style={{ left: 40, top: -6 }}>
-            {p.text}
-          </span>
-        ))}
-        <div className="combo" style={{ fontSize: '1.1rem' }}>
-          {streak >= 2 && `🔥 ${streak}`} {mult > 1 && <span className="chip brand">×{mult}</span>}
-        </div>
-      </div>
-      {current && (
-        <>
-          <div className="prompt-card" key={current.id} style={{ animation: 'rise .25s' }}>
-            <Md text={current.prompt} />
-            {current.examples[0] && (
-              <div className="example">
-                <div>
-                  <span className="lbl">In: </span>
-                  {current.examples[0].input}
-                </div>
-                <div>
-                  <span className="lbl">Out: </span>
-                  {current.examples[0].output}
-                </div>
+    <SessionShell progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION} onClose={() => setPhase('over')} title="Pattern Blitz">
+      <div className={`blitz-play is-${tone}`}>
+        <div className="blitz-hud">
+          <div className="blitz-hud-cell blitz-hud-score">
+            <div className="blitz-hud-label">
+              Score
+              {pops.slice(-1).map((p) => (
+                <span key={p.id} className="blitz-pop" aria-hidden="true">
+                  {p.text}
+                </span>
+              ))}
+            </div>
+            <div className="blitz-hud-value">
+              <span className="blitz-score">{score}</span>
+            </div>
+          </div>
+          <div className="blitz-hud-center">
+            <div className="blitz-hud-cell">
+              <div className="blitz-hud-label">Streak</div>
+              <div className="blitz-hud-value">
+                <span className={`blitz-streak ${streak > 0 ? 'is-live' : ''} ${streak >= 2 ? 'is-hot' : ''}`}>
+                  <Flame strokeWidth={2.1} aria-hidden="true" />
+                  {streak}
+                </span>
               </div>
+            </div>
+            <span className="blitz-hud-divider" aria-hidden="true" />
+            <div className="blitz-hud-cell">
+              <div className="blitz-hud-label">Multiplier</div>
+              <div className="blitz-hud-value blitz-mult-wrap">
+                <span key={mult} className={`blitz-mult ${mult > 1 ? 'is-active' : ''}`}>
+                  ×{mult}
+                </span>
+                <span className="blitz-pips" aria-hidden="true">
+                  {[0, 1, 2].map((i) => (
+                    <span key={i} className={i < pips ? 'on' : ''} />
+                  ))}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="blitz-hud-timer">
+            {zen ? (
+              <HudRing value={answers.length / ZEN_QUESTIONS} tone="calm" label={`Question ${Math.min(questionNo, ZEN_QUESTIONS)} of ${ZEN_QUESTIONS}`}>
+                <span className="blitz-ring-num is-small">
+                  {Math.min(questionNo, ZEN_QUESTIONS)}
+                  <span className="blitz-ring-of">/{ZEN_QUESTIONS}</span>
+                </span>
+              </HudRing>
+            ) : (
+              <HudRing value={timeLeft / DURATION} tone={tone} label={`${secs} seconds left`}>
+                <span className="blitz-ring-num">{secs}</span>
+                <span className="blitz-ring-unit">sec</span>
+              </HudRing>
             )}
           </div>
-          <div className="choices two-col" style={{ marginTop: 14 }}>
-            {options.map((c, i) => {
-              let cls = '';
-              if (flash) {
-                if (acceptedCategories(current).includes(c)) cls = 'correct';
-                else if (c === flash.picked) cls = 'wrong shake';
-              }
-              return (
-                <button key={c} type="button" className={`choice ${cls}`} onClick={() => answer(c)} disabled={!!flash}>
-                  <span className="num">{i + 1}</span>
-                  <span className="choice-icon">{CATEGORY_BY_ID[c].icon}</span>
-                  <span className="grow">{CATEGORY_BY_ID[c].name}</span>
-                </button>
-              );
-            })}
-          </div>
-          {flash && !flash.ok && (
-            <div className="hint-box small" style={{ marginTop: 12 }}>
-              {current.title}: <strong>{current.pattern}</strong>
-              {zen && (
-                <div style={{ marginTop: 4 }}>
-                  Clues: {current.signals.map((s, k) => <span key={k}>{k > 0 && ' · '}{inline(s)}</span>)}
-                </div>
+        </div>
+
+        {current && (
+          <>
+            <div className="blitz-round" key={current.id}>
+              <div className="blitz-q-head">
+                <span className="kicker">Which pattern solves this?</span>
+                <span className="blitz-q-count tabular">{zen ? `Question ${Math.min(questionNo, ZEN_QUESTIONS)} of ${ZEN_QUESTIONS}` : `Question ${questionNo}`}</span>
+              </div>
+              <ProblemPrompt p={current} compact showTitle={false} />
+            </div>
+
+            <div className="choices two-col blitz-choices" role="group" aria-label="Pattern options">
+              {options.map((c, i) => {
+                const cat = CATEGORY_BY_ID[c];
+                let cls = '';
+                let mark: ReactNode = null;
+                if (flash) {
+                  if (acceptedCategories(current).includes(c)) {
+                    cls = 'correct';
+                    mark = <Check strokeWidth={2.4} />;
+                  } else if (c === flash.picked) {
+                    cls = 'wrong shake';
+                    mark = <X strokeWidth={2.4} />;
+                  }
+                }
+                return (
+                  <button key={c} type="button" className={`choice blitz-choice ${cls}`} onClick={() => answer(c)} disabled={!!flash}>
+                    <span className="num">{i + 1}</span>
+                    <CategoryIcon id={c} color={cat.color} size="sm" />
+                    <span className="grow blitz-choice-name">{cat.name}</span>
+                    <span className="choice-mark" aria-hidden="true">
+                      {mark}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className={`blitz-feedback ${flash ? (flash.ok ? 'is-correct' : 'is-wrong') : 'is-idle'}`} role="status" aria-live="polite">
+              {!flash && (
+                <span className="blitz-feedback-hint">
+                  Press <KeyRange /> to answer
+                </span>
+              )}
+              {flash?.ok && (
+                <>
+                  <CircleCheck className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+                  <span className="blitz-feedback-title">Correct</span>
+                  <span className="blitz-feedback-gain tabular">+{10 * mult}</span>
+                  {mult > 1 && <span className="blitz-feedback-meta">×{mult} multiplier</span>}
+                </>
+              )}
+              {flash && !flash.ok && (
+                <>
+                  <CircleX className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+                  <div className="grow blitz-feedback-body">
+                    <div className="blitz-feedback-line">
+                      <span className="blitz-feedback-label">Answer</span>
+                      <span className="blitz-feedback-title">{CATEGORY_BY_ID[current.category].name}</span>
+                    </div>
+                    <div className="blitz-feedback-pattern">
+                      <span className="blitz-feedback-problem">{current.title}:</span> {current.pattern}
+                    </div>
+                    {zen && (
+                      <div className="blitz-feedback-clues">
+                        <span className="blitz-clues-label">Clues</span>
+                        <Clues p={current} />
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
-          )}
-        </>
-      )}
+          </>
+        )}
+      </div>
     </SessionShell>
   );
 }
