@@ -9,7 +9,11 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) =>
+        // Cache Storage is shared by every project on this origin (e.g. other GitHub Pages
+        // sites under the same user), so only ever delete IntPrep's own old caches.
+        Promise.all(keys.filter((k) => k.startsWith('intprep-') && k !== CACHE).map((k) => caches.delete(k))),
+      )
       .then(() => self.clients.claim()),
   );
 });
