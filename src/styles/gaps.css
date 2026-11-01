@@ -1,0 +1,116 @@
+/* ==========================================================================
+   Fill in the gaps — src/components/CodeGaps.tsx
+   The typing kit's code pane (src/styles/typer.css: .typer-line, .typer-ln,
+   diff rows, status bar, touch keys) with a single-line input in place of
+   each missing line. The input starts at the line's indentation, so its text
+   lines up with the code above and below; the learner never types indentation.
+   Colours are --code-* tokens (code is always dark).
+   ========================================================================== */
+
+/* ── A gap: the line number in the fill-in colour, an input where the code goes ── */
+.gaps-row {
+  align-items: center;
+  cursor: text;
+}
+.gaps-row .typer-ln {
+  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+}
+/* The line being typed reads like an editor's current line */
+.gaps-row:focus-within {
+  background: var(--code-line-hl);
+}
+.gaps-row:focus-within .typer-ln {
+  color: var(--brand-300);
+}
+.gaps-slot {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  padding-left: var(--indent, 0ch);
+}
+
+/* Desktop: 20px tall + 1px above and below = the 22px code rhythm. The negative margin
+   cancels the padding and border, so typed text starts exactly at the indentation. */
+.gaps-input {
+  --gap-pad: 6px;
+  flex: 1;
+  width: 0; /* the row sizes from min-width, not the input's default 20-character width */
+  min-width: 18ch;
+  height: 20px;
+  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1px);
+  padding: 0 var(--gap-pad);
+  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--code-key) 7%, transparent);
+  color: var(--code-text);
+  caret-color: var(--brand-300);
+  font: inherit;
+  font-variant-ligatures: none;
+  line-height: 18px;
+  white-space: pre;
+  outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.gaps-input::placeholder {
+  color: var(--code-comment);
+  font-style: italic;
+  opacity: 1;
+}
+/* Something typed: a quiet solid frame, so the remaining dashed gaps stand out */
+.gaps-row.is-filled .gaps-input {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--code-text) 18%, transparent);
+  background: color-mix(in srgb, var(--code-text) 4%, transparent);
+}
+.gaps-row .gaps-input:focus {
+  border-style: solid;
+  border-color: var(--brand-400);
+  background: color-mix(in srgb, var(--brand-500) 12%, var(--code-bg));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-400) 30%, transparent);
+}
+.gaps-input:disabled {
+  opacity: 0.55;
+}
+
+/* Touch screens: 44px gap rows (other rows keep the code rhythm) and 16px text, which also
+   keeps iOS from zooming the page when a gap is focused. */
+@media (pointer: coarse) {
+  .gaps-row {
+    min-height: 44px;
+  }
+  .gaps-input {
+    --gap-pad: 8px;
+    height: 38px;
+    margin-block: 3px;
+    font-size: 16px;
+    line-height: 36px;
+    min-width: 14ch;
+  }
+  /* The hint keeps the code's size (it is a comment), so more of it fits */
+  .gaps-input::placeholder {
+    font-size: 12.5px;
+  }
+}
+@media (pointer: coarse) and (min-width: 640px) {
+  .gaps-input::placeholder {
+    font-size: 13px;
+  }
+}
+
+/* ── After checking: the kit's diff rows ─────────────────────────────────── */
+/* Every row as wide as the longest line, so row colours run the full width when the code is
+   scrolled sideways. (While typing, gaps fill the visible width instead, so the caret stays in view.) */
+.gaps.is-revealed .gaps-lines {
+  width: max-content;
+  min-width: 100%;
+}
+.gaps.is-revealed .typer-line.diff {
+  animation: typer-fade var(--dur) var(--ease);
+}
+.gaps-empty {
+  color: color-mix(in srgb, var(--danger) 45%, var(--code-text));
+  font-style: italic;
+}

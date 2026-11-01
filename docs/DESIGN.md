@@ -118,6 +118,49 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
 · 1 wrong indent") in a polite live region. Keep the footer mounted while typing so the result is announced.
 `<CodeTyper>` combines all of it: the editor while `grade` is null, the diff once it is set.
 
+### Fill in the gaps (`components/CodeGaps.tsx`, `lib/gaps.ts`)
+
+The middle rung between reading a worked example and writing it from scratch: the whole snippet is shown and the
+learner types only the blanked lines. Use it once the learner has seen the code (a pattern template, a solution they
+just studied); use `<CodeEditor>` / `<CodeTyper>` when they write a part or the whole thing from memory, and
+`<Choices code>` when they pick a line.
+
+**Picking gaps** — `pickGaps(lines, { keyLines, exclude, ratio = 0.3, min = 1, max = 12, seed = 0 })` returns sorted
+line indices; pure and deterministic. About 30% of the code lines are blanked (rounded down, at least one: a 3-line
+snippet gets 1). Never blanked: blank and comment lines, `pass` / `else:` / `try:` / `finally:` / `break` /
+`continue` / a bare `return`, lone brackets, decorators, imports, `def` / `class` headers, docstrings, any line of a
+multi-line statement, and `exclude` (the header the page keeps visible). Key lines go first, then the lines with the
+most logic (conditions, loop headers, assignments that call or index, returns with an expression; an explaining
+trailing comment counts too), spread apart. `seed` is the round of practice: 0 is the canonical set; round n steps
+away from round n − 1's lines and never repeats its set when another exists. `gapSource(src)` turns an annotated
+solution or a plain template into `{ lines, keyLines, header }` (pass `header` as `exclude`).
+
+**Editor** — `<CodeGaps lines gaps values onChange revealed onSubmit autoFocus disabled locked hints start keyBar
+label ref>`: the visible lines read-only (highlighted, numbered, dimmed like `given`), each gap a single-line
+`input.gaps-input` that starts at its line's indentation (the learner never types indentation) and fills the row.
+Gap rows keep the 22px rhythm on desktop and grow to 44px with 16px text on touch screens (no iOS zoom). The
+placeholder is the line's own trailing comment (`# stop when the pointers meet`); `hints` takes your own per gap or
+`false`; a gap without one says "Type the missing line" if it is the first. `locked` gaps (right at the last check)
+show as correct and are skipped by the keyboard. `ref` exposes `focus(gap?)`. With `autoFocus`, the first gap is
+focused on mount and for each new set, and the first wrong gap on a retry.
+
+**Keys** — Enter: next gap; on the last gap, `onSubmit` (without it, Enter is left to the `ActionBar`). Shift+Enter
+or Up: previous gap; Down: next gap (Up and Down keep the caret column). Tab and Shift+Tab move in order. Ctrl/⌘ +
+Enter is left to the `ActionBar`. On touch screens a key bar in the kit's style offers `: ( ) [ ] = _` (no Indent /
+Outdent: indentation is fixed), inserts at the caret of the focused gap without taking focus, and a tap anywhere on a
+gap row focuses its input.
+
+**Grading and result** — `gradeGaps(values, expectedLines)` returns `{ results: { got, exp, ok, empty }[], correct,
+total, perfect, score }`, one gap to one line, compared with the kit's `lineKey` (whitespace, quote style, trailing
+comments and commas do not matter). Once `revealed`, a right gap shows the typed line with the check; a wrong one
+shows your line with the minus ("left blank" if empty) above the expected line with the plus, as in `CodeDiff`.
+`<GapsFooter grade note keys>` is the status bar ("2 of 3 gaps correct" in a polite live region; keep it mounted).
+`<GapsWindow>` is `TyperWindow` + `CodeGaps` + `GapsFooter`, like `<CodeTyper>`.
+
+**State** — `useGaps(lines, { keyLines, exclude, ratio, min, max, round })` returns `{ gaps, values, setValues,
+revealed, grade, filled, locked, round, check, retry, fresh }`: `check()` reveals, `retry()` ("Fix and check again")
+keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the next round with empty gaps.
+
 ## Page blueprints
 
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
