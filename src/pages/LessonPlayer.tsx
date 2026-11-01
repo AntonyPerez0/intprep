@@ -1,5 +1,5 @@
 import '../styles/pages/lesson-player.css';
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowRight, BookOpen, FileCode2, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
@@ -7,7 +7,7 @@ import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
-import { highlightLine } from '../lib/highlight';
+import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
@@ -289,7 +289,7 @@ function SlideView({
             <span>{slide.file ?? 'example.py'}</span>
             <span className="lplayer-codewin-lang">Python</span>
           </div>
-          <SlideCode code={slide.code} />
+          <HighlightedCode code={slide.code} />
           {slide.output && (
             <div className="lplayer-output">
               <div className="lplayer-output-head">
@@ -314,7 +314,7 @@ function SlideView({
       </div>
       {slide.code && (
         <div className="lplayer-codewin lplayer-quiz-code">
-          <SlideCode code={slide.code} />
+          <HighlightedCode code={slide.code} />
         </div>
       )}
       <Choices
@@ -328,45 +328,5 @@ function SlideView({
         revealed={status !== 'idle'}
       />
     </div>
-  );
-}
-
-// ── Code ────────────────────────────────────────────────────────────────────
-
-/**
- * Number literals the shared tokenizer cannot match (`1_000_000`, `0xFFFFFFFF`): it skips the
- * characters it has no token for, so `1_000_000` rendered as `_000_000`. Strings and comments are
- * matched first so digits inside them are never split out. Remove once lib/highlight handles these.
- */
-const PY_LITERAL = /("""[\s\S]*?"""|'''[\s\S]*?'''|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*'|#.*$)|\b(0[xXoObB][\da-fA-F_]+|\d+(?:_\d+)+(?:\.\d+)?)\b/g;
-
-function highlightPy(line: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  let from = 0;
-  for (const m of line.matchAll(PY_LITERAL)) {
-    if (!m[2]) continue; // a string or comment: leave it in the run for the shared highlighter
-    const at = m.index ?? 0;
-    if (at > from) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from, at))}</Fragment>);
-    out.push(
-      <span key={out.length} className="tk-num">
-        {m[2]}
-      </span>,
-    );
-    from = at + m[2].length;
-  }
-  if (from < line.length) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from))}</Fragment>);
-  return out;
-}
-
-/** Same markup as HighlightedCode from lib/highlight, with the literal fix above. */
-function SlideCode({ code }: { code: string }) {
-  return (
-    <pre className="code">
-      {code.split('\n').map((l, i) => (
-        <div key={i} className="code-line">
-          {l === '' ? '\u00a0' : highlightPy(l)}
-        </div>
-      ))}
-    </pre>
   );
 }

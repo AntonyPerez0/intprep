@@ -17,11 +17,13 @@ with taste: precise, quiet, confident.
    `SCIENCE_ICON`, `ICONS`.
 4. **Real data, honestly presented.** Numbers are tabular, labelled, and true. No fake testimonials, user counts,
    company logos or endorsements. Not affiliated with LeetCode, NeetCode or any employer — say so in the footer.
-5. **Mobile is first-class.** Design at 390px wide first, then scale up. Touch targets ≥ 40px. Never cause
+5. **Mobile is first-class.** Design at 390px wide first, then scale up. Touch targets ≥ 40px (on touch screens
+   `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an invisible 40px hit area automatically). Never cause
    horizontal page scroll (code blocks scroll inside themselves).
 6. **Both themes, always.** Use tokens only. Never hard-code a colour except category colours passed as `--c`.
    Check every screen in light *and* dark.
-7. **Accessible.** WCAG AA contrast, visible `:focus-visible`, `aria-label` on icon-only buttons, semantic headings
+7. **Accessible.** WCAG AA contrast, a solid 2px `:focus-visible` outline that follows each element's radius,
+   `aria-label` on icon-only buttons, semantic headings
    (one `h1` per page), `prefers-reduced-motion` respected.
 
 ## Tokens (`src/styles/base.css`)
@@ -53,16 +55,16 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Badges | `<Badge tone>` or `.badge .badge-brand/success/warning/danger/info`; `<DifficultyChip d>` for difficulty |
 | Icons | `<Icon name>` (registry), `<CategoryIcon id color size>`, `<IconTile icon color size solid>` from `components/icons.tsx` |
 | Stats | `<StatCard icon label value meta>`; `.stat`, `.stat-label`, `.stat-value`, `.stat-meta` |
-| Progress | `<ProgressBar value>`, `<Ring value size>`, `<Mastery n>` (signal-strength meter, exported as `Crowns` too) |
+| Progress | `<ProgressBar value color>`, `<Ring value size track instant>` (`instant` skips easing for fast timers), `<Mastery n>` (signal-strength meter, exported as `Crowns` too) |
 | Forms | `.input`, `.input-group` (leading icon), `.label`, `.help`, `.seg` segmented control, `<Toggle>` switch |
 | Lists | `.list` + `.list-row` (`.title`, `.meta`, `.chevron`), `.status-dot(.learned/.due)` |
-| Callouts | `.callout` + `.callout-info/-warning/-brand/-success` (first child: a 16px Lucide icon) |
+| Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon) |
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
-| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark |
-| Sessions | `<SessionShell progress title right onClose>`, `<ActionBar>`, `<Choices>`, `<OrderSteps>`, `<ProblemPrompt>` |
-| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right>`, `<EmptyState icon title actions>` |
+| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colours on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`) |
+| Sessions | `<SessionShell progress title right onClose progressColor>` (`progress={null}` hides the bar), `<ActionBar>`, `<Choices>`, `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column |
+| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions>` |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` |
-| Misc | `<Kbd>`, `.tabs`, `details.disclosure`, `<Modal>`, toasts via `toast({ icon: 'flame', title, body, tone })` |
+| Misc | `<Kbd>`, `.tabs`, `details.disclosure`, `<Modal>` (traps Tab, restores focus on close), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count) |
 
 ## Page blueprints
 

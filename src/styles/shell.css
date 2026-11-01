@@ -322,7 +322,8 @@
   align-items: center;
   gap: 14px;
   height: 56px;
-  max-width: 880px;
+  /* Header, body and action bar share one 728px content column. */
+  max-width: 760px;
   margin: 0 auto;
   padding: 0 16px;
 }
@@ -412,7 +413,7 @@
   }
 }
 .actionbar-inner {
-  max-width: 760px;
+  max-width: 728px; /* = .session-body (760px) minus its 16px side padding */
   margin: 0 auto;
   display: flex;
   flex-direction: column;

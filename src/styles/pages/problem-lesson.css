@@ -3,16 +3,6 @@
    All classes are prefixed `plesson-`.
    ========================================================================== */
 
-/* ── Session chrome ─────────────────────────────────────────────────────────
-   Header, step content and action bar share one column so the close button,
-   eyebrow and primary action line up on a single left and right edge. */
-.session:has(.plesson, .plesson-done) .session-head-inner {
-  max-width: 760px;
-}
-.session:has(.plesson) .actionbar-inner {
-  max-width: 728px;
-}
-
 .plesson-reward {
   flex: none;
   gap: 4px;

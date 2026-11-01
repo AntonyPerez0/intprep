@@ -10,12 +10,6 @@
   gap: 20px;
 }
 
-/* The fixed action bar's inner column lines up with the session column
-   (.session-body is 760px wide including 16px side padding). */
-.drill .actionbar-inner {
-  max-width: 728px;
-}
-
 /* Quiet secondary actions sit flush with the content edge */
 .drill .actionbar .buttons > .btn-quiet:first-child {
   margin-left: -12px;

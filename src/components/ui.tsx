@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Difficulty } from '../content/types';
 import { onToast, type Toast } from '../lib/events';
@@ -65,7 +65,8 @@ export function Ring({
   size = 44,
   stroke = 5,
   color = 'var(--brand)',
-  track = 'var(--surface-active)',
+  track = 'var(--border)',
+  instant,
   children,
 }: {
   value: number;
@@ -73,6 +74,8 @@ export function Ring({
   stroke?: number;
   color?: string;
   track?: string;
+  /** Skip the easing transition (for values that update many times a second). */
+  instant?: boolean;
   children?: ReactNode;
 }) {
   const r = (size - stroke) / 2;
@@ -92,7 +95,7 @@ export function Ring({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - v)}
-          style={{ transition: 'stroke-dashoffset .6s var(--ease)' }}
+          style={{ transition: instant ? 'none' : 'stroke-dashoffset .6s var(--ease)' }}
         />
       </svg>
       {children !== undefined && <div className="ring-label">{children}</div>}
@@ -162,11 +165,11 @@ export function PageHeader({
   );
 }
 
-export function SectionHeader({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
+export function SectionHeader({ title, sub, right, id }: { title: ReactNode; sub?: ReactNode; right?: ReactNode; id?: string }) {
   return (
     <div className="section-title">
       <div>
-        <h2>{title}</h2>
+        <h2 id={id}>{title}</h2>
         {sub && <div className="text-sm text-tertiary" style={{ marginTop: 2 }}>{sub}</div>}
       </div>
       {right}
@@ -239,37 +242,92 @@ export function Completion({
 
 // ── Overlays ────────────────────────────────────────────────────────────────
 
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Accessible dialog: Escape and backdrop close it, Tab stays inside, focus returns on close. */
 export function Modal({ children, onClose, labelledBy }: { children: ReactNode; onClose?: () => void; labelledBy?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose?.();
-    window.addEventListener('keydown', h);
-    return () => window.removeEventListener('keydown', h);
-  }, [onClose]);
+    const opener = document.activeElement as HTMLElement | null;
+    const box = ref.current;
+    // Respect an autoFocus inside the dialog; otherwise focus its first control.
+    if (box && !box.contains(document.activeElement)) {
+      (box.querySelector<HTMLElement>(FOCUSABLE) ?? box).focus();
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeRef.current?.();
+        return;
+      }
+      if (e.key !== 'Tab' || !box) return;
+      const items = Array.from(box.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+      if (!items.length) {
+        e.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !box.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !box.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, []);
+
   return (
     <div className="modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose?.()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby={labelledBy}>
+      <div ref={ref} className="modal" role="dialog" aria-modal="true" aria-labelledby={labelledBy} tabIndex={-1}>
         {children}
       </div>
     </div>
   );
 }
 
+const NARROW = '(max-width: 1023px)';
+function subscribeNarrow(cb: () => void) {
+  const mq = window.matchMedia(NARROW);
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+}
+const isNarrow = () => window.matchMedia(NARROW).matches;
+
 export function Toaster() {
   const [items, setItems] = useState<Toast[]>([]);
+  // Phones and tablets show toasts at the top, where a stack would cover page titles:
+  // show only the newest there, with a count of the others.
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, () => false);
   useEffect(
     () =>
       onToast((t) => {
         setItems((xs) => [...xs.slice(-2), t]);
-        setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== t.id)), 4200);
+        setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== t.id)), isNarrow() ? 3200 : 4200);
       }),
     [],
   );
+  const shown = narrow ? items.slice(-1) : items;
+  const more = items.length - shown.length;
   return (
     <div className="toasts" aria-live="polite">
-      {items.map((t) => {
+      {shown.map((t) => {
         const C = (ICONS as Record<string, LucideIcon>)[t.icon] ?? ICONS.info;
         return (
-          <div key={t.id} className={`toast ${t.tone ?? ''}`} onClick={() => setItems((xs) => xs.filter((x) => x.id !== t.id))}>
+          <div
+            key={t.id}
+            className={`toast ${t.tone ?? ''}`}
+            onClick={() => setItems((xs) => (narrow ? [] : xs.filter((x) => x.id !== t.id)))}
+          >
             <div className="t-icon">
               <C strokeWidth={2} />
             </div>
@@ -277,6 +335,7 @@ export function Toaster() {
               <div className="t-title">{t.title}</div>
               {t.body && <div className="t-body">{t.body}</div>}
             </div>
+            {more > 0 && <span className="t-more tabular">+{more}</span>}
           </div>
         );
       })}

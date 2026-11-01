@@ -3,15 +3,6 @@
    All classes are prefixed `lplayer-`.
    ========================================================================== */
 
-/* ── Session chrome ─────────────────────────────────────────────────────────
-   Header, slide and action bar share one column (one left and right edge). */
-.session:has(.lplayer, .lplayer-done) .session-head-inner {
-  max-width: 760px;
-}
-.session:has(.lplayer) .actionbar-inner {
-  max-width: 728px;
-}
-
 .lplayer-count {
   flex: none;
   min-width: 44px;

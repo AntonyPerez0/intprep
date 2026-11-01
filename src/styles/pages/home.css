@@ -544,9 +544,10 @@ a.home-aside-link {
   color: var(--text-inverse);
 }
 .home-day.is-frozen .home-day-dot {
-  border-color: var(--info-border);
-  background: var(--info-subtle);
-  color: var(--info-text);
+  /* Freeze days use the gem/ice accent everywhere (heatmaps, toasts, shop). */
+  border-color: color-mix(in srgb, var(--gem) 35%, transparent);
+  background: var(--gem-subtle);
+  color: var(--gem);
 }
 .home-day.is-open .home-day-dot {
   border: 1.5px dashed var(--border-strong);
@@ -957,7 +958,7 @@ a.home-aside-link {
   background: var(--brand);
 }
 .home-heat-cell.is-frozen {
-  background: color-mix(in srgb, var(--info) 48%, var(--surface-active));
+  background: color-mix(in srgb, var(--gem) 45%, var(--surface-active));
 }
 .home-heat-cell.is-today {
   box-shadow:

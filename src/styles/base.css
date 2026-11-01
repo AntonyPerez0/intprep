@@ -66,7 +66,7 @@
   /* Code (always dark, GitHub-dark inspired) */
   --code-bg: #0d1117;
   --code-border: #1f2630;
-  --code-gutter: #484f58;
+  --code-gutter: #6e7681; /* line numbers: ~4:1 on --code-bg */
   --code-text: #e6edf3;
   --code-line-hl: rgba(110, 118, 129, 0.16);
   --code-keyword: #ff7b72;
@@ -77,6 +77,14 @@
   --code-builtin: #ffa657;
   --code-const: #79c0ff;
   --code-deco: #ffa657;
+  --code-key: #e3b341; /* key-line marker and fill-in blanks */
+  --code-scrollbar: #30363d;
+  --code-success-border: #3fb950;
+  --code-success-text: #7ee787;
+  --code-success-bg: rgba(63, 185, 80, 0.12);
+  --code-danger-border: #f85149;
+  --code-danger-text: #ffa198;
+  --code-danger-bg: rgba(248, 81, 73, 0.12);
 
   /* Radius */
   --r-xs: 4px;
@@ -315,9 +323,9 @@ select {
   color: inherit;
 }
 :focus-visible {
+  /* Outlines follow each element's own border-radius; never reshape on focus. */
   outline: 2px solid var(--brand-500);
   outline-offset: 2px;
-  border-radius: var(--r-sm);
 }
 ::selection {
   background: rgba(99, 102, 241, 0.22);

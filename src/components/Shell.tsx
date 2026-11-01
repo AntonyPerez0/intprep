@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { levelInfo, levelTitle } from '../lib/game';
@@ -131,7 +131,8 @@ export function AppShell() {
   const loc = useLocation();
   const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => {
+  // Layout effect: resets scroll before pages' own effects run (hash deep links).
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, [loc.pathname]);
   useEffect(() => {
@@ -217,16 +218,20 @@ export function SessionShell({
   right,
   onClose,
   title,
+  progressColor,
 }: {
-  progress: number;
+  /** 0–1. Pass null to hide the bar (e.g. a lobby before a session starts). */
+  progress: number | null;
   children: ReactNode;
   right?: ReactNode;
   onClose?: () => void;
   /** Optional short label shown next to the close button (desktop). */
   title?: ReactNode;
+  /** Colour for the progress bar, e.g. a countdown entering its warning zone. */
+  progressColor?: string;
 }) {
   const nav = useNavigate();
-  useEffect(() => {
+  useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, []);
   return (
@@ -246,7 +251,7 @@ export function SessionShell({
             <X size={20} />
           </button>
           {title && <span className="session-title">{title}</span>}
-          <ProgressBar value={progress} label="Progress" />
+          {progress === null ? <div className="grow" /> : <ProgressBar value={progress} color={progressColor} label="Progress" />}
           {right}
         </div>
       </div>

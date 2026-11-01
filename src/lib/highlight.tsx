@@ -14,8 +14,11 @@ const BUILTINS = new Set(
   ),
 );
 
+// Order matters: comments, strings, decorators, numbers, identifiers, whitespace, punctuation.
+// The final `([\s\S])` catch-all guarantees every character is emitted — a /g regex
+// silently skips characters no alternative matches (e.g. the `1` in `1_000_000`).
 const TOKEN =
-  /(#.*$)|("""[\s\S]*?"""|'''[\s\S]*?'''|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*')|(@[A-Za-z_][\w.]*)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)|(\s+)|([^\sA-Za-z_\d])/g;
+  /(#.*$)|("""[\s\S]*?"""|'''[\s\S]*?'''|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*')|(@[A-Za-z_][\w.]*)|(\b(?:0[xXoObB][\da-fA-F_]+|\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d+)?j?)\b)|([A-Za-z_]\w*)|(\s+)|([^\sA-Za-z_\d])|([\s\S])/g;
 
 export function highlightLine(line: string): ReactNode[] {
   const out: ReactNode[] = [];

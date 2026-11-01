@@ -9,9 +9,6 @@
   flex-direction: column;
   gap: 20px;
 }
-.rebuild .actionbar-inner {
-  max-width: 728px;
-}
 
 /* ── Session header score ───────────────────────────────────────────────── */
 .rebuild-score-slot {
