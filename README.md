@@ -7,7 +7,7 @@ time. Then it makes the patterns *stick* with short, game-like daily drills buil
 streaks, XP, gems and achievements in the style of Duolingo.
 
 It is a static web app with no account and no server. It works on desktop and phones, can be installed to your home
-screen, and saves progress in your browser.
+screen, works offline after the first visit, and saves progress in your browser.
 
 The interface follows a documented design system ([`docs/DESIGN.md`](docs/DESIGN.md)): Inter typography, a neutral
 palette with one indigo accent, Lucide icons, tuned light and dark themes, and a ⌘K / Ctrl+K command palette for
@@ -59,6 +59,12 @@ your GitHub repo go to **Settings → Pages → Build and deployment → Source*
 `https://<user>.github.io/<repo>/` with no extra configuration. Any static host (Netlify, Vercel, Cloudflare Pages) also
 works: serve the `dist/` folder.
 
+Offline support: each build writes `dist/sw.js` from `sw/sw.template.js`, with a version hashed from the build output and
+the list of files to precache. Every deploy gets its own `intprep-<version>` cache, so returning visitors and installed apps
+get the new version on their next launch, and the previous deploy's cache is deleted. Tabs already open keep running the
+version they loaded until they're reloaded. The worker never touches caches outside `intprep-*`, since every GitHub Pages
+project of the same user shares one origin.
+
 ## How the content works
 
 All teaching content is typed TypeScript data in `src/content/`:
@@ -97,6 +103,7 @@ src/
                 Blitz, code from memory, pattern guide, problem library, profile, science
   styles/       design tokens (base.css), components, shell, per-page styles (pages/)
 scripts/        content validator
+sw/             offline service worker template + the Vite plugin that fills in each build's precache list
 docs/           design system, learning-science design doc, content guide
 ```
 
