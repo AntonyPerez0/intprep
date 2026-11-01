@@ -22,6 +22,7 @@ import {
   TrendingUp,
   Trophy,
 } from 'lucide-react';
+import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID } from '../content/index';
 import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
@@ -34,9 +35,10 @@ import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, recordRebuild, reviewProblem, useProgress } from '../lib/store';
 import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { codeKeyHandler, CodeWindow } from '../components/Drills';
+import { codeKeyHandler, codeOptions, CodeWindow } from '../components/Drills';
+import { CATEGORY_ICON } from '../components/icons';
 import { SessionShell } from '../components/Shell';
-import { Completion, DifficultyChip } from '../components/ui';
+import { Completion, DifficultyChip, Kbd } from '../components/ui';
 
 export function RebuildRoute() {
   const { id } = useParams();
@@ -71,6 +73,17 @@ function reindent(s: string, from: number, to: number) {
   const body = s.replace(/\t/g, '    ');
   const cut = Math.min(from, indentOf(body));
   return ' '.repeat(to) + body.slice(cut);
+}
+
+/** Diff marker, drawn in the gutter so code stays aligned with the lines above. */
+function Sign({ kind }: { kind: 'ok' | 'del' | 'add' }) {
+  const I = kind === 'ok' ? Check : kind === 'del' ? Minus : Plus;
+  return (
+    <span className="rebuild-sign">
+      <I strokeWidth={2.4} aria-hidden="true" />
+      <span className="sr-only">{kind === 'ok' ? 'Correct: ' : kind === 'del' ? 'Your line: ' : 'Expected: '}</span>
+    </span>
+  );
 }
 
 function Rebuild({ p }: { p: Problem }) {
@@ -239,6 +252,8 @@ function Rebuild({ p }: { p: Problem }) {
   const baseGot = result?.rows[0] ? indentOf(result.rows[0].got) : 0;
   const baseExp = result?.rows[0] ? indentOf(result.rows[0].exp) : 0;
   const hintBase = indentOf(curLines[0] ?? '');
+  const cat = CATEGORY_BY_ID[p.category];
+  const CatIcon = CATEGORY_ICON[p.category];
 
   let footLeft = `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`;
   let footRight: ReactNode = typing ? (
@@ -265,20 +280,27 @@ function Rebuild({ p }: { p: Problem }) {
       right={
         <span className="rebuild-score-slot">
           {score.total > 0 && (
-            <span className="rebuild-score" title="Lines right on the first try" aria-label={`${score.correct} of ${score.total} lines right`}>
+            <span className="rebuild-score" title="Lines right on the first try">
               <Check strokeWidth={2.4} aria-hidden="true" />
-              {score.correct}/{score.total}
+              <span aria-hidden="true">
+                {score.correct}/{score.total}
+              </span>
+              <span className="sr-only">
+                {score.correct} of {score.total} lines right
+              </span>
             </span>
           )}
         </span>
       }
     >
       <div className="rebuild">
+        <h1 className="sr-only">Code from memory</h1>
         <header className="drill-head">
           <div className="drill-eyebrow">
             <div className="kicker">
-              <Keyboard strokeWidth={2} aria-hidden="true" />
-              <span>Code from memory</span>
+              <CatIcon strokeWidth={2} aria-hidden="true" />
+              <span>{cat.name}</span>
+              <span className="rebuild-kicker-num">#{p.num}</span>
             </div>
             <div className="drill-meta">
               {totalLines} lines · {body.length} steps
@@ -289,7 +311,13 @@ function Rebuild({ p }: { p: Problem }) {
               <h2 className="q-title">{p.title}</h2>
               <DifficultyChip d={p.difficulty} />
             </div>
-            <button type="button" className="btn btn-quiet btn-sm rebuild-prompt-toggle" aria-expanded={showPrompt} onClick={() => setShowPrompt((s) => !s)}>
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm rebuild-prompt-toggle"
+              aria-expanded={showPrompt}
+              aria-controls={`rebuild-prompt-${p.id}`}
+              onClick={() => setShowPrompt((s) => !s)}
+            >
               {showPrompt ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
               {showPrompt ? 'Hide problem' : 'Show problem'}
             </button>
@@ -297,7 +325,11 @@ function Rebuild({ p }: { p: Problem }) {
           <p className="drill-sub">Rebuild the solution one step at a time. The highlighted comment says what to write next.</p>
         </header>
 
-        {showPrompt && <ProblemPrompt p={p} compact showTitle={false} />}
+        {showPrompt && (
+          <div id={`rebuild-prompt-${p.id}`}>
+            <ProblemPrompt p={p} compact showTitle={false} />
+          </div>
+        )}
 
         <CodeWindow
           className={`rebuild-editor ${status !== 'idle' ? `is-${status}` : ''}`}
@@ -319,7 +351,7 @@ function Rebuild({ p }: { p: Problem }) {
               <span className="rebuild-foot-left">
                 <span className="rebuild-foot-lang">Python 3</span>
                 <span className="rebuild-foot-sep" aria-hidden="true" />
-                {footLeft}
+                <span className={`rebuild-foot-desc ${result ? 'is-result' : ''}`}>{footLeft}</span>
               </span>
               {footRight}
             </>
@@ -342,15 +374,15 @@ function Rebuild({ p }: { p: Problem }) {
 
             {typing ? (
               result ? (
-                <div className="rebuild-diff" aria-label="Line-by-line check">
+                <div className="rebuild-diff">
                   {result.rows.map((r, k) => {
                     const n = firstNew + k;
                     if (r.ok)
                       return (
                         <div key={k} className="rebuild-line diff ok">
-                          <span className="rebuild-ln">{n}</span>
-                          <span className="rebuild-sign" aria-label="Correct">
-                            <Check strokeWidth={2.4} />
+                          <span className="rebuild-ln">
+                            {n}
+                            <Sign kind="ok" />
                           </span>
                           <span className="rebuild-src">{highlightLine(reindent(r.got, baseGot, indent))}</span>
                         </div>
@@ -358,9 +390,9 @@ function Rebuild({ p }: { p: Problem }) {
                     return (
                       <Fragment key={k}>
                         <div className="rebuild-line diff del">
-                          <span className="rebuild-ln">{n}</span>
-                          <span className="rebuild-sign" aria-label="Your line">
-                            <Minus strokeWidth={2.4} />
+                          <span className="rebuild-ln">
+                            {n}
+                            <Sign kind="del" />
                           </span>
                           <span className="rebuild-src">
                             {r.got ? reindent(r.got, baseGot, indent) : <span className="rebuild-missing">{' '.repeat(indent)}missing line</span>}
@@ -368,9 +400,8 @@ function Rebuild({ p }: { p: Problem }) {
                         </div>
                         {r.exp && (
                           <div className="rebuild-line diff add">
-                            <span className="rebuild-ln" />
-                            <span className="rebuild-sign" aria-label="Expected">
-                              <Plus strokeWidth={2.4} />
+                            <span className="rebuild-ln">
+                              <Sign kind="add" />
                             </span>
                             <span className="rebuild-src">{highlightLine(reindent(r.exp, baseExp, indent))}</span>
                           </div>
@@ -413,15 +444,46 @@ function Rebuild({ p }: { p: Problem }) {
                     <span className="rebuild-src">{highlightLine(l)}</span>
                   </div>
                 ))}
-                <div ref={cursorRef} className="rebuild-line cursor">
-                  <span className="rebuild-ln">{firstNew + written.length}</span>
-                  <span className="rebuild-src">
-                    {tapIndent}
-                    <span className={`blank ${status === 'idle' ? '' : tapOk ? 'filled-correct' : 'filled-wrong'}`}>
-                      {status !== 'idle' ? tapLine.trim() : sel ? sel.trim() : '???'}
+                {status === 'idle' ? (
+                  <div ref={cursorRef} className="rebuild-line cursor">
+                    <span className="rebuild-ln">{firstNew + written.length}</span>
+                    <span className="rebuild-src">
+                      {tapIndent}
+                      <span className="blank">{sel ? sel.trim() : '???'}</span>
                     </span>
-                  </span>
-                </div>
+                  </div>
+                ) : (
+                  <div ref={cursorRef} className="rebuild-diff">
+                    {tapOk ? (
+                      <div className="rebuild-line diff ok">
+                        <span className="rebuild-ln">
+                          {firstNew + written.length}
+                          <Sign kind="ok" />
+                        </span>
+                        <span className="rebuild-src">{highlightLine(tapLine)}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="rebuild-line diff del">
+                          <span className="rebuild-ln">
+                            {firstNew + written.length}
+                            <Sign kind="del" />
+                          </span>
+                          <span className="rebuild-src">
+                            {tapIndent}
+                            {sel?.trim()}
+                          </span>
+                        </div>
+                        <div className="rebuild-line diff add">
+                          <span className="rebuild-ln">
+                            <Sign kind="add" />
+                          </span>
+                          <span className="rebuild-src">{highlightLine(tapLine)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -444,12 +506,15 @@ function Rebuild({ p }: { p: Problem }) {
         {!typing && (
           <div>
             <div className="drill-label">
-              <span>
-                Line {lineInChunk + 1} of {curLines.length}: which comes next?
-              </span>
+              <span>Choose the next line</span>
+              {tapOptions.length > 1 && (
+                <span className="drill-keys" aria-hidden="true">
+                  Press <Kbd>1</Kbd>–<Kbd>{tapOptions.length}</Kbd>
+                </span>
+              )}
             </div>
             <Choices
-              options={tapOptions.map((o) => ({ key: o, label: o.trim() }))}
+              options={codeOptions(tapOptions)}
               selected={sel}
               onSelect={(k) => {
                 setSel(k);

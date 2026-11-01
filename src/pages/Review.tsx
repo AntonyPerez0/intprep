@@ -6,7 +6,7 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID } from '../content/index';
 import type { CategoryId } from '../content/types';
 import { confetti } from '../lib/confetti';
-import { friendlyDue } from '../lib/date';
+import { daysBetween, parseDay, today } from '../lib/date';
 import { cardsForProblem, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
 import { interleave, shuffle } from '../lib/random';
@@ -163,6 +163,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
     return (
       <SessionShell progress={0} onClose={() => nav('/')} title={title}>
         <div className="review-empty">
+          <h1 className="sr-only">{title}</h1>
           <EmptyState
             icon={CalendarCheck}
             title="Nothing to review yet"
@@ -245,7 +246,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
               <h2 id="review-results-title">Problems reviewed</h2>
               <span className="review-results-count tabular">{ids.length}</span>
             </div>
-            <table className="review-table">
+            <table className="review-table" aria-labelledby="review-results-title">
               <thead>
                 <tr>
                   <th scope="col">Problem</th>
@@ -261,7 +262,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
                   const cat = CATEGORY_BY_ID[prob.category];
                   const g = grades[id] ?? 'good';
                   const pp = progress.problems[id];
-                  const next = pp?.srs ? friendlyDue(pp.srs.due) : null;
+                  const next = pp?.srs ? nextReview(pp.srs.due) : null;
                   return (
                     <tr key={id}>
                       <td>
@@ -272,7 +273,9 @@ function ReviewSession({ mode }: { mode: Mode }) {
                             <span className="review-prob-meta review-meta-wide">
                               #{prob.num} · {cat.name}
                             </span>
-                            <span className="review-prob-meta review-meta-narrow">{next ? `Next review ${next}` : `#${prob.num}`}</span>
+                            <span className="review-prob-meta review-meta-narrow">
+                              {next ? `Next review ${next.relative.toLowerCase()}` : `#${prob.num}`}
+                            </span>
                           </span>
                         </Link>
                       </td>
@@ -281,7 +284,16 @@ function ReviewSession({ mode }: { mode: Mode }) {
                           {GRADE_UI[g].label}
                         </Badge>
                       </td>
-                      <td className="review-col-next tabular">{next ? capitalize(next) : '—'}</td>
+                      <td className="review-col-next">
+                        {next ? (
+                          <span className="review-next">
+                            <span className="review-next-rel">{next.relative}</span>
+                            <span className="review-next-date tabular">{next.date}</span>
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -303,19 +315,16 @@ function ReviewSession({ mode }: { mode: Mode }) {
       right={
         <span className="review-combo-slot">
           {combo >= 2 && (
-            <span
-              key={popKey}
-              className={`review-combo ${popKey ? 'pop' : ''}`}
-              title="Combo: answers right in a row"
-              aria-label={`${combo} correct in a row`}
-            >
+            <span key={popKey} className={`review-combo ${popKey ? 'pop' : ''}`} title="Combo: answers right in a row">
               <Zap strokeWidth={2.2} aria-hidden="true" />
               {combo}
+              <span className="sr-only"> correct in a row</span>
             </span>
           )}
         </span>
       }
     >
+      <h1 className="sr-only">{title}</h1>
       <Drill
         key={card.uid}
         kind={card.kind}
@@ -331,16 +340,24 @@ function ReviewSession({ mode }: { mode: Mode }) {
           ) : undefined
         }
         meta={
-          <>
+          <span className="review-pos">
             {i + 1} <span className="review-of">of</span> {deck.length}
-          </>
+          </span>
         }
       />
     </SessionShell>
   );
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** "In 4 weeks" + "Sat, Nov 28": readable in a table, with the exact day for planning. */
+function nextReview(key: string) {
+  const d = daysBetween(today(), key);
+  const n = (v: number, unit: string) => `In ${v} ${unit}${v === 1 ? '' : 's'}`;
+  const relative =
+    d <= 0 ? 'Due now' : d === 1 ? 'Tomorrow' : d < 7 ? n(d, 'day') : d < 30 ? n(Math.round(d / 7), 'week') : d < 365 ? n(Math.round(d / 30), 'month') : n(Math.round(d / 365), 'year');
+  const date = parseDay(key).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return { relative, date };
+}
 
 const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'success' | 'info' }> = {
   again: { label: 'Relearn soon', tone: 'danger' },

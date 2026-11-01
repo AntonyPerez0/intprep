@@ -20,6 +20,7 @@
   flex: none;
   min-width: 56px;
 }
+/* Neutral: "0/17" is a count, not a success state */
 .rebuild-score {
   display: inline-flex;
   align-items: center;
@@ -30,16 +31,22 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--success-text);
-  background: var(--success-subtle);
-  border: 1px solid var(--success-border);
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 .rebuild-score svg {
   width: 14px;
   height: 14px;
+  color: var(--success);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
+.rebuild-kicker-num {
+  color: var(--text-tertiary);
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
 .rebuild-title-row {
   display: flex;
   align-items: center;
@@ -137,10 +144,12 @@
   padding-right: 18px;
   white-space: pre;
 }
+/* Gutter: line number + a diff marker slot, so diff rows never shift the code */
 .rebuild-ln {
+  position: relative;
   flex: none;
-  width: 44px;
-  padding-right: 14px;
+  width: 52px;
+  padding-right: 20px;
   text-align: right;
   color: var(--code-gutter);
   user-select: none;
@@ -194,8 +203,8 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  width: 44px;
-  padding-right: 14px;
+  width: 52px;
+  padding-right: 20px;
   text-align: right;
   color: var(--code-gutter);
   user-select: none;
@@ -227,7 +236,7 @@
   border: 0;
 }
 .rebuild-input textarea.code-input::placeholder {
-  color: var(--code-gutter);
+  color: var(--code-comment);
   font-style: italic;
 }
 
@@ -249,38 +258,36 @@
     opacity: 0;
   }
 }
-.rebuild-line.diff .rebuild-ln {
-  width: 44px;
-}
 .rebuild-sign {
-  flex: none;
-  display: inline-grid;
+  position: absolute;
+  top: 0;
+  right: 3px;
+  display: grid;
   place-items: center;
-  width: 16px;
+  width: 14px;
   height: 22px;
-  margin-right: 10px;
 }
 .rebuild-sign svg {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 .rebuild-line.diff.ok {
   background: color-mix(in srgb, var(--success) 10%, transparent);
 }
 .rebuild-line.diff.ok .rebuild-sign {
-  color: color-mix(in srgb, var(--success) 75%, white);
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
 }
 .rebuild-line.diff.del {
   background: color-mix(in srgb, var(--danger) 16%, transparent);
 }
 .rebuild-line.diff.del .rebuild-sign {
-  color: color-mix(in srgb, var(--danger) 65%, white);
+  color: color-mix(in srgb, var(--danger) 65%, var(--code-text));
 }
 .rebuild-line.diff.add {
   background: color-mix(in srgb, var(--success) 16%, transparent);
 }
 .rebuild-line.diff.add .rebuild-sign {
-  color: color-mix(in srgb, var(--success) 75%, white);
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
 }
 .rebuild-missing {
   color: var(--code-comment);
@@ -289,7 +296,7 @@
 
 /* Hint panel (inside the editor) */
 .rebuild-hint {
-  padding: 10px 16px 12px calc(44px + var(--indent, 0ch));
+  padding: 10px 16px 12px calc(52px + var(--indent, 0ch));
   font-family: var(--font-mono);
   font-variant-ligatures: none;
   line-height: 22px;
@@ -306,7 +313,7 @@
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: color-mix(in srgb, var(--warning) 70%, white);
+  color: color-mix(in srgb, var(--warning) 70%, var(--code-text));
 }
 .rebuild-hint-label svg {
   width: 14px;
@@ -325,6 +332,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.rebuild-foot-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Phones: the result summary on the right says it all */
+@media (max-width: 479px) {
+  .rebuild-foot-desc.is-result {
+    display: none;
+  }
+  .rebuild-foot-left:has(.is-result) .rebuild-foot-sep {
+    display: none;
+  }
 }
 .rebuild-foot-lang {
   color: var(--code-text);
@@ -357,13 +378,13 @@
   border-radius: 50%;
 }
 .rebuild-result.ok {
-  color: color-mix(in srgb, var(--success) 75%, white);
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
 }
 .rebuild-result.ok::before {
   background: var(--success);
 }
 .rebuild-result.bad {
-  color: color-mix(in srgb, var(--danger) 60%, white);
+  color: color-mix(in srgb, var(--danger) 60%, var(--code-text));
 }
 .rebuild-result.bad::before {
   background: var(--danger);
@@ -406,6 +427,10 @@
 details.disclosure.rebuild-solution > summary::after {
   margin-left: 4px;
 }
+/* Code sits flush in the disclosure: one frame, not a card inside a card */
 details.disclosure.rebuild-solution > .code {
-  margin: 0 12px 12px;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
 }

@@ -62,8 +62,13 @@
   color: var(--text-secondary);
   line-height: 1.55;
 }
-.drill-em {
+/* The variable the question hinges on ("time" / "space"): a token, not a link */
+.drill-key {
+  padding: 0 6px;
+  border-radius: var(--r-sm);
   color: var(--brand-text);
+  background: var(--brand-subtle);
+  box-shadow: inset 0 0 0 1px var(--brand-border);
 }
 
 /* ── Answer area ────────────────────────────────────────────────────────── */
@@ -99,6 +104,20 @@
 .drill .choice .choice-icon .icon-tile {
   width: 28px;
   height: 28px;
+}
+/* Code options: a shortcut number like every other choice list */
+.drill-code-opt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.drill-code-opt .num {
+  font-family: var(--font-sans);
+}
+.drill-code-text {
+  min-width: 0;
+  white-space: pre;
 }
 .drill-note-input {
   min-height: 92px;
@@ -200,14 +219,20 @@
 details.disclosure.drill-code-disclosure > summary::after {
   margin-left: 4px;
 }
+/* Code sits flush in the disclosure: one frame, not a card inside a card */
 details.disclosure.drill-code-disclosure > .code {
-  margin: 0 12px 12px;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
 }
 
 /* ── Insight reveal ─────────────────────────────────────────────────────── */
 .drill-reveal {
   gap: 12px;
   animation: drill-rise var(--dur-slow) var(--ease);
+  /* Clear the sticky header above and the rating bar below when scrolled into view */
+  scroll-margin: 72px 0 184px;
 }
 @keyframes drill-rise {
   from {
@@ -285,6 +310,20 @@ details.disclosure.drill-code-disclosure > .code {
   flex-direction: column;
   gap: 12px;
   animation: drill-rise var(--dur) var(--ease);
+}
+.drill-rate:focus {
+  outline: none;
+}
+/* The ratings replace "Show answer" under the pointer. Arm them a beat later so
+   a double-click on "Show answer" can't rate the card by accident. */
+.drill-rate-grid {
+  /* A delay (not a duration) so reduced-motion settings keep the guard */
+  animation: drill-arm 1ms 0.35s backwards;
+}
+@keyframes drill-arm {
+  from {
+    pointer-events: none;
+  }
 }
 .drill-rate-q {
   display: flex;
@@ -408,18 +447,65 @@ details.disclosure.drill-code-disclosure > .code {
 .drill-clues .drill-fb-label {
   margin-right: 2px;
 }
-.drill-expected {
-  margin-top: 4px;
-  padding: 6px 10px;
+/* Your line vs the expected line (key-line feedback) */
+.drill-diff {
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.drill-diff-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 4px 12px 4px 10px;
+}
+.drill-diff-row + .drill-diff-row {
+  border-top: 1px solid var(--border-subtle);
+}
+.drill-diff-row.del {
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+}
+.drill-diff-row.add {
+  background: color-mix(in srgb, var(--success) 8%, var(--surface));
+}
+.drill-diff-sign {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.drill-diff-row.del .drill-diff-sign {
+  color: var(--danger-text);
+}
+.drill-diff-row.add .drill-diff-sign {
+  color: var(--success-text);
+}
+.drill-diff-code {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  word-break: normal;
   font-family: var(--font-mono);
   font-variant-ligatures: none;
   font-size: 12.5px;
   color: var(--text);
   white-space: pre;
   overflow-x: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
+  background: none;
+  border: 0;
+}
+.drill-diff-row.del .drill-diff-code {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+.drill-diff-tag {
+  flex: none;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
 }
 .drill-cost {
   display: flex;
@@ -442,6 +528,12 @@ details.disclosure.drill-code-disclosure > .code {
   font-size: 12.5px;
   font-weight: 500;
   color: var(--text);
+}
+.drill-cost-item.is-asked {
+  color: var(--text);
+  font-weight: 550;
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
 }
 .drill .actionbar .steps-list li {
   padding: 8px 12px;

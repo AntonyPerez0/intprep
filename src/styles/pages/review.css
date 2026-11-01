@@ -42,8 +42,13 @@
     transform: scale(1.18);
   }
 }
+.review-pos {
+  color: var(--text-secondary);
+}
+/* "3 of 12": the connective is quieter but still meets AA contrast */
 .review-of {
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
+  font-weight: 450;
 }
 
 /* ── Empty state ────────────────────────────────────────────────────────── */
@@ -218,6 +223,19 @@
 }
 .review-meta-narrow {
   display: none;
+}
+.review-next {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35;
+}
+.review-next-rel {
+  color: var(--text);
+  font-weight: 500;
+}
+.review-next-date {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
 }
 @media (max-width: 559px) {
   .review-table th.review-col-next,

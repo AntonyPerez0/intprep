@@ -1,5 +1,5 @@
 import '../styles/pages/drills.css';
-import { useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import {
   Brain,
   CodeXml,
@@ -11,6 +11,8 @@ import {
   List,
   ListOrdered,
   MessageSquareText,
+  Minus,
+  Plus,
   ScanSearch,
   Wrench,
   type LucideIcon,
@@ -132,6 +134,42 @@ function Clues({ p }: { p: Problem }) {
           {inline(s)}
         </span>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Choice options for lines of code. Choices hides the shortcut number in code
+ * mode, so render it here: every option list then reads "1–N" the same way.
+ */
+export function codeOptions(lines: string[]) {
+  return lines.map((o, i) => ({
+    key: o,
+    label: (
+      <span className="drill-code-opt">
+        <span className="num" aria-hidden="true">
+          {i + 1}
+        </span>
+        <span className="drill-code-text">{o.trim()}</span>
+      </span>
+    ),
+  }));
+}
+
+/** Two-row diff: the learner's line against the expected one. */
+function LineDiff({ yours, expected }: { yours: string; expected: string }) {
+  return (
+    <div className="drill-diff">
+      <div className="drill-diff-row del">
+        <Minus className="drill-diff-sign" strokeWidth={2.4} aria-hidden="true" />
+        <code className="drill-diff-code">{yours}</code>
+        <span className="drill-diff-tag">Yours</span>
+      </div>
+      <div className="drill-diff-row add">
+        <Plus className="drill-diff-sign" strokeWidth={2.4} aria-hidden="true" />
+        <code className="drill-diff-code">{expected}</code>
+        <span className="drill-diff-tag">Expected</span>
+      </div>
     </div>
   );
 }
@@ -271,12 +309,13 @@ const RATINGS: { grade: Grade; label: string; tone: string; fallback: string }[]
   { grade: 'easy', label: 'Easy', tone: 'brand', fallback: 'Longer gap' },
 ];
 
+/** Precise enough that neighbouring grades never read the same ("in 56 days" vs "in 70 days"). */
 function fmtInterval(days: number) {
+  const one = (n: number) => n.toFixed(1).replace(/\.0$/, '');
   if (days <= 1) return 'in 1 day';
-  if (days < 14) return `in ${days} days`;
-  if (days < 60) return `in ${Math.round(days / 7)} wk`;
-  if (days < 365) return `in ${Math.round(days / 30)} mo`;
-  return `in ${Math.round(days / 365)} yr`;
+  if (days < 100) return `in ${days} days`;
+  if (days < 365) return `in ${one(days / 30)} mo`;
+  return `in ${one(days / 365)} yr`;
 }
 
 export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillProps) {
@@ -291,6 +330,16 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
     sfx(g === 'again' ? 'wrong' : 'correct');
     onDone({ kind: 'insight', correct: g === 'good' || g === 'easy', selfGrade: g });
   };
+  // On reveal, bring the answer above the rating bar and move focus to the
+  // rating group so keyboard and screen-reader users land on the next decision.
+  const revealRef = useRef<HTMLDivElement>(null);
+  const rateRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!revealed) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    revealRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+    rateRef.current?.focus({ preventScroll: true });
+  }, [revealed]);
   return (
     <section className="drill" data-drill="insight" data-problem={p.id}>
       <DrillHead
@@ -319,7 +368,7 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
           />
         </div>
       ) : (
-        <div className="stack drill-reveal">
+        <div className="stack drill-reveal" ref={revealRef}>
           {note.trim() && (
             <div className="drill-note">
               <div className="drill-fb-label">Your answer</div>
@@ -356,10 +405,12 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
               </button>
             </div>
           ) : (
-            <div className="drill-rate" role="group" aria-label="How well did you remember it?">
+            <div className="drill-rate" role="group" aria-labelledby={`rate-q-${p.id}`} tabIndex={-1} ref={rateRef}>
               <div className="drill-rate-q">
-                <span>How well did you remember it?</span>
-                <span className="drill-rate-q-meta">{next ? 'Next review' : 'Your rating sets the next review'}</span>
+                <span id={`rate-q-${p.id}`}>How well did you remember it?</span>
+                <span className="drill-rate-q-meta" title={next ? 'Assumes your other cards for this problem today go well' : undefined}>
+                  {next ? 'Estimated next review' : 'Your rating sets the next review'}
+                </span>
               </div>
               <div className="drill-rate-grid">
                 {RATINGS.map((r) => (
@@ -399,11 +450,7 @@ export function OrderDrill({ problem: p, onDone, kicker, combo = 0, badge, meta 
         kicker={kicker}
         badge={badge}
         meta={meta}
-        title={
-          <>
-            Order the steps for <span className="drill-em">{p.title}</span>
-          </>
-        }
+        title={`Order the steps for ${p.title}`}
         sub="Pick the steps in the order you would write them. Select a placed step to send it back."
       />
       <OrderSteps steps={p.steps} revealed={status !== 'idle'} onChange={setOrder} />
@@ -459,11 +506,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         kicker={kicker}
         badge={badge}
         meta={meta}
-        title={
-          <>
-            Which line completes <span className="drill-em">{p.title}</span>?
-          </>
-        }
+        title={`Which line completes ${p.title}?`}
       />
       {explain && (
         <div className="callout callout-brand drill-explain">
@@ -478,7 +521,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         <CodeView
           lines={parsed.lines}
           blankIndex={drill.lineIndex}
-          blankContent={status !== 'idle' ? drill.answer.trim() : filled || '???'}
+          blankContent={status === 'idle' ? filled || '???' : ok ? drill.answer.trim() : chosen.trim()}
           blankState={status === 'idle' ? undefined : ok ? 'correct' : 'wrong'}
         />
       </CodeWindow>
@@ -508,7 +551,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         <div>
           <AnswerLabel keys={drill.options.length}>Choose the missing line</AnswerLabel>
           <Choices
-            options={drill.options.map((o) => ({ key: o, label: o.trim() }))}
+            options={codeOptions(drill.options)}
             selected={sel}
             onSelect={(k) => {
               setSel(k);
@@ -533,12 +576,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         }
         feedback={
           <div className="drill-fb">
-            {!ok && (
-              <div>
-                <div className="drill-fb-label">Expected</div>
-                <div className="drill-expected">{drill.answer.trim()}</div>
-              </div>
-            )}
+            {!ok && <LineDiff yours={chosen.trim()} expected={drill.answer.trim()} />}
             {explain && <div>{inline(explain)}</div>}
           </div>
         }
@@ -564,7 +602,7 @@ export function ComplexityDrill({ problem: p, onDone, kicker, combo = 0, badge, 
         meta={meta}
         title={
           <>
-            What is the <span className="drill-em">{which}</span> complexity of this {p.title} solution?
+            What is the <span className="drill-key">{which}</span> complexity of this {p.title} solution?
           </>
         }
       />
@@ -598,12 +636,11 @@ export function ComplexityDrill({ problem: p, onDone, kicker, combo = 0, badge, 
         feedback={
           <div className="drill-fb">
             <div className="drill-cost">
-              <span className="drill-cost-item">
-                Time <span className="mono">{p.time}</span>
-              </span>
-              <span className="drill-cost-item">
-                Space <span className="mono">{p.space}</span>
-              </span>
+              {(['time', 'space'] as const).map((k) => (
+                <span key={k} className={`drill-cost-item ${k === which ? 'is-asked' : ''}`}>
+                  {k === 'time' ? 'Time' : 'Space'} <span className="mono">{p[k]}</span>
+                </span>
+              ))}
             </div>
             <Md text={p.complexityWhy} />
           </div>
