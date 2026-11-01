@@ -144,6 +144,17 @@
   color: var(--brand-text);
   text-decoration: none;
 }
+/* Touch: an invisible 40px hit area, like the shared .back-link rule. */
+@media (pointer: coarse) {
+  .learn-kpi-link {
+    position: relative;
+  }
+  .learn-kpi-link::before {
+    content: '';
+    position: absolute;
+    inset: -6px -4px;
+  }
+}
 
 .learn-next {
   display: flex;
@@ -258,13 +269,6 @@
 }
 .learn-toolbar-btn {
   flex: none;
-}
-@media (max-width: 639px) {
-  /* Touch targets ≥ 40px on phones. */
-  .btn.learn-toolbar-btn {
-    height: 40px;
-    margin-right: -8px;
-  }
 }
 .learn-legend {
   display: flex;
@@ -753,7 +757,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 40px; /* touch target on phones */
+  height: 40px; /* touch target; mouse pointers get the compact size below */
   padding: 0 8px;
   white-space: nowrap;
   border: 0;
@@ -767,7 +771,7 @@
     background var(--dur-fast),
     color var(--dur-fast);
 }
-@media (min-width: 640px) {
+@media (min-width: 640px) and (pointer: fine) {
   .learn-unit-toggle {
     height: 32px;
   }

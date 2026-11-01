@@ -480,12 +480,12 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const piece = c + 1 - startAt;
   return (
     <>
-      <StepHeader step="code" title="Build the solution one piece at a time" />
+      <StepHeader step="code" title="Build the solution one part at a time" />
       <div className="plesson-code">
         <aside className="plesson-explain" aria-live="polite">
           <div className="plesson-explain-head">
             <span className="plesson-explain-count">
-              Piece <span className="tabular">{Math.max(piece, 1)}</span> of <span className="tabular">{Math.max(pieces, 1)}</span>
+              Part <span className="tabular">{Math.max(piece, 1)}</span> of <span className="tabular">{Math.max(pieces, 1)}</span>
             </span>
             {chunk.keyLines.length > 0 && (
               <Badge tone="warning">
@@ -530,7 +530,7 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
       <ActionBar
         status="idle"
         onContinue={last ? onNext : () => setC(c + 1)}
-        continueLabel={last ? 'Continue' : 'Next piece'}
+        continueLabel={last ? 'Continue' : 'Next part'}
         secondary={
           c > startAt ? (
             <button type="button" className="btn btn-secondary btn-lg" onClick={() => setC(c - 1)}>
@@ -581,7 +581,7 @@ function Complete({ p, xp, relearn }: { p: Problem; xp: number; relearn: boolean
         >
           <Link to={`/p/${p.id}/rebuild`} className="btn btn-primary btn-lg btn-block">
             <Keyboard />
-            Code it from memory
+            Code from memory
           </Link>
           <p className="plesson-done-tip">Rebuild it now, while it is fresh, to make it stick.</p>
           {nextInUnit ? (

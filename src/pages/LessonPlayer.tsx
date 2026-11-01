@@ -149,8 +149,7 @@ export function LessonPlayer({ mode }: Props) {
             title="Lesson complete"
             subtitle={
               <>
-                <span className="lplayer-done-kind">{lesson.kind}</span>
-                <strong>{lesson.title}</strong>
+                <strong>{lesson.title}</strong> · {lesson.kind}
               </>
             }
             stats={stats}
