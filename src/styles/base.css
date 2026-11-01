@@ -17,8 +17,8 @@
 
   --text: #101828;
   --text-secondary: #475467;
-  --text-tertiary: #667085;
-  --text-disabled: #98a2b3;
+  --text-tertiary: #5b6476; /* >= 5:1 on every light surface, incl. sunken and brand-subtle */
+  --text-disabled: #98a2b3; /* disabled controls only; never for text people need to read */
   --text-inverse: #ffffff;
 
   /* Brand (indigo) */
@@ -50,6 +50,12 @@
   --danger-text: #b91c1c;
   --danger-subtle: #fef2f2;
   --danger-border: #fecaca;
+  /* Solid fills under white text (buttons, count badges, answer numbers). --success and
+     --danger are tuned as icon/stroke colours and are too light for white text. */
+  --success-solid: #15803d;
+  --success-solid-hover: #166534;
+  --danger-solid: #dc2626;
+  --danger-solid-hover: #b91c1c;
   --info: #0284c7;
   --info-text: #0369a1;
   --info-subtle: #f0f9ff;
@@ -148,8 +154,8 @@
   --text-secondary: #a8afba;
   --text-tertiary: #858d99;
   --text-disabled: #5c6370;
-  --brand: #6366f1;
-  --brand-hover: #7c7ff5;
+  --brand: #5b5ef0; /* white text >= 4.5:1 on solid brand fills */
+  --brand-hover: #4f46e5; /* solid fills darken on hover */
   --brand-text: #a5b4fc;
   --brand-subtle: rgba(99, 102, 241, 0.12);
   --brand-border: rgba(129, 140, 248, 0.35);
@@ -200,8 +206,8 @@
     --text-secondary: #a8afba;
     --text-tertiary: #858d99;
     --text-disabled: #5c6370;
-    --brand: #6366f1;
-    --brand-hover: #7c7ff5;
+    --brand: #5b5ef0; /* white text >= 4.5:1 on solid brand fills */
+    --brand-hover: #4f46e5; /* solid fills darken on hover */
     --brand-text: #a5b4fc;
     --brand-subtle: rgba(99, 102, 241, 0.12);
     --brand-border: rgba(129, 140, 248, 0.35);
@@ -249,6 +255,13 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-padding-top: calc(var(--topbar-h) + 16px);
+}
+/* Keep focused controls clear of the fixed tab bar when Tab scrolls them into view
+   (sessions use the action bar height instead, see shell.css). */
+@media (max-width: 1023px) {
+  html {
+    scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
+  }
 }
 body {
   margin: 0;

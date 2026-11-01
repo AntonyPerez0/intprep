@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CornerDownLeft, Search } from 'lucide-react';
+import { CornerDownLeft, Search, X } from 'lucide-react';
 import { CATEGORIES } from '../content/categories';
 import { PROBLEMS } from '../content/index';
 import { CATEGORY_ICON, ICONS, type LucideIcon } from './icons';
@@ -31,6 +31,8 @@ const PAGES: { label: string; to: string; icon: LucideIcon; hint?: string }[] = 
   { label: 'Learning science', to: '/science', icon: ICONS.flask },
 ];
 
+const GROUP_ORDER: Record<Item['group'], number> = { Pages: 0, Patterns: 1, Problems: 2 };
+
 let openFn: (() => void) | null = null;
 export function openCommandPalette() {
   openFn?.();
@@ -42,9 +44,15 @@ export function CommandPalette() {
   const [active, setActive] = useState(0);
   const nav = useNavigate();
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  // The control that opened the palette gets focus back when it closes.
+  const openerRef = useRef<HTMLElement | null>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
 
   useEffect(() => {
     openFn = () => {
+      if (!openRef.current) openerRef.current = document.activeElement as HTMLElement | null;
       setQ('');
       setActive(0);
       setOpen(true);
@@ -52,7 +60,8 @@ export function CommandPalette() {
     const h = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setOpen((o) => !o);
+        if (!openRef.current) openerRef.current = document.activeElement as HTMLElement | null;
+        setOpen(!openRef.current);
         setQ('');
         setActive(0);
       }
@@ -94,9 +103,11 @@ export function CommandPalette() {
     const needle = q.trim().toLowerCase();
     if (!needle) return all.filter((i) => i.group !== 'Problems').concat(all.filter((i) => i.group === 'Problems').slice(0, 6));
     const terms = needle.split(/\s+/);
+    const prefix = (i: Item) => Number(i.label.toLowerCase().startsWith(needle));
+    // One block per group (Pages, Patterns, Problems); prefix matches first within each.
     return all
       .filter((i) => terms.every((t) => i.haystack.includes(t)))
-      .sort((a, b) => Number(b.label.toLowerCase().startsWith(needle)) - Number(a.label.toLowerCase().startsWith(needle)))
+      .sort((a, b) => GROUP_ORDER[a.group] - GROUP_ORDER[b.group] || prefix(b) - prefix(a))
       .slice(0, 40);
   }, [q, all]);
 
@@ -104,23 +115,65 @@ export function CommandPalette() {
     listRef.current?.querySelector('.cmdk-item.active')?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
+  // Modal behaviour: Escape closes from anywhere, Tab stays inside, focus returns on close.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      const box = dialogRef.current;
+      if (e.key !== 'Tab' || !box) return;
+      // Results are options reached with the arrow keys, so Tab only cycles the input and
+      // the Close button (when shown).
+      const stops = Array.from(box.querySelectorAll<HTMLElement>('input, .cmdk-close')).filter((el) => el.offsetParent !== null);
+      e.preventDefault();
+      if (!stops.length) return;
+      const at = stops.indexOf(document.activeElement as HTMLElement);
+      const next = at === -1 ? 0 : (at + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
+      stops[next].focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      const opener = openerRef.current;
+      openerRef.current = null;
+      if (opener && opener !== document.body && document.contains(opener)) opener.focus({ preventScroll: true });
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const go = (i: Item | undefined) => {
     if (!i) return;
+    openerRef.current = null; // the new page takes focus, not the opener
     setOpen(false);
     nav(i.to);
   };
 
-  let lastGroup = '';
+  // Group the (already group-ordered) results, keeping each item's index for `active`.
+  const groups: { name: Item['group']; items: { item: Item; idx: number }[] }[] = [];
+  results.forEach((item, idx) => {
+    const g = groups[groups.length - 1];
+    if (g && g.name === item.group) g.items.push({ item, idx });
+    else groups.push({ name: item.group, items: [{ item, idx }] });
+  });
+
   return (
     <div className="cmdk-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
-      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search">
+      <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search" ref={dialogRef}>
         <div className="cmdk-input">
-          <Search />
+          <Search aria-hidden="true" />
           <input
             autoFocus
-            placeholder="Search problems, patterns and pages…"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="cmdk-list"
+            aria-autocomplete="list"
+            aria-activedescendant={results.length ? `cmdk-opt-${active}` : undefined}
+            placeholder="Search problems and patterns"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
@@ -136,36 +189,55 @@ export function CommandPalette() {
               } else if (e.key === 'Enter') {
                 e.preventDefault();
                 go(results[active]);
-              } else if (e.key === 'Escape') {
-                setOpen(false);
               }
             }}
             aria-label="Search"
           />
-          <span className="kbd">Esc</span>
+          <span className="kbd" aria-hidden="true">
+            Esc
+          </span>
+          <button type="button" className="icon-btn cmdk-close" aria-label="Close" onClick={() => setOpen(false)}>
+            <X size={20} />
+          </button>
         </div>
-        <div className="cmdk-list" ref={listRef}>
-          {results.length === 0 && <div className="cmdk-empty">No results for “{q}”.</div>}
-          {results.map((r, idx) => {
-            const header = r.group !== lastGroup ? <div className="cmdk-group">{r.group}</div> : null;
-            lastGroup = r.group;
-            const I = r.icon;
-            return (
-              <div key={r.id}>
-                {header}
-                <button type="button" className={`cmdk-item ${idx === active ? 'active' : ''}`} onMouseMove={() => setActive(idx)} onClick={() => go(r)}>
-                  <I />
-                  <span className="truncate">{r.label}</span>
-                  <span className="cmdk-meta">
-                    {r.difficulty && <DifficultyChip d={r.difficulty} />}
-                    {r.hint}
-                  </span>
-                </button>
+        <div className="cmdk-list" ref={listRef} id="cmdk-list" role="listbox" aria-label="Results">
+          {results.length === 0 && (
+            <div className="cmdk-empty" role="presentation">
+              No results for “{q}”.
+            </div>
+          )}
+          {groups.map((g) => (
+            <div key={g.name} role="group" aria-labelledby={`cmdk-group-${g.name}`}>
+              <div className="cmdk-group" id={`cmdk-group-${g.name}`} role="presentation">
+                {g.name}
               </div>
-            );
-          })}
+              {g.items.map(({ item: r, idx }) => {
+                const I = r.icon;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    id={`cmdk-opt-${idx}`}
+                    role="option"
+                    aria-selected={idx === active}
+                    tabIndex={-1}
+                    className={`cmdk-item ${idx === active ? 'active' : ''}`}
+                    onMouseMove={() => setActive(idx)}
+                    onClick={() => go(r)}
+                  >
+                    <I aria-hidden="true" />
+                    <span className="truncate">{r.label}</span>
+                    <span className="cmdk-meta">
+                      {r.difficulty && <DifficultyChip d={r.difficulty} />}
+                      {r.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
-        <div className="cmdk-foot">
+        <div className="cmdk-foot" aria-hidden="true">
           <span>
             <span className="kbd">↑</span>
             <span className="kbd">↓</span> Navigate

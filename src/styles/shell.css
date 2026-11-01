@@ -7,6 +7,19 @@
   min-height: 100vh;
   min-height: 100dvh;
 }
+/* First Tab stop on app pages: jumps past the navigation to <main id="main">. */
+.skip-link {
+  position: fixed;
+  z-index: 210;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 8px;
+}
+.skip-link:not(:focus) {
+  transform: translateY(calc(-100% - 24px));
+}
+#main:focus {
+  outline: none; /* focused programmatically by the skip link */
+}
 .sidebar {
   display: none;
 }
@@ -100,7 +113,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: var(--r-full);
-  background: var(--danger);
+  background: var(--danger-solid);
   color: #fff;
   font-size: 10.5px;
   font-weight: 600;
@@ -121,6 +134,11 @@
 }
 .logo-mark {
   flex: none;
+}
+@media (pointer: coarse) {
+  .topbar .logo {
+    min-height: 40px;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -181,7 +199,7 @@
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--text-disabled);
+    color: var(--text-tertiary);
   }
   .nav-link {
     display: flex;
@@ -341,7 +359,13 @@
   width: 100%;
   max-width: 760px;
   margin: 0 auto;
-  padding: 28px 16px 220px;
+  /* Room for the fixed action bar at its real height: SessionShell measures any .actionbar
+     into --actionbar-h (it grows with feedback), so nothing stays hidden behind it. */
+  padding: 28px 16px calc(var(--actionbar-h, 96px) + 32px);
+}
+/* Tab never parks a focused control behind the action bar. */
+html:has(.actionbar) {
+  scroll-padding-bottom: calc(var(--actionbar-h, 96px) + 16px);
 }
 .combo {
   display: inline-flex;
@@ -424,6 +448,27 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+/* Double-click / double-tap guard. The primary button stays in place across a state change
+   (Check -> Continue, Reveal step 2 -> 3) and the next step's bar mounts in the same spot,
+   so ActionBar flips .arm-0/.arm-1 on every change: the new animation name restarts the
+   animation, ignoring pointer input for 350ms. A delay (not a duration), so reduced-motion
+   settings keep the guard. */
+.actionbar .buttons.arm-0 {
+  animation: actionbar-arm-0 1ms 0.35s backwards;
+}
+.actionbar .buttons.arm-1 {
+  animation: actionbar-arm-1 1ms 0.35s backwards;
+}
+@keyframes actionbar-arm-0 {
+  from {
+    pointer-events: none;
+  }
+}
+@keyframes actionbar-arm-1 {
+  from {
+    pointer-events: none;
+  }
 }
 .actionbar .buttons > .btn:last-child {
   min-width: 140px;
@@ -537,8 +582,15 @@
   font-size: var(--fs-base);
   color: var(--text);
 }
+.cmdk-input input {
+  min-width: 0;
+}
 .cmdk-input input::placeholder {
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
+}
+.cmdk-close {
+  display: none;
+  margin-right: -10px;
 }
 .cmdk-list {
   overflow-y: auto;
@@ -550,7 +602,7 @@
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
 }
 .cmdk-item {
   display: flex;
@@ -602,4 +654,14 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+/* Touch screens: no keyboard hints; a visible Close button instead of "Esc". */
+@media (hover: none), (pointer: coarse) {
+  .cmdk-foot,
+  .cmdk-input .kbd {
+    display: none;
+  }
+  .cmdk-close {
+    display: inline-grid;
+  }
 }

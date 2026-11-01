@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { levelInfo, levelTitle } from '../lib/game';
@@ -45,7 +45,10 @@ const TABS: NavItem[] = [
   { to: '/profile', icon: ICONS.user, label: 'Profile' },
 ];
 
+const IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
 // ── Status pills ────────────────────────────────────────────────────────────
+// role="img" so the aria-label is announced (it is ignored on a plain <span>).
 
 export function StreakStat() {
   const p = useProgress();
@@ -54,10 +57,11 @@ export function StreakStat() {
   return (
     <span
       className={`pill-stat streak ${hot ? '' : 'cold'}`}
+      role="img"
       title={hot ? `${p.streak.current}-day streak — extended today` : `${p.streak.current}-day streak — practise today to extend it`}
       aria-label={`${p.streak.current} day streak`}
     >
-      <Flame strokeWidth={2} />
+      <Flame strokeWidth={2} aria-hidden="true" />
       {p.streak.current}
     </span>
   );
@@ -67,8 +71,8 @@ export function GemStat() {
   const p = useProgress();
   const Gem = ICONS.gem;
   return (
-    <span className="pill-stat gem" title="Gems — spend them on streak freezes" aria-label={`${p.gems} gems`}>
-      <Gem strokeWidth={2} />
+    <span className="pill-stat gem" role="img" title="Gems — spend them on streak freezes" aria-label={`${p.gems} gems`}>
+      <Gem strokeWidth={2} aria-hidden="true" />
       {p.gems}
     </span>
   );
@@ -79,7 +83,7 @@ export function GoalRing({ size = 30 }: { size?: number }) {
   const x = xpToday(p);
   const done = x >= p.settings.dailyGoal;
   return (
-    <span title={`Daily goal: ${x}/${p.settings.dailyGoal} XP`} aria-label={`Daily goal ${x} of ${p.settings.dailyGoal} XP`}>
+    <span role="img" title={`Daily goal: ${x}/${p.settings.dailyGoal} XP`} aria-label={`Daily goal ${x} of ${p.settings.dailyGoal} XP`}>
       <Ring value={x / p.settings.dailyGoal} size={size} stroke={3.5} color={done ? 'var(--success)' : 'var(--brand)'} />
     </span>
   );
@@ -111,13 +115,8 @@ function SidebarGoal() {
         </span>
       </div>
       <ProgressBar value={x / p.settings.dailyGoal} color={done ? 'var(--success)' : undefined} label="Daily goal" />
-      <div className="row between" style={{ marginTop: 12 }}>
-        <span className="text-xs text-tertiary">
-          Level {lv.level} · {levelTitle(lv.level)}
-        </span>
-        <span className="row" style={{ gap: 6 }}>
-          <StreakStat />
-        </span>
+      <div className="text-xs text-tertiary" style={{ marginTop: 10 }}>
+        Level {lv.level} · {levelTitle(lv.level)}
       </div>
     </div>
   );
@@ -144,12 +143,25 @@ export function AppShell() {
   const Search_ = ICONS.search;
   return (
     <div className="app">
+      <a
+        className="skip-link btn btn-secondary"
+        href="#main"
+        onClick={(e) => {
+          // The hash router would treat #main as a route: move focus instead.
+          e.preventDefault();
+          document.getElementById('main')?.focus();
+        }}
+      >
+        Skip to content
+      </a>
       <nav className="sidebar" aria-label="Main">
         <Logo />
         <button type="button" className="search-trigger" onClick={openCommandPalette}>
-          <Search_ />
+          <Search_ aria-hidden="true" />
           Search
-          <span className="kbd">⌘K</span>
+          <span className="kbd" aria-hidden="true">
+            {IS_MAC ? '⌘K' : 'Ctrl K'}
+          </span>
         </button>
         {NAV.map((g) => (
           <div className="nav-group" key={g.label}>
@@ -185,11 +197,10 @@ export function AppShell() {
         <div className={`deskbar ${scrolled ? 'scrolled' : ''}`}>
           <StreakStat />
           <GemStat />
-          <GoalRing />
           <Avatar />
         </div>
 
-        <main className="main" id="main">
+        <main className="main" id="main" tabIndex={-1}>
           <Outlet />
         </main>
       </div>
@@ -231,12 +242,14 @@ export function SessionShell({
   progressColor?: string;
 }) {
   const nav = useNavigate();
+  const rootRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+  useActionBarHeight(rootRef);
   return (
-    <div className="session">
-      <div className="session-head">
+    <div className="session" ref={rootRef}>
+      <header className="session-head">
         <div className="session-head-inner">
           <button
             type="button"
@@ -254,8 +267,43 @@ export function SessionShell({
           {progress === null ? <div className="grow" /> : <ProgressBar value={progress} color={progressColor} label="Progress" />}
           {right}
         </div>
-      </div>
-      <div className="session-body">{children}</div>
+      </header>
+      <main className="session-body">{children}</main>
     </div>
   );
+}
+
+/**
+ * Publishes the height of the session's fixed `.actionbar` (whichever one is mounted: the shared
+ * <ActionBar> or a page's own) as `--actionbar-h` on <html>, so `.session-body` and
+ * scroll-padding can clear it as it grows with feedback.
+ */
+function useActionBarHeight(rootRef: RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const html = document.documentElement;
+    let bar: HTMLElement | null = null;
+    const publish = () => {
+      if (bar) html.style.setProperty('--actionbar-h', `${Math.ceil(bar.offsetHeight)}px`);
+      else html.style.removeProperty('--actionbar-h');
+    };
+    const ro = new ResizeObserver(publish);
+    const sync = () => {
+      const next = root.querySelector<HTMLElement>('.actionbar');
+      if (next === bar) return;
+      if (bar) ro.unobserve(bar);
+      bar = next;
+      if (bar) ro.observe(bar);
+      publish();
+    };
+    sync();
+    const mo = new MutationObserver(sync);
+    mo.observe(root, { childList: true, subtree: true });
+    return () => {
+      mo.disconnect();
+      ro.disconnect();
+      html.style.removeProperty('--actionbar-h');
+    };
+  }, [rootRef]);
 }
