@@ -29,6 +29,7 @@ export function ActionBar({
   title,
   primaryClassName = '',
   primaryIcon,
+  step,
 }: {
   status: CheckStatus;
   onCheck?: () => void;
@@ -43,6 +44,11 @@ export function ActionBar({
   primaryClassName?: string;
   /** Leading icon for the idle primary button; replaces the trailing arrow. */
   primaryIcon?: ReactNode;
+  /**
+   * The current step (slide index, code part…) when one bar stays mounted while the content
+   * moves on with the same status and label, so the double-click guard re-arms on every step.
+   */
+  step?: string | number;
 }) {
   const praise = useMemo(() => PRAISE[Math.floor(Math.random() * PRAISE.length)], [status]);
   const enc = useMemo(() => ENCOURAGE[Math.floor(Math.random() * ENCOURAGE.length)], [status]);
@@ -72,8 +78,8 @@ export function ActionBar({
   const isIdle = status === 'idle';
   const label = isIdle && onCheck ? checkLabel : continueLabel;
 
-  // Double-click guard: re-arm on every state or label change (see .buttons.arm-* in shell.css).
-  const armKey = `${status}|${label}`;
+  // Double-click guard: re-arm on every step, state or label change (see .buttons.arm-* in shell.css).
+  const armKey = `${step ?? ''}|${status}|${label}`;
   const [arm, setArm] = useState({ key: armKey, n: 0 });
   if (arm.key !== armKey) setArm({ key: armKey, n: arm.n + 1 });
 

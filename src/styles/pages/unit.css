@@ -476,8 +476,10 @@
   cursor: pointer;
   transition: background var(--dur-fast);
 }
-.unit-code-toggle:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .unit-code-toggle:hover {
+    background: var(--surface-hover);
+  }
 }
 @media (min-width: 640px) and (pointer: fine) {
   .unit-code-toggle {

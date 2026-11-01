@@ -345,8 +345,8 @@ const STEPS: { icon: LucideIcon; title: string; body: string; points: string[] }
   {
     icon: GraduationCap,
     title: 'Solve step by step',
-    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one piece at a time.',
-    points: ['Progressive hints', 'Key insight', 'Code piece by piece'],
+    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one part at a time.',
+    points: ['Progressive hints', 'Key insight', 'Code part by part'],
   },
   {
     icon: Repeat2,
@@ -420,7 +420,7 @@ function FeatureVisual({ kind }: { kind: string }) {
           {[
             ['done', 'Spot the pattern'],
             ['done', 'Find the key insight'],
-            ['current', 'Build the code, piece by piece'],
+            ['current', 'Build the code, part by part'],
             ['todo', 'Check the complexity'],
           ].map(([state, label]) => (
             <li key={label} className={state}>
@@ -451,7 +451,7 @@ function FeatureVisual({ kind }: { kind: string }) {
         <div className="lp-fv-rebuild">
           <div className="lp-fv-cue-line">
             <span className="lp-fv-cue-step">
-              Step {KEY_CHUNK + 1}/{TWO_SUM_BODY.length}
+              Part {KEY_CHUNK + 1} of {TWO_SUM_BODY.length}
             </span>
             <span className="lp-fv-cue-text">{KEY_CUE}</span>
           </div>

@@ -312,8 +312,17 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
     if (!revealed) return;
     revealedAt.current = performance.now();
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    revealRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
     rateRef.current?.focus({ preventScroll: true });
+    // Scroll two frames later: the rating bar is taller than the "Show answer" bar, and the
+    // session only reserves room for it once its new height has been measured.
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => revealRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
   }, [revealed]);
   // Keyboard parity with the other drills: Enter reveals, then 1–4 rate.
   const rateRefFn = useRef(rate);
@@ -365,6 +374,8 @@ export function InsightDrill({ problem: p, onDone, kicker, badge, meta }: DrillP
             placeholder="In a sentence or two, how would you solve it?"
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            // Browsers only reveal the caret line on focus; bring the whole box above the action bar.
+            onFocus={(e) => e.currentTarget.scrollIntoView({ block: 'nearest' })}
           />
         </div>
       ) : (

@@ -233,6 +233,7 @@ export function LessonPlayer({ mode }: Props) {
         <SlideView slide={slide} sel={sel} setSel={setSel} status={status} animKey={pos} />
       </div>
       <ActionBar
+        step={pos}
         status={isQuiz ? status : 'idle'}
         onCheck={isQuiz ? check : undefined}
         canCheck={sel !== null}

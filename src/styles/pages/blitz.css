@@ -439,6 +439,10 @@
 }
 .blitz-choices {
   margin-top: 16px;
+  /* Start sits where the options appear, so ignore pointer input for the first 350ms of a
+     round (shared actionbar-arm keyframes): a double-tap on Start can't answer question 1.
+     Mounted once per round, so later questions are not slowed down. Keys 1-4 still work. */
+  animation: actionbar-arm-0 1ms 0.35s backwards;
 }
 .blitz-choice {
   min-height: 56px;

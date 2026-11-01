@@ -162,7 +162,15 @@ export function CommandPalette() {
   });
 
   return (
-    <div className="cmdk-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setOpen(false)}>
+    <div
+      className="cmdk-backdrop"
+      onMouseDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        // Keep the browser's own mousedown focus change from undoing the focus restore on close.
+        e.preventDefault();
+        setOpen(false);
+      }}
+    >
       <div className="cmdk" role="dialog" aria-modal="true" aria-label="Search" ref={dialogRef}>
         <div className="cmdk-input">
           <Search aria-hidden="true" />

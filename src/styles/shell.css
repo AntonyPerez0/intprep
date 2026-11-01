@@ -426,9 +426,9 @@ html:has(.actionbar) {
   gap: 10px;
 }
 /* Double-click / double-tap guard. The primary button stays in place across a state change
-   (Check -> Continue, Reveal step 2 -> 3) and the next step's bar mounts in the same spot,
-   so ActionBar flips .arm-0/.arm-1 on every change: the new animation name restarts the
-   animation, ignoring pointer input for 350ms. A delay (not a duration), so reduced-motion
+   (Check -> Continue, Reveal step 2 -> 3) and across steps that keep one bar mounted (lesson
+   slides, code parts: pages pass `step`), so ActionBar flips .arm-0/.arm-1 on every change:
+   the new animation name restarts the animation, ignoring pointer input for 350ms. A delay (not a duration), so reduced-motion
    settings keep the guard. */
 .actionbar .buttons.arm-0 {
   animation: actionbar-arm-0 1ms 0.35s backwards;

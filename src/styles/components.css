@@ -1097,7 +1097,7 @@ button.list-row {
   margin-right: 8px;
 }
 /* Narrow windows (a phone, inside a padded card): drop the meta before the file name truncates */
-@container code-window (max-width: 310px) {
+@container code-window (max-width: 340px) {
   .code-window-meta {
     display: none;
   }
@@ -1109,6 +1109,15 @@ button.list-row {
   border: 0;
   border-radius: 0;
   box-shadow: none;
+}
+/* Code that scrolls sideways is focusable. The window clips its children, so draw the
+   focus ring on the window itself rather than on the clipped <pre>. */
+.code-window:has(.code:focus-visible) {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+}
+.code-window-body .code:focus-visible {
+  outline: none;
 }
 .code-window-foot {
   display: flex;

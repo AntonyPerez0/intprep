@@ -522,6 +522,7 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
         </CodeWindow>
       </div>
       <ActionBar
+        step={c}
         status="idle"
         onContinue={last ? onNext : () => setC(c + 1)}
         continueLabel={last ? 'Continue' : 'Next part'}
