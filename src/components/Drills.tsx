@@ -1,5 +1,5 @@
 import '../styles/pages/drills.css';
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Brain,
   CodeXml,
@@ -683,32 +683,5 @@ export function Drill(props: DrillProps & { kind: DrillKind }) {
   }
 }
 
-/** Tab inserts 4 spaces and Enter keeps indentation in code textareas. */
-export function codeKeyHandler(e: ReactKeyboardEvent<HTMLTextAreaElement>, setValue: (v: string) => void) {
-  const ta = e.currentTarget;
-  const { selectionStart: s, selectionEnd: en, value } = ta;
-  if (e.key === 'Tab' && !e.shiftKey) {
-    e.preventDefault();
-    const next = value.slice(0, s) + '    ' + value.slice(en);
-    setValue(next);
-    requestAnimationFrame(() => ta.setSelectionRange(s + 4, s + 4));
-  } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
-    e.preventDefault();
-    const lineStart = value.lastIndexOf('\n', s - 1) + 1;
-    const line = value.slice(lineStart, s);
-    let indent = line.match(/^\s*/)?.[0] ?? '';
-    if (/:\s*$/.test(line)) indent += '    ';
-    const next = value.slice(0, s) + '\n' + indent + value.slice(en);
-    setValue(next);
-    const pos = s + 1 + indent.length;
-    requestAnimationFrame(() => ta.setSelectionRange(pos, pos));
-  } else if (e.key === 'Backspace' && s === en && s > 0) {
-    const lineStart = value.lastIndexOf('\n', s - 1) + 1;
-    const before = value.slice(lineStart, s);
-    if (before.length >= 4 && /^ +$/.test(before) && before.length % 4 === 0) {
-      e.preventDefault();
-      setValue(value.slice(0, s - 4) + value.slice(en));
-      requestAnimationFrame(() => ta.setSelectionRange(s - 4, s - 4));
-    }
-  }
-}
+/** Moved to the typing kit; re-exported so existing imports keep working. */
+export { codeKeyHandler } from './CodeTyper';

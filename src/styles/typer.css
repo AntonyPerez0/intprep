@@ -1,0 +1,305 @@
+/* ==========================================================================
+   Typing kit — src/components/CodeTyper.tsx
+   A code editor that reads as part of the file (numbered gutter + borderless
+   textarea), the line-by-line diff shown after checking, the typing window's
+   status bar, and a touch key bar (Indent / Outdent / symbols) for phones.
+   Lives inside a <CodeWindow>; colours are --code-* tokens (code is always dark).
+   ========================================================================== */
+
+/* ── Window: focus ring while typing, status border once checked ──────────── */
+.typer-window {
+  transition:
+    box-shadow var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+.typer-window:focus-within {
+  border-color: var(--brand-500);
+  box-shadow: var(--ring);
+}
+.typer-window.is-correct {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
+}
+.typer-window.is-wrong {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--code-border));
+}
+
+/* ── Code area ──────────────────────────────────────────────────────────── */
+.typer-code {
+  padding: 12px 0;
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: 12.5px;
+  line-height: 22px;
+  color: var(--code-text);
+  tab-size: 4;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--code-border) transparent;
+}
+@media (min-width: 640px) {
+  .typer-code {
+    font-size: 13px;
+  }
+}
+.typer-line {
+  display: flex;
+  min-height: 22px;
+  min-width: max-content;
+  padding-right: 18px;
+  white-space: pre;
+}
+/* Gutter: line number + a diff marker slot, so diff rows never shift the code */
+.typer-ln {
+  position: relative;
+  flex: none;
+  width: 52px;
+  padding-right: 20px;
+  text-align: right;
+  color: var(--code-gutter);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.typer-line.given .typer-src {
+  opacity: 0.72;
+}
+
+/* Typing area: a gutter + borderless textarea that reads as part of the file */
+.typer-input {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  padding-top: 2px;
+}
+.typer-gutter {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  width: 52px;
+  padding-right: 20px;
+  text-align: right;
+  color: var(--code-gutter);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+.typer-gutter span {
+  height: 22px;
+}
+.typer-input textarea.code-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  padding: 0 18px 0 var(--indent, 0ch);
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--code-text);
+  font-size: inherit;
+  line-height: 22px;
+  resize: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.typer-input textarea.code-input:focus {
+  box-shadow: none;
+  border: 0;
+}
+.typer-input textarea.code-input::placeholder {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+/* ── Diff after checking ────────────────────────────────────────────────── */
+.typer-diff {
+  padding-top: 2px;
+  animation: typer-fade var(--dur) var(--ease);
+}
+@keyframes typer-fade {
+  from {
+    opacity: 0;
+  }
+}
+.typer-sign {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 22px;
+}
+.typer-sign svg {
+  width: 12px;
+  height: 12px;
+}
+.typer-line.diff.ok {
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+.typer-line.diff.ok .typer-sign {
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
+}
+.typer-line.diff.del {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+}
+.typer-line.diff.del .typer-sign {
+  color: color-mix(in srgb, var(--danger) 65%, var(--code-text));
+}
+.typer-line.diff.add {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+}
+.typer-line.diff.add .typer-sign {
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
+}
+/* Right code, wrong indentation: amber, with the expected line right below */
+.typer-line.diff.indent {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+}
+.typer-line.diff.indent .typer-sign {
+  color: color-mix(in srgb, var(--warning) 75%, var(--code-text));
+}
+
+/* ── Status bar (CodeWindow footer) ─────────────────────────────────────── */
+.typer-foot-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.typer-foot-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Phones: the result summary on the right says it all */
+@media (max-width: 479px) {
+  .typer-foot-desc.is-result {
+    display: none;
+  }
+  .typer-foot-left:has(.is-result) .typer-foot-sep {
+    display: none;
+  }
+}
+.typer-foot-lang {
+  color: var(--code-text);
+}
+.typer-foot-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--code-border);
+}
+/* The keyboard hint (while typing) and the result (once checked) never show together */
+.typer-foot-right,
+.typer-status {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+/* Once checked, the language label keeps its width; a long summary wraps instead */
+.typer-foot-left:has(.is-result) {
+  flex: none;
+}
+.typer-keys-hint {
+  display: none;
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .typer-keys-hint {
+    display: inline;
+  }
+}
+.typer-result {
+  display: block;
+  min-width: 0;
+  text-align: right;
+  font-weight: 500;
+}
+.typer-result-part {
+  white-space: nowrap;
+}
+/* The status dot flows with the first line, so it stays beside the text when it wraps */
+.typer-result::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: calc((1lh - 6px) / 2) 6px 0 0; /* centred on the first line */
+  vertical-align: top;
+  border-radius: 50%;
+}
+.typer-result.ok {
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
+}
+.typer-result.ok::before {
+  background: var(--success);
+}
+.typer-result.bad {
+  color: color-mix(in srgb, var(--danger) 60%, var(--code-text));
+}
+.typer-result.bad::before {
+  background: var(--danger);
+}
+
+/* ── Touch key bar: phones and tablets only (no Tab key there) ───────────────
+   Keycaps share the width like a keyboard row (all nine fit from 320px up);
+   every key is 44px tall. */
+.typer-keys {
+  display: none;
+}
+@media (pointer: coarse) {
+  .typer-keys {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+    border-top: 1px solid var(--code-border);
+  }
+}
+.typer-key {
+  flex: 1 1 0;
+  display: inline-grid;
+  place-items: center;
+  min-width: 0;
+  max-width: 56px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--code-text);
+  background: color-mix(in srgb, var(--code-text) 8%, transparent);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background var(--dur-fast) var(--ease);
+}
+.typer-key svg {
+  width: 18px;
+  height: 18px;
+}
+.typer-key:active:not(:disabled) {
+  background: color-mix(in srgb, var(--code-text) 20%, transparent);
+}
+.typer-key:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: -2px;
+}
+.typer-key:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+/* A wider gap between Indent / Outdent and the symbols */
+.typer-key-first {
+  margin-left: 6px;
+}

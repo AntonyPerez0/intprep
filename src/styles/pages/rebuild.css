@@ -1,7 +1,8 @@
 /* ==========================================================================
    Code from memory — src/pages/Rebuild.tsx (/p/:id/rebuild)
    An editor: file tab + step progress, given code, the current step as a
-   highlighted comment, a typing area with a line gutter, and an inline diff.
+   highlighted comment, then the typing kit (src/styles/typer.css: typing
+   area, inline diff, status bar) or, in tap mode, the line being chosen.
    ========================================================================== */
 
 .rebuild {
@@ -63,15 +64,6 @@
 }
 
 /* ── Editor chrome ──────────────────────────────────────────────────────── */
-.rebuild-editor {
-  transition:
-    box-shadow var(--dur) var(--ease),
-    border-color var(--dur) var(--ease);
-}
-.rebuild-editor:focus-within {
-  border-color: var(--brand-500);
-  box-shadow: var(--ring);
-}
 .rebuild-steps {
   display: inline-flex;
   align-items: center;
@@ -113,52 +105,9 @@
   }
 }
 
-/* ── Code area ──────────────────────────────────────────────────────────── */
-.rebuild-hint {
-  font-size: 12.5px;
-}
-.rebuild-code {
-  padding: 12px 0;
-  font-family: var(--font-mono);
-  font-variant-ligatures: none;
-  font-size: 12.5px;
-  line-height: 22px;
-  color: var(--code-text);
-  tab-size: 4;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--code-border) transparent;
-}
-@media (min-width: 640px) {
-  .rebuild-code,
-  .rebuild-hint {
-    font-size: 13px;
-  }
-}
-.rebuild-line {
-  display: flex;
-  min-height: 22px;
-  min-width: max-content;
-  padding-right: 18px;
-  white-space: pre;
-}
-/* Gutter: line number + a diff marker slot, so diff rows never shift the code */
-.rebuild-ln {
-  position: relative;
-  flex: none;
-  width: 52px;
-  padding-right: 20px;
-  text-align: right;
-  color: var(--code-gutter);
-  user-select: none;
-  font-variant-numeric: tabular-nums;
-}
-.rebuild-line.given .rebuild-src {
-  opacity: 0.72;
-}
-
+/* ── Code area (rows come from the typing kit: .typer-line, .typer-ln) ───── */
 /* The current step, written as a comment in the file */
-.rebuild-line.instr {
+.rebuild .typer-line.instr {
   min-width: 0;
   margin: 2px 0;
   padding-top: 3px;
@@ -168,7 +117,7 @@
   box-shadow: inset 2px 0 0 var(--brand-400);
   scroll-margin: 96px 0 240px;
 }
-.rebuild-line.instr .rebuild-ln {
+.rebuild .typer-line.instr .typer-ln {
   color: var(--brand-300);
 }
 .rebuild-instr {
@@ -190,110 +139,17 @@
   }
 }
 
-/* Typing area: a gutter + borderless textarea that reads as part of the file */
-.rebuild-input {
-  display: flex;
-  align-items: flex-start;
-  min-width: 0;
-  padding-top: 2px;
-}
-.rebuild-gutter {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-  width: 52px;
-  padding-right: 20px;
-  text-align: right;
-  color: var(--code-gutter);
-  user-select: none;
-  font-variant-numeric: tabular-nums;
-}
-.rebuild-gutter span {
-  height: 22px;
-}
-.rebuild-input textarea.code-input {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  height: auto;
-  padding: 0 18px 0 var(--indent, 0ch);
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  background: transparent;
-  color: var(--code-text);
-  font-size: inherit;
-  line-height: 22px;
-  resize: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.rebuild-input textarea.code-input:focus {
-  box-shadow: none;
-  border: 0;
-}
-.rebuild-input textarea.code-input::placeholder {
-  color: var(--code-comment);
-  font-style: italic;
-}
-
 /* Tap mode: the line being chosen */
-.rebuild-line.cursor {
+.rebuild .typer-line.cursor {
   scroll-margin: 140px 0 280px;
 }
-.rebuild-line.cursor .blank {
+.rebuild .typer-line.cursor .blank {
   min-width: 18ch;
-}
-
-/* Inline diff after checking */
-.rebuild-diff {
-  padding-top: 2px;
-  animation: rebuild-fade var(--dur) var(--ease);
-}
-@keyframes rebuild-fade {
-  from {
-    opacity: 0;
-  }
-}
-.rebuild-sign {
-  position: absolute;
-  top: 0;
-  right: 3px;
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 22px;
-}
-.rebuild-sign svg {
-  width: 12px;
-  height: 12px;
-}
-.rebuild-line.diff.ok {
-  background: color-mix(in srgb, var(--success) 10%, transparent);
-}
-.rebuild-line.diff.ok .rebuild-sign {
-  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
-}
-.rebuild-line.diff.del {
-  background: color-mix(in srgb, var(--danger) 16%, transparent);
-}
-.rebuild-line.diff.del .rebuild-sign {
-  color: color-mix(in srgb, var(--danger) 65%, var(--code-text));
-}
-.rebuild-line.diff.add {
-  background: color-mix(in srgb, var(--success) 16%, transparent);
-}
-.rebuild-line.diff.add .rebuild-sign {
-  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
-}
-.rebuild-missing {
-  color: var(--code-comment);
-  font-style: italic;
 }
 
 /* Hint panel (inside the editor) */
 .rebuild-hint {
+  font-size: 12.5px;
   padding: 10px 16px 12px calc(52px + var(--indent, 0ch));
   font-family: var(--font-mono);
   font-variant-ligatures: none;
@@ -320,78 +176,10 @@
 .rebuild-hint-line {
   white-space: pre;
 }
-
-/* Status bar */
-.rebuild-foot-left {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rebuild-foot-desc {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Phones: the result summary on the right says it all */
-@media (max-width: 479px) {
-  .rebuild-foot-desc.is-result {
-    display: none;
+@media (min-width: 640px) {
+  .rebuild-hint {
+    font-size: 13px;
   }
-  .rebuild-foot-left:has(.is-result) .rebuild-foot-sep {
-    display: none;
-  }
-}
-.rebuild-foot-lang {
-  color: var(--code-text);
-}
-.rebuild-foot-sep {
-  width: 1px;
-  height: 12px;
-  background: var(--code-border);
-}
-.rebuild-keys {
-  display: none;
-  white-space: nowrap;
-}
-@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
-  .rebuild-keys {
-    display: inline;
-  }
-}
-.rebuild-result {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  font-weight: 500;
-}
-.rebuild-result::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.rebuild-result.ok {
-  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
-}
-.rebuild-result.ok::before {
-  background: var(--success);
-}
-.rebuild-result.bad {
-  color: color-mix(in srgb, var(--danger) 60%, var(--code-text));
-}
-.rebuild-result.bad::before {
-  background: var(--danger);
-}
-.rebuild-editor.is-correct {
-  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
-}
-.rebuild-editor.is-wrong {
-  border-color: color-mix(in srgb, var(--danger) 45%, var(--code-border));
 }
 
 /* ── Action bar extras ──────────────────────────────────────────────────── */
@@ -400,6 +188,21 @@
   align-items: center;
   gap: 4px;
   margin-left: -12px;
+}
+/* The narrowest phones: the tools go icon-only (names stay for screen readers) so the
+   primary button keeps its full width inside the screen */
+@media (max-width: 379px) {
+  .rebuild-tools .btn {
+    padding-inline: 10px;
+  }
+  .rebuild-tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 .rebuild-fb {
   display: flex;

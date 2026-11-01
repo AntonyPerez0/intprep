@@ -67,11 +67,54 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon) |
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
 | Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colours on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
+| Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
 | Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
 | Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` |
 | Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
 | App chrome | Desktop top bar: streak and gem `.pill-stat`s + avatar; the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
+
+## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
+
+Use it wherever the learner types code: Code from memory (part by part, or the whole solution from scratch),
+typing a pattern template from memory, and beginner "Your turn" slides of 1–5 lines. For choosing between given
+lines, use `<Choices code>` instead; for a single key line, the key-line drill's input.
+
+**Grading** — `gradeCode(typed, expected)` is pure. Blank and comment-only lines are ignored on both sides; lines
+compare with `normalizeCode` (whitespace, quote style, trailing comments and trailing commas do not matter). Typed
+and expected lines are aligned by a longest-common-subsequence diff, so one extra or missing line does not mark
+every following line wrong. A matched line is only correct if its indentation *relative to the snippet's base*
+matches (anchored on the outermost matched line, so typing a body flush-left is fine). It returns `rows` in diff
+order (`ok`, `indent` = right code, wrong indentation, `del` = typed line not in the answer, `add` = expected line
+not written; a changed line is a `del` + `add` pair with `paired: true`), plus `correct`, `total`, `extra`,
+`wrong`, `missing`, `wrongIndent`, `perfect`, `score` (0–1, extra lines count against it), `baseGot`/`baseExp`.
+`gradeBest(typed, answers)` keeps the best match among several accepted answers. Pass clean code as `expected`
+(e.g. chunk lines or `parseSolution(...).code`); `#!` key markers are dropped. Leave read-only lines (the class /
+def header) out of `expected` and show them as `given`.
+
+**Editor** — `<CodeEditor value onChange label given start firstLine indent minRows autoFocus placeholder
+disabled>`: read-only `given` lines (highlighted, numbered), a numbered gutter and a borderless `textarea.input.code-input`
+that reads as part of the file; `indent` (columns) is where typing starts; rows grow with the text. Keys: Tab = 4
+spaces, Enter keeps the indent (and indents after `:`), Backspace in leading spaces removes a 4-space indent,
+Escape then Tab leaves the editor (announced through `aria-describedby`), Ctrl/⌘ + Enter is left to the
+`ActionBar`. Edits go through the browser's editing, so undo works. `children` render between the given lines and
+the typing area (e.g. Rebuild's instruction comment); add one to `firstLine` per extra row.
+
+**Touch key bar** — on coarse pointers only (phones, tablets: no Tab key), `CodeEditor` shows a row of keycaps
+under the code: Outdent and Indent (act on the caret's line, or every selected line) and `: ( ) [ ] = _`. Keys are
+44px tall and share the width like a keyboard row (all nine fit from 320px up), never take focus from the textarea
+(the phone keyboard stays open), and have accessible names. `keyBar={false}` hides it.
+
+**Diff** — `<CodeDiff grade indent given start firstLine>` renders the rows in the gutter style of an editor:
+check (correct), minus (your line), plus (expected; no line number), and a sideways arrow on an amber row for wrong
+indentation, with the expected line right below. Typed lines re-indent from `grade.baseGot` and expected lines from
+`grade.baseExp` to the display `indent`, so everything lines up under the given code.
+
+**Window and status bar** — `<TyperWindow status>` is a `CodeWindow` with the typing frame (focus ring while
+typing, green or red border once checked). `<TyperFooter grade note keys>` is its footer: "Python · {note}" and the
+desktop keyboard hint while typing, then "Compared line by line" and the summary ("4 of 6 lines correct · 1 extra
+· 1 wrong indent") in a polite live region. Keep the footer mounted while typing so the result is announced.
+`<CodeTyper>` combines all of it: the editor while `grade` is null, the diff once it is set.
 
 ## Page blueprints
 

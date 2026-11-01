@@ -3,7 +3,7 @@
 // line (touch). Retrieval + generation, the strongest way to make code stick.
 
 import '../styles/pages/rebuild.css';
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -15,8 +15,6 @@ import {
   Keyboard,
   Lightbulb,
   List,
-  Minus,
-  Plus,
   RotateCcw,
   Sprout,
   TrendingUp,
@@ -28,14 +26,16 @@ import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { mutateLine, sameCode } from '../lib/drills';
 import { XP } from '../lib/game';
+import { gradeCode, indentOf, reindent, type Grade } from '../lib/codegrade';
 import { highlightLine } from '../lib/highlight';
 import { inline } from '../lib/markdown';
 import { normalizeCode, parseSolution } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, recordRebuild, reviewProblem, useProgress } from '../lib/store';
-import { ActionBar, Choices, CodeView, CodeWindow, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { codeKeyHandler, codeOptions } from '../components/Drills';
+import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { CodeDiff, CodeEditor, CodeLine, CodePane, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { codeOptions } from '../components/Drills';
 import { CATEGORY_ICON } from '../components/icons';
 import { SessionShell } from '../components/Shell';
 import { Completion, DifficultyChip, Kbd } from '../components/ui';
@@ -52,40 +52,6 @@ function preferTyping(mode: 'auto' | 'type' | 'tap') {
   return !!window.matchMedia?.('(pointer: fine)').matches && window.innerWidth >= 820;
 }
 
-/** Compare typed code to the expected lines, ignoring blank lines and spacing. */
-function gradeLines(typed: string, expected: string[]) {
-  const t = typed.split('\n').filter((l) => l.trim() !== '');
-  const e = expected.filter((l) => l.trim() !== '');
-  const rows = e.map((exp, i) => ({ exp, got: t[i] ?? '', ok: sameCode(t[i] ?? '', exp) && indentOk(t[i] ?? '', exp, t[0] ?? '', e[0]) }));
-  const extra = t.slice(e.length).map((got) => ({ exp: '', got, ok: false }));
-  return { rows: [...rows, ...extra], correct: rows.filter((r) => r.ok).length, total: e.length };
-}
-
-const indentOf = (s: string) => s.match(/^\s*/)?.[0].replace(/\t/g, '    ').length ?? 0;
-
-// Relative indentation matters in Python; compare it relative to the first line.
-function indentOk(got: string, exp: string, got0: string, exp0: string) {
-  return indentOf(got) - indentOf(got0) === indentOf(exp) - indentOf(exp0);
-}
-
-/** Re-indent a line from `from` columns to `to` columns (display only). */
-function reindent(s: string, from: number, to: number) {
-  const body = s.replace(/\t/g, '    ');
-  const cut = Math.min(from, indentOf(body));
-  return ' '.repeat(to) + body.slice(cut);
-}
-
-/** Diff marker, drawn in the gutter so code stays aligned with the lines above. */
-function Sign({ kind }: { kind: 'ok' | 'del' | 'add' }) {
-  const I = kind === 'ok' ? Check : kind === 'del' ? Minus : Plus;
-  return (
-    <span className="rebuild-sign">
-      <I strokeWidth={2.4} aria-hidden="true" />
-      <span className="sr-only">{kind === 'ok' ? 'Correct: ' : kind === 'del' ? 'Your line: ' : 'Expected: '}</span>
-    </span>
-  );
-}
-
 function Rebuild({ p }: { p: Problem }) {
   const nav = useNavigate();
   const settings = useProgress().settings;
@@ -97,7 +63,7 @@ function Rebuild({ p }: { p: Problem }) {
   const [lineInChunk, setLineInChunk] = useState(0); // tap mode
   const [text, setText] = useState('');
   const [status, setStatus] = useState<CheckStatus>('idle');
-  const [result, setResult] = useState<ReturnType<typeof gradeLines> | null>(null);
+  const [result, setResult] = useState<Grade | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [done, setDone] = useState(false);
@@ -213,11 +179,10 @@ function Rebuild({ p }: { p: Problem }) {
   }
 
   const checkTyped = () => {
-    const r = gradeLines(text, cur.c.lines);
+    const r = gradeCode(text, cur.c.lines);
     setResult(r);
-    const ok = r.correct === r.total && r.rows.length === r.total;
-    setStatus(ok ? 'correct' : 'wrong');
-    sfx(ok ? 'correct' : 'wrong');
+    setStatus(r.perfect ? 'correct' : 'wrong');
+    sfx(r.perfect ? 'correct' : 'wrong');
   };
 
   const checkTap = () => {
@@ -246,31 +211,26 @@ function Rebuild({ p }: { p: Problem }) {
   const indent = Math.min(indentOf(curLines[0] ?? ''), 16);
   const firstNew = given.length + 2; // after the instruction comment
   const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this part
-  const rows = Math.max(3, curLines.length + 1, text.split('\n').length);
   const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
   const tapIndent = (tapLine ?? '').match(/^\s*/)?.[0] ?? '';
-  const baseGot = result?.rows[0] ? indentOf(result.rows[0].got) : 0;
-  const baseExp = result?.rows[0] ? indentOf(result.rows[0].exp) : 0;
   const hintBase = indentOf(curLines[0] ?? '');
   const cat = CATEGORY_BY_ID[p.category];
   const CatIcon = CATEGORY_ICON[p.category];
 
-  let footLeft = `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`;
-  let footRight: ReactNode = typing ? (
-    <span className="rebuild-keys">Tab to indent · Ctrl/⌘ + Enter to check</span>
-  ) : null;
-  if (!typing) footLeft = `Line ${lineInChunk + 1} of ${curLines.length} in this part`;
-  if (result) {
-    const ok = result.correct === result.total && result.rows.length === result.total;
-    const extra = result.rows.length - result.total;
-    footLeft = 'Compared line by line';
-    footRight = (
-      <span className={`rebuild-result ${ok ? 'ok' : 'bad'}`}>
-        {result.correct} of {result.total} line{result.total === 1 ? '' : 's'} correct
-        {extra > 0 && ` · ${extra} extra`}
+  const footNote = typing
+    ? `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`
+    : `Line ${lineInChunk + 1} of ${curLines.length} in this part`;
+
+  // The current part, written as a comment in the file.
+  const instr = (
+    <div ref={instrRef} className="typer-line instr">
+      <span className="typer-ln">{given.length + 1}</span>
+      <span className="rebuild-instr" style={{ ['--indent' as string]: `${indent}ch` }}>
+        <span className="rebuild-hash"># </span>
+        {cur.c.explain}
       </span>
-    );
-  }
+    </div>
+  );
 
   return (
     <SessionShell
@@ -329,8 +289,9 @@ function Rebuild({ p }: { p: Problem }) {
           </div>
         )}
 
-        <CodeWindow
-          className={`rebuild-editor ${status !== 'idle' ? `is-${status}` : ''}`}
+        <TyperWindow
+          status={status}
+          className="rebuild-editor"
           right={
             <span className="rebuild-steps" role="img" aria-label={`Part ${step + 1} of ${body.length}`}>
               <span className="rebuild-steps-label">
@@ -344,147 +305,64 @@ function Rebuild({ p }: { p: Problem }) {
               </span>
             </span>
           }
-          footer={
-            <>
-              <span className="rebuild-foot-left">
-                <span className="rebuild-foot-lang">Python</span>
-                <span className="rebuild-foot-sep" aria-hidden="true" />
-                <span className={`rebuild-foot-desc ${result ? 'is-result' : ''}`}>{footLeft}</span>
-              </span>
-              {footRight}
-            </>
-          }
+          footer={<TyperFooter grade={typing ? result : null} note={footNote} keys={typing ? undefined : false} />}
         >
-          <div className="rebuild-code">
-            {given.map((l, k) => (
-              <div key={k} className="rebuild-line given">
-                <span className="rebuild-ln">{k + 1}</span>
-                <span className="rebuild-src">{l === '' ? ' ' : highlightLine(l)}</span>
-              </div>
-            ))}
-            <div ref={instrRef} className="rebuild-line instr">
-              <span className="rebuild-ln">{given.length + 1}</span>
-              <span className="rebuild-instr" style={{ ['--indent' as string]: `${indent}ch` }}>
-                <span className="rebuild-hash"># </span>
-                {cur.c.explain}
-              </span>
-            </div>
-
-            {typing ? (
-              result ? (
-                <div className="rebuild-diff">
-                  {result.rows.map((r, k) => {
-                    const n = firstNew + k;
-                    if (r.ok)
-                      return (
-                        <div key={k} className="rebuild-line diff ok">
-                          <span className="rebuild-ln">
-                            {n}
-                            <Sign kind="ok" />
-                          </span>
-                          <span className="rebuild-src">{highlightLine(reindent(r.got, baseGot, indent))}</span>
-                        </div>
-                      );
-                    return (
-                      <Fragment key={k}>
-                        <div className="rebuild-line diff del">
-                          <span className="rebuild-ln">
-                            {n}
-                            <Sign kind="del" />
-                          </span>
-                          <span className="rebuild-src">
-                            {r.got ? reindent(r.got, baseGot, indent) : <span className="rebuild-missing">{' '.repeat(indent)}missing line</span>}
-                          </span>
-                        </div>
-                        {r.exp && (
-                          <div className="rebuild-line diff add">
-                            <span className="rebuild-ln">
-                              <Sign kind="add" />
-                            </span>
-                            <span className="rebuild-src">{highlightLine(reindent(r.exp, baseExp, indent))}</span>
-                          </div>
-                        )}
-                      </Fragment>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="rebuild-input" style={{ ['--indent' as string]: `${indent}ch` }}>
-                  <div className="rebuild-gutter" aria-hidden="true">
-                    {Array.from({ length: rows }, (_, k) => (
-                      <span key={k}>{firstNew + k}</span>
-                    ))}
-                  </div>
-                  <textarea
-                    className="input code-input"
-                    aria-label={`Code for part ${step + 1}`}
-                    autoFocus
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    rows={rows}
-                    placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`}
-                    value={text}
-                    disabled={status !== 'idle'}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) return; // handled by ActionBar
-                      codeKeyHandler(e, setText);
-                    }}
-                  />
-                </div>
-              )
+          {typing ? (
+            result ? (
+              <CodeDiff grade={result} given={given} firstLine={firstNew} indent={indent}>
+                {instr}
+              </CodeDiff>
             ) : (
-              <>
-                {written.map((l, k) => (
-                  <div key={k} className="rebuild-line written">
-                    <span className="rebuild-ln">{firstNew + k}</span>
-                    <span className="rebuild-src">{highlightLine(l)}</span>
-                  </div>
-                ))}
-                {status === 'idle' ? (
-                  <div ref={cursorRef} className="rebuild-line cursor">
-                    <span className="rebuild-ln">{firstNew + written.length}</span>
-                    <span className="rebuild-src">
-                      {tapIndent}
-                      <span className="blank">{sel ? sel.trim() : '???'}</span>
-                    </span>
-                  </div>
-                ) : (
-                  <div ref={cursorRef} className="rebuild-diff">
-                    {tapOk ? (
-                      <div className="rebuild-line diff ok">
-                        <span className="rebuild-ln">
-                          {firstNew + written.length}
-                          <Sign kind="ok" />
-                        </span>
-                        <span className="rebuild-src">{highlightLine(tapLine)}</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="rebuild-line diff del">
-                          <span className="rebuild-ln">
-                            {firstNew + written.length}
-                            <Sign kind="del" />
-                          </span>
-                          <span className="rebuild-src">
-                            {tapIndent}
-                            {sel?.trim()}
-                          </span>
-                        </div>
-                        <div className="rebuild-line diff add">
-                          <span className="rebuild-ln">
-                            <Sign kind="add" />
-                          </span>
-                          <span className="rebuild-src">{highlightLine(tapLine)}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              <CodeEditor
+                value={text}
+                onChange={setText}
+                label={`Code for part ${step + 1}`}
+                given={given}
+                firstLine={firstNew}
+                indent={indent}
+                minRows={Math.max(3, curLines.length + 1)}
+                autoFocus
+                placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`}
+                disabled={status !== 'idle'}
+              >
+                {instr}
+              </CodeEditor>
+            )
+          ) : (
+            <CodePane>
+              <GivenLines lines={given} />
+              {instr}
+              {written.map((l, k) => (
+                <CodeLine key={k} n={firstNew + k} className="written">
+                  {highlightLine(l)}
+                </CodeLine>
+              ))}
+              {status === 'idle' ? (
+                <CodeLine ref={cursorRef} n={firstNew + written.length} className="cursor">
+                  {tapIndent}
+                  <span className="blank">{sel ? sel.trim() : '???'}</span>
+                </CodeLine>
+              ) : (
+                <div ref={cursorRef} className="typer-diff">
+                  {tapOk ? (
+                    <CodeLine n={firstNew + written.length} sign="ok" className="diff ok">
+                      {highlightLine(tapLine)}
+                    </CodeLine>
+                  ) : (
+                    <>
+                      <CodeLine n={firstNew + written.length} sign="del" className="diff del">
+                        {tapIndent}
+                        {sel?.trim()}
+                      </CodeLine>
+                      <CodeLine sign="add" className="diff add">
+                        {highlightLine(tapLine)}
+                      </CodeLine>
+                    </>
+                  )}
+                </div>
+              )}
+            </CodePane>
+          )}
 
           {typing && hint && status === 'idle' && (
             <div className="rebuild-hint" style={{ ['--indent' as string]: `${indent}ch` }}>
@@ -499,7 +377,7 @@ function Rebuild({ p }: { p: Problem }) {
               ))}
             </div>
           )}
-        </CodeWindow>
+        </TyperWindow>
 
         {!typing && (
           <div>
@@ -527,6 +405,7 @@ function Rebuild({ p }: { p: Problem }) {
 
         <ActionBar
           status={status}
+          step={`${step}:${lineInChunk}`}
           canCheck={typing ? text.trim().length > 0 : sel !== null}
           onCheck={typing ? checkTyped : checkTap}
           onContinue={typing ? () => nextChunk({ correct: result?.correct ?? 0, total: result?.total ?? curLines.length }) : continueTap}
@@ -540,12 +419,12 @@ function Rebuild({ p }: { p: Problem }) {
             <div className="rebuild-tools">
               <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
                 {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
-                {typing ? 'Tap lines' : 'Type code'}
+                <span className="rebuild-tool-label">{typing ? 'Tap lines' : 'Type code'}</span>
               </button>
               {typing && !hint && (
                 <button type="button" className="btn btn-quiet btn-sm" onClick={() => setHint(true)}>
                   <Lightbulb aria-hidden="true" />
-                  Hint
+                  <span className="rebuild-tool-label">Hint</span>
                 </button>
               )}
             </div>
