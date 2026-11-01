@@ -3,7 +3,16 @@
    All classes are prefixed `plesson-`.
    ========================================================================== */
 
-/* ── Session header extras ──────────────────────────────────────────────── */
+/* ── Session chrome ─────────────────────────────────────────────────────────
+   Header, step content and action bar share one column so the close button,
+   eyebrow and primary action line up on a single left and right edge. */
+.session:has(.plesson, .plesson-done) .session-head-inner {
+  max-width: 760px;
+}
+.session:has(.plesson) .actionbar-inner {
+  max-width: 728px;
+}
+
 .plesson-reward {
   flex: none;
   gap: 4px;
@@ -14,7 +23,7 @@
   width: 14px;
   height: 14px;
 }
-.plesson-reward-unit {
+.plesson-reward-label {
   font-weight: 550;
   color: var(--text-tertiary);
   margin-left: 2px;
@@ -75,9 +84,13 @@
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 .plesson-card-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+}
+/* Centre the tile on a one-line title + subtitle; stay top-aligned when they wrap. */
+.plesson-card-head > .icon-tile {
+  margin-top: 6px;
 }
 .plesson-card-head .card-title {
   line-height: 1.3;
@@ -212,6 +225,25 @@ div.plesson-locked {
 .plesson-insight .insight-label svg {
   margin-top: 1px;
 }
+.plesson-insight-pattern {
+  margin-left: 6px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+.plesson-insight-pattern::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--text-tertiary);
+}
+/* Inline code that wraps keeps its border and padding on every line. */
+.plesson-insight-body code,
+.plesson-prose code,
+.plesson-explain-text code {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
 .plesson-insight-body {
   font-size: var(--fs-lg);
   font-weight: 500;
@@ -264,7 +296,7 @@ div.plesson-locked {
   background: var(--brand-subtle);
   border: 1px solid var(--brand-border);
   color: var(--brand-text);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -284,15 +316,15 @@ div.plesson-locked {
   font-size: var(--fs-sm);
   color: var(--text-tertiary);
 }
-.plesson-plan-bar,
+.plesson-plan-meter,
 .plesson-segs {
   display: flex;
   gap: 4px;
 }
-.plesson-plan-bar {
+.plesson-plan-meter {
   width: min(180px, 45%);
 }
-.plesson-plan-bar span,
+.plesson-plan-meter span,
 .plesson-segs span {
   flex: 1;
   height: 4px;
@@ -300,7 +332,7 @@ div.plesson-locked {
   background: var(--surface-active);
   transition: background var(--dur) var(--ease);
 }
-.plesson-plan-bar span.on,
+.plesson-plan-meter span.on,
 .plesson-segs span.on {
   background: var(--brand);
 }
@@ -383,7 +415,7 @@ div.plesson-locked {
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
-.plesson-codewin-bar {
+.plesson-codewin-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -392,9 +424,9 @@ div.plesson-locked {
   border-bottom: 1px solid var(--code-border);
   color: var(--code-text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
-.plesson-codewin-bar svg {
+.plesson-codewin-head svg {
   width: 14px;
   height: 14px;
   color: var(--code-comment);
@@ -402,8 +434,8 @@ div.plesson-locked {
 .plesson-codewin-lang {
   margin-left: auto;
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 550;
+  font-size: var(--fs-xs);
+  font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--code-comment);
 }
@@ -414,14 +446,14 @@ div.plesson-locked {
 }
 
 @media (min-width: 1024px) {
-  /* The walkthrough gets a wider canvas: code left, sticky notes right. */
-  .session-body:has(.plesson-code) {
+  /* The walkthrough gets a wider canvas: code left, sticky notes right.
+     Header and action bar widen with it so all three keep one edge. */
+  .session:has(.plesson-code) .session-body,
+  .session:has(.plesson-code) .session-head-inner {
     max-width: 1104px;
-    padding-left: 32px;
-    padding-right: 32px;
   }
-  body:has(.plesson-code) .actionbar-inner {
-    max-width: 1040px;
+  .session:has(.plesson-code) .actionbar-inner {
+    max-width: 1072px;
   }
   .plesson-code {
     display: grid;
@@ -436,7 +468,7 @@ div.plesson-locked {
   .plesson-explain {
     grid-area: explain;
     position: sticky;
-    top: 80px;
+    top: 84px;
     padding: 20px;
   }
   .plesson-codewin .code {
@@ -468,11 +500,11 @@ div.plesson-locked {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.plesson-cost-cell {
+.plesson-cost-item {
   padding: 16px 20px;
   min-width: 0;
 }
-.plesson-cost-cell + .plesson-cost-cell {
+.plesson-cost-item + .plesson-cost-item {
   border-left: 1px solid var(--border);
 }
 .plesson-cost-label {
@@ -507,7 +539,7 @@ div.plesson-locked {
 }
 @media (max-width: 479px) {
   .plesson-cost-head,
-  .plesson-cost-cell,
+  .plesson-cost-item,
   .plesson-cost-why {
     padding-left: 16px;
     padding-right: 16px;

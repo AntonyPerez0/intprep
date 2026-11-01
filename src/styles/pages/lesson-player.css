@@ -3,7 +3,15 @@
    All classes are prefixed `lplayer-`.
    ========================================================================== */
 
-/* ── Session header counter ─────────────────────────────────────────────── */
+/* ── Session chrome ─────────────────────────────────────────────────────────
+   Header, slide and action bar share one column (one left and right edge). */
+.session:has(.lplayer, .lplayer-done) .session-head-inner {
+  max-width: 760px;
+}
+.session:has(.lplayer) .actionbar-inner {
+  max-width: 728px;
+}
+
 .lplayer-count {
   flex: none;
   min-width: 44px;
@@ -13,7 +21,7 @@
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
-.lplayer-count span {
+.lplayer-count-total {
   color: var(--text-tertiary);
   font-weight: 500;
 }
@@ -119,18 +127,52 @@
   background: var(--brand-subtle);
   border: 1px solid var(--brand-border);
   color: var(--brand-text);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 1;
 }
 .lplayer-prose ol > li:first-child::before {
   top: calc(2px + 0.85em - 10px);
 }
+.lplayer-prose code,
+.lplayer-question code,
+.lplayer-lede code {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
 .lplayer-prose code {
   font-size: 0.84em;
 }
 .lplayer-prose .code {
   margin: 1em 0;
+}
+
+/* Card footer, e.g. the typical cost under the template notes. */
+.lplayer-card-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px -28px -24px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-hover);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.lplayer-card-foot > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  color: var(--text-tertiary);
+}
+.lplayer-card-foot-label {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* ── Code slides ────────────────────────────────────────────────────────── */
@@ -151,7 +193,7 @@
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
-.lplayer-codewin-bar {
+.lplayer-codewin-head {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -160,10 +202,10 @@
   border-bottom: 1px solid var(--code-border);
   color: var(--code-text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
-.lplayer-codewin-bar svg,
-.lplayer-output-bar svg {
+.lplayer-codewin-head svg,
+.lplayer-output-head svg {
   width: 14px;
   height: 14px;
   color: var(--code-comment);
@@ -171,8 +213,8 @@
 .lplayer-codewin-lang {
   margin-left: auto;
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 550;
+  font-size: var(--fs-xs);
+  font-weight: 500;
   letter-spacing: 0.02em;
   color: var(--code-comment);
 }
@@ -192,13 +234,13 @@
   border-top: 1px solid var(--code-border);
   background: color-mix(in srgb, var(--code-bg) 88%, var(--code-text));
 }
-.lplayer-output-bar {
+.lplayer-output-head {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 34px;
   padding: 0 16px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -269,8 +311,13 @@
 
 @media (max-width: 479px) {
   .lplayer-card {
-    padding: 18px 18px;
+    padding: 20px;
     border-radius: var(--r-lg);
+  }
+  .lplayer-card-foot {
+    margin: 20px -20px -20px;
+    padding: 14px 20px;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
   }
   .lplayer-prose {
     font-size: var(--fs-base);

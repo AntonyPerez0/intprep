@@ -1,13 +1,13 @@
 import '../styles/pages/lesson-player.css';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, FileCode2, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
+import { ArrowRight, BookOpen, FileCode2, Gauge, Lightbulb, ListChecks, NotebookPen, RotateCcw, ScanSearch, Terminal, Wrench } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
-import { HighlightedCode } from '../lib/highlight';
+import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
@@ -17,8 +17,8 @@ import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
 import { Badge, Completion } from '../components/ui';
 
-/** A slide plus optional presentation hints (eyebrow label + Lucide icon). */
-type PlayerSlide = Slide & { eyebrow?: string; icon?: LucideIcon; file?: string };
+/** A slide plus optional presentation hints (eyebrow label, Lucide icon, file name, card footer). */
+type PlayerSlide = Slide & { eyebrow?: string; icon?: LucideIcon; file?: string; foot?: { label: string; text: string } };
 
 /** Turn a pattern guide into a short slide lesson. */
 function guideSlides(g: PatternGuide): PlayerSlide[] {
@@ -43,7 +43,8 @@ function guideSlides(g: PatternGuide): PlayerSlide[] {
       eyebrow: 'Template',
       icon: NotebookPen,
       title: 'Template notes',
-      body: g.templateNotes.map((n) => `- ${n}`).join('\n') + `\n\n**Typical cost:** ${g.complexity}`,
+      body: g.templateNotes.map((n) => `- ${n}`).join('\n'),
+      foot: { label: 'Typical cost', text: g.complexity },
     },
     ...restQ.map((q) => ({ kind: 'quiz' as const, ...q })),
   ];
@@ -196,10 +197,11 @@ export function LessonPlayer({ mode }: Props) {
     if (!ok) setQueue((q) => [...q, idx]); // ask again later
   };
 
-  // Eyebrow: quizzes say what they are; guide slides carry their own label; otherwise the lesson.
+  // Eyebrow: quizzes say what they are; guide slides carry their own label; foundation slides say where
+  // they sit in the course (the lesson title is already in the header).
   const quizNo = isQuiz ? lesson.slides.slice(0, idx + 1).filter((s) => s.kind === 'quiz').length : 0;
   const KickerIcon = isQuiz ? ListChecks : (slide.icon ?? lesson.Icon);
-  const kicker = isQuiz ? `Check your understanding · ${quizNo} of ${quizCount}` : (slide.eyebrow ?? lesson.title);
+  const kicker = isQuiz ? `Check your understanding · ${quizNo} of ${quizCount}` : (slide.eyebrow ?? lesson.kind);
 
   return (
     <SessionShell
@@ -207,9 +209,14 @@ export function LessonPlayer({ mode }: Props) {
       onClose={() => nav(lesson.back)}
       title={lesson.title}
       right={
-        <span className="lplayer-count" aria-label={`Slide ${pos + 1} of ${total}`}>
-          {pos + 1}
-          <span>/{total}</span>
+        <span className="lplayer-count">
+          <span className="sr-only">
+            Slide {pos + 1} of {total}
+          </span>
+          <span aria-hidden="true">
+            {pos + 1}
+            <span className="lplayer-count-total">/{total}</span>
+          </span>
         </span>
       }
     >
@@ -258,6 +265,15 @@ function SlideView({
         {slide.title && <h1 className="q-title">{slide.title}</h1>}
         <div className="lplayer-card">
           <Md text={slide.body} className="lplayer-prose" />
+          {slide.foot && (
+            <div className="lplayer-card-foot">
+              <Gauge aria-hidden="true" />
+              <div>
+                <span className="lplayer-card-foot-label">{slide.foot.label}</span>
+                {inline(slide.foot.text)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -268,15 +284,15 @@ function SlideView({
         {slide.title && <h1 className="q-title">{slide.title}</h1>}
         {slide.body && <Md text={slide.body} className="lplayer-lede" />}
         <div className="lplayer-codewin">
-          <div className="lplayer-codewin-bar">
+          <div className="lplayer-codewin-head">
             <FileCode2 />
             <span>{slide.file ?? 'example.py'}</span>
             <span className="lplayer-codewin-lang">Python</span>
           </div>
-          <HighlightedCode code={slide.code} />
+          <SlideCode code={slide.code} />
           {slide.output && (
             <div className="lplayer-output">
-              <div className="lplayer-output-bar">
+              <div className="lplayer-output-head">
                 <Terminal />
                 Output
               </div>
@@ -298,7 +314,7 @@ function SlideView({
       </div>
       {slide.code && (
         <div className="lplayer-codewin lplayer-quiz-code">
-          <HighlightedCode code={slide.code} />
+          <SlideCode code={slide.code} />
         </div>
       )}
       <Choices
@@ -312,5 +328,45 @@ function SlideView({
         revealed={status !== 'idle'}
       />
     </div>
+  );
+}
+
+// ── Code ────────────────────────────────────────────────────────────────────
+
+/**
+ * Number literals the shared tokenizer cannot match (`1_000_000`, `0xFFFFFFFF`): it skips the
+ * characters it has no token for, so `1_000_000` rendered as `_000_000`. Strings and comments are
+ * matched first so digits inside them are never split out. Remove once lib/highlight handles these.
+ */
+const PY_LITERAL = /("""[\s\S]*?"""|'''[\s\S]*?'''|f?"(?:\\.|[^"\\])*"|f?'(?:\\.|[^'\\])*'|#.*$)|\b(0[xXoObB][\da-fA-F_]+|\d+(?:_\d+)+(?:\.\d+)?)\b/g;
+
+function highlightPy(line: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let from = 0;
+  for (const m of line.matchAll(PY_LITERAL)) {
+    if (!m[2]) continue; // a string or comment: leave it in the run for the shared highlighter
+    const at = m.index ?? 0;
+    if (at > from) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from, at))}</Fragment>);
+    out.push(
+      <span key={out.length} className="tk-num">
+        {m[2]}
+      </span>,
+    );
+    from = at + m[2].length;
+  }
+  if (from < line.length) out.push(<Fragment key={out.length}>{highlightLine(line.slice(from))}</Fragment>);
+  return out;
+}
+
+/** Same markup as HighlightedCode from lib/highlight, with the literal fix above. */
+function SlideCode({ code }: { code: string }) {
+  return (
+    <pre className="code">
+      {code.split('\n').map((l, i) => (
+        <div key={i} className="code-line">
+          {l === '' ? '\u00a0' : highlightPy(l)}
+        </div>
+      ))}
+    </pre>
   );
 }

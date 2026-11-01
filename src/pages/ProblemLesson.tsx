@@ -56,6 +56,9 @@ const STEP_NAME: Record<Step, string> = {
   keyline: 'Final check',
 };
 
+/** Steps rendered by the shared drill components (they bring their own h2 question title). */
+const DRILL_STEPS: readonly Step[] = ['complexity', 'order', 'keyline'];
+
 /** Eyebrow shown above every step, e.g. "Step 3 of 11 · Think it through". */
 const stepLabel = (s: Step) => `Step ${STEPS.indexOf(s) + 1} of ${STEPS.length} · ${STEP_NAME[s]}`;
 
@@ -105,9 +108,12 @@ function ProblemLesson({ p }: { p: Problem }) {
       onClose={close}
       title={p.title}
       right={
-        <span className="pill-stat xp plesson-reward" title={`Finish the lesson to earn ${reward} XP`}>
+        <span
+          className="pill-stat xp plesson-reward"
+          title={wasLearned ? `Refresher: finish to earn ${reward} XP (a quarter of the first-time reward)` : `Finish the lesson to earn ${reward} XP`}
+        >
           <Zap strokeWidth={2} />+{reward}
-          <span className="plesson-reward-unit">XP</span>
+          <span className="plesson-reward-label">XP</span>
         </span>
       }
     >
@@ -133,7 +139,10 @@ function ProblemLesson({ p }: { p: Problem }) {
             <div className="insight-card plesson-insight">
               <div className="insight-label">
                 <Lightbulb strokeWidth={2} />
-                <span>Key insight · {p.pattern}</span>
+                <span>
+                  Key insight
+                  <span className="plesson-insight-pattern">{p.pattern}</span>
+                </span>
               </div>
               <div className="plesson-insight-body">
                 <Md text={p.insight} />
@@ -150,7 +159,7 @@ function ProblemLesson({ p }: { p: Problem }) {
               <CardHead
                 icon={<IconTile icon={ScanSearch} size="sm" />}
                 title="Clues that point here"
-                sub="Look for these the next time you read a problem"
+                sub="Spot these the next time you read a problem"
               />
               <div className="plesson-chips">
                 {p.signals.map((s, k) => (
@@ -164,6 +173,7 @@ function ProblemLesson({ p }: { p: Problem }) {
         )}
         {step === 'plan' && <PlanStep p={p} onNext={next} />}
         {step === 'code' && <CodeStep p={p} onNext={next} />}
+        {DRILL_STEPS.includes(step) && <h1 className="sr-only">{`${p.title}: ${STEP_NAME[step]}`}</h1>}
         {step === 'complexity' && <ComplexityDrill problem={p} onDone={next} kicker={stepLabel('complexity')} />}
         {step === 'pitfalls' && (
           <TextStep step="pitfalls" title="Common traps" sub="Run through these whenever you write this solution yourself." onNext={next}>
@@ -181,13 +191,13 @@ function ProblemLesson({ p }: { p: Problem }) {
                 <span>Cost summary</span>
               </div>
               <div className="plesson-cost-grid">
-                <div className="plesson-cost-cell">
+                <div className="plesson-cost-item">
                   <div className="plesson-cost-label">
                     <Clock /> Time
                   </div>
                   <div className="plesson-cost-value">{p.time}</div>
                 </div>
-                <div className="plesson-cost-cell">
+                <div className="plesson-cost-item">
                   <div className="plesson-cost-label">
                     <Database /> Space
                   </div>
@@ -448,7 +458,7 @@ function PlanStep({ p, onNext }: { p: Problem; onNext: () => void }) {
           <span className="tabular">
             {shown} of {total} steps
           </span>
-          <span className="plesson-plan-bar" aria-hidden="true">
+          <span className="plesson-plan-meter" aria-hidden="true">
             {p.steps.map((_, k) => (
               <span key={k} className={k < shown ? 'on' : ''} />
             ))}
@@ -479,7 +489,7 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
             </span>
             {chunk.keyLines.length > 0 && (
               <Badge tone="warning">
-                <Star /> Key line
+                <Star /> {chunk.keyLines.length > 1 ? 'Key lines' : 'Key line'}
               </Badge>
             )}
           </div>
@@ -509,7 +519,7 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
           )}
         </aside>
         <div className="plesson-codewin">
-          <div className="plesson-codewin-bar">
+          <div className="plesson-codewin-head">
             <FileCode2 />
             <span>solution.py</span>
             <span className="plesson-codewin-lang">Python</span>
