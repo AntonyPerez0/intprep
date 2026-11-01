@@ -2,14 +2,11 @@
    Daily review — src/pages/Review.tsx (/review)
    ========================================================================== */
 
-/* ── Combo indicator (session header) ───────────────────────────────────── */
-.review-combo-slot {
-  display: inline-flex;
-  justify-content: flex-end;
-  flex: none;
-  min-width: 52px;
-}
+/* ── Combo indicator (session header) ───────────────────────────────────────
+   Rendered only from a 2-answer combo, so the progress bar otherwise runs the
+   full column like every other session header. */
 .review-combo {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;

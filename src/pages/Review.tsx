@@ -161,7 +161,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
   if (!deck.length) {
     const unitName = mode.kind === 'unit' ? CATEGORY_BY_ID[mode.cat].name : null;
     return (
-      <SessionShell progress={0} onClose={() => nav('/')} title={title}>
+      <SessionShell progress={null} onClose={() => nav('/')} title={title}>
         <div className="review-empty">
           <h1 className="sr-only">{title}</h1>
           <EmptyState
@@ -232,8 +232,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
             ]}
           >
             <Link to="/" className="btn btn-primary btn-lg btn-block">
-              Continue
-              <ArrowRight aria-hidden="true" />
+              Back to dashboard
             </Link>
             <Link to="/blitz" className="btn btn-secondary btn-lg btn-block">
               <Zap aria-hidden="true" />
@@ -313,15 +312,13 @@ function ReviewSession({ mode }: { mode: Mode }) {
       onClose={() => nav('/')}
       title={title}
       right={
-        <span className="review-combo-slot">
-          {combo >= 2 && (
-            <span key={popKey} className={`review-combo ${popKey ? 'pop' : ''}`} title="Combo: answers right in a row">
-              <Zap strokeWidth={2.2} aria-hidden="true" />
-              {combo}
-              <span className="sr-only"> correct in a row</span>
-            </span>
-          )}
-        </span>
+        combo >= 2 ? (
+          <span key={popKey} className={`review-combo ${popKey ? 'pop' : ''}`} title="Combo: answers right in a row">
+            <Zap strokeWidth={2.2} aria-hidden="true" />
+            {combo}
+            <span className="sr-only"> correct in a row</span>
+          </span>
+        ) : undefined
       }
     >
       <h1 className="sr-only">{title}</h1>
@@ -359,11 +356,12 @@ function nextReview(key: string) {
   return { relative, date };
 }
 
-const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'success' | 'info' }> = {
-  again: { label: 'Relearn soon', tone: 'danger' },
-  hard: { label: 'Shaky', tone: 'warning' },
-  good: { label: 'Solid', tone: 'success' },
-  easy: { label: 'Easy', tone: 'info' },
+/** Same words and colours as the self-rating buttons ("Forgot", "Fuzzy", "Got it", "Easy"). */
+const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'success' | 'brand' }> = {
+  again: { label: 'Forgot', tone: 'danger' },
+  hard: { label: 'Fuzzy', tone: 'warning' },
+  good: { label: 'Got it', tone: 'success' },
+  easy: { label: 'Easy', tone: 'brand' },
 };
 
 const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [

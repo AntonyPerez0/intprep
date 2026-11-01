@@ -10,15 +10,11 @@
   gap: 20px;
 }
 
-/* ── Session header score ───────────────────────────────────────────────── */
-.rebuild-score-slot {
-  display: inline-flex;
-  justify-content: flex-end;
-  flex: none;
-  min-width: 56px;
-}
-/* Neutral: "0/17" is a count, not a success state */
+/* ── Session header score ─────────────────────────────────────────────────
+   Shown once a part has been checked, so the progress bar otherwise runs the
+   full column. Neutral: "0/17" is a count, not a success state. */
 .rebuild-score {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 4px;

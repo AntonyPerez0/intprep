@@ -376,6 +376,36 @@ details.disclosure.drill-code-disclosure > .code {
 .drill-rate-btn.tone-brand {
   --tone: var(--brand);
 }
+/* Keyboard shortcut digit (fine pointers only), styled like a choice's number */
+.drill-rate-option {
+  position: relative;
+}
+.drill-rate-num {
+  display: none;
+  position: absolute;
+  top: 11px;
+  left: 10px;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .drill-rate-num {
+    display: grid;
+  }
+  /* Symmetric room for the digit keeps the label centred over its caption */
+  .drill-rate-btn {
+    padding: 0 34px;
+  }
+}
 .drill-rate-next {
   font-size: var(--fs-xs);
   color: var(--text-tertiary);
