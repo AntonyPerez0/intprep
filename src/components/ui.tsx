@@ -190,11 +190,25 @@ export function StatCard({ icon, label, value, meta, accent }: { icon?: IconName
   );
 }
 
-export function EmptyState({ icon, title, children, actions }: { icon: LucideIcon; title: ReactNode; children?: ReactNode; actions?: ReactNode }) {
+export function EmptyState({
+  icon,
+  title,
+  children,
+  actions,
+  level = 2,
+}: {
+  icon: LucideIcon;
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+  /** Heading level of the title: 2 under a page h1 (default), 3 inside an h2 section. */
+  level?: 2 | 3;
+}) {
+  const H = level === 3 ? 'h3' : 'h2';
   return (
     <div className="empty">
       <IconTile icon={icon} size="lg" />
-      <h3>{title}</h3>
+      <H className="empty-title">{title}</H>
       {children && <p>{children}</p>}
       {actions && <div className="row wrap" style={{ justifyContent: 'center', marginTop: 8 }}>{actions}</div>}
     </div>

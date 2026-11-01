@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, CircleCheck, CircleX, Check, X, CornerDownLeft } from 'lucide-react';
+import { ArrowRight, CircleCheck, CircleX, Check, X, CornerDownLeft, FileCode2 } from 'lucide-react';
 import type { Problem } from '../content/types';
 import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
@@ -10,6 +10,7 @@ import { DifficultyChip } from './ui';
 // ── Action bar: Check → feedback → Continue ─────────────────────────────────
 //
 // Stable hooks used by tests: .actionbar(.correct|.wrong), .actionbar .buttons > .btn:last-child
+// SessionShell measures the bar into --actionbar-h so the session body always clears it.
 
 export type CheckStatus = 'idle' | 'correct' | 'wrong';
 
@@ -64,6 +65,12 @@ export function ActionBar({
 
   const isIdle = status === 'idle';
   const label = isIdle && onCheck ? checkLabel : continueLabel;
+
+  // Double-click guard: re-arm on every state or label change (see .buttons.arm-* in shell.css).
+  const armKey = `${status}|${label}`;
+  const [arm, setArm] = useState({ key: armKey, n: 0 });
+  if (arm.key !== armKey) setArm({ key: armKey, n: arm.n + 1 });
+
   return (
     <div className={`actionbar ${status}`} role={isIdle ? undefined : 'status'}>
       <div className="actionbar-inner">
@@ -76,7 +83,7 @@ export function ActionBar({
             {feedback && <div className="feedback-body">{feedback}</div>}
           </div>
         )}
-        <div className="buttons">
+        <div className={`buttons arm-${arm.n % 2}`}>
           {isIdle ? (secondary ?? <span />) : <span />}
           <button
             type="button"
@@ -112,6 +119,7 @@ export function Choices({
   revealed,
   code,
   twoCol,
+  label = 'Answer options',
 }: {
   options: ChoiceOption[];
   selected: string | null;
@@ -121,6 +129,8 @@ export function Choices({
   revealed: boolean;
   code?: boolean;
   twoCol?: boolean;
+  /** Accessible name for the radio group. */
+  label?: string;
 }) {
   const answers = Array.isArray(answer) ? answer : [answer];
   // Number keys pick options.
@@ -142,7 +152,7 @@ export function Choices({
   }, []);
 
   return (
-    <div className={`choices ${twoCol ? 'two-col' : ''}`} role="radiogroup">
+    <div className={`choices ${twoCol ? 'two-col' : ''}`} role="radiogroup" aria-label={label}>
       {options.map((o, i) => {
         let cls = '';
         let mark: ReactNode = null;
@@ -201,7 +211,8 @@ export function CodeView({
   const shown = hideAfterChunk === undefined ? lines : lines.filter((l) => l.chunk <= hideAfterChunk);
   const focusRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    focusRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    focusRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
   }, [focusChunk]);
   let firstFocus = true;
   return (
@@ -235,6 +246,52 @@ export function CodeView({
         );
       })}
     </pre>
+  );
+}
+
+// ── Code window ─────────────────────────────────────────────────────────────
+
+/**
+ * An editor-style frame around code: a file tab, then `meta` (e.g. "12 lines") and the
+ * language on the right, an optional footer. Wrap a <CodeView> or <HighlightedCode>.
+ * `right` replaces the meta + language slot (e.g. a step counter).
+ */
+export function CodeWindow({
+  filename = 'solution.py',
+  lang = 'Python',
+  meta,
+  right,
+  footer,
+  children,
+  className = '',
+}: {
+  filename?: string;
+  lang?: ReactNode;
+  meta?: ReactNode;
+  right?: ReactNode;
+  footer?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`code-window ${className}`}>
+      <div className="code-window-head">
+        <span className="code-window-tab">
+          <FileCode2 strokeWidth={1.9} aria-hidden="true" />
+          {filename}
+        </span>
+        <span className="code-window-right">
+          {right ?? (
+            <>
+              {meta && <span className="code-window-meta tabular">{meta}</span>}
+              {lang && <span className="code-window-lang">{lang}</span>}
+            </>
+          )}
+        </span>
+      </div>
+      <div className="code-window-body">{children}</div>
+      {footer && <div className="code-window-foot">{footer}</div>}
+    </div>
   );
 }
 

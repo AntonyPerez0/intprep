@@ -32,8 +32,10 @@
     transform var(--dur-fast) var(--ease);
   text-decoration: none !important;
 }
-.btn:hover {
-  background: var(--btn-hover);
+@media (hover: hover) {
+  .btn:hover {
+    background: var(--btn-hover);
+  }
 }
 .btn:active {
   transform: translateY(0.5px);
@@ -65,17 +67,17 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .btn-success {
-  --btn-bg: var(--success);
+  --btn-bg: var(--success-solid);
   --btn-fg: #fff;
   --btn-border: transparent;
-  --btn-hover: #15803d;
+  --btn-hover: var(--success-solid-hover);
 }
 .btn-danger,
 .btn-red {
-  --btn-bg: var(--danger);
+  --btn-bg: var(--danger-solid);
   --btn-fg: #fff;
   --btn-border: transparent;
-  --btn-hover: #b91c1c;
+  --btn-hover: var(--danger-solid-hover);
 }
 .btn-secondary,
 .btn-ghost,
@@ -92,8 +94,10 @@
   --btn-hover: var(--surface-active);
   box-shadow: none;
 }
-.btn-quiet:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .btn-quiet:hover {
+    color: var(--text);
+  }
 }
 .btn-inverse {
   --btn-bg: #fff;
@@ -140,9 +144,11 @@
   cursor: pointer;
   transition: background var(--dur-fast);
 }
-.icon-btn:hover {
-  background: var(--surface-active);
-  color: var(--text);
+@media (hover: hover) {
+  .icon-btn:hover {
+    background: var(--surface-active);
+    color: var(--text);
+  }
 }
 .linklike {
   background: none;
@@ -426,7 +432,7 @@ textarea.input {
   resize: vertical;
 }
 .input::placeholder {
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
 }
 .input:focus {
   outline: none;
@@ -583,6 +589,16 @@ textarea.code-input::placeholder {
     content: '';
     position: absolute;
     inset: -10px -4px;
+  }
+  /* Default-size buttons and fields grow from 38px to the 40px touch minimum. */
+  .btn:not(.btn-sm) {
+    min-height: 40px;
+  }
+  .btn-icon:not(.btn-sm) {
+    width: 40px;
+  }
+  .input:not(textarea) {
+    height: 40px;
   }
 }
 
@@ -1009,6 +1025,81 @@ button.list-row {
 .tk-deco {
   color: var(--code-deco);
 }
+
+/* Editor-style frame around code: <CodeWindow filename lang meta right footer>. */
+.code-window {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  min-width: 0;
+}
+.code-window-head {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  height: 38px;
+  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+  border-bottom: 1px solid var(--code-border);
+}
+.code-window-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 16px;
+  margin-bottom: -1px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--code-text);
+  background: var(--code-bg);
+  border-right: 1px solid var(--code-border);
+  white-space: nowrap;
+}
+.code-window-tab::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--brand-400);
+}
+.code-window-tab svg {
+  width: 14px;
+  height: 14px;
+  color: var(--code-builtin);
+}
+.code-window-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-size: var(--fs-xs);
+  color: var(--code-comment);
+  white-space: nowrap;
+}
+.code-window-meta + .code-window-lang::before {
+  content: '·';
+  margin-right: 8px;
+}
+.code-window-body .code {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.code-window-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  padding: 4px 14px;
+  font-size: 11.5px;
+  color: var(--code-comment);
+  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+  border-top: 1px solid var(--code-border);
+}
 .code-output {
   background: var(--surface-sunken);
   color: var(--text);
@@ -1103,9 +1194,11 @@ button.list-row {
     background var(--dur-fast),
     box-shadow var(--dur-fast);
 }
-.choice:hover:not(:disabled) {
-  border-color: var(--text-disabled);
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .choice:hover:not(:disabled) {
+    border-color: var(--text-disabled);
+    background: var(--surface-hover);
+  }
 }
 .choice .num {
   flex: none;
@@ -1149,8 +1242,8 @@ button.list-row {
   box-shadow: 0 0 0 1px var(--success);
 }
 .choice.correct .num {
-  background: var(--success);
-  border-color: var(--success);
+  background: var(--success-solid);
+  border-color: var(--success-solid);
   color: #fff;
 }
 .choice.correct .choice-mark {
@@ -1162,8 +1255,8 @@ button.list-row {
   box-shadow: 0 0 0 1px var(--danger);
 }
 .choice.wrong .num {
-  background: var(--danger);
-  border-color: var(--danger);
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
   color: #fff;
 }
 .choice.wrong .choice-mark {
@@ -1394,11 +1487,13 @@ details.disclosure > :not(summary) {
   pointer-events: none;
 }
 @media (max-width: 1023px) {
+  /* Dock below the top bar / session header (both --topbar-h tall) so a toast never
+     covers navigation or a session's Close button. */
   .toasts {
     right: 50%;
     transform: translateX(50%);
     bottom: auto;
-    top: calc(8px + env(safe-area-inset-top));
+    top: calc(var(--topbar-h) + 8px + env(safe-area-inset-top));
   }
 }
 .toast {
@@ -1537,6 +1632,10 @@ details.disclosure > :not(summary) {
 }
 .empty .icon-tile {
   margin-bottom: 8px;
+}
+.empty-title {
+  font-size: var(--fs-lg);
+  letter-spacing: -0.01em;
 }
 .empty p {
   max-width: 420px;

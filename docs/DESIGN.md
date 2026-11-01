@@ -18,13 +18,18 @@ with taste: precise, quiet, confident.
 4. **Real data, honestly presented.** Numbers are tabular, labelled, and true. No fake testimonials, user counts,
    company logos or endorsements. Not affiliated with LeetCode, NeetCode or any employer — say so in the footer.
 5. **Mobile is first-class.** Design at 390px wide first, then scale up. Touch targets ≥ 40px (on touch screens
-   `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an invisible 40px hit area automatically). Never cause
-   horizontal page scroll (code blocks scroll inside themselves).
+   default `.btn` and `.input` grow to 40px, and `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an
+   invisible 40px hit area automatically). Hover colours live inside `@media (hover: hover)` so a tap never leaves a
+   sticky hover. Never cause horizontal page scroll (code blocks scroll inside themselves). Nothing may sit hidden
+   behind a fixed bar: the tab bar and action bar set `scroll-padding-bottom`, and `.session-body` clears the
+   action bar at its measured height.
 6. **Both themes, always.** Use tokens only. Never hard-code a colour except category colours passed as `--c`.
    Check every screen in light *and* dark.
-7. **Accessible.** WCAG AA contrast, a solid 2px `:focus-visible` outline that follows each element's radius,
-   `aria-label` on icon-only buttons, semantic headings
-   (one `h1` per page), `prefers-reduced-motion` respected.
+7. **Accessible.** WCAG AA contrast (white text only on the solid fills below), a solid 2px `:focus-visible`
+   outline that follows each element's radius, `aria-label` on icon-only buttons (and `role="img"` when a plain
+   `<span>` carries an `aria-label`), semantic headings (one `h1` per page, no skipped levels), landmarks (app pages:
+   skip link + `<main id="main">`; sessions: `<header>` + `<main>`), `prefers-reduced-motion` respected (including
+   JS `scrollIntoView`).
 
 ## Tokens (`src/styles/base.css`)
 
@@ -32,15 +37,16 @@ with taste: precise, quiet, confident.
 |---|---|
 | Surfaces | `--canvas` (app bg), `--surface` (cards), `--surface-raised` (popovers), `--surface-sunken` (wells, tracks), `--surface-hover`, `--surface-active` |
 | Borders | `--border` (default hairline), `--border-strong` (inputs, buttons), `--border-subtle` (row dividers) |
-| Text | `--text`, `--text-secondary`, `--text-tertiary`, `--text-disabled` |
+| Text | `--text`, `--text-secondary`, `--text-tertiary` (smallest readable text; ≥ 4.5:1 on every surface incl. sunken and brand-subtle), `--text-disabled` (disabled controls and decorative marks only — never labels, headings or placeholders) |
 | Brand | `--brand`, `--brand-hover`, `--brand-text` (brand-coloured text), `--brand-subtle` (tinted bg), `--brand-border`, plus `--brand-50…800` |
-| Status | `--success/-text/-subtle/-border`, same for `warning`, `danger`, `info` |
+| Status | `--success/-text/-subtle/-border`, same for `warning`, `danger`, `info`. `--success`/`--danger` are icon and stroke colours |
+| Solid fills | White text goes only on `--brand` (button-safe in both themes; `--brand-hover` darkens), `--success-solid(-hover)` and `--danger-solid(-hover)` — buttons, count badges, answer numbers |
 | Game accents | `--streak(-subtle)`, `--gem(-subtle)`, `--xp(-subtle)` |
 | Radius | `--r-xs 4` `--r-sm 6` `--r-md 8` `--r-lg 12` `--r-xl 16` `--r-full` |
 | Elevation | `--shadow-xs` (cards), `--shadow-sm`, `--shadow-md` (hover), `--shadow-lg` (toasts), `--shadow-xl` (modals), `--ring` (focus) |
 | Type | `--font-sans` (Inter), `--font-mono` (JetBrains Mono); sizes `--fs-xs 12` `sm 13` `md 14` `base 15` `lg 17` `xl 20` `2xl 24` `3xl 30` `4xl 38` `5xl 52` |
 | Motion | `--ease`, `--dur-fast 120ms`, `--dur 180ms`, `--dur-slow 320ms` |
-| Layout | `--content-max 1120px`, `--prose-max 720px` |
+| Layout | `--content-max 1120px`, `--prose-max 720px`, `--topbar-h 56px`, `--tabbar-h 60px`, `--actionbar-h` (set at runtime by `SessionShell`) |
 
 Type helpers: `.display`, `.h1`, `.h2`, `.h3`, `.eyebrow`, `.lead`, `.text-secondary`, `.text-tertiary`,
 `.text-xs/sm/md/lg`, `.fw-500/600`, `.mono`, `.tabular`, `.truncate`.
@@ -60,11 +66,12 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Lists | `.list` + `.list-row` (`.title`, `.meta`, `.chevron`), `.status-dot(.learned/.due)` |
 | Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon) |
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
-| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colours on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`) |
-| Sessions | `<SessionShell progress title right onClose progressColor>` (`progress={null}` hides the bar), `<ActionBar>`, `<Choices>`, `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column |
-| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions>` |
+| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colours on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors) uses `<CodeWindow filename lang meta right footer>` from `interact.tsx` — one frame everywhere: file tab (`solution.py`, `${unit}.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter) |
+| Sessions | `<SessionShell progress title right onClose progressColor>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (re-arms on every state/label change and ignores pointer input for 350ms, so a double-click cannot skip feedback), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
+| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` |
-| Misc | `<Kbd>`, `.tabs`, `details.disclosure`, `<Modal>` (traps Tab, restores focus on close), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count) |
+| Misc | `<Kbd>`, `.tabs`, `details.disclosure`, `<Modal>` (traps Tab, restores focus on close), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
+| App chrome | Desktop top bar: streak and gem `.pill-stat`s + avatar; the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
 
 ## Page blueprints
 
@@ -99,7 +106,7 @@ memory, Learning science.
 
 Automated tests drive the UI through these hooks — keep them working:
 
-- Classes: `.session`, `.session-body`, `.complete`, `.choice` (+`.selected/.correct/.wrong`), `.actionbar`
+- Classes: `.session`, `.session-body` (a `<main>`), `.complete`, `.choice` (+`.selected/.correct/.wrong`), `.actionbar`
   (+`.correct/.wrong`), `.actionbar .buttons > .btn:last-child` (primary action), `.parsons-slot`,
   `.parsons-bank .parsons-item`, `textarea.code-input`, `.session-body input.input` (typed key line),
   `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button).
