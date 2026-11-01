@@ -18,6 +18,14 @@ export interface ProblemProgress {
   rebuildBest?: number;
 }
 
+export interface TemplateProgress {
+  /** Best first-try accuracy, 0–1. */
+  best: number;
+  tries: number;
+  /** When it was last typed (ms). */
+  at: number;
+}
+
 export type Experience = 'none' | 'some' | 'comfortable';
 
 export interface Progress {
@@ -49,6 +57,8 @@ export interface Progress {
   /** 'f:<lessonId>' for foundations, 'g:<categoryId>' for pattern intros. */
   lessonsDone: Record<string, number>;
   problems: Record<string, ProblemProgress>;
+  /** Template from memory, per unit (category id). Optional: older saves do not have it. */
+  templates?: Record<string, TemplateProgress>;
   achievements: Record<string, number>;
   stats: {
     sessions: number;
@@ -395,6 +405,18 @@ export function recordRebuild(id: string, accuracy: number) {
     const p = d.problems[id];
     if (p) p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
   });
+}
+
+/** Record a "Template from memory" attempt for a unit. Returns true on a new best. */
+export function recordTemplate(cat: string, accuracy: number): boolean {
+  const prev = state.templates?.[cat];
+  const best = !prev || accuracy > prev.best;
+  update((d) => {
+    const t = (d.templates ??= {});
+    const cur = t[cat];
+    t[cat] = { best: Math.max(cur?.best ?? 0, accuracy), tries: (cur?.tries ?? 0) + 1, at: Date.now() };
+  });
+  return best;
 }
 
 // ── Settings & data ─────────────────────────────────────────────────────────

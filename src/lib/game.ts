@@ -16,6 +16,9 @@ export const XP = {
   comboBonus: 2,
   sessionBonus: 10,
   rebuildMax: 35,
+  /** Template from memory: up to this much, scaled by first-try accuracy (half with a hint). */
+  templateMax: 20,
+  templateHintMax: 10,
   blitzPerCorrect: 2,
 };
 

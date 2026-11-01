@@ -17,6 +17,7 @@ import { Profile } from './pages/Profile';
 import { RebuildRoute } from './pages/Rebuild';
 import { Review } from './pages/Review';
 import { Science } from './pages/Science';
+import { TemplateDrillRoute } from './pages/TemplateDrill';
 import { Unit } from './pages/Unit';
 
 // Re-mount lesson players when the route param changes so state starts fresh.
@@ -79,6 +80,7 @@ const router = createHashRouter([
       { path: '/unit/:cat/intro', element: <GuideRoute /> },
       { path: '/p/:id/learn', element: <ProblemLessonRoute /> },
       { path: '/p/:id/rebuild', element: <RebuildRoute /> },
+      { path: '/patterns/:cat/type', element: <TemplateDrillRoute /> },
       { path: '/review', element: <Review /> },
       { path: '/blitz', element: <Blitz /> },
       { path: '*', element: <Navigate to="/" replace /> },

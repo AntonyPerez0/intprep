@@ -133,6 +133,11 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
   template, problems list.
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar.
   Desktop may use two columns where it helps (e.g. code + explanation).
+- **Template from memory (`/patterns/:cat/type`)** — the unit's guide template typed into a blank `CodeTyper`:
+  "When to reach for it" cues (open on desktop, collapsed on phones), an optional first-word hint (halves the
+  XP), then the diff. The first check sets the score; "Fix and check again" sits above the diff. Linked from
+  the Pattern guide and Unit template headings (with the best score) and the pattern intro's completion. Pass
+  `state={{ from }}` so Close and Back return to the page that opened it.
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,
