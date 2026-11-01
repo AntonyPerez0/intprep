@@ -43,5 +43,5 @@ export function nextStep(p: Progress): NextStep {
     const next = problems.find((q) => !p.problems[q.id]?.learnedAt);
     if (next) return { kind: 'problem', problem: next, title: next.title, icon: c.icon, href: `/p/${next.id}/learn` };
   }
-  return { kind: 'done', title: 'Every problem learned — keep reviewing!', icon: '🏆', href: '/review' };
+  return { kind: 'done', title: 'Every problem learned', icon: 'trophy', href: '/review' };
 }

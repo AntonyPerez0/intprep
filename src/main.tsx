@@ -8,7 +8,6 @@ import '@fontsource/jetbrains-mono/500.css';
 import './styles/base.css';
 import './styles/components.css';
 import './styles/shell.css';
-import './styles/legacy.css';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(

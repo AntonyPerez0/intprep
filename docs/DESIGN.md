@@ -110,7 +110,7 @@ Automated tests drive the UI through these hooks — keep them working:
 
 - Put page-specific CSS in `src/styles/pages/<page>.css` and import it at the top of the page file. Prefix
   classes with the page name (`.home-…`, `.learn-…`) to avoid collisions.
-- Do **not** use classes from `src/styles/legacy.css` — it is deleted after the redesign.
+- Shared styles live only in `base.css`, `components.css` and `shell.css`; the v1 stylesheet has been removed.
 - Do not edit shared files (`src/styles/{base,components,shell}.css`, `src/components/*`, `src/lib/*`,
   `src/content/*`, `App.tsx`, `main.tsx`) unless that file is assigned to you. If a shared change is needed,
   build it locally in your page and note it.
