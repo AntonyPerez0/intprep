@@ -64,7 +64,7 @@ export function Unit() {
   const guideCta = guide && (
     <Link key="guide" to={`/unit/${meta.id}/intro`} className={`btn btn-lg ${guideDone ? 'btn-secondary' : 'btn-primary'}`}>
       <BookOpen />
-      {guideDone ? 'Replay pattern intro' : 'Learn the pattern'}
+      {guideDone ? 'Replay pattern intro' : 'Start pattern intro'}
     </Link>
   );
   const nextCta = firstTodo && (
@@ -193,7 +193,7 @@ export function Unit() {
               <p className="unit-card-sub">The core idea, when to use it, and the code shape to reach for.</p>
             </div>
             <Link to={`/unit/${meta.id}/intro`} className="btn btn-secondary btn-sm unit-head-btn">
-              Full lesson
+              Pattern intro
               <ArrowRight />
             </Link>
           </div>
@@ -201,11 +201,11 @@ export function Unit() {
           <div className="unit-overview-grid">
             <div className="unit-overview-main">
               <Md text={guide.summary.split('\n\n')[0]} className="unit-prose" />
-              <div className="unit-analogy">
-                <Lightbulb />
+              <div className="callout callout-brand unit-analogy">
+                <Lightbulb aria-hidden="true" />
                 <div>
-                  <div className="unit-label">Think of it like this</div>
-                  <p>{inline(guide.analogy)}</p>
+                  <div className="unit-analogy-label">Analogy</div>
+                  {inline(guide.analogy)}
                 </div>
               </div>
             </div>
@@ -287,8 +287,9 @@ export function Unit() {
                         <span className="unit-row-meta">
                           <span className="tabular">#{q.num}</span>
                           <span className="unit-row-technique">{q.pattern}</span>
-                          {review && <span className={`unit-row-review-inline${due ? ' is-due' : ''}`}>{due ? 'Review due' : `Review ${review}`}</span>}
                         </span>
+                        {/* Phones: the review status gets its own short line; wider screens have a column. */}
+                        {review && <span className={`unit-row-review-inline${due ? ' is-due' : ''}`}>{due ? 'Review due' : `Review ${review}`}</span>}
                       </span>
                       <span className={`unit-row-review unit-col-review${due ? ' is-due' : ''}`}>
                         <span className="sr-only">Next review: </span>

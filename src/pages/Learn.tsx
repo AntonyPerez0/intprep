@@ -274,7 +274,7 @@ function NextUp({ next }: { next: NextStep }) {
     const n = CATEGORIES.indexOf(c) + 1;
     tile = <CategoryIcon id={c.id} color={c.color} size="lg" />;
     context = `Unit ${n} · ${c.name}`;
-    title = 'Learn the pattern';
+    title = 'Pattern intro';
     detail = <span className="text-tertiary">{c.tagline}</span>;
     cta = 'Start pattern intro';
   } else if (next.kind === 'problem') {
@@ -524,7 +524,7 @@ export function Learn() {
                 marker={<BookOpen strokeWidth={2} />}
                 title="Pattern intro"
                 sub="Concept, analogy, template and a quick quiz"
-                end={<span className="chip">Guide</span>}
+                end={<span className="chip">Intro</span>}
               />
             )}
             {problems.map((q, i) => {

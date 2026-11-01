@@ -11,8 +11,7 @@
 }
 .back-link.unit-back {
   align-self: flex-start;
-  min-height: 40px; /* touch target; the extra height is pulled back with margins */
-  margin: -2px 0 -18px;
+  margin: 8px 0 -8px; /* sit 16px above the hero, not a full section gap */
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -249,6 +248,16 @@
   font-size: var(--fs-sm);
   font-weight: 550;
 }
+@media (pointer: coarse) {
+  .unit-stat-link {
+    position: relative;
+  }
+  .unit-stat-link::before {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
+  }
+}
 .unit-stat-text {
   display: inline-flex;
   align-items: center;
@@ -331,12 +340,6 @@
 .unit-head-btn {
   flex: none;
 }
-@media (max-width: 639px) {
-  /* Touch targets ≥ 40px on phones. */
-  .btn.unit-head-btn {
-    height: 40px;
-  }
-}
 
 .unit-overview {
   container-type: inline-size;
@@ -382,27 +385,15 @@
   color: var(--text-tertiary);
 }
 .unit-analogy {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-top: 20px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-md);
-  background: var(--surface-sunken);
+  margin-top: 16px;
 }
-.unit-analogy > svg {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin-top: 1px;
-  color: var(--c);
-}
-.unit-analogy p {
-  margin: 0;
-  font-size: var(--fs-md);
-  line-height: 1.6;
-  color: var(--text-secondary);
+.unit-analogy-label {
+  margin-bottom: 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-text);
 }
 .unit-cues ul {
   display: flex;
@@ -495,7 +486,7 @@
 .unit-code-toggle:hover {
   background: var(--surface-hover);
 }
-@media (min-width: 640px) {
+@media (min-width: 640px) and (pointer: fine) {
   .unit-code-toggle {
     height: 32px;
   }
@@ -554,11 +545,18 @@
 .unit-table-head {
   display: none;
 }
+/* Phones: status | title, technique and review status | difficulty over mastery,
+   the same stacked shape as the Problem library rows. */
 .unit-row {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'status main diff'
+    'status main mastery';
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
+  row-gap: 6px;
   min-height: 64px;
   padding: 12px 16px;
   color: var(--text);
@@ -599,8 +597,11 @@
   margin-left: 1px;
   fill: currentColor;
 }
+.unit-row > .status-dot {
+  grid-area: status;
+}
 .unit-row-main {
-  flex: 1;
+  grid-area: main;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -626,17 +627,34 @@
 .badge.unit-row-flag {
   flex: none;
 }
+/* One line: the number stays whole, the technique truncates. */
 .unit-row-meta {
-  display: block;
+  display: flex;
+  align-items: baseline;
   min-width: 0;
   font-size: var(--fs-xs);
   line-height: 1.5;
+  white-space: nowrap;
   color: var(--text-tertiary);
+}
+.unit-row-meta > * {
+  flex: none;
+}
+.unit-row-meta > .unit-row-technique {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .unit-row-meta > * + *::before {
   content: '·';
   margin: 0 6px;
   color: var(--text-disabled);
+}
+.unit-row-review-inline {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-tertiary);
 }
 .unit-row-review-inline.is-due {
   color: var(--warning-text);
@@ -645,17 +663,25 @@
 .unit-row-review {
   display: none;
 }
+.unit-row-diff {
+  grid-area: diff;
+  align-self: end;
+  justify-self: end;
+  display: flex;
+}
 .unit-row-mastery {
-  flex: none;
+  grid-area: mastery;
+  align-self: start;
+  justify-self: end;
   display: inline-flex;
 }
 .unit-row-mastery.is-empty {
   display: none;
 }
-.unit-row-diff {
-  flex: none;
-  display: flex;
-  justify-content: flex-end;
+/* Not learned yet: no meter, so the chip centres on the row. */
+.unit-row-mastery.is-empty + .unit-row-diff {
+  grid-row: 1 / -1;
+  align-self: center;
 }
 .unit-row-chevron {
   display: none;
@@ -673,8 +699,19 @@
   .unit-row {
     display: grid;
     grid-template-columns: 22px minmax(0, 1fr) 112px 64px 76px 16px;
+    grid-template-areas: none;
     column-gap: 16px;
+    row-gap: 0;
     align-items: center;
+  }
+  .unit-row > .status-dot,
+  .unit-row-main,
+  .unit-row-diff,
+  .unit-row-mastery,
+  .unit-row-mastery.is-empty + .unit-row-diff {
+    grid-area: auto;
+    align-self: auto;
+    justify-self: auto;
   }
   .unit-table-head {
     min-height: 40px;
@@ -702,20 +739,6 @@
   .unit-table.is-fresh .unit-col-review,
   .unit-table.is-fresh .unit-col-mastery {
     display: none;
-  }
-  .unit-row-meta {
-    display: flex;
-    align-items: baseline;
-  }
-  .unit-row-meta > * {
-    flex: none;
-  }
-  .unit-row-meta > .unit-row-technique {
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   .unit-row-review-inline {
     display: none;
