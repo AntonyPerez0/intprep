@@ -34,6 +34,20 @@ Plain English, short sentences, explain *why* not just *what*. Friendly and enco
    Keep backticks and `**` balanced. Careful with apostrophes inside single-quoted TS strings
    (use double quotes or template literals for those strings).
 
+## Foundations: "Your turn" slides
+Code lessons (not purely conceptual ones) let beginners write code themselves with `kind: 'type'` slides
+(see `TypeSlide` in `src/content/types.ts`). Put one right after the slide that taught the idea, about 2–3 per
+lesson, growing from one line to a few lines to a whole small function.
+- **Answerable from the lesson so far**, and unambiguous: name every variable, function and loop variable the
+  answer uses (`Use i as the loop variable`), because the learner's code is compared with the answer line by line.
+- `starter`: read-only lines shown above the editor (a `def` line, a variable to use). Write `answer` at its real
+  indentation under the starter (a function body is indented 4 spaces); the learner types from that column.
+- `accept`: other answers the prompt allows (`range(0, 5)` for `range(5)`, an `if`/`return` version of a one-line
+  return). Whitespace, quote style and comments never matter; indentation does.
+- `output`: exactly what `starter` + `answer` prints, shown as the expected output. `hint`: a nudge, not the answer.
+  `explain`: why it works, shown after checking.
+- `npm run validate -- foundations` compiles `starter` + `answer` (and every `accept`) with python3.
+
 ## Every solution must be tested
 In your own scratch directory, build a harness: `from typing import *`, `import heapq, collections, math`,
 define `ListNode` / `TreeNode` / builders as needed, paste the annotated solution (it is valid Python),

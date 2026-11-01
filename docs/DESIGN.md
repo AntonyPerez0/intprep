@@ -134,7 +134,10 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
   and status; problem rows with status, mastery and difficulty. Unit page: header, progress, CTAs, pattern summary,
   template, problems list.
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar.
-  Desktop may use two columns where it helps (e.g. code + explanation).
+  Desktop may use two columns where it helps (e.g. code + explanation). Foundation lessons mix in "Your turn"
+  slides (`kind: 'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the
+  explanation; a miss offers "Try again" (keeps the text) and "Show answer" (the answer, then Continue; the slide
+  comes back once at the end of the lesson).
 - **Code from memory (`/p/:id/rebuild?mode=parts|scratch`)** — a `.seg` switch under the title: **Part by part**
   (one part at a time, cued by its comment) and **From scratch** (the whole body in one blank editor under the given
   signature; "Show outline" reveals the parts' cues as numbered comments and caps the XP). Without `?mode=` it opens

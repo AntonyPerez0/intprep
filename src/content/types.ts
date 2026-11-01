@@ -133,10 +133,38 @@ export interface CategoryContent {
 
 // ── Foundations (for absolute beginners) ────────────────────────────────────
 
+/**
+ * A "Your turn" slide: the learner writes the code themselves in an editor, and it is checked
+ * line by line (whitespace, quote style and comments do not matter; indentation does).
+ * `starter + "\n" + answer` (and the same for every `accept`) must be valid Python.
+ */
+export interface TypeSlide {
+  kind: 'type';
+  title?: string;
+  /** The task (mini-markdown). Name every variable and function the answer uses, exactly. */
+  prompt: string;
+  /** Read-only code shown above the editor, e.g. a `def` line or a variable to use. */
+  starter?: string;
+  /**
+   * The reference answer, written at its real indentation under `starter` (a function body is
+   * indented 4 spaces). The learner types it from the editor's starting column.
+   */
+  answer: string;
+  /** Other answers that also count as correct (same indentation rules as `answer`). */
+  accept?: string[];
+  /** A nudge shown on request (mini-markdown). */
+  hint?: string;
+  /** Why the answer works, shown after checking (mini-markdown). */
+  explain: string;
+  /** What `starter` + `answer` prints, exactly as python3 prints it. Shown as the expected output. */
+  output?: string;
+}
+
 export type Slide =
   | { kind: 'text'; title?: string; body: string }
   | { kind: 'code'; title?: string; body?: string; code: string; output?: string }
-  | ({ kind: 'quiz' } & QuizQuestion);
+  | ({ kind: 'quiz' } & QuizQuestion)
+  | TypeSlide;
 
 export interface Lesson {
   id: string;

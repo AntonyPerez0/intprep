@@ -226,6 +226,118 @@
   margin-bottom: 16px;
 }
 
+/* ── "Your turn" slides ─────────────────────────────────────────────────── */
+/* The task reads at full strength: it is what the learner acts on. */
+.lplayer-type-prompt {
+  color: var(--text);
+}
+.lplayer-type-prompt code {
+  font-size: 0.86em;
+}
+.lplayer-type-hint {
+  margin-bottom: 16px;
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text);
+  animation: lplayer-in var(--dur) var(--ease);
+}
+.lplayer-type-hint-label {
+  margin-bottom: 2px;
+  font-weight: 600;
+  color: var(--brand-text);
+}
+.lplayer-type-hint code {
+  font-size: 0.86em;
+}
+
+/* Legend under the diff: what the gutter markers mean */
+.lplayer-diff-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0 0;
+  padding: 0 2px;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.lplayer-diff-key li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The same markers as the diff gutter, on a code-colored chip */
+.lplayer-diff-sign {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--r-xs);
+  background: var(--code-bg);
+}
+.lplayer-diff-sign svg {
+  width: 12px;
+  height: 12px;
+}
+.lplayer-diff-sign.ok,
+.lplayer-diff-sign.add {
+  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
+  background-image: linear-gradient(color-mix(in srgb, var(--success) 16%, transparent), color-mix(in srgb, var(--success) 16%, transparent));
+}
+.lplayer-diff-sign.del {
+  color: color-mix(in srgb, var(--danger) 65%, var(--code-text));
+  background-image: linear-gradient(color-mix(in srgb, var(--danger) 16%, transparent), color-mix(in srgb, var(--danger) 16%, transparent));
+}
+.lplayer-diff-sign.indent {
+  color: color-mix(in srgb, var(--warning) 75%, var(--code-text));
+  background-image: linear-gradient(color-mix(in srgb, var(--warning) 16%, transparent), color-mix(in srgb, var(--warning) 16%, transparent));
+}
+
+/* After "Show answer": why it works, under the answer */
+.lplayer-type-explain {
+  margin-top: 16px;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  color: var(--text);
+  animation: lplayer-in var(--dur) var(--ease);
+}
+.lplayer-type-explain code {
+  font-size: 0.86em;
+}
+.lplayer-type-explain .md p {
+  margin-bottom: 0.5em;
+}
+.lplayer-type-again {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+}
+
+/* Action bar: the explanation, then a way out when stuck */
+.lplayer-type-fb .btn {
+  margin-top: 10px;
+}
+.lplayer-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -12px;
+}
+/* The narrowest phones: Hint and Show answer go icon-only (names stay for screen readers) so
+   Check keeps its width */
+@media (max-width: 379px) {
+  .lplayer-tools .btn {
+    padding-inline: 10px;
+  }
+  .lplayer-tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 /* ── Completion ─────────────────────────────────────────────────────────── */
 .lplayer-done .complete-actions .btn {
   min-width: 0;

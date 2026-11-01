@@ -16,6 +16,7 @@ import { CATEGORIES } from '../src/content/categories';
 import { CONTENT } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { parseSolution } from '../src/lib/parseSolution';
+import { codeLines, gradeCode, lineKey } from '../src/lib/codegrade';
 import type { CategoryId, QuizQuestion } from '../src/content/types';
 
 const args = process.argv.slice(2);
@@ -143,6 +144,27 @@ function checkFoundations() {
         pyFiles.push({ label: sw, code: s.code });
       } else if (s.kind === 'quiz') {
         checkQuiz(sw, s);
+      } else if (s.kind === 'type') {
+        // "Your turn": the learner writes code that is graded against answer + accept.
+        nonEmpty(sw, 'prompt', s.prompt);
+        nonEmpty(sw, 'answer', s.answer);
+        nonEmpty(sw, 'explain', s.explain);
+        [s.prompt, s.explain, s.hint ?? ''].forEach((t) => checkMarkdown(sw, t));
+        if (s.hint !== undefined) nonEmpty(sw, 'hint', s.hint);
+        if (s.output !== undefined) nonEmpty(sw, 'output', s.output);
+        const answers = [s.answer, ...(s.accept ?? [])];
+        if (s.accept?.some((a) => !a.trim())) err(sw, 'an "accept" answer is empty');
+        if (new Set(answers.map((a) => codeLines(a).map(lineKey).join('\n'))).size !== answers.length)
+          err(sw, '"accept" repeats the answer (or another accepted answer) after normalizing');
+        if (answers.some((a) => /\t/.test(a)) || /\t/.test(s.starter ?? '')) err(sw, 'code contains tabs — use 4 spaces');
+        answers.forEach((a) => {
+          // Each accepted answer must grade perfect against itself, typed from the editor's column.
+          if (!gradeCode(a, a).perfect) err(sw, `answer does not grade as correct against itself: ${a.split('\n')[0]}`);
+        });
+        // starter + answer (and starter + each accepted answer) must be valid Python.
+        answers.forEach((a, k) =>
+          pyFiles.push({ label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`, code: s.starter ? `${s.starter}\n${a}` : a }),
+        );
       } else {
         err(sw, `unknown slide kind`);
       }

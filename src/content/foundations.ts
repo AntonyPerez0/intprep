@@ -108,14 +108,16 @@ The problem then joins your drills, so you will meet it again in a few days. Sol
     title: 'Python Basics',
     icon: '🐍',
     blurb: 'Values, variables, types, arithmetic, comparisons and printing.',
-    minutes: 10,
+    minutes: 13,
     slides: [
       {
         kind: 'text',
         title: 'What is a program?',
         body: `A program is a list of instructions that the computer runs **top to bottom**, one line at a time.
 
-We use **Python**: it reads almost like English, it is short to write, and every major company accepts it in interviews. Each code box in these lessons shows exactly what it prints underneath. Read the code, predict the output, then check.`,
+We use **Python**: it reads almost like English, it is short to write, and every major company accepts it in interviews. Each code box in these lessons shows exactly what it prints underneath. Read the code, predict the output, then check.
+
+Every few slides it is **your turn**: you write a few lines yourself, and IntPrep checks them line by line.`,
       },
       {
         kind: 'code',
@@ -132,6 +134,16 @@ Hello, IntPrep!
 7`,
       },
       {
+        kind: 'type',
+        title: 'Your first line of code',
+        prompt: 'Write one line that prints the text `Hi there`. Remember that text goes inside quotes.',
+        answer: 'print("Hi there")',
+        hint: 'Start with `print(`, put the text inside quotes, then close the bracket.',
+        explain:
+          '`print(...)` shows whatever is inside the brackets. The quotes tell Python that `Hi there` is text, not a name. Single and double quotes both work.',
+        output: 'Hi there',
+      },
+      {
         kind: 'code',
         title: 'Variables',
         body: 'A **variable** is a name for a value. `=` means *store the value on the right under the name on the left*. It is not maths equality.',
@@ -145,6 +157,25 @@ print(score, lives)`,
         output: py`
 16
 16 3`,
+      },
+      {
+        kind: 'type',
+        title: 'Store and update a value',
+        prompt: 'Create a variable called `score` that holds `10`. On the next line, add `5` to it with `+=`. Then print `score`.',
+        answer: py`
+score = 10
+score += 5
+print(score)`,
+        accept: [
+          py`
+score = 10
+score = score + 5
+print(score)`,
+        ],
+        hint: '`score += 5` is short for `score = score + 5`. Press Enter to start a new line.',
+        explain:
+          'The first line stores 10 under the name `score`. `+=` reads the old value, adds 5 and stores the result back, so `print` shows 15.',
+        output: '15',
       },
       {
         kind: 'text',
@@ -228,6 +259,21 @@ False
 2 1`,
       },
       {
+        kind: 'type',
+        title: 'Split off the last digit',
+        prompt: '`n` holds a number. Print its **last digit**. Then, on the next line, print `n` **without** its last digit. Use `%` and `//`.',
+        starter: 'n = 917',
+        answer: py`
+print(n % 10)
+print(n // 10)`,
+        hint: 'Divide by 10: the remainder (`%`) is the last digit, and floor division (`//`) drops it.',
+        explain:
+          '`917 % 10` is the remainder after dividing by 10, which is always the last digit: `7`. `917 // 10` divides and rounds down, which drops that digit: `91`.',
+        output: py`
+7
+91`,
+      },
+      {
         kind: 'code',
         title: 'Comparisons give booleans',
         body: 'Comparisons produce `True` or `False`. Combine them with `and`, `or` and `not`.',
@@ -297,7 +343,7 @@ print(a, b)`,
     title: 'Decisions and Loops',
     icon: '🔀',
     blurb: 'if/elif/else, for loops with range, while, break and continue.',
-    minutes: 10,
+    minutes: 13,
     slides: [
       {
         kind: 'text',
@@ -340,6 +386,24 @@ else:
           'Only the **first** true branch runs. `15 > 5` is true, so the `elif` is never even checked. Put the most specific condition first.',
       },
       {
+        kind: 'type',
+        title: 'Write an if',
+        prompt: '`temp` holds a temperature. Write an `if` that prints `hot` when `temp` is greater than `30`.',
+        starter: 'temp = 34',
+        answer: py`
+if temp > 30:
+    print("hot")`,
+        accept: [
+          py`
+if 30 < temp:
+    print("hot")`,
+        ],
+        hint: 'End the `if` line with a colon. Press Enter after it and the editor indents the next line for you.',
+        explain:
+          '`temp > 30` is true here, so the indented line runs. The colon opens the block, and the 4-space indent puts `print` inside it.',
+        output: 'hot',
+      },
+      {
         kind: 'code',
         title: 'for loops and range',
         body: '`range(stop)` counts from 0 up to **but not including** `stop`. That *stop is excluded* rule appears all over Python.',
@@ -351,6 +415,28 @@ lap 0
 lap 1
 lap 2
 lap 3`,
+      },
+      {
+        kind: 'type',
+        title: 'Write a for loop',
+        prompt: 'Write a loop that prints the numbers `0` to `4`, one per line. Use `i` as the loop variable.',
+        answer: py`
+for i in range(5):
+    print(i)`,
+        accept: [
+          py`
+for i in range(0, 5):
+    print(i)`,
+        ],
+        hint: '`range(5)` counts 0, 1, 2, 3, 4. It stops *before* 5.',
+        explain:
+          '`range(5)` produces 0 up to, but not including, 5. The indented `print(i)` runs once for each of them.',
+        output: py`
+0
+1
+2
+3
+4`,
       },
       {
         kind: 'code',
@@ -421,6 +507,30 @@ print(total)`,
         explain: 'The loop adds 0, 1 and 2, then reaches `i == 3` and breaks before adding 3 or 4. Total: 0 + 1 + 2 = 3.',
       },
       {
+        kind: 'type',
+        title: 'A decision inside a loop',
+        prompt: 'Print only the even numbers from `0` to `8`. Loop over `range(9)` with the variable `n`, and print `n` only when `n % 2 == 0`.',
+        answer: py`
+for n in range(9):
+    if n % 2 == 0:
+        print(n)`,
+        accept: [
+          py`
+for n in range(0, 9):
+    if n % 2 == 0:
+        print(n)`,
+        ],
+        hint: 'Three lines: the loop, an `if` inside it (indented once), and the `print` inside the `if` (indented twice).',
+        explain:
+          'The `if` is indented once, so it runs on every pass of the loop. The `print` is indented twice, so it runs only when the `if` is true: for 0, 2, 4, 6 and 8.',
+        output: py`
+0
+2
+4
+6
+8`,
+      },
+      {
         kind: 'code',
         title: 'Nested loops',
         body: 'A loop inside a loop runs the **whole** inner loop for every pass of the outer one. Starting `j` at `i + 1` visits every pair exactly once: the classic brute force.',
@@ -473,7 +583,7 @@ count is zero`,
     title: 'Lists and Strings',
     icon: '📚',
     blurb: 'Indexing, slicing, list methods, sorting, string tricks and comprehensions.',
-    minutes: 12,
+    minutes: 15,
     slides: [
       {
         kind: 'text',
@@ -510,6 +620,17 @@ print(nums)`,
         answer: 0,
         explain:
           '`len(nums)` is 4, so this is `nums[3]`: the last item, the same as `nums[-1]`. It is `nums[4]` that would be out of range.',
+      },
+      {
+        kind: 'type',
+        title: 'Read from the end',
+        prompt: 'Print the **last** item of `nums`, using a negative index.',
+        starter: 'nums = [4, 8, 15, 16]',
+        answer: 'print(nums[-1])',
+        hint: 'Index `-1` means the last item.',
+        explain:
+          '`nums[-1]` counts from the end, so it is always the last item, however long the list is. `nums[len(nums) - 1]` finds the same item the long way.',
+        output: '16',
       },
       {
         kind: 'code',
@@ -572,6 +693,22 @@ lime
 fig 3
 kiwi 1
 lime 2`,
+      },
+      {
+        kind: 'type',
+        title: 'Loop with enumerate',
+        prompt: 'Print each fruit with its index, using `enumerate`. Name the loop variables `i` and `f`, and print them with `print(i, f)`.',
+        starter: 'fruits = ["fig", "kiwi", "lime"]',
+        answer: py`
+for i, f in enumerate(fruits):
+    print(i, f)`,
+        hint: 'The loop line is `for i, f in ...:` with `enumerate(fruits)` after `in`.',
+        explain:
+          '`enumerate` hands you two things on every pass, the index and the item, and `i, f` unpacks them into two names.',
+        output: py`
+0 fig
+1 kiwi
+2 lime`,
       },
       {
         kind: 'code',
@@ -672,6 +809,27 @@ print(grid)`,
 [[0, 0, 0], [0, 0, 0]]`,
       },
       {
+        kind: 'type',
+        title: 'Write a list comprehension',
+        prompt: 'Build a list called `doubled` that holds every number in `nums` times 2. Use a list comprehension with `n` as the loop variable, then print `doubled`.',
+        starter: 'nums = [1, 2, 3]',
+        answer: py`
+doubled = [n * 2 for n in nums]
+print(doubled)`,
+        accept: [
+          py`
+doubled = [2 * n for n in nums]
+print(doubled)`,
+          py`
+doubled = [n + n for n in nums]
+print(doubled)`,
+        ],
+        hint: 'The shape is `[expression for item in items]`.',
+        explain:
+          'The comprehension works out `n * 2` for each `n` in `nums` and collects the results in a new list, all in one line.',
+        output: '[2, 4, 6]',
+      },
+      {
         kind: 'quiz',
         q: 'What does this print?',
         code: py`
@@ -692,7 +850,7 @@ print(grid)`,
     title: 'Dicts and Sets',
     icon: '🔑',
     blurb: 'Instant lookups by key: dict, set, Counter and defaultdict.',
-    minutes: 10,
+    minutes: 13,
     slides: [
       {
         kind: 'text',
@@ -720,6 +878,16 @@ True False
 2`,
       },
       {
+        kind: 'type',
+        title: 'Add a key',
+        prompt: 'Add the key `"cy"` with the value `40` to the dict `ages`.',
+        starter: 'ages = {"ana": 31, "bo": 25}',
+        answer: 'ages["cy"] = 40',
+        hint: 'Put the key in square brackets after `ages`, then assign the value with `=`.',
+        explain:
+          'Assigning to a key that is not there yet adds it. If the key were already there, the same line would replace its value.',
+      },
+      {
         kind: 'code',
         title: '.get() for safe lookups',
         body: '`d.get(key, default)` returns `default` when the key is missing. `count.get(x, 0) + 1` is the classic counting line.',
@@ -741,6 +909,22 @@ print(count.get("z", 0))`,
         answer: 1,
         explain:
           'Square brackets on a missing key crash the program. Use `d.get("b")` (gives `None`), `d.get("b", 0)`, or check `"b" in d` first.',
+      },
+      {
+        kind: 'type',
+        title: 'Count with a dict',
+        prompt: 'Count how often each letter appears in `word`. Loop over `word` with the variable `ch`, and add 1 to `count[ch]` using `count.get(ch, 0)`. After the loop, print `count`.',
+        starter: py`
+word = "apple"
+count = {}`,
+        answer: py`
+for ch in word:
+    count[ch] = count.get(ch, 0) + 1
+print(count)`,
+        hint: 'The `print` starts at the left edge, outside the loop. After the line inside the loop, press Enter, then remove the indent (Backspace removes all 4 spaces at once).',
+        explain:
+          '`count.get(ch, 0)` is the count so far, or 0 the first time a letter shows up. Adding 1 and storing it back counts this letter. The `print` is not indented, so it runs once, after the loop.',
+        output: "{'a': 1, 'p': 2, 'l': 1, 'e': 1}",
       },
       {
         kind: 'code',
@@ -781,6 +965,19 @@ print({1, 2, 3} & {2, 3, 4}, {1, 2} | {2, 5})`,
 {3}
 {1, 2, 3}
 {2, 3} {1, 2, 5}`,
+      },
+      {
+        kind: 'type',
+        title: 'Use a set',
+        prompt: 'Create an empty set called `seen`. Add `"a"` to it. Then print whether `"a"` is in `seen`.',
+        answer: py`
+seen = set()
+seen.add("a")
+print("a" in seen)`,
+        hint: '`{}` would make an empty *dict*, so an empty set is written `set()`.',
+        explain:
+          '`set()` makes an empty set, `.add` puts a value in it, and `in` answers *is it there?* instantly. You will use exactly these three moves in dozens of problems.',
+        output: 'True',
       },
       {
         kind: 'text',
@@ -879,7 +1076,7 @@ print(c[2], c[5])`,
     title: 'Functions and Classes',
     icon: '🧩',
     blurb: 'def and return, nested helpers with nonlocal, and why answers live in class Solution.',
-    minutes: 12,
+    minutes: 15,
     slides: [
       {
         kind: 'text',
@@ -911,6 +1108,17 @@ hi Sam
 None`,
       },
       {
+        kind: 'type',
+        title: 'Finish a function',
+        prompt: 'The first line of `double` is written for you. Write the line inside it that **returns** `n` times 2.',
+        starter: 'def double(n):',
+        answer: '    return n * 2',
+        accept: ['    return 2 * n', '    return n + n'],
+        hint: 'One line that starts with `return`.',
+        explain:
+          '`return` hands the result back to whoever called `double`, so `double(4)` gives 8. The line is indented because it belongs to the function.',
+      },
+      {
         kind: 'quiz',
         q: 'What does this print?',
         code: py`
@@ -925,6 +1133,30 @@ print(sign(3), sign(-3))`,
         answer: 0,
         explain:
           '`return` ends the function on the spot. `sign(3)` returns at the first `return`; `sign(-3)` at the second. The `print` after it can never run.',
+      },
+      {
+        kind: 'type',
+        title: 'Write a whole function',
+        prompt: 'Write a function called `is_even` that takes one parameter, `n`, and returns `True` if `n` is even and `False` otherwise.',
+        answer: py`
+def is_even(n):
+    return n % 2 == 0`,
+        accept: [
+          py`
+def is_even(n):
+    if n % 2 == 0:
+        return True
+    return False`,
+          py`
+def is_even(n):
+    if n % 2 == 0:
+        return True
+    else:
+        return False`,
+        ],
+        hint: 'A number is even when `n % 2 == 0`. That comparison is already `True` or `False`, so you can return it directly.',
+        explain:
+          'A comparison gives a boolean, so `return n % 2 == 0` hands back `True` for even numbers and `False` for odd ones. An `if` with two `return` lines works too; it is just longer.',
       },
       {
         kind: 'code',
@@ -1063,6 +1295,30 @@ class Solution:
 
 print(Solution().maxValue([3, 9, 4]))   # roughly what LeetCode does`,
         output: '9',
+      },
+      {
+        kind: 'type',
+        title: 'Fill in a LeetCode method',
+        prompt: 'Make `minValue` return the **smallest** number in `nums`. Keep the smallest so far in `best`, starting at `nums[0]`. Loop with `n`, and update `best` with `min`.',
+        starter: py`
+class Solution:
+    def minValue(self, nums: List[int]) -> int:`,
+        answer: py`
+        best = nums[0]
+        for n in nums:
+            best = min(best, n)
+        return best`,
+        accept: [
+          py`
+        best = nums[0]
+        for n in nums:
+            if n < best:
+                best = n
+        return best`,
+        ],
+        hint: 'It is the `maxValue` method from earlier, with `min` in place of `max`. The last line, `return best`, is not inside the loop.',
+        explain:
+          '`best` starts as the first number. Each pass keeps the smaller of `best` and `n`, so after the loop `best` is the smallest number, and the method returns it.',
       },
       {
         kind: 'quiz',
@@ -1265,7 +1521,7 @@ def common(a, b):
     title: 'Recursion',
     icon: '🌀',
     blurb: 'Functions that call themselves: base cases, the call stack, and trusting the recursion.',
-    minutes: 12,
+    minutes: 14,
     slides: [
       {
         kind: 'text',
@@ -1310,6 +1566,20 @@ print(factorial(1))`,
         output: py`
 120
 1`,
+      },
+      {
+        kind: 'type',
+        title: 'Write the recursive step',
+        prompt: '`power(base, exp)` returns `base` multiplied by itself `exp` times. The base case is done. Write the last line: return `base` times `power` with one less `exp`.',
+        starter: py`
+def power(base, exp):
+    if exp == 0:
+        return 1`,
+        answer: '    return base * power(base, exp - 1)',
+        accept: ['    return power(base, exp - 1) * base'],
+        hint: 'Copy the shape of `factorial`: `n * factorial(n - 1)`. This time the call keeps `base` and makes `exp` one smaller.',
+        explain:
+          '2⁴ is 2 × 2³, so `power(base, exp)` is `base * power(base, exp - 1)`. Each call makes `exp` one smaller until the base case returns 1.',
       },
       {
         kind: 'text',
@@ -1401,6 +1671,32 @@ print(count(5))`,
           '5, 3, 1, -1, -3… `n` jumps right past 0, so the base case is never reached and Python eventually gives up. A safer base case is `if n <= 0`.',
       },
       {
+        kind: 'type',
+        title: 'A recursive function from scratch',
+        prompt: 'Write `length(nums)`, which returns how many items are in `nums` **without** using `len`. If `nums` is empty, return `0`. Otherwise, return `1` plus the `length` of the rest of the list, `nums[1:]`.',
+        answer: py`
+def length(nums):
+    if not nums:
+        return 0
+    return 1 + length(nums[1:])`,
+        accept: [
+          py`
+def length(nums):
+    if nums == []:
+        return 0
+    return 1 + length(nums[1:])`,
+          py`
+def length(nums):
+    if not nums:
+        return 0
+    else:
+        return 1 + length(nums[1:])`,
+        ],
+        hint: 'It has the same shape as `total` from earlier: an empty-list base case, then one step plus a call on the rest.',
+        explain:
+          'An empty list has length 0: that is the base case. Any other list is one item plus the rest, and you trust the call on `nums[1:]` to measure the rest.',
+      },
+      {
         kind: 'code',
         title: 'Fibonacci',
         body: 'Each Fibonacci number is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8… This function makes **two** recursive calls.',
@@ -1473,7 +1769,7 @@ print(fib(50, {}))`,
     title: 'A Tour of Data Structures',
     icon: '🧰',
     blurb: 'Arrays, hash maps, stacks, queues, linked lists, trees, heaps and graphs.',
-    minutes: 12,
+    minutes: 15,
     slides: [
       {
         kind: 'text',
@@ -1522,6 +1818,20 @@ b
 ['a', 'b']`,
       },
       {
+        kind: 'type',
+        title: 'Use a list as a stack',
+        prompt: 'Push `"x"` and then `"y"` onto `stack` with `append`. Then, in a single line, pop the top item and print it.',
+        starter: 'stack = []',
+        answer: py`
+stack.append("x")
+stack.append("y")
+print(stack.pop())`,
+        hint: '`stack.pop()` removes the top item and gives it back, so you can print it directly.',
+        explain:
+          '`append` pushes onto the top and `pop()` takes the newest item off, so the last one in, `"y"`, is the first one out.',
+        output: 'y',
+      },
+      {
         kind: 'code',
         title: 'Queue: first in, first out',
         body: 'Like a line at a shop. Use `deque`, because `list.pop(0)` is O(n). Great for breadth-first search (BFS) and processing things in arrival order.',
@@ -1563,6 +1873,42 @@ while node:                     # walk it: O(n)
     node = node.next
 print(vals)`,
         output: '[0, 1, 2, 3]',
+      },
+      {
+        kind: 'type',
+        title: 'Walk a linked list',
+        prompt: 'Print every value in the list, front to back, one per line. Use a variable called `node` that starts at `head`, and move it along with `.next` inside a `while` loop.',
+        starter: py`
+class ListNode:
+    def __init__(self, val, next=None):
+        self.val = val
+        self.next = next
+
+head = ListNode(1, ListNode(2, ListNode(3)))`,
+        answer: py`
+node = head
+while node:
+    print(node.val)
+    node = node.next`,
+        accept: [
+          py`
+node = head
+while node is not None:
+    print(node.val)
+    node = node.next`,
+          py`
+node = head
+while node != None:
+    print(node.val)
+    node = node.next`,
+        ],
+        hint: 'Inside the loop: print `node.val`, then step with `node = node.next`. Forget the step and the loop never ends.',
+        explain:
+          '`node` starts at the first node. Each pass prints its value and steps to the next node. After the last one, `node` is `None`, which counts as false, so the loop stops.',
+        output: py`
+1
+2
+3`,
       },
       {
         kind: 'code',
@@ -1629,6 +1975,32 @@ print(graph["B"])`,
 ['A', 'D']`,
       },
       {
+        kind: 'type',
+        title: 'Build an adjacency list',
+        prompt: 'Fill in `graph` from `edges`. Loop with `for u, v in edges:` and add every edge **both ways**. After the loop, print `graph[2]`.',
+        starter: py`
+from collections import defaultdict
+
+edges = [(1, 2), (2, 3)]
+graph = defaultdict(list)`,
+        answer: py`
+for u, v in edges:
+    graph[u].append(v)
+    graph[v].append(u)
+print(graph[2])`,
+        accept: [
+          py`
+for u, v in edges:
+    graph[v].append(u)
+    graph[u].append(v)
+print(graph[2])`,
+        ],
+        hint: 'Inside the loop, `graph[u].append(v)` and its mirror image. The `print` goes after the loop, so it is not indented.',
+        explain:
+          "Each edge joins two nodes, so `v` goes in `u`'s list and `u` goes in `v`'s list. Node 2 is on both edges, so its neighbors are `[1, 3]`.",
+        output: '[1, 3]',
+      },
+      {
         kind: 'text',
         title: 'Cheat sheet',
         body: `- Fast lookup, counting, grouping: **hash map / set**
@@ -1656,7 +2028,7 @@ print(graph["B"])`,
     title: 'How to Solve a Problem',
     icon: '🧠',
     blurb: 'A repeatable framework from first read to tested, explained code.',
-    minutes: 10,
+    minutes: 12,
     slides: [
       {
         kind: 'text',
@@ -1812,6 +2184,32 @@ Throughout, **think out loud**. Interviewers grade your reasoning, not just the 
         answer: 1,
         explain:
           'Testing out loud shows rigour and often catches a real bug. Finding and fixing it yourself is a strong signal.',
+      },
+      {
+        kind: 'type',
+        title: 'Solve one from scratch',
+        prompt: `Write \`has_duplicate(nums)\`: return \`True\` if any number appears more than once in \`nums\`, and \`False\` otherwise.
+
+Use the same idea as \`first_repeat\`: walk through \`nums\` with the loop variable \`n\`, and remember what you have seen in a set called \`seen\`.`,
+        answer: py`
+def has_duplicate(nums):
+    seen = set()
+    for n in nums:
+        if n in seen:
+            return True
+        seen.add(n)
+    return False`,
+        accept: [
+          py`
+def has_duplicate(nums):
+    return len(set(nums)) < len(nums)`,
+          py`
+def has_duplicate(nums):
+    return len(set(nums)) != len(nums)`,
+        ],
+        hint: 'The `def` line, an empty set, the loop, an `if n in seen:` that returns `True`, then `seen.add(n)`. After the loop, `return False`.',
+        explain:
+          'Each number is checked against `seen` in O(1), so the whole function is **O(n)** time and O(n) space, instead of O(n²) for comparing every pair. This is also Contains Duplicate, the first problem in the Arrays & Hashing unit.',
       },
     ],
   },
