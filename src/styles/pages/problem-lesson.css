@@ -396,45 +396,6 @@ div.plesson-locked {
   fill: currentColor;
 }
 
-/* Code "window": filename bar + the shared dark code block. */
-.plesson-codewin {
-  min-width: 0;
-  border: 1px solid var(--code-border);
-  border-radius: var(--r-lg);
-  background: var(--code-bg);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-}
-.plesson-codewin-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--code-border);
-  color: var(--code-text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-.plesson-codewin-head svg {
-  width: 14px;
-  height: 14px;
-  color: var(--code-comment);
-}
-.plesson-codewin-lang {
-  margin-left: auto;
-  font-family: var(--font-sans);
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--code-comment);
-}
-.plesson-codewin .code {
-  border: 0;
-  border-radius: 0;
-  padding: 12px 0 14px;
-}
-
 @media (min-width: 1024px) {
   /* The walkthrough gets a wider canvas: code left, sticky notes right.
      Header and action bar widen with it so all three keep one edge. */
@@ -460,9 +421,6 @@ div.plesson-locked {
     position: sticky;
     top: 84px;
     padding: 20px;
-  }
-  .plesson-codewin .code {
-    font-size: 13.5px;
   }
 }
 

@@ -8,7 +8,6 @@ import {
   Clock,
   Database,
   ExternalLink,
-  FileCode2,
   FileText,
   Gauge,
   Hammer,
@@ -33,7 +32,7 @@ import { inline, Md } from '../lib/markdown';
 import { parseSolution } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
 import { getProgress, learnProblem, useProgress } from '../lib/store';
-import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { ActionBar, Choices, CodeView, CodeWindow, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { ComplexityDrill, KeyLineDrill, OrderDrill } from '../components/Drills';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, CategoryIcon, IconTile } from '../components/icons';
@@ -518,14 +517,9 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
             </div>
           )}
         </aside>
-        <div className="plesson-codewin">
-          <div className="plesson-codewin-head">
-            <FileCode2 />
-            <span>solution.py</span>
-            <span className="plesson-codewin-lang">Python</span>
-          </div>
+        <CodeWindow className="plesson-codewin" filename="solution.py">
           <CodeView lines={parsed.lines} focusChunk={c} hideAfterChunk={c} showKeys />
-        </div>
+        </CodeWindow>
       </div>
       <ActionBar
         status="idle"

@@ -102,9 +102,14 @@
 .rebuild-steps-track span.current {
   background: var(--brand-400);
 }
-@media (max-width: 420px) {
+/* Phones: the dashes already show the total, so the counter drops "of N" and tightens
+   up, leaving the file tab its full name even on 9- and 10-part solutions */
+@container code-window (max-width: 400px) {
+  .rebuild-steps-of {
+    display: none;
+  }
   .rebuild-steps-track span {
-    width: 10px;
+    width: 8px;
   }
 }
 

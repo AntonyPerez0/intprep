@@ -400,33 +400,6 @@ dd.patterns-mix {
   color: var(--brand-text);
 }
 
-.patterns-code {
-  overflow: hidden;
-  background: var(--code-bg);
-  border: 1px solid var(--code-border);
-  border-radius: var(--r-lg);
-}
-.patterns-code-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 36px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--code-border);
-  color: var(--code-text);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-.patterns-code-bar span:last-child {
-  font-family: var(--font-sans);
-  font-weight: 500;
-  color: var(--code-comment);
-}
-.patterns-code .code {
-  border: 0;
-  border-radius: 0;
-}
 .patterns-notes {
   margin-top: 16px;
   font-size: var(--fs-md);

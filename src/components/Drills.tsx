@@ -4,7 +4,6 @@ import {
   Brain,
   CodeXml,
   Eye,
-  FileCode2,
   Gauge,
   Keyboard,
   Lightbulb,
@@ -35,7 +34,7 @@ import { preview, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
 import { getProgress, useProgress } from '../lib/store';
 import { CategoryIcon } from './icons';
-import { ActionBar, Choices, CodeView, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
+import { ActionBar, Choices, CodeView, CodeWindow, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
 import { Kbd } from './ui';
 
 export interface DrillResult {
@@ -170,35 +169,6 @@ function LineDiff({ yours, expected }: { yours: string; expected: string }) {
         <code className="drill-diff-code">{expected}</code>
         <span className="drill-diff-tag">Expected</span>
       </div>
-    </div>
-  );
-}
-
-/** An editor-style frame around code: a file tab on top, optional footer. */
-export function CodeWindow({
-  filename = 'solution.py',
-  right,
-  footer,
-  children,
-  className = '',
-}: {
-  filename?: string;
-  right?: ReactNode;
-  footer?: ReactNode;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`drill-window ${className}`}>
-      <div className="drill-window-head">
-        <span className="drill-window-tab">
-          <FileCode2 strokeWidth={1.9} aria-hidden="true" />
-          {filename}
-        </span>
-        <span className="drill-window-right">{right ?? 'Python 3'}</span>
-      </div>
-      <div className="drill-window-body">{children}</div>
-      {footer && <div className="drill-window-foot">{footer}</div>}
     </div>
   );
 }

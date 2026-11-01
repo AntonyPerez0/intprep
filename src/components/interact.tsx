@@ -261,7 +261,9 @@ export function CodeView({
 /**
  * An editor-style frame around code: a file tab, then `meta` (e.g. "12 lines") and the
  * language on the right, an optional footer. Wrap a <CodeView> or <HighlightedCode>.
- * `right` replaces the meta + language slot (e.g. a step counter).
+ * `right` replaces the meta + language slot (e.g. a step counter). `className` is for
+ * placement only (grid area, margins); the frame itself looks the same everywhere.
+ * In a narrow window the meta drops out first, then the file name truncates.
  */
 export function CodeWindow({
   filename = 'solution.py',
@@ -285,7 +287,7 @@ export function CodeWindow({
       <div className="code-window-head">
         <span className="code-window-tab">
           <FileCode2 strokeWidth={1.9} aria-hidden="true" />
-          {filename}
+          <span className="code-window-name">{filename}</span>
         </span>
         <span className="code-window-right">
           {right ?? (

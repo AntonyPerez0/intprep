@@ -11,6 +11,7 @@ import { isDue } from '../lib/srs';
 import { useProgress, type Progress } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon } from '../components/icons';
+import { CodeWindow } from '../components/interact';
 import { EmptyState, ProgressBar } from '../components/ui';
 
 // Two panes need room for the template code; below this, an accordion reads better.
@@ -319,13 +320,9 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
 
       <section className="patterns-section">
         <h3>Template</h3>
-        <div className="patterns-code">
-          <div className="patterns-code-bar">
-            <span>{c.id}.py</span>
-            <span>Python</span>
-          </div>
+        <CodeWindow className="patterns-code" filename={`${c.id}.py`}>
           <HighlightedCode code={g.template} />
-        </div>
+        </CodeWindow>
         <Md text={g.templateNotes.map((n) => `- ${n}`).join('\n')} className="patterns-notes" />
         <div className="patterns-cost">
           <Gauge aria-hidden="true" />

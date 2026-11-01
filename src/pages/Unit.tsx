@@ -12,6 +12,7 @@ import { nextStep, unitProgress, unitUnlocked } from '../lib/path';
 import { crowns, isDue } from '../lib/srs';
 import { useProgress } from '../lib/store';
 import { CategoryIcon, IconTile } from '../components/icons';
+import { CodeWindow } from '../components/interact';
 import { Crowns, DifficultyChip, ProgressBar } from '../components/ui';
 
 /**
@@ -225,12 +226,12 @@ export function Unit() {
           <div className="unit-template">
             <div className="unit-template-head">
               <h3 className="unit-label">Template</h3>
-              <span className="badge">Python</span>
-              <span className="unit-template-lines tabular">{templateLines} lines</span>
             </div>
-            <div className={`unit-code${templateLong && !templateOpen ? ' is-clamped' : ''}`}>
-              <HighlightedCode code={guide.template} />
-            </div>
+            <CodeWindow filename={`${meta.id}.py`} meta={`${templateLines} lines`}>
+              <div className={`unit-code${templateLong && !templateOpen ? ' is-clamped' : ''}`}>
+                <HighlightedCode code={guide.template} />
+              </div>
+            </CodeWindow>
             {templateLong && (
               <button type="button" className="unit-code-toggle" aria-expanded={templateOpen} onClick={() => setExpandedFor(templateOpen ? null : meta.id)}>
                 {templateOpen ? 'Show less' : `Show all ${templateLines} lines`}
