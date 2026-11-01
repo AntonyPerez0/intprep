@@ -132,7 +132,10 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
   and status; problem rows with status, mastery and difficulty. Unit page: header, progress, CTAs, pattern summary,
   template, problems list.
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar.
-  Desktop may use two columns where it helps (e.g. code + explanation).
+  Desktop may use two columns where it helps (e.g. code + explanation). Foundation lessons mix in "Your turn"
+  slides (`kind: 'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the
+  explanation; a miss offers "Try again" (keeps the text) and "Show answer" (the answer, then Continue; the slide
+  comes back once at the end of the lesson).
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,
