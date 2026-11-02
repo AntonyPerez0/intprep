@@ -24,17 +24,17 @@ export const SCIENCE: SciencePrinciple[] = [
       "Pulling an answer out of memory strengthens it far more than rereading. Students who practiced recalling a text remembered much more a week later than students who reread it, even though rereading looked better on a test five minutes later.",
     source: "Roediger & Karpicke (2006), Psychological Science",
     howWeUseIt:
-      "Reviews make you produce the answer before you see it: spot the pattern, then write the key line, the missing lines or a whole part from memory. Code from memory goes up to the whole solution.",
+      "Reviews make you answer before you see the solution: spot the pattern, then recall the code. While it's new you pick it from choices; once you know it, you type the key line, the missing lines or a whole part.",
   },
   {
     id: "generation-effect",
-    title: "Write it, don't pick it",
+    title: "Pick first, then write it",
     icon: "pencil",
     finding:
       "People remember what they produce themselves better than what they only read. In the classic experiments, words learners generated from a cue were remembered better than the same words read, and a later meta-analysis found the benefit across many studies.",
     source: "Slamecka & Graf (1978), J. Experimental Psychology: Human Learning and Memory; Bertsch et al. (2007), Memory & Cognition",
     howWeUseIt:
-      "You write code rather than choose it: each lesson part (look, cover, write, check), the template after each pattern intro, and two coding cards per problem in reviews. Feedback comes line by line, and misses return in the same session.",
+      "New code starts as choices: you put a part's lines in order or pick each missing line. Once you know it, usually after its first review, you type it from memory, because producing code yourself is what makes it stick.",
   },
   {
     id: "spaced-repetition",
@@ -74,7 +74,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Beginners learn problem solving faster from fully worked examples than from struggling alone, because it frees working memory. As skill grows, guidance should fade: help that aids novices can hold more experienced learners back.",
     source: "Renkl & Atkinson (2003); Kalyuga et al. (2003), Educational Psychologist",
     howWeUseIt:
-      "Lessons walk from brute force to key insight to code you write yourself, part by part. Progressive hints let you take only the help you need, and practice climbs from filling gaps to a blank file.",
+      "Lessons walk from brute force to key insight to code, part by part, with hints if you need them. Help fades as you learn: you pick new code from choices, type it once known, and finish on a blank file.",
   },
   {
     id: "chunking",
@@ -84,7 +84,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Experts see meaningful chunks, not single pieces: chess masters recall real positions at a glance but not random ones. Expert programmers likewise think in reusable plans, freeing working memory for what is new in a problem.",
     source: "Chase & Simon (1973), Cognitive Psychology",
     howWeUseIt:
-      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained and written in small labeled parts, so you learn the plan behind the code.",
+      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained and practiced in small labeled parts, so you learn the plan behind the code.",
   },
   {
     id: "self-explanation",
@@ -94,27 +94,27 @@ export const SCIENCE: SciencePrinciple[] = [
       "Learners who explain to themselves why each step of an example works understand it better and solve new problems better. A meta-analysis of 64 reports found a medium-sized benefit from prompting self-explanation.",
     source: "Bisra et al. (2018), Educational Psychology Review",
     howWeUseIt:
-      "Every part of the code comes with a plain-English why, and you write it from memory right after reading it. Insight-recall cards ask you to bring the key idea to mind before you check it against ours.",
+      "Every part of the code comes with a plain-English why, and you rebuild it right after reading it. Insight-recall cards ask you to bring the key idea to mind before you check it against ours.",
   },
   {
     id: "parsons-problems",
     title: "Parsons problems",
     icon: "🧩",
     finding:
-      "Putting the scrambled lines of a solution in order took students significantly less time than writing or fixing the same code, with no difference in learning or in retention a week later.",
-    source: "Ericson, Margulieux & Rick (2017), Koli Calling",
+      "In a Parsons problem you put a solution's scrambled lines in order. With a few wrong lines mixed in, students solved them in significantly less time than writing or fixing the same code, with no difference in learning or in retention a week later.",
+    source: "Parsons & Haden (2006), Australasian Computing Education Conference; Ericson, Margulieux & Rick (2017), Koli Calling",
     howWeUseIt:
-      "The steps-in-order card in reviews is a stepping stone between recognizing a solution and writing it from memory.",
+      "While a problem's code is new, you build each part by putting its lines in order, with one look-alike line that does not belong. It is a stepping stone between recognizing a solution and writing it from memory.",
   },
   {
     id: "desirable-difficulties",
     title: "Desirable difficulties",
     icon: "💪",
     finding:
-      "Practice that feels harder, such as testing, spacing and mixing, often produces better long-term learning. Smooth, fluent practice can lift today's performance while hiding how little will last.",
+      "Practice that feels harder, such as testing, spacing and mixing, often produces better long-term learning, while smooth practice can hide how little will last. But a difficulty is only desirable if the learner can respond to it successfully.",
     source: "Bjork & Bjork (2011), Psychology and the Real World",
     howWeUseIt:
-      "We choose writing code over rereading it and tell you when struggle is a good sign. A missed card comes back later in the same session, and the problem returns sooner.",
+      "We choose recall over rereading, but keep it winnable: new code starts as choices, and typing takes over once you know it. A missed card comes back later in the same session, and the problem returns sooner.",
   },
   {
     id: "calibration",
@@ -134,7 +134,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Skill grows fastest from focused practice on specific weaknesses with immediate feedback, not just hours logged. A later meta-analysis found practice matters but explains less than once claimed, so quality beats quantity.",
     source: "Ericsson et al. (1993); Macnamara et al. (2014)",
     howWeUseIt:
-      "Each card trains one skill (spotting the pattern, writing a key line, filling the gaps, writing a part) with instant feedback, and problems you miss come back more often than ones you know well.",
+      "Each card trains one skill (spotting the pattern, recalling a key line, filling the gaps, building a part) with instant feedback, and problems you miss come back more often than ones you know well.",
   },
   {
     id: "flow",

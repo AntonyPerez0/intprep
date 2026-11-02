@@ -441,16 +441,25 @@ for screen readers), so "Type instead" keeps its words.
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
   eyebrow badge, `.display` headline, lead, two CTAs, and a product preview built from real UI pieces (a coding
   review card, Fill the gaps with a gap being typed; a code snippet with key lines; a streak/goal widget) — not an
-  image; a stats strip whose numbers come from the content (lines of Python written in the lessons uses
+  image; a stats strip whose numbers come from the content ("Lines of Python you learn to write" uses
   `lessonParts`, the guided lesson's own part split); "How it works" in 3 steps; feature grid; the 18
   patterns as a curriculum grid; "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
-  (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof.
+  (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof. The copy describes the
+  default "Pick first, then type": new code is picked from choices, typed once known (the hero lead, How it
+  works, the features, and the FAQ "Do I have to type all the code?").
 - **Onboarding (`/onboarding`)** — centered, focused, step indicator; welcome + name → experience (radio cards with
-  icons) → daily goal (radio cards) → plan summary → **"Start learning"**.
+  icons) → daily goal (radio cards) → plan summary (starting point, daily goal, daily review, "Code practice"
+  with the setting's label and line from `CODE_PRACTICE`, streak) → **"Start learning"**.
 - **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card (a beginner lesson shows its minutes
-  and how many code exercises it has; a pattern intro reads "Read it, then fill in the template"); a "Today" panel
-  (goal ring, streak, reviews due); the Daily review card says what a session is (spot the pattern, then write the
-  code from memory); KPI row (learned /150, strong, "Practice accuracy" = first-try answers in reviews and Blitz,
+  and how many code exercises it has, picked ones included; a pattern intro reads "Read it, then fill in the
+  template"; a problem whose code will be picked adds "You build the code from choices", ListChecks icon); a
+  "Today" panel (goal ring, streak, reviews due); the Daily review card says what a session is, in the learner's
+  Code practice setting ("Spot each pattern, then recall its code: pick it while it's new, type it once you know
+  it."; Always type: "…then write the code from memory…"; Always pick: "…then pick its code from choices…"). Its
+  Code from memory row (one learned problem) says "Write Two Sum from memory" (Keyboard icon), or "Practice Two
+  Sum from memory" (ListChecks icon) while `problemInput` picks; never typed from memory yet, it reads "Pick each
+  line first, then type it once you know it." (picking) or "You have not written it from memory yet. Start part
+  by part." (typing), and picked bests add "Picked so far: parts 83% · gaps 100%."; KPI row (learned /150, strong, "Practice accuracy" = first-try answers in reviews and Blitz,
   level); activity heatmap; roadmap progress by unit; quick actions ("Key lines" once 3 problems are learned,
   else "Pattern Blitz").
 - **Learning path / Unit** — structured curriculum (vertical timeline/stepper), units with icon tiles, progress
@@ -542,7 +551,9 @@ for screen readers), so "Type instead" keeps its words.
   locks the right gaps). Switching mode after a Check asks first, since it restarts the attempt; after a switch,
   focus stays on the switch unless the new mode focuses its editor. Completion: the score, XP, the reference
   solution and the next step. Each mode keeps its own best (`rebuildBest`, `gapsBest`, `scratchBest`), shown on
-  the problem page as one "Code from memory, best" list, and every mode counts as the review of a due problem. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
+  the problem page as one "Code from memory, best" list (picked runs' bests, when there are any, as a quiet line
+  under it: "Picked: parts 83% · gaps 100%", `.problem-detail-picked`, outside `.problem-detail-ladder`), and
+  every mode counts as the review of a due problem. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
   (one learned problem to write from memory).
   **Picking** ("Pick first, then type"): `problemInput` decides per visit. While the code is new, Part by part
   picks each next line (a `PickGaps` slot under the cue, in the file, "Pick the next line", four options from
@@ -579,10 +590,12 @@ for screen readers), so "Type instead" keeps its words.
   problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
   Back return to the page that opened it.
 - **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against the clock (Timed: 60 seconds
-  for Spot the pattern, 90 for Key lines, since typing takes longer than tapping) or without one (Zen), then
+  for Spot the pattern, 90 for Key lines, since recalling a line takes longer than naming a pattern, picked or
+  typed) or without one (Zen), then
   results. The lobby opens with the game choice, native radio cards (one per row, arrow
   keys move between them): **Spot the pattern** (read a problem, pick its pattern from four: recognition, keys
-  1–4) and **Key lines** (type the key line of a learned solution: recall). The last choice is remembered
+  1–4) and **Key lines** (the key line of a learned solution: recall; typed, or picked from four while its problem
+  is new, see Picked rounds below). The last choice is remembered
   (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
   card is a quiet dashed one with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
   lesson, and the pattern game is selected. Personal best and games played below the choice are the chosen game's

@@ -13,7 +13,7 @@ export const FOUNDATIONS: Lesson[] = [
     id: 'how-to-learn',
     title: 'How IntPrep Works',
     icon: '🧭',
-    blurb: 'Learn a pattern, write the code, then review it a little every day.',
+    blurb: 'Learn a pattern, build the code, then review it a little every day.',
     minutes: 5,
     slides: [
       {
@@ -39,15 +39,17 @@ This beginner track gives you just enough Python and computer-science basics to 
         body: `Everything here follows one loop:
 
 - **Learn a pattern.** A short guide explains the idea, when to reach for it, and a reusable code template, then you fill in its missing lines.
-- **Solve guided problems.** Hints first, then you write a clean solution yourself, one part at a time.
-- **Review daily.** Quick spaced-repetition reviews bring each problem back just before you would forget it: spot the pattern, then write the code from memory.`,
+- **Solve guided problems.** Hints first, then you build a clean solution one part at a time.
+- **Review daily.** Quick spaced-repetition reviews bring each problem back just before you would forget it: spot the pattern, then recall the code.
+
+New code starts as choices: you put its lines in order or pick each missing line from a few options. Once you know it, you type it yourself.`,
       },
       {
         kind: 'text',
         title: "Test yourself, don't reread",
         body: `Rereading feels productive because the page looks familiar. But *recognizing* an answer is not the same as *recalling* it, and in an interview there is no page.
 
-Every time you pull an idea out of memory (writing a line of code, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep keeps asking you to write things from memory, starting now.`,
+Every time you pull an idea out of memory (writing a line of code, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep keeps asking you to write things from memory, starting now. Brand-new code starts as choices, so the struggle stays the useful kind.`,
       },
       {
         kind: 'quiz',
@@ -139,7 +141,7 @@ The problem then joins your reviews, so you will meet it again in a few days. So
 
 We use **Python**: it reads almost like English, it is short to write, and every major company accepts it in interviews. Each code box in these lessons shows exactly what it prints underneath. Read the code, predict the output, then check.
 
-After almost every new idea it is **your turn**: you write the code yourself, and IntPrep checks it line by line. Writing code, not just reading it, is what makes it stick.`,
+After almost every new idea it is **your turn**: you write the code yourself, and IntPrep checks it line by line. When an idea is brand new, you may first pick the right code from a few options. Writing code, not just reading it, is what makes it stick.`,
       },
       {
         kind: 'code',

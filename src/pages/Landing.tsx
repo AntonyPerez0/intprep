@@ -52,7 +52,7 @@ function goTo(id: SectionId) {
   el.querySelector<HTMLElement>('[data-section-heading]')?.focus({ preventScroll: true });
 }
 
-/** Lines of Python a learner writes in the guided lessons, part by part (all 150 problems). */
+/** Lines of Python a learner builds in the guided lessons, part by part (all 150 problems): picked while new, typed once known. */
 const LINES_WRITTEN = PROBLEMS.reduce(
   (n, p) => n + lessonParts(parseSolution(p.solution)).reduce((m, part) => m + codeLines(part.body).length, 0),
   0,
@@ -141,8 +141,8 @@ function Hero({ primary }: { primary: { to: string; label: string } }) {
             Master the coding interview, <span className="lp-hero-title-soft">one pattern at a time.</span>
           </h1>
           <p className="lead lp-hero-lead">
-            Learn the {PROBLEMS.length} classic interview problems step by step and write every solution yourself. A few minutes of spaced review
-            a day keeps the code in memory.
+            Learn the {PROBLEMS.length} classic interview problems step by step: pick the code from choices while it&rsquo;s new, then type it
+            yourself. A few minutes of spaced review a day keeps it in memory.
           </p>
           <div className="lp-hero-ctas">
             <Link to={primary.to} className="btn btn-primary btn-xl">
@@ -332,7 +332,7 @@ function Stats() {
     { value: PROBLEMS.length, label: 'Classic interview problems' },
     { value: CATEGORIES.length, label: 'Core patterns, in roadmap order' },
     { value: FOUNDATIONS.length, label: 'Beginner lessons to start from zero' },
-    { value: LINES_WRITTEN.toLocaleString('en-US'), label: 'Lines of Python you write in the lessons' },
+    { value: LINES_WRITTEN.toLocaleString('en-US'), label: 'Lines of Python you learn to write' },
   ];
   return (
     <section className="lp-stats" aria-label="IntPrep at a glance">
@@ -356,20 +356,20 @@ const STEPS: { icon: LucideIcon; title: string; body: string; points: string[] }
   {
     icon: BookOpen,
     title: 'Learn the pattern',
-    body: 'Every unit opens with a short pattern intro: what the pattern is, when to reach for it, and a reusable Python template. Then you fill in its missing lines yourself.',
-    points: ['Recognition cues', 'Reusable template', 'Fill in the template'],
+    body: 'Every unit opens with a short pattern intro: what the pattern is, when to reach for it, and a reusable Python template. Then you fill in its missing lines, picking them from choices at first.',
+    points: ['Recognition cues', 'Reusable template', 'Pick, then type its lines'],
   },
   {
     icon: GraduationCap,
     title: 'Solve step by step',
-    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then write the code yourself, one part at a time.',
-    points: ['Progressive hints', 'Key insight', 'Write it part by part'],
+    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one part at a time by putting its lines in order.',
+    points: ['Progressive hints', 'Key insight', 'Build it part by part'],
   },
   {
     icon: Repeat2,
     title: 'Review on schedule',
-    body: 'Learned problems come back just before you would forget them, mixed with other patterns. Spot the pattern, then write the code from memory.',
-    points: ['Spaced repetition', 'Write code from memory', 'Mixed practice'],
+    body: 'Learned problems come back just before you would forget them, mixed with other patterns. Spot the pattern, then recall the code: pick it while it’s new, type it once you know it.',
+    points: ['Spaced repetition', 'Pick first, then type', 'Mixed practice'],
   },
 ];
 
@@ -437,8 +437,8 @@ function FeatureVisual({ kind }: { kind: string }) {
           {[
             ['done', 'Spot the pattern'],
             ['done', 'Find the key insight'],
-            ['current', 'Write the code, part by part'],
-            ['todo', 'Fill the gaps from memory'],
+            ['current', 'Build the code, part by part'],
+            ['todo', 'Final check: fill the gaps'],
           ].map(([state, label]) => (
             <li key={label} className={state}>
               <span className="lp-fv-steps-mark">{state === 'done' && <Check strokeWidth={3} aria-hidden="true" />}</span>
@@ -549,25 +549,25 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
     kind: 'lessons',
     icon: BookOpen,
     title: 'Guided lessons',
-    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to writing every part of the solution yourself.`,
+    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to building every part of the solution yourself.`,
   },
   {
     kind: 'review',
     icon: Repeat2,
     title: 'Spaced review',
-    body: 'An SM-2 style scheduler brings each problem back at the right moment: spot its pattern, then write its code from memory. Get it right and the gaps between reviews grow.',
+    body: 'An SM-2 style scheduler brings each problem back at the right moment: spot its pattern, then recall its code, picked from choices while it’s new and typed once you know it. Get it right and the gaps between reviews grow.',
   },
   {
     kind: 'rebuild',
     icon: Keyboard,
     title: 'Code from memory',
-    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file, on desktop or phone.',
+    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file, on desktop or phone. While the code is new, you pick each line from choices.',
   },
   {
     kind: 'blitz',
     icon: Zap,
     title: 'Pattern Blitz',
-    body: 'Two games against the clock: spot the pattern of a problem in 60 seconds, or type the key lines of solutions you learned in 90. Or play untimed in Zen mode.',
+    body: 'Two games against the clock: spot the pattern of a problem in 60 seconds, or recall the key lines of solutions you learned in 90, picking them from choices while they’re new. Or play untimed in Zen mode.',
   },
   {
     kind: 'guide',
@@ -783,8 +783,12 @@ const FAQ: { q: string; a: ReactNode }[] = [
     a: `You choose a daily goal, from about 5 to 30 or more minutes a day. Learning one new problem a day, you would cover all ${PROBLEMS.length} in about five months, with short reviews keeping earlier problems fresh.`,
   },
   {
+    q: 'Do I have to type all the code?',
+    a: 'Not at first. New code starts as choices: you put a part’s lines in order, or pick each missing line from a few options. Once you know a problem, usually after its first review, you type it from memory, which is what makes it stick on interview day. You can switch to Always pick or Always type in your profile.',
+  },
+  {
     q: 'Does it work on my phone?',
-    a: 'Yes. IntPrep is designed for phones first and works in any modern browser, and you can add it to your home screen. You type code on your phone too, with a key bar for indents and symbols. Would you rather pick lines than type them in reviews? Switch to Tap to choose in your profile.',
+    a: 'Yes. IntPrep is designed for phones first and works in any modern browser, and you can add it to your home screen. Picking code is a tap, and when it’s time to type, a key bar gives you indents and symbols.',
   },
 ];
 

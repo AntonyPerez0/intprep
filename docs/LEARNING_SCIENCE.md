@@ -51,6 +51,7 @@ page, or the original blog post). Full references are at the end.
   - [Risks and mitigations](#risks-and-mitigations)
   - [IntPrep's gamification rules](#intpreps-gamification-rules)
   - [IntPrep's review-scheduling rules](#intpreps-review-scheduling-rules)
+  - [Pick first, then type: from the research to the code](#pick-first-then-type-from-the-research-to-the-code)
 - **Part D: [Books, and what we take from each](#part-d-books-and-what-we-take-from-each)**
 - [References](#references)
 
@@ -61,21 +62,22 @@ page, or the original blog post). Full references are at the end.
 | IntPrep feature | Main principles (section numbers) |
 |---|---|
 | Beginner foundations track (Python, Big-O, recursion, problem-solving framework) | Beginners need guidance (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
-| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; a revealed answer comes back at the end) | Generation (6), retrieval (1), immediate feedback (12), successive relearning (2) |
-| Pattern unit intro (analogy, recognition cues, template, fill in the template, quiz) | Schemas and templates (9), worked examples (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
+| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on a new idea, 21 of 64, starts as "Pick the right code" from look-alike snippets; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
+| Pattern unit intro (analogy, recognition cues, template, the template's missing lines picked from choices while it is new, else typed, quiz) | Schemas and templates (9), worked examples (4), faded guidance (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
 | Guided lesson: predict the pattern first | Pretesting (6), calibration (11) |
 | Guided lesson: progressive hints | Faded guidance (4), productive struggle (6), expertise reversal (4) |
 | Guided lesson: brute force, then key insight, then algorithm | Worked examples (4), contrasting cases (3), self-explanation (8) |
-| Guided lesson: write the code part by part (look, cover, write, check) | Worked examples (4), generation (6), retrieval (1), immediate feedback (12), chunking and subgoal labels (9, 4), self-explanation (8) |
-| Guided lesson: complexity check, final fill-the-gaps check | Retrieval (1), generation (6) |
+| Guided lesson: the code part by part (look, cover, then build it from choices while the code is new, or write it once known; check) | Worked examples and faded guidance (4), Parsons problems (5), generation (6), retrieval (1), immediate feedback (12), chunking and subgoal labels (9, 4), self-explanation (8) |
+| Guided lesson: complexity check, final check over the whole solution (gaps picked while new, else typed) | Retrieval (1), generation (6) |
 | Spaced-repetition review queue (SM-2 style, auto-graded) | Spacing (2), retrieval (1), successive relearning (2), calibration (11) |
 | Interleaved daily review | Interleaving (3), spacing (2), deliberate practice (10) |
 | Review: one recognition card per problem (spot the pattern, insight, technique, complexity or steps in order) | Retrieval (1), interleaving (3), feedback on MC (12), Parsons problems (5) |
-| Review: two coding cards per problem (write the key line, fill the gaps, write a part), chosen by schedule stage | Generation (6), recall beats recognition (1), faded guidance (4), feedback (12) |
+| Review: two coding cards per problem, chosen by schedule stage (while the code is new: arrange a part and pick the gaps; then typed: write the key line, fill the gaps, write a part) | Generation (6), recall beats recognition (1), faded guidance (4), Parsons problems (5), feedback (12) |
 | Review: a missed card comes back in the same session as a fresh version | Successive relearning (2), feedback (12) |
 | Insight recall with self-rating | Retrieval (1), generation (6), calibration (11) |
-| Code from memory (part by part, fill the gaps, from scratch) and Template practice (fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10) |
-| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
+| Code from memory (part by part, fill the gaps, from scratch; the first two picked while the code is new) and Template practice (pick the gaps, fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10) |
+| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s; a key line is picked from four while its problem is new, else typed), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
+| "Code practice" setting: Pick first, then type (default), Always type, Always pick | Faded guidance (4), Parsons problems (5), desirable difficulties only when the learner can succeed (7), generation (6); see [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code) |
 | XP, daily XP goal, levels, achievements | Gamification evidence (16), goal setting (18), self-determination theory (15) |
 | Streak, streak freezes bought with gems | Habit formation (19), Duolingo data (17), emergency reserves (18), broken-streak effects (18) |
 | Mastery crowns per problem (from review interval) | Spacing (2), competence feedback (15), goal gradient (18) |
@@ -103,17 +105,20 @@ Dunlosky et al. (2013) rated practice testing one of only two "high utility" stu
 Rowland (2014); Adesope, Trevisan & Sundararajan (2017); Pan & Rickard (2018); Dunlosky et al. (2013).
 
 **How IntPrep uses it.**
-- Every review card asks the learner to *produce* something before showing the answer. Each problem gets one
+- Every review card asks the learner to answer before showing the solution. Each problem gets one
   recognition card (the pattern name, the key insight, the technique, the complexity or the step order) and
   two coding cards: the key line, the missing lines of the solution, or a whole part written from its cue.
-- In a guided lesson, writing each part from memory right after studying it (look, cover, write, check), the
-  complexity check and the final fill-the-gaps check are the first retrieval of that problem. The review queue
-  then repeats retrieval on a spaced schedule.
+  While a problem's code is new, those cards are picked from choices instead (see
+  [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code)).
+- In a guided lesson, rebuilding each part right after studying it (look, cover, then put its lines in order
+  or write it, check), the complexity check and the final check over the whole solution are the first
+  retrieval of that problem. The review queue then repeats retrieval on a spaced schedule.
 - Because recall beats recognition, the coding cards **climb a format ladder** as a problem matures (see the
-  [scheduling rules](#intpreps-review-scheduling-rules)): while it is being learned, the key line and the gaps;
-  then the gaps and a whole part; once it is mature, two parts. Code from memory and Template practice climb
-  the same way, from filling gaps to a blank file. The top mastery crowns should still require a successful
-  recall-format drill, not only multiple choice.
+  [scheduling rules](#intpreps-review-scheduling-rules)): while the code is new, arrange a part and pick the
+  gaps; then, typed, the key line and the gaps; then the gaps and a whole part; once it is mature, two parts.
+  Picking is the first rung, not the goal: typing takes over after the first right review. Code from memory
+  and Template practice climb the same way, from picking or filling gaps to a blank file. The top mastery
+  crowns should still require a successful recall-format drill, not only multiple choice.
 
 ## 2. Spacing and spaced-repetition scheduling
 
@@ -212,6 +217,9 @@ Morrison, Margulieux & Guzdial (2015).
 - **Progressive hints** (gentle, then strong) let each learner take only as much guidance as they need.
 - **Fading across a unit:** the first problem in a pattern should be fully worked; later problems in the same
   unit can start with the walkthrough collapsed and invite an attempt first.
+- **Fading from picking to typing:** new code is picked from choices (a part's lines put in order, a missing
+  line chosen from four) and typed once the learner knows it, so the first attempts at a solution have support
+  that the later ones do not. See [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code).
 - **Fading across reviews:** the coding cards' format ladder (Section 1) removes scaffolding as the review
   interval grows, and Code from memory and Template practice open one rung above what the learner has shown.
 - **Expertise reversal:** learners who already know a pattern (high accuracy in its drills) should be able to skip
@@ -226,20 +234,25 @@ Haden, 2006). Students solved two-dimensional Parsons problems with distractor l
 fixing or writing the equivalent code, with no difference in learning or retention a week later (Ericson,
 Margulieux & Rick, 2017). Adaptive versions that become easier when a learner struggles were also more efficient than writing the
 equivalent code, and just as effective (Ericson, Foley & Rick, 2018). Parsons scores correlate notably with code-writing scores and show more clearly what
-a student does not know (Denny, Luxton-Reilly & Simon, 2008). A 2022 working-group review summarises the evidence
+a student does not know (Denny, Luxton-Reilly & Simon, 2008). Distractors have a cost: for young novice
+programmers, adding them lowered learning efficiency (Harms, Chen & Kelleher, 2016). A 2022 working-group review summarizes the evidence
 and its gaps (Ericson et al., 2022).
 
-**Key sources.** Parsons & Haden (2006); Denny, Luxton-Reilly & Simon (2008); Ericson, Margulieux & Rick (2017);
-Ericson, Foley & Rick (2018); Ericson et al. (2022).
+**Key sources.** Parsons & Haden (2006); Denny, Luxton-Reilly & Simon (2008); Harms, Chen & Kelleher (2016);
+Ericson, Margulieux & Rick (2017); Ericson, Foley & Rick (2018); Ericson et al. (2022).
 
 **How IntPrep uses it.**
-- Each guided lesson now ends with a fill-the-gaps check over the whole solution; the order-the-steps (Parsons)
-  card stays in reviews as one of the recognition cards.
-- The opt-in "Tap to choose" input mode (for learners who cannot type comfortably) turns the coding cards into
-  lines to pick, Parsons-style, so it still sits between recognition and full recall.
-- Add **code-line Parsons with one or two distractor lines** (for example an off-by-one bound or a wrong
-  pointer move) and indentation, as in Ericson's studies. If the learner makes two wrong moves, make it
-  easier by merging two blocks or removing a distractor (adaptive Parsons).
+- **Code-line Parsons problems** are how new code is built: while a problem's code is new, the guided lesson
+  builds each part by putting its lines in order, and the review's "Arrange a part" card does the same. Each
+  has **one distractor** (when the part has two or more lines of code): a copy of one of its lines, a key line
+  when there is one, with one small change (an off-by-one bound, a flipped comparison, a wrong pointer move),
+  placed next to the line it imitates. Lines keep their indentation. Distractors lowered learning efficiency for
+  young novice programmers (Harms, Chen & Kelleher, 2016), so each exercise has only one.
+- The order-the-steps card (plain-English steps, not code) stays in reviews as one of the recognition cards.
+- "Always pick" (Profile, Code practice) keeps every coding exercise picked, for learners who cannot type
+  comfortably; it still sits between recognition and full recall.
+- Not built yet: **adaptive Parsons** (if the learner makes two wrong moves, make it easier by merging two
+  blocks or removing the distractor; Ericson, Foley & Rick, 2018).
 
 ## 6. Pretesting, generation and productive failure
 
@@ -262,14 +275,16 @@ to make a real attempt (Kapur, 2016).
   no XP loss and no effect on the streak. You can even award a little XP for making the guess.
 - **Brute force before the insight.** Asking "what is the obvious way?" is a generation step and sets up the
   contrast that makes the key insight meaningful.
-- **Writing code instead of choosing it** is IntPrep's main generation task. The learner types the key line,
-  the missing lines or a whole part in reviews, every part of the solution in a guided lesson, the template's
-  missing lines at the end of each pattern intro, and small programs on most slides of the beginner lessons.
-  Multiple choice stays only for recognition skills: spotting the pattern, the technique, the complexity,
-  constraints and output predictions.
+- **Writing code from memory** is IntPrep's main generation task once the learner knows the code. The learner
+  types the key line, the missing lines or a whole part in reviews, the template from memory, the whole
+  solution in Code from memory, and small programs on most slides of the beginner lessons. New code is picked
+  from choices first, because a generation task only helps when the learner can succeed at it (Section 7; see
+  [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code)). Plain multiple choice stays for
+  recognition skills: spotting the pattern, the technique, the complexity, constraints and output predictions.
 - **Look, cover, write, check.** In a guided lesson each part is shown with its explanation (look), then hidden
-  (cover) while the learner writes it under the code before it (write), then compared line by line (check).
-  Peeking is allowed but the part no longer counts as written right.
+  (cover) while the learner rebuilds it under the code before it (write: its lines put in order while the code
+  is new, typed once known), then compared line by line (check). Peeking is allowed but the part no longer
+  counts as right.
 - **Insight recall** is a generation task too.
 - **Attempt-first mode** (productive failure) should be offered once a learner has some knowledge of the pattern,
   for example after the first problem in a unit. It should not be forced on complete beginners.
@@ -289,6 +304,9 @@ A difficulty is only *desirable* if the learner can eventually succeed; impossib
 
 **How IntPrep uses it.**
 - IntPrep favors effortful practice (writing code from memory, recall, mixed review) over rereading solutions.
+- **Typing code before you know it is often not a desirable difficulty** for a beginner: the learner cannot
+  yet respond to it successfully (Bjork & Bjork, 2011). So new code is picked first and typed once known (see
+  [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code)).
 - **Normalise struggle in the UI copy**, for example "Feeling stuck? That effort is what makes it stick." Show the
   learner their long-term retention (crowns kept) so effort is visibly connected to results.
 - Keep difficulties achievable: hints are always available, and the scheduler aims for a high but not perfect
@@ -432,7 +450,8 @@ Pólya (1945).
 - The **foundations track** teaches *reading and tracing* before *writing*: "What does this print?" and
   "What is `i` after the loop?" come first, then the learner writes code on most concept slides ("Your turn"),
   from a single line up to a small program or function, with the starter code given and the result checked
-  line by line. The first lesson demonstrates retrieval itself: the learner writes a line, then recalls its
+  line by line. The first exercise on a new idea often starts as "Pick the right code" (the answer among a few
+  look-alike snippets), so a beginner sees the right shape before typing it. The first lesson demonstrates retrieval itself: the learner writes a line, then recalls its
   shape from memory a few slides later.
 - The **problem-solving framework** (understand, examples, brute force, optimise, code, test) is taught once in
   foundations and then shown as a slim progress bar in every guided lesson, so the learner always knows which stage
@@ -651,8 +670,9 @@ not yet built.
 **Combo meter, Pattern Blitz, celebrations**
 1. In normal drills, the combo meter counts consecutive correct answers but never rewards speed.
 2. Pattern Blitz: two games with a combo multiplier, a personal best each, and an untimed Zen mode. *Spot the
-   pattern* runs 60 seconds; *Key lines* (typing the key line of a learned solution) runs 90, since typing takes
-   longer than tapping, and opens once 3 problems are learned. Misses on learned problems go to the review
+   pattern* runs 60 seconds; *Key lines* (the key line of a learned solution, picked from four while the problem is
+   new, else typed) runs 90, since recalling a line takes longer than naming a pattern, and opens once 3
+   problems are learned. Misses on learned problems go to the review
    queue, and the round ends with a recap of each miss (the clues, or your line and the right one).
 3. Confetti and sounds are for session end, goal met, crown earned and milestones. Use a small tick or shimmer for
    single correct answers. Nothing animates during reading.
@@ -680,16 +700,55 @@ not yet built.
 - **Again:** the problem comes back later in the same session until answered correctly, then returns tomorrow
   (successive relearning; SM-2 step 7).
 - **Format ladder:** every problem gets one recognition card (spot the pattern about 70% of the time) and two
-  coding cards chosen from its schedule: while it is being learned (interval under 4 days, or fewer than 2 good
-  reviews in a row), write the key line + fill the gaps; 4–20 days, fill the gaps + write a part; 21 days or
-  more, two different parts. Phones type too (a key bar supplies indents and symbols); "Tap to choose" is an
-  opt-in.
+  coding cards chosen from its schedule (`codeStage` in `lib/drills.ts`): while the code is new (no right review
+  yet, `reps` under `PICK_UNTIL_REPS` = 1), arrange a part + pick the gaps, both picked from choices; interval
+  under 10 days, write the key line + fill the gaps; 10–20 days, fill the gaps + write a part; 21 days or more,
+  two different parts. Phones type too (a key bar supplies indents and symbols). Profile, Code practice: "Always
+  type" types the new stage too (write the key line + fill the gaps), and "Always pick" picks every stage.
 - **Self-rating cross-check:** if a self-rated "Easy" is followed by a failed objective drill on the same problem,
   treat the review as Again.
 - **Retention target:** monitor the learner's review accuracy. Aim for 85–90%. Lengthen intervals if accuracy stays
   above about 95%, and shorten them and slow new material if it drops below about 75%.
 - **Optional interview date:** if a learner sets one, cap intervals so every studied problem gets at least one review
   in the final week, and keep gaps at roughly 10–20% of the time remaining (a rough reading of Cepeda et al., 2008).
+
+## Pick first, then type: from the research to the code
+
+New code is **picked from choices** until the learner knows it; then **typing takes over**. This is the default
+"Code practice" setting ("Pick first, then type"; Profile also offers "Always type" and "Always pick"). The
+design and the exact rules are in [`docs/DESIGN.md`](DESIGN.md), "Pick first, then type"; the constants are in
+`src/lib/input.ts` and `src/lib/game.ts`.
+
+**Why, and what each idea contributes.**
+
+| Research | What it says (Section) | What IntPrep does with it |
+|---|---|---|
+| Faded guidance (Renkl & Atkinson, 2003; expertise reversal, Kalyuga et al., 2003) | Move from studying worked examples to solving alone by removing support step by step; support that helps a novice can hold back someone who already knows the material (4) | Picking is a step between studying the code and writing it from a blank editor. In the default setting, the guided lesson for a new problem is picked, and typing takes over after the problem's first right review. Every pick screen offers "Type instead" (in the default setting, before the first check), so a learner who already knows the code can skip the support |
+| Parsons problems (Parsons & Haden, 2006; Ericson, Margulieux & Rick, 2017) | Putting scrambled lines in order is an established exercise; with distractor lines, students learned about as much as from writing the same code, in less time (5) | "Arrange a part" in the guided lesson and in reviews: the part's lines shuffled, plus one distractor placed next to the line it imitates (one only: Harms, Chen & Kelleher, 2016) |
+| Desirable difficulties (Bjork & Bjork, 2011) | A difficulty helps only if the learner can respond to it successfully (7) | We treat typing code you have seen only once as too hard for many beginners, so picking keeps the first attempts winnable; typing comes after a right review |
+| Recall beats recognition (Rowland, 2014; Kang et al., 2007) and the generation effect (Slamecka & Graf, 1978; Bertsch et al., 2007) | Producing an answer helps memory more than recognizing it (1, 6) | Picking is a first rung, not the goal: typing takes over as soon as the learner has shown they know the code, and later reviews are typed unless a lapse sends the code back to picking |
+| Plausible distractors (Little et al., 2012) | Competitive wrong options make learners think about why they are wrong (12) | Wrong options are mostly copies of the right line with one small change (an off-by-one bound, a flipped comparison, a swapped pointer), topped up with other lines of the same solution, never joke options |
+
+**The numbers, and why these values.** They are design choices that follow the research above, not values
+taken from a study.
+
+- `PICK_UNTIL_REPS = 1`: a problem's code is new until its review card has one right review in a row. So the
+  guided lesson and the first review are picked, typing starts at the second review, and a lapse (Forgot, which
+  sets the count back to 0) returns to picking until the next right review. A "Fuzzy" review counts as right.
+- `TEMPLATE_READY = 0.8`: a pattern template counts as known once the best first check of its picked or typed
+  gaps reaches 80%, or after any From memory try. The template ladder is Pick the gaps, then Fill the gaps, then
+  From memory.
+- XP: picked code right on the first check earns `XP.pickCorrect` = 5, between a recognition card
+  (`XP.drillCorrect` = 4) and typed code (`XP.codeCorrect` = 8). Picking is real practice, but takes less effort
+  than producing the code, and the reward should not make picking more attractive than typing once both are
+  open. Template practice's pick rung earns up to `XP.templatePickMax` = 8 (Fill the gaps: up to 12).
+- Picked runs of Code from memory keep their own bests (`rebuildPickBest`, `gapsPickBest`), so picking never
+  counts as typed progress and never unlocks From scratch.
+
+**What we do not know yet.** No study has tested this exact sequence (Parsons-style picking, then typed recall,
+switched by a review count) on interview problems, so the thresholds are starting points. Worth measuring: the
+share of picked first checks that are right (aim for about 85–90%, Section 14; a much higher rate suggests
+distractors that are too easy), and how the first typed review after picking goes compared with "Always type".
 
 ---
 
@@ -755,6 +814,7 @@ All DOIs and bibliographic details were checked against Crossref or the publishe
 - Hadi Mogavi, R., Guo, B., Zhang, Y., Haq, E.-U., Hui, P., & Ma, X. (2022). When gamification spoils your learning: A qualitative case study of gamification misuse in a language-learning app. In *Proceedings of the Ninth ACM Conference on Learning @ Scale (L@S '22)* (pp. 175–188). ACM. https://doi.org/10.1145/3491140.3528274
 - Hamari, J., Koivisto, J., & Sarsa, H. (2014). Does gamification work? A literature review of empirical studies on gamification. In *Proceedings of the 47th Hawaii International Conference on System Sciences* (pp. 3025–3034). IEEE. https://doi.org/10.1109/HICSS.2014.377
 - Hanus, M. D., & Fox, J. (2015). Assessing the effects of gamification in the classroom: A longitudinal study on intrinsic motivation, social comparison, satisfaction, effort, and academic performance. *Computers & Education, 80*, 152–161. https://doi.org/10.1016/j.compedu.2014.08.019
+- Harms, K. J., Chen, J., & Kelleher, C. L. (2016). Distractors in Parsons problems decrease learning efficiency for young novice programmers. In *Proceedings of the 2016 ACM Conference on International Computing Education Research (ICER '16)* (pp. 241–250). ACM. https://doi.org/10.1145/2960310.2960314
 - Harp, S. F., & Mayer, R. E. (1998). How seductive details do their damage: A theory of cognitive interest in science learning. *Journal of Educational Psychology, 90*(3), 414–434. https://doi.org/10.1037/0022-0663.90.3.414
 - Hattie, J., & Timperley, H. (2007). The power of feedback. *Review of Educational Research, 77*(1), 81–112. https://doi.org/10.3102/003465430298487
 - Hicks, K., Gerling, K., Dickinson, P., & Vanden Abeele, V. (2019). Juicy game design: Understanding the impact of visual embellishments on player experience. In *Proceedings of the Annual Symposium on Computer-Human Interaction in Play (CHI PLAY '19)* (pp. 185–197). ACM. https://doi.org/10.1145/3311350.3347171

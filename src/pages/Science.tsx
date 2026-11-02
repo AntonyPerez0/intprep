@@ -8,8 +8,8 @@ import { LogoMark, PageHeader, SectionHeader } from '../components/ui';
 
 const SHORT_VERSION: { verb: string; rest: ReactNode }[] = [
   { verb: 'Learn', rest: ' a pattern with worked examples, broken into small parts.' },
-  { verb: 'Write', rest: ' the code yourself, part by part, with feedback on every line.' },
-  { verb: 'Retrieve', rest: ' it: guess before you are told, then write the code again from memory in reviews.' },
+  { verb: 'Build', rest: ' the code part by part, with feedback on every line: pick its lines from choices while it is new, then type it yourself.' },
+  { verb: 'Retrieve', rest: ' it: guess before you are told, then bring the code back from memory in reviews.' },
   { verb: 'Space', rest: ' it: each problem returns right as you are about to forget it.' },
   { verb: 'Mix', rest: ' it: reviews and Blitz shuffle patterns so you learn to tell them apart — exactly what an interview asks.' },
   { verb: 'Keep showing up', rest: ': streaks, goals and small wins turn practice into a daily habit.' },

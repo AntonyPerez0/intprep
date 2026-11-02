@@ -1,11 +1,12 @@
 import '../styles/pages/onboarding.css';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CodeXml, Flame, Repeat2, Rocket, Route, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CodeXml, Flame, Keyboard, List, ListChecks, Repeat2, Rocket, Route, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
 import { CATEGORIES, FOUNDATIONS, PROBLEMS } from '../content/index';
 import { IconTile } from '../components/icons';
 import { Logo, Ring } from '../components/ui';
 import { DAILY_GOALS, GEMS } from '../lib/game';
+import { CODE_PRACTICE, type InputMode } from '../lib/input';
 import { finishOnboarding, useProgress, type Experience } from '../lib/store';
 import { sfx } from '../lib/sound';
 
@@ -16,6 +17,8 @@ const LEVELS: { id: Experience; icon: LucideIcon; title: string; blurb: string }
 ];
 
 const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
+/** The plan's "Code practice" row: the setting as Profile names it (picking is the ListChecks icon everywhere). */
+const CODE_PRACTICE_ICON: Record<InputMode, LucideIcon> = { auto: ListChecks, type: Keyboard, tap: List };
 const MAX_GOAL = DAILY_GOALS[DAILY_GOALS.length - 1].xp;
 const DEFAULT_GOAL = 50;
 
@@ -36,7 +39,8 @@ function startingPoint(exp: Experience): string {
 
 export function OnboardingPage() {
   const nav = useNavigate();
-  const { gems, streak } = useProgress();
+  const { gems, streak, settings } = useProgress();
+  const practice = CODE_PRACTICE.find((c) => c.id === settings.typingMode) ?? CODE_PRACTICE[0];
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [exp, setExp] = useState<Experience>('some');
@@ -129,11 +133,11 @@ export function OnboardingPage() {
                   <ul className="ob-perks">
                     <li>
                       <Check aria-hidden="true" />
-                      {PROBLEMS.length} problems across {CATEGORIES.length} patterns. You write every solution yourself, part by part
+                      {PROBLEMS.length} problems across {CATEGORIES.length} patterns, each built part by part: pick the code first, type it once you know it
                     </li>
                     <li>
                       <Check aria-hidden="true" />
-                      Short daily reviews: spot the pattern, then write the code from memory
+                      Short daily reviews: spot the pattern, then recall the code from memory
                     </li>
                     <li>
                       <Check aria-hidden="true" />
@@ -224,8 +228,9 @@ export function OnboardingPage() {
                       icon={Repeat2}
                       label="Daily review"
                       value="Spaced repetition"
-                      detail="Problems come back just before you would forget them: spot the pattern, then write the code from memory."
+                      detail="Problems come back just before you would forget them: spot the pattern, then recall the code."
                     />
+                    <PlanRow icon={CODE_PRACTICE_ICON[practice.id]} label="Code practice" value={practice.label} detail={practice.sub} />
                     <PlanRow
                       icon={Flame}
                       label="Streak"

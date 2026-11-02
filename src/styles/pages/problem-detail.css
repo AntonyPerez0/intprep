@@ -594,6 +594,13 @@
   color: var(--text-tertiary);
   font-weight: 500;
 }
+/* Picked runs' bests ("Picked: parts 83% · gaps 100%"), quiet, under the typed ladder */
+.problem-detail-picked {
+  margin: 2px 0 0;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
 /* Code from memory, the hard way: right under the best scores */
 .problem-detail-scratch {
   margin-top: 16px;

@@ -8,6 +8,7 @@ import { addDays, dayKey, daysBetween, friendlyDue, lastNDays, parseDay, today, 
 import { KEY_LINES_MIN, keyLinePool } from '../lib/blitzLines';
 import { SESSION_PROBLEMS } from '../lib/drills';
 import { GEMS, levelInfo, levelTitle } from '../lib/game';
+import { problemInput, type CodeInput, type InputMode } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
 import { crowns } from '../lib/srs';
@@ -209,6 +210,12 @@ function describeNext(p: Progress, next: NextStep): NextView {
             <DifficultyChip d={q.difficulty} />
             <span className="home-meta-item mono">#{q.num}</span>
             <span className="home-meta-item truncate">{q.pattern}</span>
+            {problemInput(p.settings.typingMode, p.problems[q.id]) === 'pick' && (
+              <span className="home-meta-item">
+                <Icon name="checks" size={14} />
+                You build the code from choices
+              </span>
+            )}
           </>
         ),
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
@@ -279,6 +286,25 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
 
 // ── Daily review ────────────────────────────────────────────────────────────
 
+/**
+ * What a review asks for, in the learner's "Code practice" setting (lib/input.ts): in "Pick first,
+ * then type", new code is picked and known code typed; a problem learned today is still new.
+ */
+const REVIEW_HOW: Record<InputMode, { due: string; first: string }> = {
+  auto: {
+    due: 'Spot each pattern, then recall its code: pick it while it’s new, type it once you know it.',
+    first: 'pick its code from choices. Typing takes over once you know it',
+  },
+  type: {
+    due: 'Spot each pattern, then write the code from memory, right as it starts to fade.',
+    first: 'write the code from memory',
+  },
+  tap: {
+    due: 'Spot each pattern, then pick its code from choices, right as it starts to fade.',
+    first: 'pick its code from choices',
+  },
+};
+
 function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; learned: number; memory: MemoryPick | null }) {
   const t = today();
   const tomorrow = Math.max(0, dueProblemIds(p, addDays(t, 1)).length - due);
@@ -291,9 +317,10 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
   let body: string;
   let foot: string | null = null;
   let action: ReactNode;
+  const how = REVIEW_HOW[p.settings.typingMode] ?? REVIEW_HOW.auto;
   if (due > 0) {
     title = `${plural(due, 'problem')} ready to review`;
-    body = 'Spot each pattern, then write the code from memory, right as it starts to fade.';
+    body = how.due;
     foot = tomorrow > 0 ? `${tomorrow} more due tomorrow` : null;
     action = (
       <Link to="/review" className="btn btn-secondary home-review-cta">
@@ -302,7 +329,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     );
   } else if (learned) {
     title = 'All caught up';
-    body = `Nothing is due today. Practice ahead: write code from memory for ${plural(Math.min(SESSION_PROBLEMS.ahead, learned), 'problem')}.`;
+    body = `Nothing is due today. Practice ahead: recall the code of ${plural(Math.min(SESSION_PROBLEMS.ahead, learned), 'problem')} you learned.`;
     foot = upcoming ? `Next review ${friendlyDue(upcoming)}` : null;
     action = (
       <Link to="/review?ahead=1" className="btn btn-secondary home-review-cta">
@@ -311,7 +338,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     );
   } else {
     title = 'Nothing to review yet';
-    body = 'Problems you learn come back here the next day: spot the pattern, then write the code from memory.';
+    body = `Problems you learn come back here the next day: spot the pattern, then ${how.first}.`;
     action = (
       <Link to="/blitz" className="btn btn-secondary home-review-cta">
         Play Pattern Blitz
@@ -346,7 +373,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
         </div>
         <div className="home-review-action">{action}</div>
       </div>
-      {memory && <MemoryRow pick={memory} />}
+      {memory && <MemoryRow pick={memory} mode={p.settings.typingMode} />}
     </section>
   );
 }
@@ -360,6 +387,10 @@ interface MemoryPick {
   best?: number;
   /** When it was last written from memory, if known. */
   at?: number;
+  /** How Code from memory takes this problem's code now (`problemInput`): picked while it is new. */
+  input: CodeInput;
+  /** Best picked runs (0–1), kept apart from the typed bests: Part by part, Pick the gaps. */
+  picked: { parts?: number; gaps?: number };
 }
 
 /**
@@ -374,7 +405,17 @@ function pickMemory(p: Progress): MemoryPick | null {
     x.rebuildBest === undefined && x.gapsBest === undefined && x.scratchBest === undefined
       ? undefined
       : Math.max(x.rebuildBest ?? 0, x.gapsBest ?? 0, x.scratchBest ?? 0);
-  const pick = (id: string, why: MemoryPick['why']): MemoryPick => ({ id, why, best: bestOf(p.problems[id]), at: p.problems[id].rebuiltAt });
+  const pick = (id: string, why: MemoryPick['why']): MemoryPick => {
+    const x = p.problems[id];
+    return {
+      id,
+      why,
+      best: bestOf(x),
+      at: x.rebuiltAt,
+      input: problemInput(p.settings.typingMode, x),
+      picked: { parts: x.rebuildPickBest, gaps: x.gapsPickBest },
+    };
+  };
 
   const due = rows
     .filter(([, x]) => x.srs && x.srs.due <= t)
@@ -384,8 +425,10 @@ function pickMemory(p: Progress): MemoryPick | null {
   const weak = rows.filter(([, x]) => (bestOf(x) ?? 1) < 0.8).sort(([, a], [, b]) => bestOf(a)! - bestOf(b)!);
   if (weak.length) return pick(weak[0][0], 'weak');
 
-  // Never written sorts first; an older save without a timestamp counts from when it was learned.
-  const when = (x: Progress['problems'][string]) => x.rebuiltAt ?? (bestOf(x) === undefined ? 0 : (x.learnedAt ?? 0));
+  // Never practiced sorts first; an older save without a timestamp, or a problem only picked so far
+  // (picked runs keep no date), counts from when it was learned.
+  const picked = (x: Progress['problems'][string]) => x.rebuildPickBest !== undefined || x.gapsPickBest !== undefined;
+  const when = (x: Progress['problems'][string]) => x.rebuiltAt ?? (bestOf(x) === undefined && !picked(x) ? 0 : (x.learnedAt ?? 0));
   const [id, x] = [...rows].sort(([, a], [, b]) => when(a) - when(b) || (a.learnedAt ?? 0) - (b.learnedAt ?? 0))[0];
   return pick(id, bestOf(x) === undefined ? 'never' : 'stale');
 }
@@ -395,16 +438,40 @@ function ago(ms: number) {
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`;
 }
 
-function MemoryRow({ pick }: { pick: MemoryPick }) {
+/** "parts 83% · gaps 100%": the picked bests that exist, or null. */
+function pickedSummary({ parts, gaps }: MemoryPick['picked']): string | null {
+  const out = [
+    parts !== undefined ? `parts\u00a0${Math.round(parts * 100)}%` : null,
+    gaps !== undefined ? `gaps\u00a0${Math.round(gaps * 100)}%` : null,
+  ].filter(Boolean);
+  return out.length ? out.join(' · ') : null;
+}
+
+function MemoryRow({ pick, mode }: { pick: MemoryPick; mode: InputMode }) {
   const q = PROBLEM_BY_ID[pick.id];
   const pct = pick.best !== undefined ? Math.round(pick.best * 100) : 0;
+  const picking = pick.input === 'pick';
+  const picked = pickedSummary(pick.picked);
+  // Not typed from memory yet: while the code is new (Pick first, then type) it is picked, line by
+  // line, and typing takes over after a right review; in Always pick it stays picked.
+  const never = picking
+    ? mode === 'tap'
+      ? picked
+        ? `Picked so far: ${picked}. Keep it fresh.`
+        : 'Pick each line from choices, part by part.'
+      : picked
+        ? `Picked so far: ${picked}. Typing takes over once you know it.`
+        : 'Pick each line first, then type it once you know it.'
+    : picked
+      ? `Picked so far: ${picked}. Now type it, part by part.`
+      : 'You have not written it from memory yet. Start part by part.';
   const why =
     pick.why === 'due'
       ? 'Due for review today. A strong attempt counts as its review.'
       : pick.why === 'weak'
         ? `Your best so far is ${pct}%. Each attempt makes it stick.`
         : pick.why === 'never'
-          ? 'You have not written it from memory yet. Start part by part.'
+          ? never
           : pick.at
             ? `Best ${pct}%, last written ${ago(pick.at)}. Keep it fresh.`
             : `Best ${pct}%. Keep it fresh.`;
@@ -412,10 +479,10 @@ function MemoryRow({ pick }: { pick: MemoryPick }) {
     <div className="home-memory">
       <Link to={`/p/${q.id}/rebuild`} className="home-memory-link">
         <span className="home-memory-icon">
-          <IconTile icon={ICONS.keyboard} />
+          <IconTile icon={picking ? ICONS.checks : ICONS.keyboard} />
         </span>
         <span className="home-memory-text">
-          <span className="home-memory-title">Write {q.title} from memory</span>
+          <span className="home-memory-title">{picking ? `Practice ${q.title} from memory` : `Write ${q.title} from memory`}</span>
           <span className="home-memory-why">{why}</span>
         </span>
         <Icon name="chevron" className="home-memory-chevron" />
@@ -549,8 +616,8 @@ function WeekStrip({ p }: { p: Progress }) {
 function GetStarted({ p, learned, next }: { p: Progress; learned: number; next: NextStep }) {
   const steps = [
     { title: 'Set a daily goal', body: `${p.settings.dailyGoal} XP a day. Change it any time.`, done: p.onboarded, to: '/profile' },
-    { title: 'Finish your first lesson', body: 'A short lesson where you write a little code yourself.', done: Object.keys(p.lessonsDone).length > 0, to: next.href },
-    { title: 'Learn your first problem', body: 'Walk through the idea, then write the solution part by part.', done: learned > 0, to: '/learn' },
+    { title: 'Finish your first lesson', body: 'A short lesson where you try a little code yourself.', done: Object.keys(p.lessonsDone).length > 0, to: next.href },
+    { title: 'Learn your first problem', body: 'Walk through the idea, then build the solution part by part.', done: learned > 0, to: '/learn' },
     { title: 'Complete a daily review', body: 'Reviews start the day after you learn a problem.', done: p.stats.sessions > 0, to: '/review' },
   ];
   const complete = steps.filter((s) => s.done).length;
@@ -821,7 +888,7 @@ function QuickLinks({ p }: { p: Progress }) {
               <div className="grow">
                 <div className="home-link-title">Key lines</div>
                 <div className="home-link-meta">
-                  {p.stats.blitzCodeBest > 0 ? `Best score ${p.stats.blitzCodeBest}` : '90 seconds. Type the key lines you learned.'}
+                  {p.stats.blitzCodeBest > 0 ? `Best score ${p.stats.blitzCodeBest}` : '90 seconds. Recall the key lines you learned.'}
                 </div>
               </div>
               <Icon name="chevron" className="home-link-chevron" />

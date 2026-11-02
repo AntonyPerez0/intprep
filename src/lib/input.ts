@@ -35,7 +35,7 @@ export const TEMPLATE_READY = 0.8;
 export const CODE_PRACTICE: { id: InputMode; label: string; sub: string; recommended?: boolean }[] = [
   { id: 'auto', label: 'Pick first, then type', sub: 'Choose new code from options. Type it once you know it.', recommended: true },
   { id: 'type', label: 'Always type', sub: 'Type every line, new code included.' },
-  { id: 'tap', label: 'Always pick', sub: 'Choose lines from options. Never type.' },
+  { id: 'tap', label: 'Always pick', sub: 'Choose lines from options wherever possible.' },
 ];
 
 /** True while a problem's code is new: not learned yet (the guided lesson), or its card has fewer than `PICK_UNTIL_REPS` right reviews in a row. */

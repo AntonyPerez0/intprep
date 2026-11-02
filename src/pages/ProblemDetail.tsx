@@ -319,6 +319,18 @@ export function ProblemDetail() {
                       </div>
                     ))}
                   </dl>
+                  {/* Picked runs keep their own bests (new code is picked first); the ladder above is typed. */}
+                  {(pp?.rebuildPickBest !== undefined || pp?.gapsPickBest !== undefined) && (
+                    <p className="problem-detail-picked">
+                      Picked:{' '}
+                      {[
+                        pp?.rebuildPickBest !== undefined ? `parts\u00a0${pct(pp.rebuildPickBest)}` : null,
+                        pp?.gapsPickBest !== undefined ? `gaps\u00a0${pct(pp.gapsPickBest)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
