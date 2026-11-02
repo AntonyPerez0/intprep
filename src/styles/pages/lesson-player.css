@@ -335,6 +335,69 @@
   }
 }
 
+/* ── "Your turn", picked: "Pick the right code" ─────────────────────────── */
+/* The code window (starter, then a slot where the code goes) with the options panel under it. */
+.lplayer-pick-work {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+}
+.lplayer-pick-options {
+  margin-top: 12px;
+  scroll-margin: calc(72px + env(safe-area-inset-top)) 0 calc(var(--actionbar-h, 96px) + 16px);
+}
+/* The slot: the same dashed box as a gap to pick, at the answer's indentation, to the window's
+   visible edge. A tap brings the options into view. */
+.lplayer-pick-slot-row {
+  align-items: center;
+  cursor: pointer;
+}
+.lplayer-pick-slot-row .typer-ln {
+  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+}
+.lplayer-pick-slot-wrap {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  padding-left: var(--indent, 0ch);
+}
+.lplayer-pick-slot {
+  flex: none;
+  width: max(16ch, calc(100cqi - 52px - var(--indent, 0ch) - 12px));
+  height: 20px;
+  margin: 1px 0 1px -7px;
+  padding: 0 6px;
+  overflow: hidden;
+  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--code-key) 7%, transparent);
+  color: var(--code-comment);
+  font-style: italic;
+  line-height: 18px;
+  text-overflow: ellipsis;
+}
+/* The picked code, in place under the starter: tinted, so it reads apart from the given lines */
+.lplayer-pick-code {
+  cursor: pointer;
+  animation: lplayer-pick-in var(--dur) var(--ease);
+}
+.typer-line.lplayer-pick-line {
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 55%, transparent);
+  background: color-mix(in srgb, var(--brand-500) 7%, transparent);
+}
+@keyframes lplayer-pick-in {
+  from {
+    background: color-mix(in srgb, var(--brand-500) 18%, transparent);
+  }
+}
+@media (pointer: coarse) {
+  .lplayer-pick-slot-row {
+    min-height: 40px;
+  }
+  .lplayer-pick-slot {
+    height: 34px;
+    line-height: 32px;
+  }
+}
+
 /* ── Completion ─────────────────────────────────────────────────────────── */
 .lplayer-done .complete-actions .btn {
   min-width: 0;

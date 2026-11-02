@@ -37,8 +37,9 @@ Plain English with American spelling (practice, color, neighbor, optimize), shor
    (use double quotes or template literals for those strings).
 
 ## Foundations: "Your turn" slides
-Beginners learn by writing code, not by picking it. Code lessons let them write it themselves with `kind: 'type'`
-slides (see `TypeSlide` in `src/content/types.ts`). Put one right after the slide that taught the idea: **6 or
+Beginners learn by writing code. Code lessons let them write it themselves with `kind: 'type'` slides (see
+`TypeSlide` in `src/content/types.ts`); the first exercise on a new idea is picked from choices before it is typed
+(**Pick options** below). Put one right after the slide that taught the idea: **6 or
 more per code lesson** (conceptual lessons such as Big-O or how to solve a problem still get a few), ramping from a
 single line to a few lines to a small program or function by the end. Keep **at most 2 quizzes** per code lesson,
 and use them for recognition only: predicting output, spotting a bug or gotcha, reading complexity. A slide whose
@@ -53,6 +54,34 @@ answer the learner reveals comes back at the end of the lesson, so make each one
   `explain`: why it works, shown after checking.
 - `npm run validate -- foundations` compiles `starter` + `answer` (and every `accept`) with python3, and runs every
   one that declares an `output` (and every code slide with an `output`): what it prints must match exactly.
+
+### Pick options: pick it, then type it
+A learner should see what an idea's code looks like before typing it from memory (faded guidance; see
+"Pick first, then type" in `docs/DESIGN.md`). A "Your turn" slide with `pick` (2–3 **wrong** versions of the answer)
+is **"Pick the right code"** in the default setting ("Pick first, then type") and in "Always pick": the learner
+picks the answer from the shuffled options, sees why (the explanation, and the pick against the answer line by
+line), and can choose "Type instead". In "Always type" it stays a typed slide, so write every slide to work typed.
+- **When:** the *first* exercise on a new idea (the first `if`, the first loop, `.get`, the first recursive call).
+  About a third of a lesson's "Your turn" slides, and always **more typed than picked** (validate enforces it).
+  Every picked idea must be typed later in the same lesson or the next one. Leave the last slides of a lesson
+  (the small programs) typed, and a lesson with only one or two code slides can have none.
+- **Distractors:** realistic beginner mistakes that are clearly wrong once you look: a missing colon, `=` for
+  `==`, a body that is not indented (or one level too deep), an off-by-one `range`, `print` instead of `return`, a
+  missing `return`, the wrong method (`.add` on a list, `.push`), arguments in the wrong order, quotes around a
+  variable name, a step that does not shrink. One mistake per option, so the learner can name it. Never an
+  equivalent form the grader would accept (`range(0, 5)`), never something absurd, and never a construct the
+  lesson has not taught yet.
+- **Format:** each option is complete code at its real column in the file, exactly like `answer` (a function body
+  starts at 4 spaces); a wrong-indentation option is written at the wrong column. The player drops indentation
+  that every option shares and keeps the rest, so the mistake shows. Options are shown as written, so write them
+  as cleanly as the answer. For answers over 3 lines, 2 options keep the reading short.
+- **Prompt and explain read well both ways:** describe the task ("Print each name in `names`."), not the input
+  method: no "Write…", "Type…" or "Pick…" in a picked slide's title or prompt. `explain` should say why the answer
+  works, which is also why the wrong options do not. `hint` only shows on the typed slide.
+- `npm run validate` checks that each slide has 2–3 distinct options, that none equals the answer or an `accept`
+  (normalized line by line, indentation included) or grades as correct against them, and, when the slide has an
+  `output`, runs `starter` + each option with python3: an option may fail to compile or raise, but must not print
+  the expected output.
 
 ## Every solution must be tested
 In your own scratch directory, build a harness: `from typing import *`, `import heapq, collections, math`,

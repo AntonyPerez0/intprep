@@ -158,6 +158,15 @@ export interface TypeSlide {
   explain: string;
   /** What `starter` + `answer` prints, exactly as python3 prints it. Shown as the expected output. */
   output?: string;
+  /**
+   * 2–3 WRONG versions of `answer` ("Pick first, then type"): with these, the slide is "Pick the
+   * right code" in 'auto' ("Pick first, then type") and 'tap' ("Always pick"): the learner picks
+   * the answer from them, shuffled; 'type' ("Always type") keeps it typed. Each is complete code at
+   * the same indentation as `answer`, one realistic beginner mistake away from it (a missing colon,
+   * `=` for `==`, an off-by-one `range`, `print` for `return`...), never another form the grader
+   * accepts. Give them to the first exercise on a new idea; see docs/CONTENT_GUIDE.md.
+   */
+  pick?: string[];
 }
 
 export type Slide =

@@ -32,7 +32,7 @@ import {
 } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { gapChoices, type GapChoice } from '../lib/choices';
-import { indentOf, lineKey } from '../lib/codegrade';
+import { baseIndent, codeLines, indentOf, lineKey } from '../lib/codegrade';
 import { gapsSummary, gradeGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { stripComment } from '../lib/parseSolution';
@@ -598,6 +598,19 @@ export function useGaps(lines: string[], opts: Omit<PickGapsOptions, 'seed'> & {
 // Picking fills the slot and opens the next empty one. Stable hooks: `button.pick-slot` (one per
 // open gap, named "Line N, pick a line"), `.choice` (the options of the open slot; keys 1–N).
 
+/** A snippet's comparison key with its indentation: one line per code line, `column:lineKey`. */
+const blockKey = (s: string) =>
+  codeLines(s)
+    .map((l) => `${indentOf(l)}:${lineKey(l)}`)
+    .join('\n');
+
+/** What a screen reader hears before a line of a block option: "Line 2, indented 4 spaces: ". */
+const blockLineLabel = (k: number, lines: number, indent: number) => {
+  const at = indent ? `indented ${indent} space${indent === 1 ? '' : 's'}` : '';
+  if (lines > 1) return `${k ? '. ' : ''}Line ${k + 1}${at ? `, ${at}` : ''}: `;
+  return at ? `${at[0].toUpperCase()}${at.slice(1)}: ` : '';
+};
+
 /** True while a modal dialog is open: page-wide keys leave the page behind it alone. */
 const modalOpen = () => !!document.querySelector('[aria-modal="true"]');
 
@@ -628,6 +641,15 @@ export interface CodeOptionsProps {
   keys?: boolean;
   /** Inside a code pane, under a slot: spans the window and stays put while the code scrolls sideways. */
   inline?: boolean;
+  /**
+   * The options are whole snippets written at their real indentation in the file (one line or
+   * several, e.g. "Pick the right code" on a beginner slide): each shows line by line with indent
+   * guides, and the answer is matched line by line with its indentation (so a snippet one level off
+   * is wrong). When every option starts at the same column, that shared indentation is dropped (the
+   * slot shows where the code goes); when they start at different columns, each shows at its real
+   * column, so an indentation mistake reads as one. Default: single lines, shown trimmed.
+   */
+  block?: boolean;
   /** Escape: e.g. close the panel and go back to the slot. */
   onEscape?: () => void;
   id?: string;
@@ -652,6 +674,7 @@ export function CodeOptions({
   answer,
   keys = true,
   inline,
+  block = false,
   onEscape,
   id,
   className = '',
@@ -659,7 +682,13 @@ export function CodeOptions({
 }: CodeOptionsProps) {
   const uid = useId();
   const btns = useRef<(HTMLButtonElement | null)[]>([]);
-  const isAnswer = (o: string) => answer != null && lineKey(o) === lineKey(answer);
+  const isAnswer = (o: string) => answer != null && (block ? blockKey(o) === blockKey(answer) : lineKey(o) === lineKey(answer));
+  // Block options: the indentation every option shares, dropped so long lines keep their room on a phone.
+  const shift = useMemo(() => {
+    if (!block) return 0;
+    const bases = options.map((o) => baseIndent(o));
+    return bases.every((b) => b === bases[0]) ? (bases[0] ?? 0) : 0;
+  }, [block, options]);
   useImperativeHandle(ref, () => ({
     focus: (i?: number) => {
       const k = i ?? Math.max(0, options.findIndex((o) => o === selected));
@@ -751,7 +780,17 @@ export function CodeOptions({
                 <span className="pick-option-num" aria-hidden="true">
                   {i + 1}
                 </span>
-                <span className="pick-option-code">{highlightLine(o.trim())}</span>
+                <span className={`pick-option-code ${block ? 'is-block' : ''}`}>
+                  {block
+                    ? o.split('\n').map((l, k, all) => (
+                        <span key={k} className="pick-option-line" style={{ ['--indent' as string]: `${Math.max(0, indentOf(l) - shift)}ch` }}>
+                          {/* Screen readers hear each line and its indentation, which can be the whole difference */}
+                          <span className="sr-only">{blockLineLabel(k, all.length, Math.max(0, indentOf(l) - shift))}</span>
+                          {l.trim() ? highlightLine(l.trim()) : ' '}
+                        </span>
+                      ))
+                    : highlightLine(o.trim())}
+                </span>
                 {mark && <span className="pick-option-mark">{mark}</span>}
               </button>
             );
