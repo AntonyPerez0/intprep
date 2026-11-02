@@ -59,6 +59,9 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  /* A pick or hint wider than the slot (phones, deep indents) says so; the full line is the
+     slot's accessible name and shows in its options */
+  text-overflow: ellipsis;
 }
 .pick-slot-hint {
   color: var(--code-comment);

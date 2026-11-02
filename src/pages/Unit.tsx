@@ -1,7 +1,7 @@
 import '../styles/pages/unit.css';
 import { useState, type CSSProperties } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, TextCursorInput, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, ListChecks, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, TextCursorInput, Trophy } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
@@ -9,8 +9,9 @@ import { friendlyDue } from '../lib/date';
 import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { nextStep, unitProgress, unitUnlocked } from '../lib/path';
+import { templateInput } from '../lib/input';
 import { crowns, isDue } from '../lib/srs';
-import { templateScore, useProgress } from '../lib/store';
+import { templateScore, useProgress, type TemplateMode } from '../lib/store';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { CodeWindow } from '../components/interact';
 import { Crowns, DifficultyChip, ProgressBar } from '../components/ui';
@@ -20,6 +21,13 @@ import { Crowns, DifficultyChip, ProgressBar } from '../components/ui';
  * means a toggle always hides a meaningful chunk, never just a line or two.
  */
 const TEMPLATE_PREVIEW_LINES = 24;
+
+/** The template's best-score chip, by the rung it comes from (`templateScore`). */
+const TEMPLATE_BEST: Record<TemplateMode, { Icon: typeof Trophy; short: string; sr: string; title: string }> = {
+  memory: { Icon: Trophy, short: 'Best', sr: 'Typed from memory, best first try: ', title: 'Your best first try typing it from memory' },
+  gaps: { Icon: TextCursorInput, short: 'Gaps', sr: 'Filled the gaps, best first check: ', title: 'Your best first check filling the gaps' },
+  pick: { Icon: ListChecks, short: 'Picked', sr: 'Picked the gaps, best first check: ', title: 'Your best first check picking the gaps' },
+};
 
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -60,8 +68,11 @@ export function Unit() {
   const templateLines = guide ? guide.template.split('\n').length : 0;
   const templateLong = templateLines > TEMPLATE_PREVIEW_LINES;
   const templateOpen = expandedFor === meta.id;
-  // The best template score so far: typed from memory, else filling the gaps.
+  // The best template score so far, on the highest rung practiced (from memory, else filling the
+  // gaps, else picking them), and how Template practice will open (picked while the template is new).
   const typed = templateScore(p.templates?.[meta.id]);
+  const best = typed && TEMPLATE_BEST[typed.mode];
+  const PracticeIcon = templateInput(p.settings.typingMode, p.templates?.[meta.id]) === 'pick' ? ListChecks : Keyboard;
 
   // Primary action: learn the pattern first, then the next problem, then practice.
   const guideCta = guide && (
@@ -231,19 +242,16 @@ export function Unit() {
           <div className="unit-template">
             <div className="unit-template-head">
               <h3 className="unit-label">Template</h3>
-              {typed && (
-                <span
-                  className={`unit-type-best is-${typed.mode}`}
-                  title={typed.mode === 'memory' ? 'Your best first try typing it from memory' : 'Your best first check filling the gaps'}
-                >
-                  {typed.mode === 'memory' ? <Trophy strokeWidth={2.2} aria-hidden="true" /> : <TextCursorInput strokeWidth={2.2} aria-hidden="true" />}
-                  <span className="sr-only">{typed.mode === 'memory' ? 'Typed from memory, best first try: ' : 'Filled the gaps, best first check: '}</span>
-                  <span aria-hidden="true">{typed.mode === 'memory' ? 'Best ' : 'Gaps '}</span>
+              {typed && best && (
+                <span className={`unit-type-best is-${typed.mode}`} title={best.title}>
+                  <best.Icon strokeWidth={2.2} aria-hidden="true" />
+                  <span className="sr-only">{best.sr}</span>
+                  <span aria-hidden="true">{best.short} </span>
                   {Math.round(typed.best * 100)}%
                 </span>
               )}
               <Link to={`/patterns/${meta.id}/type`} state={{ from: `/unit/${meta.id}` }} className="btn btn-secondary btn-sm unit-type-btn">
-                <Keyboard />
+                <PracticeIcon />
                 Practice the template
               </Link>
             </div>

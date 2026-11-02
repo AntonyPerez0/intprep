@@ -1,10 +1,13 @@
-// Template practice (/patterns/:cat/type?mode=gaps|memory): the unit's reusable template, in two
-// rungs of the same ladder as Code from memory.
-// - Fill the gaps: the template is shown with about 30% of its lines blank; type the missing ones.
+// Template practice (/patterns/:cat/type?mode=pick|gaps|memory): the unit's reusable template, in
+// three rungs of the same ladder as Code from memory ("Pick first, then type", docs/DESIGN.md).
+// - Pick the gaps: the template is shown with about 30% of its lines blank; pick each missing line
+//   from its options (for a template that is still new).
+// - Fill the gaps: the same, but type the missing lines.
 // - From memory: type the whole template into a blank editor, then compare it line by line.
-// In both, the first check sets the score and the learner may fix their answer and check again.
-// Without ?mode= it opens Fill the gaps until that is strong (80%+) or the template has been typed
-// from memory before.
+// In all three, the first check sets the score and the learner may fix their answer and check
+// again. Without ?mode= it opens where the ladder says: Pick the gaps while the template is new
+// (`templateInput`), then Fill the gaps until that is strong (80%+) or the template has been typed
+// from memory, then From memory. "Always type" skips picking; "Always pick" opens on picking.
 
 import '../styles/pages/drills.css';
 import '../styles/pages/template-drill.css';
@@ -17,6 +20,7 @@ import {
   CircleCheck,
   CodeXml,
   Lightbulb,
+  ListChecks,
   PencilLine,
   RefreshCw,
   RotateCcw,
@@ -34,13 +38,14 @@ import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { HighlightedCode } from '../lib/highlight';
+import { TEMPLATE_READY, templateInput, type InputMode } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { stripComment } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
-import { awardXp, getProgress, recordTemplate, useProgress, type Progress, type TemplateProgress } from '../lib/store';
+import { awardXp, getProgress, recordTemplate, useProgress, type Progress, type TemplateMode, type TemplateProgress } from '../lib/store';
 import { ActionBar, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeTyper } from '../components/CodeTyper';
-import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
+import { GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
 import { Completion, Modal } from '../components/ui';
@@ -50,19 +55,28 @@ export interface TemplateDrillState {
   from?: string;
 }
 
-type Mode = 'gaps' | 'memory';
+type Mode = TemplateMode;
 
-const MODES: { id: Mode; label: string; icon: typeof PencilLine }[] = [
-  { id: 'gaps', label: 'Fill the gaps', icon: TextCursorInput },
-  { id: 'memory', label: 'From memory', icon: PencilLine },
+/** The rungs, most support first. `short` is the name on the narrowest phones (the full one stays the accessible name). */
+const MODES: { id: Mode; label: string; short: string; icon: typeof PencilLine }[] = [
+  { id: 'pick', label: 'Pick the gaps', short: 'Pick', icon: ListChecks },
+  { id: 'gaps', label: 'Fill the gaps', short: 'Fill', icon: TextCursorInput },
+  { id: 'memory', label: 'From memory', short: 'Memory', icon: PencilLine },
 ];
-const MODE_LABEL: Record<Mode, string> = { gaps: 'Fill the gaps', memory: 'From memory' };
+const MODE_LABEL: Record<Mode, string> = { pick: 'Pick the gaps', gaps: 'Fill the gaps', memory: 'From memory' };
+const isMode = (m: string | null): m is Mode => m === 'pick' || m === 'gaps' || m === 'memory';
 
 /** A score at or above this moves the learner up the ladder (default mode and next step). */
-const READY = 0.8;
+const READY = TEMPLATE_READY;
 
-/** Fill the gaps until it is strong or the template has been typed from memory, then From memory. */
-function ladderMode(t: TemplateProgress | undefined): Mode {
+/**
+ * The ladder: Pick the gaps while the template is new (`templateInput`: in "Pick first, then
+ * type" until a pick or gaps best of 80%+ or a From memory try; always in "Always pick"; never in
+ * "Always type"), then Fill the gaps until that is strong or the template has been typed from
+ * memory, then From memory.
+ */
+export function templateLadder(setting: InputMode | undefined, t: TemplateProgress | undefined): Mode {
+  if (templateInput(setting, t) === 'pick') return 'pick';
   return (t?.gapsBest ?? 0) >= READY || (t?.tries ?? 0) > 0 ? 'memory' : 'gaps';
 }
 
@@ -70,7 +84,7 @@ export function TemplateDrillRoute() {
   const { cat } = useParams();
   // "Try again" and a mode switch after a check start a fresh run; a new unit (Next template) remounts too.
   const [run, setRun] = useState(0);
-  // Fill the gaps: the round per unit, so "Try new gaps" and coming back bring other lines.
+  // Pick and Fill the gaps: the round per unit, so "Try new gaps" and coming back bring other lines.
   const rounds = useRef<Record<string, number>>({});
   // Set when the mode switch changes the drill (it survives the remount of a switch after a check).
   const switched = useRef(false);
@@ -104,7 +118,17 @@ function nextTemplate(cat: CategoryId, p: Progress): CategoryMeta | null {
   return ring.find((c) => p.lessonsDone[`g:${c.id}`]) ?? ring[0] ?? null;
 }
 
+/**
+ * The first round of gaps: round 0 is the set the pattern intro's "Your turn" slide asks (picked
+ * or typed; its first check is this drill's first score). Once the template has a gaps score
+ * either way, open on other lines.
+ */
+function firstRound(t: TemplateProgress | undefined): number {
+  return t?.gapsBest !== undefined || t?.pickBest !== undefined ? 1 : 0;
+}
+
 const pct = (x: number) => `${Math.round(x * 100)}%`;
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const isFinePointer = () => !!window.matchMedia?.('(pointer: fine)').matches;
 const isWide = () => !!window.matchMedia?.('(min-width: 640px)').matches;
 
@@ -138,6 +162,8 @@ interface ModeSwitchProps {
 interface DrillProps {
   g: PatternGuide;
   modes: ModeSwitchProps;
+  /** The "Code practice" setting, read once when the page opened. */
+  setting: InputMode;
   /** Called on the first Check: from then on, switching mode restarts the drill. */
   onChecked: () => void;
   /** Start a fresh run, in `mode` (default: the current one). */
@@ -163,9 +189,10 @@ function TemplateDrill({
   const loc = useLocation();
   const [params, setParams] = useSearchParams();
   // Decided once per run, so finishing a strong round does not flip a running page.
-  const [auto] = useState<Mode>(() => ladderMode(getProgress().templates?.[g.category]));
+  const [setting] = useState<InputMode>(() => getProgress().settings.typingMode);
+  const [auto] = useState<Mode>(() => templateLadder(setting, getProgress().templates?.[g.category]));
   const asked = params.get('mode');
-  const mode: Mode = asked === 'gaps' || asked === 'memory' ? asked : auto;
+  const mode: Mode = isMode(asked) ? asked : auto;
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState<Mode | null>(null);
 
@@ -174,7 +201,7 @@ function TemplateDrill({
   const restart = (m: Mode = mode) => {
     setPending(null);
     // Pin the mode in the URL: the fresh run re-reads the ladder, and a strong round must not
-    // turn "Try new gaps" into From memory.
+    // turn "Try new gaps" into the next rung.
     if (asked !== m) setMode(m);
     onRestart();
   };
@@ -201,13 +228,20 @@ function TemplateDrill({
   const shared: DrillProps = {
     g,
     modes: { mode, onChange: choose, restarts: checked },
+    setting,
     onChecked: () => setChecked(true),
     onRestart: restart,
   };
 
   return (
     <>
-      {mode === 'gaps' ? <GapsDrill key="gaps" {...shared} rounds={rounds} /> : <MemoryDrill key="memory" {...shared} />}
+      {mode === 'memory' ? (
+        <MemoryDrill key="memory" {...shared} />
+      ) : mode === 'pick' ? (
+        <PickDrill key="pick" {...shared} rounds={rounds} />
+      ) : (
+        <GapsDrill key="gaps" {...shared} rounds={rounds} />
+      )}
       {pending && (
         <Modal onClose={keepGoing} labelledBy="tdrill-switch-title">
           <div className="tdrill-modal">
@@ -247,7 +281,11 @@ function ModeSwitch({ mode, onChange, restarts }: ModeSwitchProps) {
           return (
             <button key={m.id} type="button" role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => onChange(m.id)}>
               <Icon aria-hidden="true" />
-              {m.label}
+              {/* The narrowest phones show the short name; the full one stays the accessible name. */}
+              <span className="tdrill-seg-long">{m.label}</span>
+              <span className="tdrill-seg-short" aria-hidden="true">
+                {m.short}
+              </span>
             </button>
           );
         })}
@@ -307,10 +345,16 @@ function Cues({ g }: { g: PatternGuide }) {
   );
 }
 
+const BEST_TITLE: Record<Mode, string> = {
+  pick: 'Your best first check picking the gaps',
+  gaps: 'Your best first check filling the gaps',
+  memory: 'Your best first try for this template',
+};
+
 /** The best score so far in this mode, in the session header. */
 function BestChip({ best, mode }: { best: number | undefined; mode: Mode }) {
   if (best === undefined) return null;
-  const what = mode === 'gaps' ? 'Your best first check filling the gaps' : 'Your best first try for this template';
+  const what = BEST_TITLE[mode];
   return (
     <span className="tdrill-best" title={what}>
       <Trophy strokeWidth={2.2} aria-hidden="true" />
@@ -363,22 +407,274 @@ function Reference({ g, open }: { g: PatternGuide; open: boolean }) {
   );
 }
 
-// ── Fill the gaps ───────────────────────────────────────────────────────────
+/** What the action bar says once the gaps are checked (picked or typed): the first check sets the score. */
+function gapsFeedback(grade: GapsGrade, checks: number, first: GapsGrade | null, input: 'pick' | 'gaps'): { title?: string; feedback?: string } {
+  if (checks <= 1)
+    return {
+      feedback: grade.perfect
+        ? `All ${grade.total} gaps right on the first check.`
+        : `Your first check sets the score. Lines with a plus show the template: fix ${input === 'pick' ? 'your picks' : 'yours'}, or continue.`,
+    };
+  const kept = first ? pct(first.score) : '';
+  return grade.perfect
+    ? { title: 'All gaps right now', feedback: `Every gap matches now. Your score stays at ${kept} from the first check.` }
+    : { feedback: `${gapsSummary(grade)}. Your score stays at ${kept} from the first check.` };
+}
 
-function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+/** "New gaps": another set of lines, before the first check (after it, the round's score is set). */
+function NewGapsButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={onClick} title="Blank a different set of lines">
+      <RefreshCw aria-hidden="true" />
+      New gaps
+    </button>
+  );
+}
+
+interface GapsResult {
+  grade: GapsGrade;
+  xp: number;
+  newBest: boolean;
+}
+
+/**
+ * The end of a Pick the gaps or Fill the gaps round: the first check's score, XP, and the next
+ * step. A strong round (80%+) makes the next rung the primary action ("Next: Fill the gaps" after
+ * picking, "Now type it from memory" after typing; "Always pick" keeps picking); a weaker typed
+ * round offers picking first while the ladder still counts the template as new. Every next step
+ * brings a new set of lines (`onNext`), never the ones just answered.
+ */
+function GapsDone({
+  g,
+  input,
+  result,
+  setting,
+  onNext,
+}: {
+  g: PatternGuide;
+  input: 'pick' | 'gaps';
+  result: GapsResult;
+  setting: InputMode;
+  /** Start the next round, in `mode` (default: this one). */
+  onNext: (mode?: Mode) => void;
+}) {
   const nav = useNavigate();
   const { back, backToUnit } = useBack(g);
   const meta = CATEGORY_BY_ID[g.category];
+  const { grade, xp, newBest } = result;
+  const acc = grade.score;
+  const strong = acc >= READY;
+  const look = doneLook(acc);
+  const picked = input === 'pick';
+  // One rung up after a strong round; one down after a weak typed round, where the ladder (read
+  // after this round was recorded) still says pick.
+  const up: Mode | null = strong ? (picked ? (setting === 'tap' ? null : 'gaps') : 'memory') : null;
+  const [down] = useState<Mode | null>(() =>
+    !picked && !strong && templateLadder(setting, getProgress().templates?.[g.category]) === 'pick' ? 'pick' : null,
+  );
+  const ready = picked ? ' Ready to type the missing lines yourself?' : ' Ready to type the whole thing from memory?';
+
+  return (
+    <SessionShell progress={1} onClose={() => nav(back)} title={<SessionTitle />}>
+      <div className="tdrill-done">
+        <Completion
+          icon={look.icon}
+          tone={look.tone}
+          title={grade.perfect ? 'Every gap right' : strong ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
+          subtitle={
+            <>
+              You {picked ? 'picked' : 'filled'} {grade.correct} of {grade.total} gaps in the <strong>{meta.name}</strong> template correctly on your
+              first check.
+              {strong ? `${newBest ? ' A new best.' : ''}${up ? ready : ''}` : ' Each new set of gaps helps it stick.'}
+            </>
+          }
+          stats={[
+            { label: 'Accuracy', value: pct(acc) },
+            {
+              label: 'Gaps correct',
+              value: (
+                <>
+                  {grade.correct}
+                  <span className="tdrill-of">/{grade.total}</span>
+                </>
+              ),
+            },
+            { label: 'XP earned', value: `+${xp}` },
+          ]}
+        >
+          {up && (
+            <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onNext(up)}>
+              {up === 'gaps' ? <TextCursorInput aria-hidden="true" /> : <PencilLine aria-hidden="true" />}
+              {up === 'gaps' ? 'Next: Fill the gaps' : 'Now type it from memory'}
+            </button>
+          )}
+          <button type="button" className={`btn btn-lg btn-block ${up ? 'btn-secondary' : 'btn-primary'}`} onClick={() => onNext()}>
+            <RefreshCw aria-hidden="true" />
+            Try new gaps
+          </button>
+          {down && (
+            <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onNext(down)}>
+              <ListChecks aria-hidden="true" />
+              Pick the gaps first
+            </button>
+          )}
+          <Link to={back} className="btn btn-quiet btn-lg btn-block">
+            <ArrowLeft aria-hidden="true" />
+            {backToUnit ? 'Back to unit' : 'Back to Pattern guide'}
+          </Link>
+        </Completion>
+        <Reference g={g} open={!grade.perfect} />
+      </div>
+    </SessionShell>
+  );
+}
+
+// ── Pick the gaps ───────────────────────────────────────────────────────────
+
+/**
+ * The first rung, for a template that is still new: the template with about 30% of its lines as
+ * slots, each picked from the template's line and plausible wrong ones (`usePickGaps`), in the
+ * same window as Fill the gaps. Check once every slot has a pick.
+ */
+function PickDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+  const nav = useNavigate();
+  const { back } = useBack(g);
+  const meta = CATEGORY_BY_ID[g.category];
   const src = useMemo(() => gapSource(g.template), [g]);
-  // Round 0 is the set the pattern intro's "Your turn" slide asks (and its first check is this
-  // drill's first gaps score). Once the template has a gaps score, open on other lines.
-  const [startRound] = useState(() => rounds.current[g.category] ?? (getProgress().templates?.[g.category]?.gapsBest !== undefined ? 1 : 0));
+  const [startRound] = useState(() => rounds.current[g.category] ?? firstRound(getProgress().templates?.[g.category]));
+  const ex = usePickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: startRound });
+  // Read once: the best before this round, so the header and "New best" do not move mid-drill.
+  const [prevBest] = useState(() => getProgress().templates?.[g.category]?.pickBest);
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [checks, setChecks] = useState(0);
+  const [result, setResult] = useState<GapsResult | null>(null);
+  // A keyboard arrives on the open slot's options; phones wait for a tap.
+  const [autoFocus] = useState(isFinePointer);
+  const workRef = useRef<HTMLDivElement>(null);
+  const pickRef = useRef<PickGapsHandle>(null);
+
+  useEffect(() => {
+    rounds.current[g.category] = ex.round;
+    if (autoFocus) pickRef.current?.focusOptions();
+  }, [ex.round]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useResultScroll(workRef, ex.revealed);
+
+  if (result) {
+    const next = (m?: Mode) => {
+      rounds.current[g.category] = ex.round + 1;
+      onRestart(m);
+    };
+    return <GapsDone g={g} input="pick" result={result} setting={setting} onNext={next} />;
+  }
+
+  const grade = ex.grade;
+  const n = ex.gaps.length;
+  const status: CheckStatus = ex.revealed ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+
+  const check = () => {
+    if (ex.revealed || !ex.complete) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      onChecked();
+    }
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": the picks stay, the right ones lock, and the first wrong slot opens
+  // with its options focused.
+  const retry = () => {
+    flushSync(ex.retry);
+    pickRef.current?.focusOptions();
+  };
+  const finish = () => {
+    if (!first) return;
+    const acc = first.score;
+    recordTemplate(g.category, acc, 'pick');
+    const xp = Math.max(2, Math.round(XP.templatePickMax * acc));
+    awardXp(xp, 'template');
+    setResult({ grade: first, xp, newBest: prevBest !== undefined && acc > prevBest });
+    sfx('complete');
+    if (acc >= READY) confetti();
+  };
+
+  const { title, feedback } = ex.revealed ? gapsFeedback(grade, checks, first, 'pick') : {};
+  const open = ex.gaps.filter((_, k) => !ex.locked[k]).length;
+  const left = ex.gaps.filter((_, k) => !ex.locked[k] && !ex.values[k]).length;
+  const note = open < n ? `${open} to fix` : left ? `${plural(left, 'line')} to pick` : 'Ready to check';
+
+  return (
+    <SessionShell
+      progress={ex.revealed ? 1 : ex.filled / Math.max(1, n)}
+      onClose={() => nav(back)}
+      title={<SessionTitle />}
+      right={<BestChip best={prevBest} mode="pick" />}
+    >
+      <div className="tdrill">
+        <DrillHead
+          g={g}
+          modes={modes}
+          title="Fill in the template"
+          sub={
+            first && !ex.revealed
+              ? 'Fix the lines that were off, then check again. Your first check already set the score.'
+              : 'Most of the template is here. Pick each missing line from its options, then check.'
+          }
+        />
+        <Cues g={g} />
+        <div ref={workRef} className="tdrill-work">
+          <PickGapsWindow
+            ref={pickRef}
+            lines={src.lines}
+            gaps={ex.gaps}
+            choices={ex.choices}
+            values={ex.values}
+            active={ex.active}
+            onActivate={ex.setActive}
+            onPick={(k, o) => {
+              ex.pick(k, o);
+              sfx('tap');
+            }}
+            revealed={ex.revealed}
+            locked={ex.locked}
+            label={`${meta.name} template with ${plural(n, 'line')} to pick`}
+            filename={`${g.category}.py`}
+            meta="Pick the gaps"
+            note={first ? `${note} · score kept from check 1` : note}
+            className="tdrill-editor"
+          />
+        </div>
+        <ActionBar
+          status={status}
+          step={`${ex.round}:${checks}`}
+          canCheck={ex.complete}
+          onCheck={check}
+          onContinue={finish}
+          title={title}
+          feedback={feedback}
+          secondary={first ? undefined : <NewGapsButton onClick={ex.fresh} />}
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
+        />
+      </div>
+    </SessionShell>
+  );
+}
+
+// ── Fill the gaps ───────────────────────────────────────────────────────────
+
+function GapsDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+  const nav = useNavigate();
+  const { back } = useBack(g);
+  const meta = CATEGORY_BY_ID[g.category];
+  const src = useMemo(() => gapSource(g.template), [g]);
+  const [startRound] = useState(() => rounds.current[g.category] ?? firstRound(getProgress().templates?.[g.category]));
   const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: startRound });
   // Read once: the best before this round, so the header and "New best" do not move mid-drill.
   const [prevBest] = useState(() => getProgress().templates?.[g.category]?.gapsBest);
   const [first, setFirst] = useState<GapsGrade | null>(null);
   const [checks, setChecks] = useState(0);
-  const [result, setResult] = useState<{ grade: GapsGrade; xp: number; newBest: boolean } | null>(null);
+  const [result, setResult] = useState<GapsResult | null>(null);
   // Phones wait for a tap, so the keyboard does not cover the template on arrival.
   const [autoFocus] = useState(isFinePointer);
   const workRef = useRef<HTMLDivElement>(null);
@@ -390,67 +686,12 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
 
   useResultScroll(workRef, ex.revealed);
 
-  const close = () => nav(back);
-
   if (result) {
-    const { grade, xp, newBest } = result;
-    const acc = grade.score;
-    const strong = acc >= READY;
-    const look = doneLook(acc);
-    const newGaps = () => {
+    const next = (m?: Mode) => {
       rounds.current[g.category] = ex.round + 1;
-      onRestart();
+      onRestart(m);
     };
-    return (
-      <SessionShell progress={1} onClose={close} title={<SessionTitle />}>
-        <div className="tdrill-done">
-          <Completion
-            icon={look.icon}
-            tone={look.tone}
-            title={grade.perfect ? 'Every gap right' : strong ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
-            subtitle={
-              <>
-                You filled {grade.correct} of {grade.total} gaps in the <strong>{meta.name}</strong> template correctly on your first check.
-                {strong
-                  ? newBest
-                    ? ' A new best. Ready to type the whole thing from memory?'
-                    : ' Ready to type the whole thing from memory?'
-                  : ' Each new set of gaps helps it stick.'}
-              </>
-            }
-            stats={[
-              { label: 'Accuracy', value: pct(acc) },
-              {
-                label: 'Gaps correct',
-                value: (
-                  <>
-                    {grade.correct}
-                    <span className="tdrill-of">/{grade.total}</span>
-                  </>
-                ),
-              },
-              { label: 'XP earned', value: `+${xp}` },
-            ]}
-          >
-            {strong && (
-              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('memory')}>
-                <PencilLine aria-hidden="true" />
-                Now type it from memory
-              </button>
-            )}
-            <button type="button" className={`btn btn-lg btn-block ${strong ? 'btn-secondary' : 'btn-primary'}`} onClick={newGaps}>
-              <RefreshCw aria-hidden="true" />
-              Try new gaps
-            </button>
-            <Link to={back} className="btn btn-quiet btn-lg btn-block">
-              <ArrowLeft aria-hidden="true" />
-              {backToUnit ? 'Back to unit' : 'Back to Pattern guide'}
-            </Link>
-          </Completion>
-          <Reference g={g} open={!grade.perfect} />
-        </div>
-      </SessionShell>
-    );
+    return <GapsDone g={g} input="gaps" result={result} setting={setting} onNext={next} />;
   }
 
   const grade = ex.grade;
@@ -486,28 +727,14 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
     if (acc >= READY) confetti();
   };
 
-  const pctFirst = first ? pct(first.score) : '';
-  const isFirst = checks === 1;
-  let title: string | undefined;
-  let feedback: string | undefined;
-  if (ex.revealed && isFirst) {
-    feedback = grade.perfect
-      ? `All ${grade.total} gaps right on the first check.`
-      : 'Your first check sets the score. Lines with a plus show the template: fix yours, or continue.';
-  } else if (ex.revealed) {
-    title = grade.perfect ? 'All gaps right now' : undefined;
-    feedback = grade.perfect
-      ? `Every gap matches now. Your score stays at ${pctFirst} from the first check.`
-      : `${gapsSummary(grade)}. Your score stays at ${pctFirst} from the first check.`;
-  }
-
+  const { title, feedback } = ex.revealed ? gapsFeedback(grade, checks, first, 'gaps') : {};
   const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
   const leftNote = left === ex.gaps.length ? `${left} line${left === 1 ? '' : 's'} missing` : `${left} to fix`;
 
   return (
     <SessionShell
       progress={ex.revealed ? 1 : ex.filled / Math.max(1, ex.gaps.length)}
-      onClose={close}
+      onClose={() => nav(back)}
       title={<SessionTitle />}
       right={<BestChip best={prevBest} mode="gaps" />}
     >
@@ -519,7 +746,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
           sub={
             first && !ex.revealed
               ? 'Fix the lines that were off, then check again. Your first check already set the score.'
-              : 'Most of the template is here. Type each missing line, then check them.'
+              : 'Most of the template is here. Type each missing line, then check.'
           }
         />
         <Cues g={g} />
@@ -549,12 +776,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
           onContinue={finish}
           title={title}
           feedback={feedback}
-          secondary={
-            <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={ex.fresh} title="Blank a different set of lines">
-              <RefreshCw aria-hidden="true" />
-              New gaps
-            </button>
-          }
+          secondary={first ? undefined : <NewGapsButton onClick={ex.fresh} />}
           checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
         />
       </div>

@@ -84,7 +84,8 @@ For choosing between given lines of code, use the pick kit (**Pick first, then t
 `<PickGapsWindow>`, `<ArrangeWindow>`; `<Choices>` stays for non-code answers.
 
 **The ladder** — Code from memory and the template drill offer the same rungs, most support first: Part by part
-(Code from memory only) → Fill the gaps → From scratch / From memory. Without `?mode=` a page opens one rung above
+(Code from memory only) → Fill the gaps → From scratch / From memory; the template drill's first rung is Pick the
+gaps (**Pick first, then type**). Without `?mode=` a page opens one rung above
 what the learner has shown: the next rung once the best score on the one below is 80% or more (or they already
 have a score on the top rung). A run of 80% or more makes the next rung the completion's primary action ("Next:
 Fill the gaps", "Now write it from scratch", "Now type it from memory"); a weak From scratch or From memory run
@@ -338,13 +339,18 @@ picked cards report `input: 'pick'` and no `lines` in `DrillResult`.
 
 **Store** — `TemplateProgress.pickBest?` (optional, like `gapsBest`). `recordTemplate(cat, acc, mode: 'pick' |
 'gaps' | 'memory')` only raises a best and returns true on a new best for that mode (`TemplateMode`).
-`templateScore` still reports From memory, else gaps (extend it if a page shows a pick score).
+`templateScore` reports the highest rung practiced: From memory, else gaps, else pick (`{ mode: TemplateMode, best }`;
+the Unit and Pattern guide chips read "Best 90%", "Gaps 67%", "Picked 100%"). Template practice's pick rung earns
+up to `XP.templatePickMax` (8), scaled by the first check, as Fill the gaps earns up to `XP.templateGapsMax` (12).
 
 **Shared APIs**
 
 - `lib/choices.ts` (re-exported from `lib/drills.ts` and `components/CodeGaps.tsx`), pure:
   `mutateLine(line)` (one token swapped: operators, bounds, pointers, methods, literals; an off-by-one; the
-  operands of a comparison, a subtraction or a plain assignment swapped; a `not` dropped; `enumerate(x, 1)`);
+  operands of a comparison, a subtraction or a plain assignment swapped; a `not` dropped; `enumerate(x, 1)`; an
+  index one off on a subscript only, never a list literal or a plain number; a hex literal is one token, so
+  `0x7FFFFFFF` never becomes `1x7FFFFFFF`; never a name compared with or added to itself (`left < left`), the same
+  name twice in a two-name target (`l, l = …`) or an assignment to a literal (`True = …`));
   `codeOnly(line)` (an option as shown: code at its indentation, no trailing comment);
   `lineChoices(answer, otherLines, n = 3, rnd = Math.random)` → up to `n` wrong lines, mutations first, then
   `otherLines` re-indented, deduplicated with the grader's `lineKey`, never equal to the answer;
@@ -368,7 +374,7 @@ picked cards report `input: 'pick'` and no `lines` in `DrillResult`.
   `focus(gap?)`, `focusOptions()`; `before` = rows above `lines[0]` inside the code, `top` = above the code, e.g. a
   fold row). It looks exactly like `GapsWindow`: each gap is a slot (`button.pick-slot`, "Line N, pick a line",
   `aria-expanded`) at its line's indentation, as wide as the visible window; its hint is the line's trailing
-  comment, else "Pick a line". The open slot's options appear **inline right under it** (`<CodeOptions inline>`,
+  comment, else "Pick a line"; a pick or hint wider than the slot ends in an ellipsis. The open slot's options appear **inline right under it** (`<CodeOptions inline>`,
   sticky to the window's visible width, so they never scroll sideways with the code), labeled "Line 7 · Pick the
   missing line"; picking fills the slot and opens the next empty one; a filled slot reopens with its pick
   selected; Escape closes the options back to the slot. Check is enabled once every slot is filled (`complete`).
@@ -465,6 +471,18 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
   in place of "Slides", keeps "Start the problems" primary, and its secondary follows this run: 80% or more
   reads "Type the template from memory" (`?mode=memory`; "Template from memory" below 360px, the full label
   staying the accessible name), else "Practice the template" (`?mode=gaps`).
+  **Picked while the template is new** (`templateInput(settings.typingMode, templates[cat])`, decided once per run,
+  so the comeback is the same exercise): the slide is **"Your turn · Pick the gaps"** (ListChecks icon), the same
+  title and gaps in a `PickGapsWindow` (round 0, options seed 0), lede "Most of the Two Pointers template is here.
+  Pick the 3 missing lines from the options." (comeback: "Once more: pick the 3 missing lines."), and the template
+  slide's lede says "fill in" instead of "type". On a fine pointer the open slot's first option takes focus on
+  arrival. Check is enabled once every slot is picked; a miss reads "Fix your picks now, or continue." and "Fix and
+  check again" keeps the picks, locks the right ones and focuses the first wrong slot's options. Its first check is
+  `recordTemplate(cat, score, 'pick')`, counts toward "First try" and comes back once if missed, like the typed
+  slide. In 'auto' a quiet **"Type instead"** (`InputSwitch`) sits left of Check until the first check: it turns
+  this visit into Fill the gaps (same gaps, the first gap focused inside the click), which then records 'gaps'. The
+  completion's secondary goes one rung up after a strong pick (Fill the gaps, `?mode=gaps`; "Always pick" stays on
+  `?mode=pick`) and stays on picking after a weak one (`?mode=pick`, ListChecks icon); a typed run is as above.
 - **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
   accessible name). The title wraps (the difficulty chip moves under it), so the whole name always shows.
@@ -483,18 +501,27 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
   solution and the next step. Each mode keeps its own best (`rebuildBest`, `gapsBest`, `scratchBest`), shown on
   the problem page as one "Code from memory, best" list, and every mode counts as the review of a due problem. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
   (one learned problem to write from memory).
-- **Template drill (`/patterns/:cat/type?mode=gaps|memory`)** — "Template practice" in the session header (as its
-  entry points say), the unit's guide template, in two rungs under a `.seg` switch: **Fill the gaps**
+- **Template drill (`/patterns/:cat/type?mode=pick|gaps|memory`)** — "Template practice" in the session header (as its
+  entry points say), the unit's guide template, in three rungs under a `.seg` switch (full names with icons; names
+  only below 460px; "Pick / Fill / Memory" below 380px, the full name staying the accessible name): **Pick the
+  gaps** (the same gaps in a `PickGapsWindow`, "Pick each missing line from its options, then check."; Check once
+  every slot is picked; up to `XP.templatePickMax`; records `pickBest`), **Fill the gaps**
   (`gapSource(template)`; each gap's hint is its line's comment) and **From memory** (a blank `CodeTyper` with an
   optional first-word hint that halves the XP: the Hint button says so before it is used, and the panel scrolls
   into view and is announced when it opens). "When to reach for it" cues sit above
-  (open on desktop, collapsed on phones). Without `?mode=` it opens Fill the gaps until that best is 80% or more or
-  the template has been typed from memory, then From memory. Fill the gaps opens on round 0 (the pattern intro's
-  own set) only while the template has no gaps score; after the intro's slide it opens on round 1, so the learner
-  gets other lines. The first check sets the score; "Fix and check again"
-  sits in the action bar. Completion: a strong gaps run leads to "Now type it from memory", a perfect from-memory
-  run to "Next template", a weak one (under 80%) offers "Fill the gaps first". Entry points read "Practice the template", with the best score (from memory, else
-  "Gaps N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
+  (open on desktop, collapsed on phones). Without `?mode=` it follows the ladder (`templateLadder` in
+  `TemplateDrill.tsx`): Pick the gaps while `templateInput` says pick (in 'auto' until a pick or gaps best of 80%
+  or more, or a From memory try; always in "Always pick"; never in "Always type"), then Fill the gaps until that
+  best is 80% or more or the template has been typed from memory, then From memory. Pick and Fill the gaps open on
+  round 0 (the pattern intro's own set) only while the template has no pick or gaps score; after the intro's
+  slide they open on round 1, so the learner gets other lines. "New gaps" sits left of Check until the first
+  check. The first check sets the score; "Fix and check again"
+  sits in the action bar. Completion: a strong pick run leads to "Next: Fill the gaps" (not in "Always pick"), a
+  strong gaps run to "Now type it from memory", a perfect from-memory run to "Next template"; a weak from-memory run
+  (under 80%) offers "Fill the gaps first", and a weak gaps run offers "Pick the gaps first" while the ladder still
+  counts the template as new. Every next step from a gaps round brings the next round's lines. Entry points read
+  "Practice the template" (ListChecks icon while the drill would open on picking, else Keyboard), with the best
+  score (from memory, else "Gaps N%", else "Picked N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
   problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
   Back return to the page that opened it.
 - **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against the clock (Timed: 60 seconds
@@ -553,7 +580,9 @@ Automated tests drive the UI through these hooks — keep them working:
   `data-problem` and `data-input` (`pick` / `type` on coding cards), the part card's `.drill-cue` and `.drill-fold`;
   pick twins: `button.pick-slot` ("Line N, pick a line"), `.pick-panel .choice` (the open slot's options),
   `.parsons-slot .arrange-line` ("Remove line N: …"), `.parsons-bank .parsons-item` ("Add line: …"), `.arrange-tag`,
-  the switch's button **"Type instead"**.
+  the switch's button **"Type instead"**; Template practice's mode radios `.tdrill-seg [role="radio"]` named
+  **"Pick the gaps"**, **"Fill the gaps"**, **"From memory"** (`?mode=pick|gaps|memory`), and the template chips
+  `.unit-type-best.is-pick` / `.patterns-best.is-pick` ("Picked N%").
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
   and **"Got it"** (the review's Fill the gaps, Write a part and Write the key line cards also have a **"Show answer"** button,

@@ -83,10 +83,16 @@ const SWAP: Record<string, string[]> = {
   None: ['0'],
 };
 
-const TOKENS = /(\s+|[A-Za-z_]\w*|\d+|==|!=|<=|>=|\+=|-=|\*=|\/\/=|\/\/|\*\*|<<=|>>=|<<|>>|->|:=|[^\sA-Za-z_\d])/g;
+// A hex literal (`0x7FFFFFFF`) is one token, so its `0` is never swapped (`1x7FFFFFFF`).
+const TOKENS = /(\s+|[A-Za-z_]\w*|0[xX][0-9a-fA-F_]+|\d+|==|!=|<=|>=|\+=|-=|\*=|\/\/=|\/\/|\*\*|<<=|>>=|<<|>>|->|:=|[^\sA-Za-z_\d])/g;
 
-/** Mutations that read as nonsense rather than as a plausible mistake. */
-const NONSENSE = /\bfor\b[^:]*\bnot in\b|\bnot not\b|\bnot in not\b|\bis not in\b|\bis not not\b/;
+/**
+ * Mutations that read as nonsense rather than as a plausible mistake: a `not` in the wrong place, a
+ * name compared with (or added to) itself (`left < left`), the same name twice in a two-name target
+ * (`l, l = …`), an assignment to a literal (`True = node.is_end`).
+ */
+const NONSENSE =
+  /\bfor\b[^:]*\bnot in\b|\bnot not\b|\bnot in not\b|\bis not in\b|\bis not not\b|(?<![\w.])([A-Za-z_]\w*)\s*(?:<=|>=|<|>|==|!=|\+|-)\s*\1\b(?![\w.([])|^\s*(?:for\s+)?([A-Za-z_]\w*),\s*\2\b|^\s*(?:True|False|None|\d+)\s*=(?!=)/;
 
 /**
  * Plausible wrong versions of a line: one token swapped (operators, bounds, pointers, methods,
@@ -112,7 +118,9 @@ export function mutateLine(line: string): string[] {
   });
   // Off-by-one style mutations.
   if (/\s[+-]\s1\b/.test(line)) out.push(line.replace(/\s[+-]\s1\b/, ''));
-  if (/\[[^\]]+\]/.test(line) && !/\s[+-]\s1\]/.test(line)) out.push(line.replace(/\[([^\]:]+)\]/, '[$1 + 1]'));
+  // An index one off: a subscript only (not a list literal), never a plain number (`last[1 + 1]`).
+  const SUBSCRIPT = /(?<=[\w\])])\[(?!\s*-?\d+\s*\])([^\][:]+)\]/;
+  if (SUBSCRIPT.test(line) && !/\s[+-]\s1\]/.test(line)) out.push(line.replace(SUBSCRIPT, '[$1 + 1]'));
   if (/\blen\([^()]+\)(?!\s*[-+])/.test(line)) out.push(line.replace(/\blen\(([^()]+)\)(?!\s*[-+])/, 'len($1) - 1'));
   if (/\benumerate\(([^(),]+)\)/.test(line)) out.push(line.replace(/\benumerate\(([^(),]+)\)/, 'enumerate($1, 1)'));
   if (/\brange\(([^(),]+)\)/.test(line)) out.push(line.replace(/\brange\(([^(),]+)\)/, 'range(1, $1)'));
