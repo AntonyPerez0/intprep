@@ -275,12 +275,9 @@
   }
 }
 
-/* Tap mode: the line being chosen */
-.rebuild .typer-line.cursor {
+/* Picking part by part: the line being picked (a slot, its options under it) stays in view */
+.rebuild .pick-row {
   scroll-margin: 140px 0 280px;
-}
-.rebuild .typer-line.cursor .blank {
-  min-width: 18ch;
 }
 
 /* Hint panel (inside the editor) */
@@ -330,6 +327,11 @@
 @media (max-width: 379px) {
   .rebuild-tools .btn {
     padding-inline: 10px;
+  }
+  /* "Type instead" / "Pick instead" (the shared InputSwitch): the icon only; its name stays the accessible one */
+  .rebuild-tools .input-switch {
+    gap: 0;
+    font-size: 0;
   }
   .rebuild-tool-label {
     position: absolute;

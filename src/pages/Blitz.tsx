@@ -1,7 +1,9 @@
-// Pattern Blitz: two quick games against the clock (60 seconds to spot patterns, 90 to type key
-// lines, since typing takes longer than tapping) or untimed (Zen).
+// Pattern Blitz: two quick games against the clock (60 seconds to spot patterns, 90 for key
+// lines, since writing code takes longer than tapping) or untimed (Zen).
 // - Spot the pattern: rapid-fire "which pattern is this?" across all units (recognition).
-// - Key lines: type the key line of a solution you have learned, from the code around it (recall).
+// - Key lines: the key line of a solution you have learned, from the code around it (recall).
+//   Typed, or picked from four options while the problem's code is still new ("Pick first, then
+//   type": `problemInput` decides each round). Both score the same.
 // Misses on learned problems join today's review.
 
 import '../styles/pages/blitz.css';
@@ -19,6 +21,7 @@ import {
   Flame,
   LayoutGrid,
   Leaf,
+  ListChecks,
   Lock,
   PencilLine,
   Play,
@@ -35,31 +38,43 @@ import {
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, PROBLEMS } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
-import { KEY_LINES_MIN, keyLinePool, keyLineView, nextKeyLine, refKey, type KeyLineEntry, type KeyLineRef, type KeyLineView } from '../lib/blitzLines';
+import {
+  KEY_LINES_MIN,
+  keyLineChoices,
+  keyLinePool,
+  keyLineView,
+  nextKeyLine,
+  refKey,
+  type KeyLineEntry,
+  type KeyLineRef,
+  type KeyLineView,
+} from '../lib/blitzLines';
 import { confetti } from '../lib/confetti';
 import { acceptedCategories, patternChoices } from '../lib/drills';
 import { XP } from '../lib/game';
 import { gradeGaps } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
+import { isNewCode, problemInput, type CodeInput } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { nextStep } from '../lib/path';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
-import { awardXp, flagForReview, recordAnswers, recordBlitz, recordBlitzCode, updateSettings, useProgress } from '../lib/store';
+import { awardXp, flagForReview, getProgress, recordAnswers, recordBlitz, recordBlitzCode, updateSettings, useProgress } from '../lib/store';
 import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { ActionBar, ProblemPrompt } from '../components/interact';
 import { CheckedAction, CodeLine, CodePane, TyperWindow } from '../components/CodeTyper';
-import { CodeGaps, GapsFooter, type CodeGapsHandle } from '../components/CodeGaps';
+import { CodeGaps, GapsFooter, PickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
+import { InputSwitch } from '../components/InputSwitch';
 import { Completion, DifficultyChip, Kbd, Ring, SectionHeader, StatCard } from '../components/ui';
 
 type Game = 'pattern' | 'lines';
 
-/** Seconds in a timed round. Typing a line takes longer than tapping a pattern. */
+/** Seconds in a timed round. Writing a line takes longer than tapping a pattern. */
 const DURATION: Record<Game, number> = { pattern: 60, lines: 90 };
 const ZEN_QUESTIONS = 20;
-/** Key lines in a Zen round: each one is typed, so a round is shorter than the pattern game's. */
+/** Key lines in a Zen round: each one is written out (or picked), so a round is shorter than the pattern game's. */
 const ZEN_LINES = 10;
 /** Points for a hit, before the streak multiplier (both games). */
 const POINTS = 10;
@@ -317,6 +332,14 @@ function Lobby({
   const best = lines ? blitzCodeBest : blitzBest;
   const plays = lines ? blitzCodePlays : blitzPlays;
   const xpEach = lines ? XP.blitzCodePerCorrect : XP.blitzPerCorrect;
+  // "Pick first, then type": a round on a problem whose code is still new is picked from options.
+  const typingMode = progress.settings.typingMode;
+  const newCount = pool.filter((e) => isNewCode(progress.problems[e.p.id])).length;
+  /** Every round will be picked: Always pick, or nothing learned well enough yet to type. */
+  const allPick = typingMode === 'tap' || (typingMode === 'auto' && pool.length > 0 && newCount === pool.length);
+  /** Some rounds will be picked (Pick first, then type): the lobby says which. */
+  const somePick = typingMode === 'auto' && newCount > 0;
+  const verb = allPick ? 'Pick' : 'Type';
 
   return (
     <SessionShell progress={null} onClose={() => nav('/')} title="Pattern Blitz">
@@ -326,7 +349,7 @@ function Lobby({
           <h1>Pattern Blitz</h1>
           <p className="blitz-lede">
             {lines
-              ? "Type the key line of solutions you've learned, from the code around it. Quick recall is how code sticks."
+              ? `${verb} the key line of solutions you've learned, from the code around it. Quick recall is how code sticks.`
               : `Read each problem and pick which of the ${CATEGORIES.length} patterns solves it. Spotting the pattern is half of every interview.`}
           </p>
         </header>
@@ -348,7 +371,7 @@ function Lobby({
               <IconTile icon={CodeXml} solid={lines} />
               <span className="blitz-game-text">
                 <span className="blitz-game-title">Key lines</span>
-                <span className="blitz-game-desc">Type the line that makes a solution work.</span>
+                <span className="blitz-game-desc">{verb} the line that makes a solution work.</span>
               </span>
               <span className="blitz-game-radio" aria-hidden="true" />
             </label>
@@ -412,7 +435,7 @@ function Lobby({
                 {lines
                   ? zen
                     ? `${ZEN_LINES} lines, no clock. Each comes with a hint.`
-                    : `${DURATION.lines} seconds. Type as many lines as you can.`
+                    : `${DURATION.lines} seconds. ${verb} as many lines as you can.`
                   : zen
                     ? `${ZEN_QUESTIONS} questions, no clock. Each miss shows its clues.`
                     : `${DURATION.pattern} seconds. Score as many as you can.`}
@@ -437,6 +460,12 @@ function Lobby({
                 <div className="blitz-setting-help">
                   {lineCount} key lines from the {pool.length} problems you've learned. Due and weak ones come up more.
                 </div>
+                {somePick && (
+                  <div className="blitz-setting-note">
+                    <ListChecks aria-hidden="true" />
+                    {allPick ? "You're still learning these, so each line shows choices." : "Problems you're still learning show choices."}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -515,7 +544,15 @@ function Lobby({
         step={game}
         secondary={
           <span className="blitz-kbd-hint">
-            {lines ? (
+            {lines && allPick ? (
+              <>
+                Press <KeyRange /> to pick each line
+              </>
+            ) : lines && somePick ? (
+              <>
+                Type and press <Kbd>Enter</Kbd>, or press <KeyRange /> to pick
+              </>
+            ) : lines ? (
               <>
                 Type each line, then press <Kbd>Enter</Kbd>
               </>
@@ -849,10 +886,17 @@ interface LineRound {
   ref: KeyLineRef;
   p: Problem;
   view: KeyLineView;
+  /**
+   * How this round takes the line: typed, or picked from four options while the problem's code is
+   * still new (`problemInput`). "Type instead" turns a picked round into a typed one before its check.
+   */
+  input: CodeInput;
+  /** Seed for the options of a picked round: new each time a line comes up, so the right option moves. */
+  seed: number;
 }
 
 interface LineAnswer extends LineRound {
-  /** What was typed at the first check ('' when the answer was shown first). */
+  /** What was typed or picked at the first check ('' when the answer was shown first). */
   typed: string;
   ok: boolean;
   /** "Show answer" instead of a check. */
@@ -864,7 +908,14 @@ type LineFlash = { kind: 'correct'; gained: number; mult: number; next: string; 
 
 const roundFor = (ref: KeyLineRef): LineRound => {
   const p = PROBLEM_BY_ID[ref.id];
-  return { ref, p, view: keyLineView(p, ref.line) };
+  const progress = getProgress();
+  return {
+    ref,
+    p,
+    view: keyLineView(p, ref.line),
+    input: problemInput(progress.settings.typingMode, progress.problems[ref.id]),
+    seed: Math.floor(Math.random() * 2 ** 31),
+  };
 };
 
 function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLineEntry[]; onAgain: () => void; onMenu: () => void }) {
@@ -885,11 +936,14 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   };
   const [round, setRound] = useState<LineRound>(() => pick(null));
   const [roundNo, setRoundNo] = useState(1);
+  // The typed text, or the picked option once a picked round is checked.
   const [value, setValue] = useState('');
   const [revealed, setRevealed] = useState(false);
   // After "Fix and check again": checks no longer score, a right fix moves on.
   const [fixing, setFixing] = useState(false);
   const [checks, setChecks] = useState(0);
+  // A picked round: the slot whose options are open (the one slot, unless Escape closed it).
+  const [open, setOpen] = useState<number | null>(0);
   const [answers, setAnswers] = useState<LineAnswer[]>([]);
   const [score, setScore] = useState(0);
   const [streak, setStreak] = useState(0);
@@ -899,10 +953,25 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   const [newBest, setNewBest] = useState(false);
   const [prevBest] = useState(progress.stats.blitzCodeBest);
   const gapsRef = useRef<CodeGapsHandle>(null);
+  const pickRef = useRef<PickGapsHandle>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const picking = round.input === 'pick';
 
   const finish = useCallback(() => setPhase('over'), []);
   const timeLeft = useCountdown(phase === 'play' && !zen, DURATION.lines, finish);
+
+  // A picked first round: its options take focus, as a typed round's gap does (autoFocus).
+  useEffect(() => {
+    if (round.input === 'pick') pickRef.current?.focusOptions();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A picked round: its options on screen, above the action bar. On a short phone the HUD scrolls
+  // away for them (the session bar still shows the clock); elsewhere nothing moves.
+  useEffect(() => {
+    if (!picking || revealed) return;
+    const raf = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('.pick-panel-row')?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(raf);
+  }, [roundNo, picking]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A miss: bring the right line into view above the action bar (a short phone screen would
   // otherwise hide it under the feedback). After the bar has grown, as it sets the scroll padding.
@@ -933,7 +1002,8 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { view } = round;
-  const grade = useMemo(() => gradeGaps([value], [view.answer]), [value, view.answer]);
+  // The options of a picked round, stable for the round (a fix shows the same ones).
+  const choice = useMemo(() => (picking ? keyLineChoices(round.p, round.ref.line, view, round.seed) : null), [picking, round, view]);
   // Zen gives each line a hint: what the line does, from the solution's own explanation (as a
   // comment). Timed rounds keep the window short and the cue to the code itself. A stable array
   // per round, so the gap's hint is measured once, not on every keystroke.
@@ -941,8 +1011,9 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
 
   /**
    * The next round (or the results, after the last Zen line), inside this key press or click: the
-   * gap keeps or takes focus in the same event, so a phone keeps its keyboard open between lines.
-   * `flashFor` says what the strip under the code reports about the round just played.
+   * gap (or the options) keeps or takes focus in the same event, so a phone keeps its keyboard
+   * open between typed lines. `flashFor` says what the strip under the code reports about the
+   * round just played.
    */
   const advance = (answered: number, flashFor?: (next: LineRound) => LineFlash) => {
     if (zen && answered >= ZEN_LINES) {
@@ -958,8 +1029,10 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
       setRevealed(false);
       setFixing(false);
       setChecks(0);
+      setOpen(0);
     });
-    gapsRef.current?.focus();
+    if (next.input === 'pick') pickRef.current?.focusOptions();
+    else gapsRef.current?.focus();
   };
 
   const miss = (typed: string, shown: boolean) => {
@@ -971,9 +1044,11 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
     sfx('wrong');
   };
 
-  const check = () => {
-    if (phase !== 'play' || revealed || !value.trim()) return;
-    const ok = grade.perfect;
+  /** Check a line: what is typed (Enter, Check), or an option the moment it is picked. Same rules for both. */
+  const check = (line = value) => {
+    if (phase !== 'play' || revealed || !line.trim()) return;
+    const ok = gradeGaps([line], [view.answer]).perfect;
+    setValue(line);
     setChecks((c) => c + 1);
     if (fixing) {
       // Practice only: the first check already counted.
@@ -987,14 +1062,14 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
       return;
     }
     if (!ok) {
-      miss(value, false);
+      miss(line, false);
       return;
     }
     const nextStreak = streak + 1;
     const mult = multiplier(nextStreak);
     const gained = POINTS * mult;
     const answered = answers.length + 1;
-    setAnswers((a) => [...a, { ...round, typed: value, ok: true, shown: false }]);
+    setAnswers((a) => [...a, { ...round, typed: line, ok: true, shown: false }]);
     setStreak(nextStreak);
     setLongest((b) => Math.max(b, nextStreak));
     setScore((s) => s + gained);
@@ -1004,12 +1079,23 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   };
 
   // "Fix and check again": the gap comes back with the typed text, in this click, so a phone
-  // opens its keyboard.
+  // opens its keyboard. A picked round opens its options again, nothing picked: the next pick checks.
   const fix = () => {
     flushSync(() => {
       setRevealed(false);
       setFixing(true);
+      if (picking) {
+        setValue('');
+        setOpen(0);
+      }
     });
+    if (picking) pickRef.current?.focusOptions();
+    else gapsRef.current?.focus();
+  };
+
+  // "Type instead" (Pick first, then type, before the round's check): this round becomes a typed one.
+  const typeInstead = () => {
+    flushSync(() => setRound((r) => ({ ...r, input: 'type' })));
     gapsRef.current?.focus();
   };
 
@@ -1017,9 +1103,13 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   if (phase === 'over') {
     const correct = answers.filter((a) => a.ok).length;
     const misses = answers.filter((a) => !a.ok);
+    const picked = answers.filter((a) => a.input === 'pick').length;
     const accuracy = answers.length ? Math.round((correct / answers.length) * 100) : 0;
     const bestNow = progress.stats.blitzCodeBest;
-    const summary = `${correct} of ${answers.length} line${answers.length === 1 ? '' : 's'} right, longest streak ${longest}.`;
+    // Which lines were picked, when some were: they score the same, so it is a note, not a stat.
+    const how =
+      picked === 0 ? '' : picked === answers.length ? ' Every line was picked from choices.' : ` ${picked} picked from choices, ${answers.length - picked} typed.`;
+    const summary = `${correct} of ${answers.length} line${answers.length === 1 ? '' : 's'} right, longest streak ${longest}.${how}`;
     const subtitle =
       answers.length === 0
         ? 'No lines checked this round, so nothing was scored.'
@@ -1081,7 +1171,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
           ) : answers.length > 0 ? (
             <div className="callout callout-success blitz-clean">
               <CircleCheck aria-hidden="true" />
-              <span>No misses this round. Every line you typed was right.</span>
+              <span>No misses this round. Every line {picked ? 'was' : 'you typed was'} right.</span>
             </div>
           ) : null}
         </div>
@@ -1097,6 +1187,10 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   const cat = CATEGORY_BY_ID[round.p.category];
   const last = answers[answers.length - 1];
   const shown = revealed && !fixing && last?.shown;
+  // "Type instead": Pick first, then type only, before the round's check.
+  const canType = picking && progress.settings.typingMode === 'auto' && !revealed && !fixing;
+  const kicker = fixing ? 'Fix the line' : picking ? 'Pick the missing line' : 'Type the missing line';
+  const footNote = revealed ? (picking ? 'Your pick, then the right line' : 'Your line, then the right one') : cat.name;
 
   return (
     <SessionShell
@@ -1106,7 +1200,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
       onClose={finish}
       title="Key lines"
     >
-      <div ref={rootRef} className={`blitz-lines is-${tone}`}>
+      <div ref={rootRef} className={`blitz-lines is-${tone}`} data-input={round.input}>
         <Hud
           score={score}
           streak={streak}
@@ -1122,7 +1216,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
         />
 
         <div className="blitz-q-head">
-          <span className="kicker">{fixing ? 'Fix the line' : 'Type the missing line'}</span>
+          <span className="kicker">{kicker}</span>
           <span className="blitz-q-count tabular">
             {zen ? `Round ${Math.min(current, ZEN_LINES)} of ${ZEN_LINES}` : `Round ${current}`}
           </span>
@@ -1133,12 +1227,12 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
           <DifficultyChip d={round.p.difficulty} />
         </div>
 
-        {/* The status bar names the pattern while typing; after a miss the action bar says the rest */}
+        {/* The status bar names the pattern while playing; after a miss the action bar says the rest */}
         <TyperWindow
           status={revealed ? 'wrong' : 'idle'}
           filename="solution.py"
-          className="blitz-lines-code"
-          footer={<GapsFooter note={revealed ? 'Your line, then the right one' : cat.name} keys={revealed ? false : 'Enter to check'} />}
+          className={`blitz-lines-code ${picking ? 'pick-window' : ''}`}
+          footer={<GapsFooter note={footNote} keys={revealed || picking ? false : 'Enter to check'} />}
         >
           {view.head.length > 0 && (
             <CodePane className="blitz-code-head">
@@ -1148,19 +1242,41 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
               <Fold />
             </CodePane>
           )}
-          <CodeGaps
-            ref={gapsRef}
-            lines={view.lines}
-            gaps={[view.gap]}
-            values={[value]}
-            onChange={(v) => setValue(v[0] ?? '')}
-            revealed={revealed}
-            onSubmit={check}
-            autoFocus
-            start={view.start}
-            hints={hints}
-            label={`${round.p.title}, code with line ${lineNo} missing`}
-          />
+          {picking && choice ? (
+            <PickGaps
+              key={roundNo}
+              ref={pickRef}
+              lines={view.lines}
+              gaps={[view.gap]}
+              choices={[choice]}
+              values={[value]}
+              active={open}
+              onActivate={setOpen}
+              // A pick is the answer, as in Spot the pattern: it is checked right away.
+              onPick={(_, o) => check(o)}
+              revealed={revealed}
+              // Zen's hint (what the line does) heads the options, whole and wrapping on a phone,
+              // rather than cut short inside the slot.
+              hints={zen && view.explain ? false : hints}
+              prompt={zen && view.explain ? plain(view.explain) : undefined}
+              start={view.start}
+              label={`${round.p.title}, code with line ${lineNo} to pick`}
+            />
+          ) : (
+            <CodeGaps
+              ref={gapsRef}
+              lines={view.lines}
+              gaps={[view.gap]}
+              values={[value]}
+              onChange={(v) => setValue(v[0] ?? '')}
+              revealed={revealed}
+              onSubmit={() => check()}
+              autoFocus
+              start={view.start}
+              hints={hints}
+              label={`${round.p.title}, code with line ${lineNo} missing`}
+            />
+          )}
         </TyperWindow>
 
         <div className={`blitz-feedback blitz-lines-feedback ${flash ? 'is-correct' : 'is-idle'}`} role="status" aria-live="polite">
@@ -1181,15 +1297,17 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
               <span className="sr-only"> Next: {flash.next}.</span>
             </span>
           )}
-          {!flash && <span className="blitz-lines-hint">Spacing and quote style don't matter.</span>}
+          {!flash && <span className="blitz-lines-hint">{picking ? 'Your pick is checked right away.' : "Spacing and quote style don't matter."}</span>}
         </div>
       </div>
 
       <ActionBar
         status={revealed ? 'wrong' : 'idle'}
-        step={`${roundNo}:${checks}`}
-        canCheck={value.trim().length > 0}
-        onCheck={check}
+        step={`${roundNo}:${checks}:${round.input}`}
+        // A picked round checks on the pick itself: Check stays off and says what to do.
+        canCheck={!picking && value.trim().length > 0}
+        checkLabel={picking ? 'Pick a line' : 'Check'}
+        onCheck={() => check()}
         onContinue={() => advance(answers.length)}
         continueLabel={zen && answers.length >= ZEN_LINES ? 'See results' : 'Continue'}
         title={shown ? 'The missing line' : fixing ? 'Still not quite' : undefined}
@@ -1209,6 +1327,9 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
               <SkipForward aria-hidden="true" />
               <span aria-hidden="true">Skip</span>
             </button>
+          ) : picking ? (
+            // Nothing to give up on while picking; in Pick first, then type the line can be typed instead.
+            canType ? <InputSwitch to="type" onClick={typeInstead} className="blitz-switch" /> : undefined
           ) : (
             <button
               type="button"
@@ -1260,7 +1381,7 @@ function Fold() {
   );
 }
 
-/** A missed key line on the results screen: the problem, what was typed, the right line. */
+/** A missed key line on the results screen: the problem, what was typed or picked, the right line. */
 function LineMiss({ m }: { m: LineAnswer }) {
   const cat = CATEGORY_BY_ID[m.p.category];
   const n = m.view.start + m.view.gap;
@@ -1273,6 +1394,7 @@ function LineMiss({ m }: { m: LineAnswer }) {
           <div className="blitz-lmiss-title">{m.p.title}</div>
           <div className="blitz-lmiss-meta">
             {cat.name} · line {n}
+            {m.input === 'pick' && ' · picked'}
           </div>
         </div>
         <Link to={`/p/${m.p.id}/rebuild`} className="btn btn-secondary btn-sm blitz-lmiss-cta" aria-label={`Code from memory: ${m.p.title}`}>
@@ -1281,7 +1403,7 @@ function LineMiss({ m }: { m: LineAnswer }) {
         </Link>
       </div>
       <CodePane className="blitz-lmiss-code">
-        <CodeLine sign="del" className="diff del">
+        <CodeLine sign="del" signLabel={m.input === 'pick' ? 'Your pick: ' : undefined} className="diff del">
           {typed ? typed : <span className="gaps-empty">{m.shown ? 'answer shown' : 'left blank'}</span>}
         </CodeLine>
         <CodeLine sign="add" className="diff add">

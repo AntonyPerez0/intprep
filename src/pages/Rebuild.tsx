@@ -1,12 +1,16 @@
 // "Code it from memory", in three modes (/p/:id/rebuild?mode=parts|gaps|scratch), a ladder from
 // most to least support:
 // - Part by part: rebuild the solution one chunk at a time, guided only by the plain-English
-//   explanation of each part. Typed on every device (phones get the editor's key bar); picking
-//   each line from choices is the opt-in "Tap to choose" input mode (Profile), or "Tap lines" here.
+//   explanation of each part. Typed (phones get the editor's key bar), or line by line from
+//   options while the code is new.
 // - Fill the gaps: the whole solution is shown with about 30% of its lines blank (key lines
-//   first); type the missing lines, then check them one by one.
+//   first); type the missing lines (or pick them, while the code is new), then check them.
 // - From scratch: the whole solution in one blank editor under the given signature, graded line by
-//   line. An optional outline (the parts' explanations) helps, and caps the XP.
+//   line. An optional outline (the parts' explanations) helps, and caps the XP. Always typed.
+// "Pick first, then type" (lib/input.ts): `problemInput` decides per visit whether Part by part and
+// Fill the gaps open picked (new code: not reviewed right since it was learned) or typed. A picked
+// run keeps its own best (`rebuildPickBest`, `gapsPickBest`), so picking never climbs the typed
+// ladder: a perfect Pick the gaps does not make From scratch the default.
 // Retrieval + generation, the strongest way to make code stick.
 
 import '../styles/pages/rebuild.css';
@@ -23,7 +27,6 @@ import {
   EyeOff,
   Keyboard,
   Lightbulb,
-  List,
   ListOrdered,
   ListTree,
   PencilLine,
@@ -38,24 +41,23 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID } from '../content/index';
 import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
-import { mutateLine, sameCode } from '../lib/drills';
+import { gapChoices, sameCode } from '../lib/drills';
 import { XP } from '../lib/game';
 import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
-import { preferTyping } from '../lib/input';
+import { problemInput, type CodeInput } from '../lib/input';
 import { inline } from '../lib/markdown';
-import { definedNames, lessonParts, normalizeCode, parseSolution } from '../lib/parseSolution';
-import { shuffle } from '../lib/random';
+import { definedNames, lessonParts, parseSolution } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
-import { ActionBar, Choices, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
-import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
-import { codeOptions } from '../components/Drills';
+import { ActionBar, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { GapsWindow, PickGaps, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
+import { InputSwitch } from '../components/InputSwitch';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
-import { Completion, DifficultyChip, Kbd, Modal } from '../components/ui';
+import { Completion, DifficultyChip, Modal } from '../components/ui';
 
 type Mode = 'parts' | 'gaps' | 'scratch';
 
@@ -74,13 +76,18 @@ const READY = 0.8;
 /**
  * The default mode, one rung above what the learner has shown they can do: From scratch once
  * their fill-the-gaps best is strong (or they have written it from scratch before), Fill the gaps
- * once part by part is strong, else Part by part.
+ * once part by part is strong, else Part by part. Typed bests only: picked runs never climb it.
+ * Picking (`input` 'pick') climbs Part by part, then Fill the gaps, and stops there, since From
+ * scratch is always typed.
  */
-function ladderMode(pp: ProblemProgress | undefined): Mode {
-  if ((pp?.gapsBest ?? 0) >= READY || pp?.scratchBest !== undefined) return 'scratch';
-  if ((pp?.rebuildBest ?? 0) >= READY) return 'gaps';
-  return 'parts';
+function ladderMode(pp: ProblemProgress | undefined, input: CodeInput = 'type'): Mode {
+  const typed: Mode = (pp?.gapsBest ?? 0) >= READY || pp?.scratchBest !== undefined ? 'scratch' : (pp?.rebuildBest ?? 0) >= READY ? 'gaps' : 'parts';
+  if (input === 'type') return typed;
+  return typed !== 'parts' || (pp?.rebuildPickBest ?? 0) >= READY || pp?.gapsPickBest !== undefined ? 'gaps' : 'parts';
 }
+
+/** Picked code earns XP at the review's rate for a pick against a typed line (5 of 8). */
+const PICK_XP = XP.pickCorrect / XP.codeCorrect;
 
 export function RebuildRoute() {
   const { id } = useParams();
@@ -108,8 +115,17 @@ interface SessionProps {
   modes: ModeSwitchProps;
   /** Called on the first Check: from then on, switching mode restarts the session. */
   onChecked: () => void;
-  /** Start a fresh session, in `mode` (default: the current one). */
-  onRestart: (mode?: Mode) => void;
+  /** Start a fresh session, in `mode` (default: the current one), and with `input` (default: the current one). */
+  onRestart: (mode?: Mode, input?: CodeInput) => void;
+  /**
+   * How Part by part and Fill the gaps take the code this visit: picked from options while the
+   * problem's code is new (`problemInput`), else typed. From scratch always types.
+   */
+  input: CodeInput;
+  /** "Type instead" / "Pick instead": the rest of this visit takes code that way. */
+  onInput: (input: CodeInput) => void;
+  /** A pick screen may offer "Type instead": not in Always pick. */
+  canTypeInstead: boolean;
 }
 
 /**
@@ -118,8 +134,11 @@ interface SessionProps {
  */
 function Rebuild({ p }: { p: Problem }) {
   const [params, setParams] = useSearchParams();
+  const typingMode = useProgress().settings.typingMode;
+  // Pick first, then type: decided once per visit (then by "Type instead" / "Pick instead").
+  const [input, setInput] = useState<CodeInput>(() => problemInput(getProgress().settings.typingMode, getProgress().problems[p.id]));
   // Decided once per visit, so finishing a strong run does not flip a running page.
-  const [auto] = useState<Mode>(() => ladderMode(getProgress().problems[p.id]));
+  const [auto] = useState<Mode>(() => ladderMode(getProgress().problems[p.id], input));
   const asked = params.get('mode');
   const mode: Mode = isMode(asked) ? asked : auto;
   const [run, setRun] = useState(0);
@@ -136,9 +155,10 @@ function Rebuild({ p }: { p: Problem }) {
   const switched = useRef(false);
 
   const setMode = (m: Mode) => setParams({ mode: m }, { replace: true });
-  const restart = (m: Mode = mode) => {
+  const restart = (m: Mode = mode, next: CodeInput = input) => {
     draft.current = { text: '', outline: false };
     setPending(null);
+    setInput(next);
     setRun((r) => r + 1);
     if (m !== mode) setMode(m);
   };
@@ -167,6 +187,9 @@ function Rebuild({ p }: { p: Problem }) {
     modes: { mode, onChange: choose, restarts: checked },
     onChecked: () => setCheckedIn(session),
     onRestart: restart,
+    input,
+    onInput: setInput,
+    canTypeInstead: typingMode !== 'tap',
   };
 
   return (
@@ -346,20 +369,27 @@ interface PartsScore {
   total: number;
   /** Typed lines that are not in the part: they count against the score, as in `Grade.score`. */
   extra: number;
+  /** Lines picked from options (of `total`), and how many of them were right on the first check. */
+  picked: number;
+  pickedCorrect: number;
 }
 const partsAcc = (s: PartsScore) => (s.total + s.extra ? s.correct / (s.total + s.extra) : 0);
+/** First-check accuracy with picked lines weighted at the pick rate: what the XP scales with. */
+const partsXpAcc = (s: PartsScore) => (s.total + s.extra ? (s.correct - s.pickedCorrect + s.pickedCorrect * PICK_XP) / (s.total + s.extra) : 0);
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
+function PartsSession({ p, modes, onChecked, onRestart, input, onInput, canTypeInstead }: SessionProps) {
   const nav = useNavigate();
-  const settings = useProgress().settings;
   const parsed = parseSolution(p.solution);
   // The guided lesson's parts: class-level signatures that open a part are given, as in the
   // lesson and the review's Write a part, and only the body is written and graded.
   const body = lessonParts(parsed);
   const header = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
-  const [typing, setTyping] = useState(() => preferTyping(settings.typingMode));
+  // Typed, or each next line picked from options (new code, or "Pick instead"). The visit's input,
+  // so a switch carries over to the next part and the next session.
+  const typing = input === 'type';
   const [step, setStep] = useState(0); // index into body (the current part)
-  const [lineInChunk, setLineInChunk] = useState(0); // tap mode
+  const [lineInChunk, setLineInChunk] = useState(0); // picking: the line of the part being picked
   const [text, setText] = useState('');
   const [status, setStatus] = useState<CheckStatus>('idle');
   const [result, setResult] = useState<Grade | null>(null);
@@ -367,14 +397,20 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const [first, setFirst] = useState<Grade | null>(null);
   const [checks, setChecks] = useState(0);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  // Picking: the option picked, whether the line's first check was right, and the open slot.
   const [sel, setSel] = useState<string | null>(null);
-  const [score, setScore] = useState<PartsScore>({ correct: 0, total: 0, extra: 0 });
+  const [pickFirst, setPickFirst] = useState<boolean | null>(null);
+  const [open, setOpen] = useState<number | null>(0);
+  const pickRef = useRef<PickGapsHandle>(null);
+  // A seed for this attempt's options: stable while it runs (a fix shows the same ones).
+  const [seed] = useState(() => Math.floor(Math.random() * 2 ** 31));
+  const [score, setScore] = useState<PartsScore>({ correct: 0, total: 0, extra: 0, picked: 0, pickedCorrect: 0 });
   const [done, setDone] = useState(false);
   const [earned, setEarned] = useState(0);
   const [hint, setHint] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const instrRef = useRef<HTMLDivElement>(null);
-  const cursorRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   // Phones wait for a tap, so the keyboard does not cover the problem (or the next part's cue).
   const [autoFocus] = useState(isFinePointer);
 
@@ -384,25 +420,16 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const lead = cur ? cur.lead : [];
   const doneLines = body.slice(0, step).flatMap((b) => b.chunk.lines);
 
-  // Tap mode options for the current line.
+  // Picking: the options for the current line, the right one and three plausible wrong ones
+  // (mutations first, then lines that are not on screen yet: the rest of this part and the parts after).
   const tapLine = curLines[lineInChunk];
-  const tapOptions = useMemo(() => {
-    if (!tapLine) return [];
-    const seen = new Set([normalizeCode(tapLine)]);
-    const opts: string[] = [];
-    const add = (s: string) => {
-      const n = normalizeCode(s);
-      if (opts.length < 2 && n && !seen.has(n)) {
-        seen.add(n);
-        opts.push(s);
-      }
-    };
-    shuffle(mutateLine(tapLine)).forEach(add);
-    shuffle(parsed.lines.filter((l) => !l.header && l.text.trim().length > 3)).forEach((l) => add(l.text));
-    return shuffle([tapLine, ...opts]);
-  }, [tapLine]); // eslint-disable-line
+  const tapChoice = useMemo(() => {
+    if (!tapLine) return null;
+    const later = [...curLines.slice(lineInChunk + 1), ...body.slice(step + 1).flatMap((b) => b.body)];
+    return gapChoices([tapLine], [0], seed + step * 101 + lineInChunk, 3, later)[0];
+  }, [tapLine, step, lineInChunk]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep the current part in view as the file grows.
+  // Keep the current part in view as the file grows: the line being picked, else the part's cue.
   const at = useRef(`${step}:${lineInChunk}`);
   useEffect(() => {
     const key = `${step}:${lineInChunk}`;
@@ -410,14 +437,36 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     at.current = key;
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     const behavior = reduce ? 'auto' : 'smooth';
-    if (cursorRef.current) cursorRef.current.scrollIntoView({ block: 'start', behavior });
+    const slot = editorRef.current?.querySelector<HTMLElement>('.pick-row');
+    if (slot) slot.scrollIntoView({ block: 'start', behavior });
     else instrRef.current?.scrollIntoView({ block: 'center', behavior });
   }, [step, lineInChunk]);
 
+  // Picking with a keyboard: the options take focus on arrival and after "Pick instead", as the editor does.
+  useEffect(() => {
+    if (!typing && autoFocus) pickRef.current?.focusOptions();
+  }, [typing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Once checked, the result rows come into view above the action bar (a short phone would hide
+  // them under its feedback): the right line where one is shown, else the last checked line.
+  useEffect(() => {
+    if (status === 'idle') return;
+    const root = editorRef.current;
+    const rows = root?.querySelectorAll<HTMLElement>('.diff');
+    const target = root?.querySelector<HTMLElement>('.diff.add') ?? rows?.[rows.length - 1];
+    if (!target) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => target.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [status, checks]);
+
   const finish = (final: PartsScore) => {
     const acc = partsAcc(final);
-    recordRebuild(p.id, acc);
-    const xp = Math.round(XP.rebuildMax * acc) + 5;
+    // Any line picked makes it a picked run: it keeps its own best and leaves the typed ladder alone.
+    recordRebuild(p.id, acc, 'parts', final.picked > 0 ? 'pick' : 'type');
+    const xp = Math.round(XP.rebuildMax * partsXpAcc(final)) + 5;
     awardXp(xp, 'rebuild');
     setEarned(xp);
     // A rebuild of a due problem counts as its review.
@@ -428,7 +477,13 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   };
 
   const nextChunk = (add: PartsScore) => {
-    const s = { correct: score.correct + add.correct, total: score.total + add.total, extra: score.extra + add.extra };
+    const s: PartsScore = {
+      correct: score.correct + add.correct,
+      total: score.total + add.total,
+      extra: score.extra + add.extra,
+      picked: score.picked + add.picked,
+      pickedCorrect: score.pickedCorrect + add.pickedCorrect,
+    };
     setScore(s);
     setText('');
     setResult(null);
@@ -437,6 +492,8 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     setStatus('idle');
     setHint(false);
     setSel(null);
+    setPickFirst(null);
+    setOpen(0);
     setLineInChunk(0);
     if (step + 1 < body.length) setStep(step + 1);
     else finish(s);
@@ -447,17 +504,21 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     const pct = Math.round(acc * 100);
     const ready = acc >= READY;
     const look = doneLook(acc);
+    const allPicked = score.picked > 0 && score.picked === score.total;
     return (
       <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
         <div className="rebuild-done">
           <Completion
             icon={look.icon}
             tone={look.tone}
-            title={acc >= 1 ? 'Flawless from memory' : ready ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
+            title={acc >= 1 ? (allPicked ? 'Every line right' : 'Flawless from memory') : ready ? 'Nearly perfect' : acc >= 0.5 ? 'Getting there' : 'Good effort'}
             subtitle={
               <>
-                You rebuilt {score.correct} of {score.total} lines of {p.title} correctly on the first try
-                {score.extra > 0 ? `, plus ${score.extra} extra line${score.extra === 1 ? '' : 's'}.` : '.'}
+                {allPicked
+                  ? `You picked ${score.correct} of ${score.total} lines of ${p.title} right on the first try`
+                  : `You rebuilt ${score.correct} of ${score.total} lines of ${p.title} correctly on the first try`}
+                {score.extra > 0 ? `, plus ${plural(score.extra, 'extra line')}` : ''}
+                {score.picked > 0 && !allPicked ? ` (${score.picked} picked from options)` : ''}.
                 {ready
                   ? ' Next step: the whole solution with a few lines left blank for you to fill in.'
                   : ' Rebuild it again tomorrow. The struggle is what builds memory.'}
@@ -530,26 +591,51 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   };
   const continueTyped = () => {
     const g = first ?? result;
-    nextChunk({ correct: g?.correct ?? 0, total: g?.total ?? curLines.length, extra: g?.extra ?? 0 });
+    nextChunk({ correct: g?.correct ?? 0, total: g?.total ?? curLines.length, extra: g?.extra ?? 0, picked: 0, pickedCorrect: 0 });
   };
 
+  const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
   const checkTap = () => {
-    const ok = sel !== null && sameCode(sel, tapLine);
-    setStatus(ok ? 'correct' : 'wrong');
-    sfx(ok ? 'correct' : 'wrong');
+    if (sel === null) return;
+    setStatus(tapOk ? 'correct' : 'wrong');
+    setChecks((c) => c + 1);
+    if (pickFirst === null) setPickFirst(tapOk);
+    sfx(tapOk ? 'correct' : 'wrong');
     onChecked();
   };
-  const continueTap = () => {
-    const ok = sel !== null && sameCode(sel, tapLine);
-    const add = { correct: ok ? 1 : 0, total: 1, extra: 0 };
-    if (lineInChunk + 1 < curLines.length) {
-      setScore((s) => ({ ...s, correct: s.correct + add.correct, total: s.total + add.total }));
-      setLineInChunk(lineInChunk + 1);
-      setSel(null);
+  // "Fix and check again": the options open again on the pick, in this click; the first check keeps the score.
+  const fixTap = () => {
+    flushSync(() => {
       setStatus('idle');
-    } else {
-      nextChunk(add);
-    }
+      setOpen(0);
+    });
+    pickRef.current?.focusOptions();
+  };
+  const continueTap = () => {
+    const ok = pickFirst ?? tapOk;
+    const add = { correct: ok ? 1 : 0, total: 1, extra: 0, picked: 1, pickedCorrect: ok ? 1 : 0 };
+    const last = step + 1 >= body.length && lineInChunk + 1 >= curLines.length;
+    // The next line's options come in this click and take focus, so the keyboard keeps its place.
+    flushSync(() => {
+      if (lineInChunk + 1 < curLines.length) {
+        setScore((s) => ({
+          ...s,
+          correct: s.correct + add.correct,
+          total: s.total + 1,
+          picked: s.picked + 1,
+          pickedCorrect: s.pickedCorrect + add.pickedCorrect,
+        }));
+        setLineInChunk(lineInChunk + 1);
+        setSel(null);
+        setPickFirst(null);
+        setChecks(0);
+        setOpen(0);
+        setStatus('idle');
+      } else {
+        nextChunk(add);
+      }
+    });
+    if (!last && !typing) pickRef.current?.focusOptions();
   };
 
   const tapDoneLines = curLines.slice(0, lineInChunk);
@@ -563,18 +649,19 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const indent = baseIndent(curLines);
   const instrIndent = cur ? baseIndent(cur.chunk.lines) : indent;
   const firstNew = given.length + 2 + lead.length; // after the instruction comment and the given signature
-  const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this part
-  const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
-  const tapIndent = (tapLine ?? '').match(/^\s*/)?.[0] ?? '';
+  const written = typing ? [] : tapDoneLines; // picking: lines placed so far in this part
   const hintBase = indent;
+  // The part's input is fixed once any of it has been checked: "Type instead" / "Pick instead"
+  // only at its start, before a check.
+  const partFresh = status === 'idle' && checks === 0 && lineInChunk === 0 && !first && pickFirst === null;
 
   const footNote = typing
     ? first && !result
       ? `Check ${checks + 1} · score kept from check 1`
-      : `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`
+      : `${plural(curLines.length, 'line')} to write`
     : `Line ${lineInChunk + 1} of ${curLines.length} in this part`;
   // After "Fix and check again", the action bar says the first check already counted.
-  const later = typing && checks > 1 && !!result;
+  const later = checks > 1 && status !== 'idle';
 
   // The current part, written as a comment in the file.
   const instr = (
@@ -592,6 +679,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
       <GivenLines lines={lead} start={given.length + 2} />
     </>
   );
+  const lineNo = firstNew + written.length;
 
   return (
     <SessionShell
@@ -600,151 +688,131 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
       title="Code from memory"
       right={score.total > 0 ? <ScoreChip correct={score.correct} total={score.total} extra={score.extra} /> : undefined}
     >
-      <div className="rebuild">
+      <div className="rebuild" data-input={input}>
         <h1 className="sr-only">Code from memory</h1>
         <RebuildHead
           p={p}
           modes={modes}
           meta={`${totalLines} lines · ${body.length} parts`}
-          sub="Rebuild the solution one part at a time. The highlighted comment says what to write next."
+          sub={
+            typing
+              ? 'Rebuild the solution one part at a time. The highlighted comment says what to write next.'
+              : 'Rebuild the solution one line at a time: pick each next line from the options. The highlighted comment says what the part does.'
+          }
           showPrompt={showPrompt}
           onTogglePrompt={() => setShowPrompt((s) => !s)}
         />
 
         <PromptPanel p={p} show={showPrompt} />
 
-        <TyperWindow
-          status={status}
-          className="rebuild-editor"
-          right={
-            <span className="rebuild-steps" role="img" aria-label={`Part ${step + 1} of ${body.length}`}>
-              <span className="rebuild-steps-label">
-                Part {step + 1}
-                <span className="rebuild-steps-of"> of {body.length}</span>
-              </span>
-              <span className="rebuild-steps-track" aria-hidden="true">
-                {body.map((_, k) => (
-                  <span key={k} className={k < step ? 'done' : k === step ? 'current' : ''} />
-                ))}
-              </span>
-            </span>
-          }
-          footer={<TyperFooter grade={typing ? result : null} note={footNote} keys={typing ? undefined : false} />}
-        >
-          {typing ? (
-            result ? (
-              <CodeDiff grade={result} given={given} firstLine={firstNew} indent={indent}>
-                {above}
-              </CodeDiff>
-            ) : (
-              <CodeEditor
-                value={text}
-                onChange={setText}
-                label={`Code for part ${step + 1}`}
-                given={given}
-                firstLine={firstNew}
-                indent={indent}
-                minRows={Math.max(3, curLines.length + 1)}
-                autoFocus={autoFocus}
-                textareaRef={taRef}
-                placeholder={[
-                  `Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`,
-                  `Write ${curLines.length} line${curLines.length > 1 ? 's' : ''}`,
-                ]}
-                disabled={status !== 'idle'}
-              >
-                {above}
-              </CodeEditor>
-            )
-          ) : (
-            <CodePane>
-              <GivenLines lines={given} />
-              {above}
-              {written.map((l, k) => (
-                <CodeLine key={k} n={firstNew + k} className="written">
-                  {highlightLine(l)}
-                </CodeLine>
-              ))}
-              {status === 'idle' ? (
-                <CodeLine ref={cursorRef} n={firstNew + written.length} className="cursor">
-                  {tapIndent}
-                  <span className="blank">{sel ? sel.trim() : '???'}</span>
-                </CodeLine>
-              ) : (
-                <div ref={cursorRef} className="typer-diff">
-                  {tapOk ? (
-                    <CodeLine n={firstNew + written.length} sign="ok" className="diff ok">
-                      {highlightLine(tapLine)}
-                    </CodeLine>
-                  ) : (
-                    <>
-                      <CodeLine n={firstNew + written.length} sign="del" className="diff del">
-                        {tapIndent}
-                        {sel?.trim()}
-                      </CodeLine>
-                      <CodeLine sign="add" className="diff add">
-                        {highlightLine(tapLine)}
-                      </CodeLine>
-                    </>
-                  )}
-                </div>
-              )}
-            </CodePane>
-          )}
-
-          {typing && hint && status === 'idle' && (
-            <div className="rebuild-hint" style={{ ['--indent' as string]: `${indent}ch` }}>
-              <div className="rebuild-hint-label">
-                <Lightbulb aria-hidden="true" />
-                Hint: how each line starts
-              </div>
-              {curLines.map((l, i) => (
-                <div key={i} className="rebuild-hint-line">
-                  {reindent(l, hintBase, 0).replace(/^(\s*\S+(?:\s+\S+)?).*$/, '$1')} …
-                </div>
-              ))}
-            </div>
-          )}
-        </TyperWindow>
-
-        {!typing && (
-          <div>
-            <div className="drill-label">
-              <span>Choose the next line</span>
-              {tapOptions.length > 1 && (
-                <span className="drill-keys" aria-hidden="true">
-                  Press <Kbd>1</Kbd>–<Kbd>{tapOptions.length}</Kbd>
+        <div ref={editorRef}>
+          <TyperWindow
+            status={status}
+            className={`rebuild-editor ${typing ? '' : 'pick-window'}`}
+            right={
+              <span className="rebuild-steps" role="img" aria-label={`Part ${step + 1} of ${body.length}`}>
+                <span className="rebuild-steps-label">
+                  Part {step + 1}
+                  <span className="rebuild-steps-of"> of {body.length}</span>
                 </span>
-              )}
-            </div>
-            <Choices
-              options={codeOptions(tapOptions)}
-              selected={sel}
-              onSelect={(k) => {
-                setSel(k);
-                sfx('tap');
-              }}
-              answer={tapLine}
-              revealed={status !== 'idle'}
-              code
-            />
-          </div>
-        )}
+                <span className="rebuild-steps-track" aria-hidden="true">
+                  {body.map((_, k) => (
+                    <span key={k} className={k < step ? 'done' : k === step ? 'current' : ''} />
+                  ))}
+                </span>
+              </span>
+            }
+            footer={<TyperFooter grade={typing ? result : null} note={footNote} keys={typing ? undefined : false} />}
+          >
+            {typing ? (
+              result ? (
+                <CodeDiff grade={result} given={given} firstLine={firstNew} indent={indent}>
+                  {above}
+                </CodeDiff>
+              ) : (
+                <CodeEditor
+                  value={text}
+                  onChange={setText}
+                  label={`Code for part ${step + 1}`}
+                  given={given}
+                  firstLine={firstNew}
+                  indent={indent}
+                  minRows={Math.max(3, curLines.length + 1)}
+                  autoFocus={autoFocus}
+                  textareaRef={taRef}
+                  placeholder={[`Write the ${plural(curLines.length, 'line')} for this part`, `Write ${plural(curLines.length, 'line')}`]}
+                  disabled={status !== 'idle'}
+                >
+                  {above}
+                </CodeEditor>
+              )
+            ) : (
+              tapChoice && (
+                // The line being picked is a slot in the file, its options right under it.
+                <PickGaps
+                  key={`${step}:${lineInChunk}`}
+                  ref={pickRef}
+                  lines={[tapLine]}
+                  gaps={[0]}
+                  choices={[tapChoice]}
+                  values={[sel ?? '']}
+                  active={open}
+                  onActivate={setOpen}
+                  onPick={(_, o) => {
+                    setSel(o);
+                    setOpen(null);
+                    sfx('tap');
+                  }}
+                  revealed={status !== 'idle'}
+                  hints={false}
+                  prompt="Pick the next line"
+                  start={lineNo}
+                  label={`Part ${step + 1}, line ${lineNo} to pick`}
+                  before={
+                    <>
+                      <GivenLines lines={given} />
+                      {above}
+                      {written.map((l, k) => (
+                        <CodeLine key={k} n={firstNew + k} className="written">
+                          {highlightLine(l)}
+                        </CodeLine>
+                      ))}
+                    </>
+                  }
+                />
+              )
+            )}
+
+            {typing && hint && status === 'idle' && (
+              <div className="rebuild-hint" style={{ ['--indent' as string]: `${indent}ch` }}>
+                <div className="rebuild-hint-label">
+                  <Lightbulb aria-hidden="true" />
+                  Hint: how each line starts
+                </div>
+                {curLines.map((l, i) => (
+                  <div key={i} className="rebuild-hint-line">
+                    {reindent(l, hintBase, 0).replace(/^(\s*\S+(?:\s+\S+)?).*$/, '$1')} …
+                  </div>
+                ))}
+              </div>
+            )}
+          </TyperWindow>
+        </div>
 
         <ActionBar
           status={status}
-          step={`${step}:${lineInChunk}:${checks}`}
+          step={`${step}:${lineInChunk}:${checks}:${input}`}
           canCheck={typing ? text.trim().length > 0 : sel !== null}
           onCheck={typing ? checkTyped : checkTap}
           onContinue={typing ? continueTyped : continueTap}
-          title={later && result?.perfect ? 'All lines right now' : undefined}
+          title={later && (typing ? result?.perfect : tapOk) ? (typing ? 'All lines right now' : 'Right now') : undefined}
           feedback={
             later ? (
               <div className="rebuild-fb">
                 <span className="drill-fb-label">{`Check ${checks}`}</span>
                 <span>
-                  {result!.perfect ? '' : `${gradeSummary(result!)}. `}
-                  Your first check is what counts for this part.
+                  {typing && !result!.perfect ? `${gradeSummary(result!)}. ` : ''}
+                  {`Your first check is what counts for this ${typing ? 'part' : 'line'}.`}
                 </span>
               </div>
             ) : (
@@ -754,16 +822,12 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
               </div>
             )
           }
-          checkedSecondary={typing && status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={typing ? fix : fixTap} /> : undefined}
           secondary={
             <div className="rebuild-tools">
-              {/* Once a part has been checked typed, its score is set: finish it typed */}
-              {!(typing && first) && (
-                <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
-                  {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
-                  <span className="rebuild-tool-label">{typing ? 'Tap lines' : 'Type code'}</span>
-                </button>
-              )}
+              {/* A part's input is fixed once any of it has been checked. "Pick instead" was "Tap lines". */}
+              {partFresh && typing && <InputSwitch to="pick" onClick={() => onInput('pick')} />}
+              {partFresh && !typing && canTypeInstead && <InputSwitch to="type" onClick={() => onInput('type')} />}
               {typing && !hint && (
                 <button type="button" className="btn btn-quiet btn-sm" onClick={() => setHint(true)}>
                   <Lightbulb aria-hidden="true" />
@@ -796,7 +860,154 @@ function useRevealScroll(root: RefObject<HTMLDivElement | null>, revealed: boole
   }, [revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & { round: RefObject<number> }) {
+type GapsProps = SessionProps & { round: RefObject<number> };
+
+/** Fill the gaps, typed; or, while the code is new, Pick the gaps (the same gaps, each picked from options). */
+function GapsSession(props: GapsProps) {
+  return props.input === 'pick' ? <PickGapsSession {...props} /> : <TypeGapsSession {...props} />;
+}
+
+/** The most XP a Fill the gaps run can earn: picked gaps at the pick rate. */
+const gapsMaxXp = (input: CodeInput) => Math.round(XP.gapsMax * (input === 'pick' ? PICK_XP : 1)) + 5;
+
+/** The completion of a Fill the gaps run, typed or picked, with the next step on the ladder. */
+function GapsDone({
+  p,
+  first,
+  done,
+  input,
+  canTypeInstead,
+  onRestart,
+  onNewGaps,
+}: {
+  p: Problem;
+  first: GapsGrade;
+  done: { acc: number; xp: number };
+  input: CodeInput;
+  canTypeInstead: boolean;
+  onRestart: SessionProps['onRestart'];
+  onNewGaps: () => void;
+}) {
+  const nav = useNavigate();
+  const g = first;
+  const pct = Math.round(done.acc * 100);
+  const strong = done.acc >= READY;
+  const look = doneLook(done.acc);
+  const picked = input === 'pick';
+  // Picked well: the next rung is typing the gaps (not From scratch), unless the learner always picks.
+  const typeNext = picked && strong && canTypeInstead;
+  const next = !picked
+    ? strong
+      ? ' Ready for the real test? Write the whole thing in a blank file.'
+      : ' Each new set of gaps helps it stick.'
+    : typeNext
+      ? ' Next, type them from memory.'
+      : ' Each new set of gaps helps it stick.';
+  const newGaps = (primary: boolean) => (
+    <button type="button" className={`btn ${primary ? 'btn-primary' : 'btn-secondary'} btn-lg btn-block`} onClick={onNewGaps}>
+      <RefreshCw aria-hidden="true" />
+      Try new gaps
+    </button>
+  );
+  const back = (cls: string) => (
+    <Link to={`/p/${p.id}`} className={`btn ${cls} btn-block`}>
+      <ArrowLeft aria-hidden="true" />
+      Back to problem
+    </Link>
+  );
+  return (
+    <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
+      <div className="rebuild-done">
+        <Completion
+          icon={look.icon}
+          tone={look.tone}
+          title={done.acc >= 1 ? 'Every gap right' : strong ? 'Nearly perfect' : done.acc >= 0.5 ? 'Getting there' : 'Good effort'}
+          subtitle={
+            <>
+              {picked
+                ? `You picked ${g.correct} of ${g.total} gaps in ${p.title} right on your first check.`
+                : `You filled ${g.correct} of ${g.total} gaps in ${p.title} correctly on your first check.`}
+              {next}
+            </>
+          }
+          stats={[
+            { label: 'Accuracy', value: `${pct}%` },
+            { label: 'Gaps correct', value: `${g.correct}/${g.total}` },
+            { label: 'XP earned', value: `+${done.xp}` },
+          ]}
+        >
+          {strong && !picked ? (
+            <>
+              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('scratch')}>
+                <PencilLine aria-hidden="true" />
+                Now write it from scratch
+              </button>
+              {newGaps(false)}
+              {back('btn-quiet')}
+            </>
+          ) : typeNext ? (
+            <>
+              <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('gaps', 'type')}>
+                <Keyboard aria-hidden="true" />
+                Now type the gaps
+              </button>
+              {newGaps(false)}
+              {back('btn-quiet')}
+            </>
+          ) : strong ? (
+            <>
+              {newGaps(true)}
+              {back('btn-secondary btn-lg')}
+            </>
+          ) : (
+            <>
+              {newGaps(true)}
+              <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart('parts')}>
+                <ListOrdered aria-hidden="true" />
+                Practice part by part
+              </button>
+              {back('btn-quiet')}
+            </>
+          )}
+        </Completion>
+        <SolutionDisclosure p={p} />
+      </div>
+    </SessionShell>
+  );
+}
+
+/** The action bar's feedback after a Fill the gaps check: the first one sets the score. */
+function gapsFeedback(g: GapsGrade, checks: number, first: GapsGrade | null, picked: boolean): { title?: string; body?: ReactNode } {
+  const pctFirst = first ? Math.round(first.score * 100) : 0;
+  if (checks === 1)
+    return {
+      body: g.perfect
+        ? `All ${g.total} gaps right on the first check.`
+        : `Your first check sets the score. ${picked ? 'Pick again where it is marked' : 'Fix the marked lines'} to practice, or continue.`,
+    };
+  return {
+    title: g.perfect ? 'All gaps right now' : undefined,
+    body: g.perfect
+      ? `Your score stays at ${pctFirst}% from the first check, and the fix still counts as practice.`
+      : `${gapsSummary(g)}. Your score stays at ${pctFirst}% from the first check.`,
+  };
+}
+
+/** Record a finished Fill the gaps run (typed or picked) and say what it earned. */
+function finishGaps(p: Problem, first: GapsGrade, input: CodeInput) {
+  const acc = first.score;
+  // A picked run keeps its own best: picking every gap right does not open From scratch.
+  recordRebuild(p.id, acc, 'gaps', input);
+  const xp = Math.round(XP.gapsMax * acc * (input === 'pick' ? PICK_XP : 1)) + 5;
+  awardXp(xp, 'rebuild');
+  // A run on a due problem counts as its review, as part by part does.
+  reviewRun(p.id, acc);
+  sfx('complete');
+  if (acc >= READY) confetti();
+  return { acc, xp };
+}
+
+function TypeGapsSession({ p, modes, onChecked, onRestart, round, input, canTypeInstead }: GapsProps) {
   const nav = useNavigate();
   const src = useMemo(() => gapSource(p.solution), [p]);
   // Key lines first; the class / def header stays visible.
@@ -821,69 +1032,11 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
   useRevealScroll(rootRef, ex.revealed, ex.grade.perfect);
 
   if (done) {
-    const g = first!;
-    const pct = Math.round(done.acc * 100);
-    const strong = done.acc >= READY;
-    const look = doneLook(done.acc);
     const newGaps = () => {
       round.current = ex.round + 1;
       onRestart();
     };
-    return (
-      <SessionShell progress={1} onClose={() => nav(`/p/${p.id}`)} title="Code from memory">
-        <div className="rebuild-done">
-          <Completion
-            icon={look.icon}
-            tone={look.tone}
-            title={done.acc >= 1 ? 'Every gap right' : strong ? 'Nearly perfect' : done.acc >= 0.5 ? 'Getting there' : 'Good effort'}
-            subtitle={
-              <>
-                You filled {g.correct} of {g.total} gaps in {p.title} correctly on your first check.
-                {strong ? ' Ready for the real test? Write the whole thing in a blank file.' : ' Each new set of gaps helps it stick.'}
-              </>
-            }
-            stats={[
-              { label: 'Accuracy', value: `${pct}%` },
-              { label: 'Gaps correct', value: `${g.correct}/${g.total}` },
-              { label: 'XP earned', value: `+${done.xp}` },
-            ]}
-          >
-            {strong ? (
-              <>
-                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={() => onRestart('scratch')}>
-                  <PencilLine aria-hidden="true" />
-                  Now write it from scratch
-                </button>
-                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={newGaps}>
-                  <RefreshCw aria-hidden="true" />
-                  Try new gaps
-                </button>
-                <Link to={`/p/${p.id}`} className="btn btn-quiet btn-block">
-                  <ArrowLeft aria-hidden="true" />
-                  Back to problem
-                </Link>
-              </>
-            ) : (
-              <>
-                <button type="button" className="btn btn-primary btn-lg btn-block" onClick={newGaps}>
-                  <RefreshCw aria-hidden="true" />
-                  Try new gaps
-                </button>
-                <button type="button" className="btn btn-secondary btn-lg btn-block" onClick={() => onRestart('parts')}>
-                  <ListOrdered aria-hidden="true" />
-                  Practice part by part
-                </button>
-                <Link to={`/p/${p.id}`} className="btn btn-quiet btn-block">
-                  <ArrowLeft aria-hidden="true" />
-                  Back to problem
-                </Link>
-              </>
-            )}
-          </Completion>
-          <SolutionDisclosure p={p} />
-        </div>
-      </SessionShell>
-    );
+    return <GapsDone p={p} first={first!} done={done} input={input} canTypeInstead={canTypeInstead} onRestart={onRestart} onNewGaps={newGaps} />;
   }
 
   const g = ex.grade;
@@ -909,36 +1062,13 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
     gapsRef.current?.focus(k >= 0 ? k : undefined);
   };
   const finish = () => {
-    if (!first) return;
-    const acc = first.score;
-    recordRebuild(p.id, acc, 'gaps');
-    const xp = Math.round(XP.gapsMax * acc) + 5;
-    awardXp(xp, 'rebuild');
-    // A run on a due problem counts as its review, as part by part does.
-    reviewRun(p.id, acc);
-    setDone({ acc, xp });
-    sfx('complete');
-    if (acc >= READY) confetti();
+    if (first) setDone(finishGaps(p, first, 'type'));
   };
 
-  const pctFirst = first ? Math.round(first.score * 100) : 0;
-  const isFirst = checks === 1;
-  let fbTitle: string | undefined;
-  let fbBody: ReactNode;
-  if (ex.revealed && isFirst) {
-    fbBody = g.perfect
-      ? `All ${g.total} gaps right on the first check.`
-      : 'Your first check sets the score. Fix the marked lines to practice, or continue.';
-  } else if (ex.revealed) {
-    fbTitle = g.perfect ? 'All gaps right now' : undefined;
-    fbBody = g.perfect
-      ? `Your score stays at ${pctFirst}% from the first check, and the fix still counts as practice.`
-      : `${gapsSummary(g)}. Your score stays at ${pctFirst}% from the first check.`;
-  }
-
+  const fb = ex.revealed ? gapsFeedback(g, checks, first, false) : null;
   const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
   const leftNote = left === ex.gaps.length ? `${left} line${left === 1 ? '' : 's'} missing` : `${left} to fix`;
-  const note = first ? `${leftNote} · score kept from check 1` : `${leftNote} · up to ${XP.gapsMax + 5} XP`;
+  const note = first ? `${leftNote} · score kept from check 1` : `${leftNote} · up to ${gapsMaxXp('type')} XP`;
 
   return (
     <SessionShell
@@ -947,7 +1077,7 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
       title="Code from memory"
       right={first ? <ScoreChip correct={first.correct} total={first.total} unit="gaps" /> : undefined}
     >
-      <div ref={rootRef} className="rebuild rebuild-gaps">
+      <div ref={rootRef} className="rebuild rebuild-gaps" data-input="type">
         <h1 className="sr-only">Code from memory</h1>
         <RebuildHead
           p={p}
@@ -982,21 +1112,161 @@ function GapsSession({ p, modes, onChecked, onRestart, round }: SessionProps & {
 
         <ActionBar
           status={status}
-          step={`${ex.round}:${checks}`}
+          step={`${ex.round}:${checks}:type`}
           canCheck={canCheck}
           onCheck={check}
           onContinue={finish}
-          title={fbTitle}
+          title={fb?.title}
           feedback={
-            ex.revealed && (
+            fb && (
               <div className="rebuild-fb">
-                <span className="drill-fb-label">{isFirst ? 'First check' : `Check ${checks}`}</span>
-                <span>{fbBody}</span>
+                <span className="drill-fb-label">{checks === 1 ? 'First check' : `Check ${checks}`}</span>
+                <span>{fb.body}</span>
               </div>
             )
           }
           secondary={
             <div className="rebuild-tools">
+              <button type="button" className="btn btn-quiet btn-sm" onClick={ex.fresh} title="Blank a different set of lines">
+                <RefreshCw aria-hidden="true" />
+                <span className="rebuild-tool-label">New gaps</span>
+              </button>
+            </div>
+          }
+          checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
+        />
+      </div>
+    </SessionShell>
+  );
+}
+
+/** Pick the gaps: the same gaps as Fill the gaps, each picked from its options (new code). */
+function PickGapsSession({ p, modes, onChecked, onRestart, round, input, onInput, canTypeInstead }: GapsProps) {
+  const nav = useNavigate();
+  const src = useMemo(() => gapSource(p.solution), [p]);
+  // The same set as the typed twin for this round (key lines first), so "Type instead" keeps the gaps.
+  const ex = usePickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: round.current });
+  const total = codeLines(src.lines.filter((_, i) => !src.header.includes(i))).length;
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [checks, setChecks] = useState(0);
+  const [showPrompt, setShowPrompt] = useState(isWide);
+  const [done, setDone] = useState<{ acc: number; xp: number } | null>(null);
+  const [autoFocus] = useState(isFinePointer);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const pickRef = useRef<PickGapsHandle>(null);
+
+  useEffect(() => {
+    round.current = ex.round;
+  }, [ex.round]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The first slot's options take focus on arrival with a keyboard (as the typed twin's first gap does).
+  useEffect(() => {
+    if (autoFocus) pickRef.current?.focusOptions();
+  }, [ex.round]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useRevealScroll(rootRef, ex.revealed, ex.grade.perfect);
+
+  if (done) {
+    const newGaps = () => {
+      round.current = ex.round + 1;
+      onRestart();
+    };
+    return <GapsDone p={p} first={first!} done={done} input={input} canTypeInstead={canTypeInstead} onRestart={onRestart} onNewGaps={newGaps} />;
+  }
+
+  const g = ex.grade;
+  const status: CheckStatus = ex.revealed ? (g.perfect ? 'correct' : 'wrong') : 'idle';
+
+  // Enter (once every slot is picked) and Check land here.
+  const check = () => {
+    if (ex.revealed || !ex.complete) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      onChecked();
+    }
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": the picks stay, the right ones lock, and the first wrong slot opens.
+  const retry = () => {
+    flushSync(ex.retry);
+    pickRef.current?.focusOptions();
+  };
+  const finish = () => {
+    if (first) setDone(finishGaps(p, first, 'pick'));
+  };
+
+  const fb = ex.revealed ? gapsFeedback(g, checks, first, true) : null;
+  const open = ex.gaps.filter((_, k) => !ex.locked[k]);
+  const left = ex.gaps.filter((_, k) => !ex.locked[k] && !ex.values[k]?.trim()).length;
+  const leftNote = open.length < ex.gaps.length ? `${open.length} to fix` : left ? `${plural(left, 'line')} to pick` : 'Ready to check';
+  const note = first ? `${leftNote} · score kept from check 1` : `${leftNote} · up to ${gapsMaxXp('pick')} XP`;
+
+  return (
+    <SessionShell
+      progress={ex.revealed ? 1 : ex.filled / Math.max(1, ex.gaps.length)}
+      onClose={() => nav(`/p/${p.id}`)}
+      title="Code from memory"
+      right={first ? <ScoreChip correct={first.correct} total={first.total} unit="gaps" /> : undefined}
+    >
+      <div ref={rootRef} className="rebuild rebuild-gaps" data-input="pick">
+        <h1 className="sr-only">Code from memory</h1>
+        <RebuildHead
+          p={p}
+          modes={modes}
+          meta={`${total} lines · ${ex.gaps.length} gaps`}
+          sub={
+            first && !ex.revealed
+              ? 'Pick again where you were off, then check again. Your first check already set the score.'
+              : 'Most of the solution is here. Pick each missing line from the options, then check.'
+          }
+          showPrompt={showPrompt}
+          onTogglePrompt={() => setShowPrompt((s) => !s)}
+        />
+
+        <PromptPanel p={p} show={showPrompt} />
+
+        <PickGapsWindow
+          ref={pickRef}
+          lines={src.lines}
+          gaps={ex.gaps}
+          choices={ex.choices}
+          values={ex.values}
+          active={ex.active}
+          onActivate={ex.setActive}
+          onPick={(k, o) => {
+            ex.pick(k, o);
+            sfx('tap');
+          }}
+          revealed={ex.revealed}
+          locked={ex.locked}
+          label={`${p.title} solution with ${plural(ex.gaps.length, 'line')} to pick`}
+          filename="solution.py"
+          meta="Pick the gaps"
+          note={note}
+          className="rebuild-editor"
+        />
+
+        <ActionBar
+          status={status}
+          step={`${ex.round}:${checks}:pick`}
+          canCheck={ex.complete}
+          onCheck={check}
+          onContinue={finish}
+          title={fb?.title}
+          feedback={
+            fb && (
+              <div className="rebuild-fb">
+                <span className="drill-fb-label">{checks === 1 ? 'First check' : `Check ${checks}`}</span>
+                <span>{fb.body}</span>
+              </div>
+            )
+          }
+          secondary={
+            <div className="rebuild-tools">
+              {/* "Type instead": the same gaps, typed, until the first check */}
+              {!first && canTypeInstead && <InputSwitch to="type" onClick={() => onInput('type')} />}
               <button type="button" className="btn btn-quiet btn-sm" onClick={ex.fresh} title="Blank a different set of lines">
                 <RefreshCw aria-hidden="true" />
                 <span className="rebuild-tool-label">New gaps</span>
