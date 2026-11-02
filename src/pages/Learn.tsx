@@ -466,7 +466,7 @@ export function Learn() {
         icon={<IconTile icon={GraduationCap} color={FOUNDATIONS_COLOR} />}
         kicker="Unit 0"
         title="Foundations"
-        tagline="New to coding? Start here. Python, Big-O, recursion and how to attack a problem."
+        tagline="New to coding? Start here. Python, Big-O, recursion and how to attack a problem, writing code in every lesson."
         summary={`${FOUNDATIONS.length} lessons`}
         open={open.has(FOUNDATIONS_ID)}
         onToggle={() => toggle(FOUNDATIONS_ID)}
@@ -523,7 +523,7 @@ export function Learn() {
                 state={guideDone ? 'done' : next.kind === 'guide' && next.category === c.id ? 'next' : 'todo'}
                 marker={<BookOpen strokeWidth={2} />}
                 title="Pattern intro"
-                sub="Concept, analogy, template and a quick quiz"
+                sub="The idea, when to use it, then fill in the template"
                 end={<span className="chip">Intro</span>}
               />
             )}

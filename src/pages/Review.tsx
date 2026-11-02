@@ -1,13 +1,14 @@
 import '../styles/pages/review.css';
 import { useMemo, useState } from 'react';
-import { ArrowRight, Brain, CalendarCheck, CircleCheck, GraduationCap, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Brain, CalendarCheck, CircleCheck, GraduationCap, Keyboard, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CATEGORY_BY_ID } from '../content/categories';
-import { PROBLEM_BY_ID } from '../content/index';
+import { PROBLEM_BY_ID, PROBLEMS } from '../content/index';
 import type { CategoryId } from '../content/types';
+import { KEY_LINES_MIN, keyLinePool } from '../lib/blitzLines';
 import { confetti } from '../lib/confetti';
 import { daysBetween, parseDay, today } from '../lib/date';
-import { cardsForProblem, orderDeck, retryCard, type DrillCardSpec } from '../lib/drills';
+import { cardsForProblem, orderDeck, retryCard, SESSION_PROBLEMS, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
 import { preferTyping } from '../lib/input';
 import { shuffle } from '../lib/random';
@@ -19,11 +20,7 @@ import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { Badge, Completion, EmptyState } from '../components/ui';
 
-// Problems per session. Each brings three cards (one recognition card, two coding cards), and
-// coding cards take longer than a multiple-choice question.
-const MAX_DUE = 8;
-const MAX_AHEAD = 5;
-const MAX_UNIT = 5;
+const { due: MAX_DUE, ahead: MAX_AHEAD, unit: MAX_UNIT } = SESSION_PROBLEMS;
 
 type Mode = { kind: 'due' } | { kind: 'ahead' } | { kind: 'unit'; cat: CategoryId };
 
@@ -134,7 +131,9 @@ function ReviewSession({ mode }: { mode: Mode }) {
         setTally((all) => ({ ...all, [card.problemId]: t }));
         if (t.remaining === 0) {
           const g = gradeFrom(t.correct, t.total, t.self);
-          reviewProblem(card.problemId, g);
+          // Practice ahead and unit practice are optional: a miss on a problem that was not due
+          // never resets its schedule (Daily review only holds due problems).
+          reviewProblem(card.problemId, g, dueAtStart.has(card.problemId) ? {} : { lapse: false });
           setGrades((gs) => ({ ...gs, [card.problemId]: g }));
         }
         // Missed it? It comes back later in this session (relearning step); a coding card comes
@@ -213,6 +212,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
 
   if (done) {
     const acc = Math.round((correct / Math.max(1, firstTotal)) * 100);
+    // Pattern Blitz's typing game (Key lines) opens at 3 learned problems.
+    const keyLines = keyLinePool(progress, PROBLEMS).length >= KEY_LINES_MIN;
     const perfect = acc === 100;
     const wrote = code.total > 0;
     const codeLine = wrote ? ` You wrote ${code.correct} of ${code.total} lines of code right on the first check.` : '';
@@ -262,10 +263,17 @@ function ReviewSession({ mode }: { mode: Mode }) {
             <Link to="/" className="btn btn-primary btn-lg btn-block">
               Back to dashboard
             </Link>
-            <Link to="/blitz" className="btn btn-secondary btn-lg btn-block">
-              <Zap aria-hidden="true" />
-              Play Pattern Blitz
-            </Link>
+            {keyLines ? (
+              <Link to="/blitz?game=lines" className="btn btn-secondary btn-lg btn-block">
+                <Keyboard aria-hidden="true" />
+                Type key lines
+              </Link>
+            ) : (
+              <Link to="/blitz" className="btn btn-secondary btn-lg btn-block">
+                <Zap aria-hidden="true" />
+                Play Pattern Blitz
+              </Link>
+            )}
           </Completion>
 
           <section className="review-results" aria-labelledby="review-results-title">

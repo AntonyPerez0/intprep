@@ -13,7 +13,7 @@ export const FOUNDATIONS: Lesson[] = [
     id: 'how-to-learn',
     title: 'How IntPrep Works',
     icon: '🧭',
-    blurb: 'Learn a pattern, practice it, then drill it a little every day.',
+    blurb: 'Learn a pattern, write the code, then review it a little every day.',
     minutes: 5,
     slides: [
       {
@@ -38,16 +38,16 @@ This beginner track gives you just enough Python and computer-science basics to 
         title: 'The IntPrep loop',
         body: `Everything here follows one loop:
 
-- **Learn a pattern.** A short guide explains the idea, when to reach for it, and a reusable code template.
-- **Solve guided problems.** Hints first, then a chunk-by-chunk walkthrough of a clean solution.
-- **Drill daily.** Quick spaced-repetition reviews bring each problem back just before you would forget it.`,
+- **Learn a pattern.** A short guide explains the idea, when to reach for it, and a reusable code template, then you fill in its missing lines.
+- **Solve guided problems.** Hints first, then you write a clean solution yourself, one part at a time.
+- **Review daily.** Quick spaced-repetition reviews bring each problem back just before you would forget it: spot the pattern, then write the code from memory.`,
       },
       {
         kind: 'text',
         title: "Test yourself, don't reread",
         body: `Rereading feels productive because the page looks familiar. But *recognizing* an answer is not the same as *recalling* it, and in an interview there is no page.
 
-Every time you pull an idea out of memory (writing a line of code, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep quizzes you constantly, starting now.`,
+Every time you pull an idea out of memory (writing a line of code, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep keeps asking you to write things from memory, starting now.`,
       },
       {
         kind: 'quiz',
@@ -67,14 +67,14 @@ Every time you pull an idea out of memory (writing a line of code, filling in a 
         title: 'Spaced repetition',
         body: `Memories fade on a predictable curve, but each time you successfully recall something, it fades more slowly.
 
-So IntPrep spaces your reviews out. Nail a drill and its next review moves further away: a day, then a few days, then a week or more. Miss it and it comes back sooner. You never have to plan what to review. Just clear today's drills.`,
+So IntPrep spaces your reviews out. Nail a review and the next one moves further away: a day, then a few days, then a week or more. Miss it and it comes back sooner. You never have to plan what to review. Just clear today's reviews.`,
       },
       {
         kind: 'text',
         title: 'Little and often',
         body: `Twenty minutes every day beats a three-hour cram on Sunday. Spreading practice out gives your brain time (and sleep) to lock things in.
 
-That is what **streaks** are for. A visible chain of days is motivating, and it turns practice into a habit you don't have to negotiate with yourself. Busy day? Just do your drills. Five minutes still keeps the chain alive.`,
+That is what **streaks** are for. A visible chain of days is motivating, and it turns practice into a habit you don't have to negotiate with yourself. Busy day? Just do your reviews. Five minutes still keeps the chain alive.`,
       },
       {
         kind: 'quiz',
@@ -98,7 +98,7 @@ That is what **streaks** are for. A visible chain of days is motivating, and it 
         accept: ['print(30 * 25)'],
         hint: 'Same shape as before: `print(`, then what to show, then `)`. Numbers and math need no quotes.',
         explain:
-          'Without quotes, Python works out `25 * 30` and prints the result: 750 minutes, over 12 hours a month, with no cramming. Pulling the `print(...)` shape out of memory instead of looking it up is retrieval practice, the same move every drill here uses.',
+          'Without quotes, Python works out `25 * 30` and prints the result: 750 minutes, over 12 hours a month, with no cramming. Pulling the `print(...)` shape out of memory instead of looking it up is retrieval practice, the same move every review here uses.',
         output: '750',
       },
       {
@@ -106,7 +106,7 @@ That is what **streaks** are for. A visible chain of days is motivating, and it 
         title: 'Getting stuck is part of it',
         body: `You will get stuck, often. Everyone does. A good rule: give a problem an honest 15–25 minutes, then open a hint. Still stuck? Read the walkthrough until it makes sense, then close it and write the solution yourself.
 
-The problem then joins your drills, so you will meet it again in a few days. Solving it from memory *then* is what really counts.`,
+The problem then joins your reviews, so you will meet it again in a few days. Solving it from memory *then* is what really counts.`,
       },
       {
         kind: 'quiz',
@@ -119,7 +119,7 @@ The problem then joins your drills, so you will meet it again in a few days. Sol
         ],
         answer: 1,
         explain:
-          'A short struggle helps you learn; hours of it mostly waste time. Learn the idea, then prove you own it by writing it from memory, and again when the drill comes back.',
+          'A short struggle helps you learn; hours of it mostly waste time. Learn the idea, then prove you own it by writing it from memory, and again when its review comes back.',
       },
     ],
   },
@@ -3380,7 +3380,7 @@ print(max_product([-10, -9, 1, 2]))`,
       {
         kind: 'text',
         title: "You're ready",
-        body: `That's the foundations done. Next come the pattern units: each starts with a short guide and template, then guided problems from easiest to hardest, and every problem you finish joins your daily drills.
+        body: `That's the foundations done. Next come the pattern units: each starts with a short guide and a template you fill in, then guided problems from easiest to hardest where you write each solution yourself, and every problem you finish joins your daily review.
 
 Start with **Arrays & Hashing**. You already know its secret weapon: the set. Come back tomorrow and keep the streak going.`,
       },

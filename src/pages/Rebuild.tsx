@@ -1,7 +1,8 @@
 // "Code it from memory", in three modes (/p/:id/rebuild?mode=parts|gaps|scratch), a ladder from
 // most to least support:
 // - Part by part: rebuild the solution one chunk at a time, guided only by the plain-English
-//   explanation of each part. Type it (desktop) or pick each line (touch).
+//   explanation of each part. Typed on every device (phones get the editor's key bar); picking
+//   each line from choices is the opt-in "Tap to choose" input mode (Profile), or "Tap lines" here.
 // - Fill the gaps: the whole solution is shown with about 30% of its lines blank (key lines
 //   first); type the missing lines, then check them one by one.
 // - From scratch: the whole solution in one blank editor under the given signature, graded line by
@@ -360,6 +361,10 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<CheckStatus>('idle');
   const [result, setResult] = useState<Grade | null>(null);
+  // Typing: the first check of the part sets its score; "Fix and check again" re-grades only.
+  const [first, setFirst] = useState<Grade | null>(null);
+  const [checks, setChecks] = useState(0);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [sel, setSel] = useState<string | null>(null);
   const [score, setScore] = useState<PartsScore>({ correct: 0, total: 0, extra: 0 });
   const [done, setDone] = useState(false);
@@ -368,6 +373,8 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const [showPrompt, setShowPrompt] = useState(false);
   const instrRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
+  // Phones wait for a tap, so the keyboard does not cover the problem (or the next part's cue).
+  const [autoFocus] = useState(isFinePointer);
 
   const totalLines = body.reduce((n, b) => n + b.c.lines.filter((l) => l.trim()).length, 0);
   const cur = body[step];
@@ -422,6 +429,8 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     setScore(s);
     setText('');
     setResult(null);
+    setFirst(null);
+    setChecks(0);
     setStatus('idle');
     setHint(false);
     setSel(null);
@@ -495,9 +504,30 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
     // The editor sits under the parts before it: typed column 0 is the editor's column.
     const r = gradeCode(text, cur.c.lines, { anchor: indent });
     setResult(r);
+    setChecks((c) => c + 1);
+    if (!first) setFirst(r);
     setStatus(r.perfect ? 'correct' : 'wrong');
     sfx(r.perfect ? 'correct' : 'wrong');
     onChecked();
+  };
+  // "Fix and check again": the editor comes back in this click with the caret on the first line to
+  // fix (flushSync, so a phone opens its keyboard inside the tap). The first check keeps the score.
+  const fix = () => {
+    if (!result) return;
+    const pos = fixCaret(text, result);
+    flushSync(() => {
+      setResult(null);
+      setStatus('idle');
+    });
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(pos, pos);
+    revealCaret(ta, pos);
+  };
+  const continueTyped = () => {
+    const g = first ?? result;
+    nextChunk({ correct: g?.correct ?? 0, total: g?.total ?? curLines.length, extra: g?.extra ?? 0 });
   };
 
   const checkTap = () => {
@@ -534,8 +564,12 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const hintBase = indent;
 
   const footNote = typing
-    ? `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`
+    ? first && !result
+      ? `Check ${checks + 1} · score kept from check 1`
+      : `${curLines.length} line${curLines.length === 1 ? '' : 's'} to write`
     : `Line ${lineInChunk + 1} of ${curLines.length} in this part`;
+  // After "Fix and check again", the action bar says the first check already counted.
+  const later = typing && checks > 1 && !!result;
 
   // The current part, written as a comment in the file.
   const instr = (
@@ -600,7 +634,8 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
                 firstLine={firstNew}
                 indent={indent}
                 minRows={Math.max(3, curLines.length + 1)}
-                autoFocus
+                autoFocus={autoFocus}
+                textareaRef={taRef}
                 placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`}
                 disabled={status !== 'idle'}
               >
@@ -684,24 +719,37 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
 
         <ActionBar
           status={status}
-          step={`${step}:${lineInChunk}`}
+          step={`${step}:${lineInChunk}:${checks}`}
           canCheck={typing ? text.trim().length > 0 : sel !== null}
           onCheck={typing ? checkTyped : checkTap}
-          onContinue={
-            typing ? () => nextChunk({ correct: result?.correct ?? 0, total: result?.total ?? curLines.length, extra: result?.extra ?? 0 }) : continueTap
-          }
+          onContinue={typing ? continueTyped : continueTap}
+          title={later && result?.perfect ? 'All lines right now' : undefined}
           feedback={
-            <div className="rebuild-fb">
-              <span className="drill-fb-label">This part</span>
-              <span>{inline(cur.c.explain)}</span>
-            </div>
+            later ? (
+              <div className="rebuild-fb">
+                <span className="drill-fb-label">{`Check ${checks}`}</span>
+                <span>
+                  {result!.perfect ? '' : `${gradeSummary(result!)}. `}
+                  Your first check is what counts for this part.
+                </span>
+              </div>
+            ) : (
+              <div className="rebuild-fb">
+                <span className="drill-fb-label">This part</span>
+                <span>{inline(cur.c.explain)}</span>
+              </div>
+            )
           }
+          checkedSecondary={typing && status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
           secondary={
             <div className="rebuild-tools">
-              <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
-                {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
-                <span className="rebuild-tool-label">{typing ? 'Tap lines' : 'Type code'}</span>
-              </button>
+              {/* Once a part has been checked typed, its score is set: finish it typed */}
+              {!(typing && first) && (
+                <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
+                  {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
+                  <span className="rebuild-tool-label">{typing ? 'Tap lines' : 'Type code'}</span>
+                </button>
+              )}
               {typing && !hint && (
                 <button type="button" className="btn btn-quiet btn-sm" onClick={() => setHint(true)}>
                   <Lightbulb aria-hidden="true" />

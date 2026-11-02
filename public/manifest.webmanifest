@@ -1,7 +1,7 @@
 {
   "name": "IntPrep — Coding Interview Patterns",
   "short_name": "IntPrep",
-  "description": "Learn the 150 classic coding interview problems step by step and drill the patterns daily.",
+  "description": "Learn the 150 classic coding interview problems step by step, write the code yourself and review it daily.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

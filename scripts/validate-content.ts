@@ -6,7 +6,10 @@
  *   npm run validate -- foundations  # just the beginner track
  *
  * Checks structure, the annotated-solution format, quiz answers, mini-markdown
- * balance, and compiles every Python solution/template with python3.
+ * balance, and compiles every Python solution/template with python3. Foundations
+ * snippets that declare an `output` (code slides, and "Your turn" starter + answer
+ * and every accepted answer) are also run, and must print exactly that output.
+ * A few self-checks keep the typing kit's grading honest (e.g. curly quotes).
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -17,13 +20,16 @@ import { CONTENT } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { parseSolution } from '../src/lib/parseSolution';
 import { baseIndent, codeLines, gradeCode, lineKey, reindent } from '../src/lib/codegrade';
+import { gradeGaps } from '../src/lib/gaps';
+import { normalizeCode, stripComment } from '../src/lib/parseSolution';
 import type { CategoryId, QuizQuestion } from '../src/content/types';
 
 const args = process.argv.slice(2);
 const wantAll = args.length === 0;
 const errors: string[] = [];
 const warnings: string[] = [];
-const pyFiles: { label: string; code: string }[] = [];
+/** Python to compile; with `output`, also run it and compare what it prints. */
+const pyFiles: { label: string; code: string; output?: string }[] = [];
 
 const err = (where: string, msg: string) => errors.push(`✗ ${where}: ${msg}`);
 const warn = (where: string, msg: string) => warnings.push(`⚠ ${where}: ${msg}`);
@@ -141,7 +147,7 @@ function checkFoundations() {
       } else if (s.kind === 'code') {
         nonEmpty(sw, 'code', s.code);
         if (s.body) checkMarkdown(sw, s.body);
-        pyFiles.push({ label: sw, code: s.code });
+        pyFiles.push({ label: sw, code: s.code, output: s.output });
       } else if (s.kind === 'quiz') {
         checkQuiz(sw, s);
       } else if (s.kind === 'type') {
@@ -171,7 +177,7 @@ function checkFoundations() {
         });
         // starter + answer (and starter + each accepted answer) must be valid Python.
         answers.forEach((a, k) =>
-          pyFiles.push({ label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`, code: s.starter ? `${s.starter}\n${a}` : a }),
+          pyFiles.push({ label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`, code: s.starter ? `${s.starter}\n${a}` : a, output: s.output }),
         );
       } else {
         err(sw, `unknown slide kind`);
@@ -180,34 +186,90 @@ function checkFoundations() {
   });
 }
 
+/**
+ * The typing kit compares typed code with `normalizeCode` / `lineKey`. These cases pin the rules
+ * that matter to learners, so a change that breaks them fails CI.
+ */
+function checkTypingKit() {
+  const w = 'typing kit';
+  const same: [string, string][] = [
+    // Phones type curly quotes ("smart punctuation", on by default on iOS).
+    ['print(\u201chi\u201d)', 'print("hi")'],
+    ["s = \u2018a\u2019", "s = 'a'"],
+    ['seen[\u2018key\u2019] = 1', 'seen["key"] = 1'],
+    ['x = \u201ea\u201c', 'x = "a"'],
+    ['print(\u201c#\u201d)  # a comment', 'print("#")'],
+    ['if s == \u2018\u2019:', "if s == '':"],
+    ['a+b', 'a + b'],
+    ['f(x, y,)', 'f(x, y)'],
+  ];
+  for (const [typed, exp] of same) if (lineKey(typed) !== lineKey(exp)) err(w, `"${typed}" should match "${exp}"`);
+  const differ: [string, string][] = [
+    ['print(" ")', 'print("")'],
+    ['forn in nums:', 'for n in nums:'],
+    ['print(\u201cHi there\u201d)', 'print("Hithere")'],
+  ];
+  for (const [typed, exp] of differ) if (lineKey(typed) === lineKey(exp)) err(w, `"${typed}" should not match "${exp}"`);
+  if (stripComment('print(\u201c#\u201d)  # note') !== 'print(\u201c#\u201d)  ') err(w, 'stripComment should keep a # inside curly quotes');
+  if (normalizeCode('d = {\u2018a\u2019: 1}') !== normalizeCode('d = {"a": 1}')) err(w, 'normalizeCode should straighten curly quotes');
+  if (!gradeCode('if s == \u2018\u2019:\n    return \u201cempty\u201d', 'if s == "":\n    return "empty"').perfect)
+    err(w, 'gradeCode should accept curly quotes');
+  if (!gradeGaps(['return \u2018\u2019.join(out)'], ["return ''.join(out)"]).perfect) err(w, 'gradeGaps should accept curly quotes');
+}
+
 for (const c of CATEGORIES) if (wantAll || args.includes(c.id)) checkCategory(c.id);
 if (wantAll || args.includes('foundations')) checkFoundations();
+checkTypingKit();
 
-// Compile every Python snippet in one python3 process.
+// Compile every Python snippet in one python3 process; run the ones that declare an output and
+// compare what they print (exactly, apart from print's final newline).
 if (pyFiles.length) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'intprep-py-'));
   const manifest = pyFiles.map((f, i) => {
     const file = path.join(dir, `s${i}.py`);
     fs.writeFileSync(file, f.code + '\n');
-    return { label: f.label, file };
+    return { label: f.label, file, output: f.output ?? null };
   });
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest));
   const checker = `
-import json, sys
+import contextlib, io, json, signal, sys
 m = json.load(open(sys.argv[1]))
 bad = 0
+ran = 0
+def timeout(*_):
+    raise TimeoutError("ran longer than 5 seconds")
+signal.signal(signal.SIGALRM, timeout)
 for e in m:
     try:
-        compile(open(e["file"]).read(), e["label"], "exec")
+        code = compile(open(e["file"]).read(), e["label"], "exec")
     except SyntaxError as ex:
         bad += 1
         print("PYERR", e["label"], "line", ex.lineno, ":", ex.msg)
-print("PYOK", len(m) - bad, "/", len(m))
+        continue
+    if e["output"] is None:
+        continue
+    ran += 1
+    buf = io.StringIO()
+    try:
+        signal.alarm(5)
+        with contextlib.redirect_stdout(buf):
+            exec(code, {"__name__": "__main__"})
+    except BaseException as ex:
+        bad += 1
+        print("PYERR", e["label"], "raised", type(ex).__name__ + ":", ex)
+        continue
+    finally:
+        signal.alarm(0)
+    got = buf.getvalue()
+    if got != e["output"] and got != e["output"] + "\\n":
+        bad += 1
+        print("PYERR", e["label"], "prints", json.dumps(got), "but output is", json.dumps(e["output"]))
+print("PYOK", len(m) - bad, "/", len(m), "ran", ran)
 `;
-  const out = execFileSync('python3', ['-I', '-c', checker, path.join(dir, 'manifest.json')]).toString();
+  const out = execFileSync('python3', ['-I', '-c', checker, path.join(dir, 'manifest.json')], { stdio: ['ignore', 'pipe', 'inherit'] }).toString();
   for (const line of out.trim().split('\n')) {
     if (line.startsWith('PYERR')) errors.push('✗ ' + line.slice(6));
-    else console.log(line.replace('PYOK', '✓ python compiled'));
+    else console.log(line.replace(/^PYOK (\d+ \/ \d+) ran (\d+)$/, '✓ python compiled $1, ran $2 snippets with their expected output'));
   }
   fs.rmSync(dir, { recursive: true, force: true });
 }

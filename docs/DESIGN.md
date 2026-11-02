@@ -91,7 +91,8 @@ only for a problem that is due (`reviewProblem(id, grade, { lapse: false })`), s
 schedule of a problem that is not.
 
 **Grading** — `gradeCode(typed, expected, { anchor })` is pure. Blank and comment-only lines are ignored on both
-sides; lines compare with `normalizeCode`: spacing around operators and punctuation, quote style, trailing comments,
+sides; lines compare with `normalizeCode`: spacing around operators and punctuation, quote style (curly quotes from a
+phone's smart punctuation, `‘a’` / `“a”`, count as straight ones: `straightQuotes`), trailing comments,
 trailing commas and the case of hex digits do not matter, but string contents do (`" "` is not `""`) and so does
 the space between two words (`for n in`, not `forn in`). Typed and expected lines are aligned by a
 longest-common-subsequence diff, so one extra or missing line does not mark every following line wrong. A matched
@@ -139,6 +140,16 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
 `<CheckedAction onClick>` as the `ActionBar`'s `checkedSecondary`: "Fix and check again" by default ("Fix it" below
 380px, the full label stays the accessible name), or `label="Show answer" short="Answer" icon={<Eye />}`. Keep
 the `step` prop changing with each check (e.g. `` `${round}:${checks}` ``) so the double-click guard re-arms.
+Every typing screen words it the same way: the first check's feedback says the first check sets the score (or
+the tally); a right fix is titled **"All gaps right now"** (gaps), **"All lines right now"** (a part, a template,
+a whole solution) or **"Right now"** (one line), and its body says the first check still counts. "Show answer"
+always means "reveal it, counted as a miss"; "Peek" (guided lesson) goes back to the code without revealing a
+diff. A miss that returns later says so: "It comes back later in this session" (reviews) or "Not quite — it will
+come back later" (lessons).
+
+**Phones** — no autofocus on coarse pointers: an editor or gap focuses on mount only with `(pointer: fine)`, so
+the keyboard never covers the task on arrival; it opens when the learner taps the code, and "Fix and check again"
+focuses inside the tap (`flushSync`).
 
 **Font size and iOS** — every code input (editor, gaps, typed key line) uses the 12.5–13px code size. iOS Safari
 zooms the page when an input under 16px gets focus, so `main.tsx` adds `maximum-scale=1` to the viewport meta at
@@ -170,9 +181,10 @@ label ref>`: the visible lines read-only (highlighted, numbered, dimmed like `gi
 Gap rows keep the 22px rhythm on desktop and grow to 44px on touch screens, with the text at the code's size (no
 iOS zoom: see **Font size and iOS**). The
 placeholder is the line's own trailing comment (`# stop when the pointers meet`); `hints` takes your own per gap or
-`false`; a gap without one says "Type the missing line" if it is the first. A hint wider than its gap (phones,
-narrow windows; measured) shows in full as a wrapping comment under the input instead (the placeholder cannot
-scroll), and stays while typing so rows never change height. `locked` gaps (right at the last check)
+`false`; a gap without one says "Type the missing line" if it is the first. Placeholders are measured against their
+gap (phones, narrow windows, deep indents): a hint that does not fit shows in full as a wrapping comment under the
+input instead (the placeholder cannot scroll), and stays while typing so rows never change height; the generic one
+shortens to "Type the line", then goes (the input keeps its "Line N, missing" name). `locked` gaps (right at the last check)
 show as correct and are skipped by the keyboard. `ref` exposes `focus(gap?)`. With `autoFocus`, the first gap is
 focused on mount and for each new set; the first wrong gap is focused on every retry (call `retry` inside
 `flushSync` in the click, and then `focus(gap)`, so a phone opens its keyboard).
@@ -206,7 +218,9 @@ twice, two different parts (or a part + Fill the gaps). Sessions hold up to 8 du
 ahead or by unit. Cards are interleaved across problems, and each problem still opens with its recognition card.
 A missed card comes back once at the end of the session ("Try again" badge, half XP); a coding card comes back as
 a fresh instance (`retryCard`: other gaps, another key line, another part). The problem's review grade is
-`gradeFrom` over the first try of its three cards, coding cards counting like the others.
+`gradeFrom` over the first try of its three cards, coding cards counting like the others. Practice ahead and unit
+practice are optional: a problem that was not due when the session started is reviewed with `{ lapse: false }`,
+so a miss never resets its schedule. Session sizes live in `SESSION_PROBLEMS` (`lib/drills.ts`).
 
 - **Fill the gaps** (`gaps`, `GapsDrill`): the whole solution in a `GapsWindow`, header given, 2 gaps (6 code
   lines or fewer) or 3, always a key line among them (`reviewGaps(p, seed)`; the seed moves with the problem's
@@ -234,15 +248,20 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
 ## Page blueprints
 
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
-  eyebrow badge, `.display` headline, lead, two CTAs, and a product preview built from real UI pieces (a drill
-  card, a code snippet, a streak/goal widget) — not an image; "How it works" in 3 steps; feature grid; the 18
+  eyebrow badge, `.display` headline, lead, two CTAs, and a product preview built from real UI pieces (a coding
+  review card, Fill the gaps with a gap being typed; a code snippet with key lines; a streak/goal widget) — not an
+  image; a stats strip whose numbers come from the content (lines of Python written in the lessons uses
+  `lessonParts`, the guided lesson's own part split); "How it works" in 3 steps; feature grid; the 18
   patterns as a curriculum grid; "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
   (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof.
 - **Onboarding (`/onboarding`)** — centered, focused, step indicator; welcome + name → experience (radio cards with
   icons) → daily goal (radio cards) → plan summary → **"Start learning"**.
-- **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card; a "Today" panel (goal ring, streak,
-  reviews due); KPI row (learned /150, strong, accuracy, level); activity heatmap; roadmap progress by unit; quick
-  actions.
+- **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card (a beginner lesson shows its minutes
+  and how many code exercises it has; a pattern intro reads "Read it, then fill in the template"); a "Today" panel
+  (goal ring, streak, reviews due); the Daily review card says what a session is (spot the pattern, then write the
+  code from memory); KPI row (learned /150, strong, "Practice accuracy" = first-try answers in reviews and Blitz,
+  level); activity heatmap; roadmap progress by unit; quick actions ("Key lines" once 3 problems are learned,
+  else "Pattern Blitz").
 - **Learning path / Unit** — structured curriculum (vertical timeline/stepper), units with icon tiles, progress
   and status; problem rows with status, mastery and difficulty. Unit page: header, progress, CTAs, pattern summary,
   template, problems list.
@@ -287,7 +306,8 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   staying the accessible name), else "Practice the template" (`?mode=gaps`).
 - **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
-  accessible name): **Part by part** (one part at a time, cued by its comment), **Fill the gaps** (the problem, the
+  accessible name): **Part by part** (one part at a time, cued by its comment; a miss offers "Fix and check again"
+  and the part's first check keeps its score), **Fill the gaps** (the problem, the
   given class / def header and the solution with about 30% of its lines blank, key lines first, in a `GapsWindow`;
   Enter moves to the next gap and checks on the last once every gap has text; "New gaps" while idle) and **From
   scratch** (the whole body in one blank editor under the given signature; the sub names the solution's own names,
@@ -307,14 +327,17 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   optional first-word hint that halves the XP: the Hint button says so before it is used, and the panel scrolls
   into view and is announced when it opens). "When to reach for it" cues sit above
   (open on desktop, collapsed on phones). Without `?mode=` it opens Fill the gaps until that best is 80% or more or
-  the template has been typed from memory, then From memory. The first check sets the score; "Fix and check again"
+  the template has been typed from memory, then From memory. Fill the gaps opens on round 0 (the pattern intro's
+  own set) only while the template has no gaps score; after the intro's slide it opens on round 1, so the learner
+  gets other lines. The first check sets the score; "Fix and check again"
   sits in the action bar. Completion: a strong gaps run leads to "Now type it from memory", a perfect from-memory
   run to "Next template", a weak one (under 80%) offers "Fill the gaps first". Entry points read "Practice the template", with the best score (from memory, else
   "Gaps N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
   problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
   Back return to the page that opened it.
-- **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against a 60-second clock (Timed) or
-  without one (Zen), then results. The lobby opens with the game choice, native radio cards (one per row, arrow
+- **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against the clock (Timed: 60 seconds
+  for Spot the pattern, 90 for Key lines, since typing takes longer than tapping) or without one (Zen), then
+  results. The lobby opens with the game choice, native radio cards (one per row, arrow
   keys move between them): **Spot the pattern** (read a problem, pick its pattern from four: recognition, keys
   1–4) and **Key lines** (type the key line of a learned solution: recall). The last choice is remembered
   (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
@@ -342,8 +365,9 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   problem). Actions on both games' results: Play again, Back to dashboard, Choose a game (back to the lobby).
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
-- **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,
-  locked state), streak-freeze shop, settings form, data management.
+- **Profile** — identity header + level progress, stats grid (eight cards, two rows of four from 600px: streaks,
+  XP, learned, mastered, practice accuracy, "Pattern Blitz best", "Key lines best"), activity heatmap, achievements
+  (icon medallions, locked state), streak-freeze shop, settings form, data management.
 
 ## Copy & tone
 

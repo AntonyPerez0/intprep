@@ -10,9 +10,9 @@ import { finishOnboarding, useProgress, type Experience } from '../lib/store';
 import { sfx } from '../lib/sound';
 
 const LEVELS: { id: Experience; icon: LucideIcon; title: string; blurb: string }[] = [
-  { id: 'none', icon: Sprout, title: "I'm brand new to coding", blurb: 'Start with Python basics, Big-O and recursion.' },
+  { id: 'none', icon: Sprout, title: "I'm brand new to coding", blurb: 'Start with Python basics. You type real code from the first lesson.' },
   { id: 'some', icon: CodeXml, title: 'I know some code', blurb: 'Jump into patterns; beginner lessons are there if you need them.' },
-  { id: 'comfortable', icon: Rocket, title: "I'm comfortable coding", blurb: 'Go straight to the problems and drills.' },
+  { id: 'comfortable', icon: Rocket, title: "I'm comfortable coding", blurb: 'Go straight to the patterns and problems.' },
 ];
 
 const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
@@ -27,9 +27,11 @@ function goalTime(blurb: string): string {
 /** Where each experience level begins (navigation itself happens in `done`). */
 function startingPoint(exp: Experience): string {
   const first = FOUNDATIONS[0];
-  if (exp === 'none') return `Your first lesson is “${first.title}”, then ${FOUNDATIONS.length - 1} more beginner lessons before the first pattern.`;
-  if (exp === 'some') return `Your learning path starts with ${CATEGORIES[0].name}. Beginner lessons are there whenever you need them.`;
-  return `Straight to the ${CATEGORIES.length} patterns and ${PROBLEMS.length} problems, starting with ${CATEGORIES[0].name}.`;
+  if (exp === 'none')
+    return `Your first lesson is “${first.title}”, then ${FOUNDATIONS.length - 1} more beginner lessons before the first pattern. You write real Python in every one.`;
+  if (exp === 'some')
+    return `Your path starts with ${CATEGORIES[0].name}: learn the pattern, fill in its template, then solve the problems. Beginner lessons are there if you need them.`;
+  return `Straight to the ${CATEGORIES.length} patterns and ${PROBLEMS.length} problems, starting with ${CATEGORIES[0].name}: learn the pattern, fill in its template, then solve the problems.`;
 }
 
 export function OnboardingPage() {
@@ -127,11 +129,11 @@ export function OnboardingPage() {
                   <ul className="ob-perks">
                     <li>
                       <Check aria-hidden="true" />
-                      {PROBLEMS.length} problems across {CATEGORIES.length} patterns, taught step by step
+                      {PROBLEMS.length} problems across {CATEGORIES.length} patterns. You write every solution yourself, part by part
                     </li>
                     <li>
                       <Check aria-hidden="true" />
-                      Short daily reviews that bring problems back before you forget them
+                      Short daily reviews: spot the pattern, then write the code from memory
                     </li>
                     <li>
                       <Check aria-hidden="true" />
@@ -218,7 +220,12 @@ export function OnboardingPage() {
                       onChange={() => setStep(2)}
                       changeLabel="Edit daily goal"
                     />
-                    <PlanRow icon={Repeat2} label="Daily review" value="Spaced repetition" detail="Problems you learn come back just before you would forget them." />
+                    <PlanRow
+                      icon={Repeat2}
+                      label="Daily review"
+                      value="Spaced repetition"
+                      detail="Problems come back just before you would forget them: spot the pattern, then write the code from memory."
+                    />
                     <PlanRow
                       icon={Flame}
                       label="Streak"

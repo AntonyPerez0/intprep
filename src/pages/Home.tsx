@@ -5,6 +5,8 @@ import { CalendarDays } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS } from '../content/index';
 import { addDays, dayKey, daysBetween, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
+import { KEY_LINES_MIN, keyLinePool } from '../lib/blitzLines';
+import { SESSION_PROBLEMS } from '../lib/drills';
 import { GEMS, levelInfo, levelTitle } from '../lib/game';
 import { inline } from '../lib/markdown';
 import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
@@ -135,6 +137,9 @@ interface NextView {
   cta: string;
 }
 
+/** "Your turn" slides in a beginner lesson: the code the learner writes. */
+const writes = (lesson: (typeof FOUNDATIONS)[number]) => lesson.slides.filter((s) => s.kind === 'type').length;
+
 function describeNext(p: Progress, next: NextStep): NextView {
   switch (next.kind) {
     case 'foundation': {
@@ -149,10 +154,18 @@ function describeNext(p: Progress, next: NextStep): NextView {
         title: next.title,
         description: lesson?.blurb,
         meta: lesson ? (
-          <span className="home-meta-item">
-            <Icon name="clock" size={14} />
-            {lesson.minutes} min
-          </span>
+          <>
+            <span className="home-meta-item">
+              <Icon name="clock" size={14} />
+              {lesson.minutes} min
+            </span>
+            {writes(lesson) > 0 && (
+              <span className="home-meta-item">
+                <Icon name="keyboard" size={14} />
+                {writes(lesson)} code exercise{writes(lesson) === 1 ? '' : 's'}
+              </span>
+            )}
+          </>
         ) : null,
         progress: { label: 'Foundations progress', done: foundationsDone(p), total: FOUNDATIONS.length, unit: 'complete' },
         cta: 'Start lesson',
@@ -172,7 +185,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
         meta: (
           <span className="home-meta-item">
             <Icon name="book" size={14} />
-            Pattern intro, template and quiz
+            Read it, then fill in the template
           </span>
         ),
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
@@ -280,7 +293,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
   let action: ReactNode;
   if (due > 0) {
     title = `${plural(due, 'problem')} ready to review`;
-    body = 'Recall them now, right as they start to fade. That is when memory strengthens most.';
+    body = 'Spot each pattern, then write the code from memory, right as it starts to fade.';
     foot = tomorrow > 0 ? `${tomorrow} more due tomorrow` : null;
     action = (
       <Link to="/review" className="btn btn-secondary home-review-cta">
@@ -289,7 +302,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     );
   } else if (learned) {
     title = 'All caught up';
-    body = 'Nothing is due today. Practice ahead with a few extra cards, or come back when reviews are due.';
+    body = `Nothing is due today. Practice ahead: write code from memory for ${plural(Math.min(SESSION_PROBLEMS.ahead, learned), 'problem')}.`;
     foot = upcoming ? `Next review ${friendlyDue(upcoming)}` : null;
     action = (
       <Link to="/review?ahead=1" className="btn btn-secondary home-review-cta">
@@ -298,7 +311,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     );
   } else {
     title = 'Nothing to review yet';
-    body = 'Problems you learn return here the next day for spaced review.';
+    body = 'Problems you learn come back here the next day: spot the pattern, then write the code from memory.';
     action = (
       <Link to="/blitz" className="btn btn-secondary home-review-cta">
         Play Pattern Blitz
@@ -536,8 +549,8 @@ function WeekStrip({ p }: { p: Progress }) {
 function GetStarted({ p, learned, next }: { p: Progress; learned: number; next: NextStep }) {
   const steps = [
     { title: 'Set a daily goal', body: `${p.settings.dailyGoal} XP a day. Change it any time.`, done: p.onboarded, to: '/profile' },
-    { title: 'Finish your first lesson', body: 'A short, interactive intro with a quick quiz.', done: Object.keys(p.lessonsDone).length > 0, to: next.href },
-    { title: 'Learn your first problem', body: 'Walk through the idea, then build the solution.', done: learned > 0, to: '/learn' },
+    { title: 'Finish your first lesson', body: 'A short lesson where you write a little code yourself.', done: Object.keys(p.lessonsDone).length > 0, to: next.href },
+    { title: 'Learn your first problem', body: 'Walk through the idea, then write the solution part by part.', done: learned > 0, to: '/learn' },
     { title: 'Complete a daily review', body: 'Reviews start the day after you learn a problem.', done: p.stats.sessions > 0, to: '/review' },
   ];
   const complete = steps.filter((s) => s.done).length;
@@ -606,9 +619,9 @@ function Kpis({ p, learned, mastered }: { p: Progress; learned: number; mastered
       />
       <StatCard
         icon="target"
-        label="Drill accuracy"
+        label="Practice accuracy"
         value={acc === null ? '–' : `${Math.round(acc * 100)}%`}
-        meta={<KpiMeta value={acc ?? 0} text={acc === null ? 'No drills yet' : `${p.stats.correct}/${p.stats.answered} correct`} />}
+        meta={<KpiMeta value={acc ?? 0} text={acc === null ? 'No answers yet' : `${p.stats.correct}/${p.stats.answered} right first try`} />}
       />
       <StatCard
         icon="award"
@@ -791,6 +804,8 @@ const NEUTRAL = 'var(--text-secondary)';
 
 function QuickLinks({ p }: { p: Progress }) {
   const fDone = foundationsDone(p);
+  // Pattern Blitz's typing game opens at 3 learned problems; until then, the pattern game.
+  const keyLines = keyLinePool(p, PROBLEMS).length >= KEY_LINES_MIN;
   return (
     <section className="card home-card home-links" aria-labelledby="home-links-title">
       <div className="home-card-head">
@@ -800,14 +815,27 @@ function QuickLinks({ p }: { p: Progress }) {
       </div>
       <ul className="home-link-list">
         <li>
-          <Link to="/blitz" className="home-link">
-            <IconTile icon={ICONS.blitz} color={NEUTRAL} size="sm" />
-            <div className="grow">
-              <div className="home-link-title">Pattern Blitz</div>
-              <div className="home-link-meta">{p.stats.blitzBest > 0 ? `Best score ${p.stats.blitzBest}` : '60 seconds. Name the pattern.'}</div>
-            </div>
-            <Icon name="chevron" className="home-link-chevron" />
-          </Link>
+          {keyLines ? (
+            <Link to="/blitz?game=lines" className="home-link">
+              <IconTile icon={ICONS.keyboard} color={NEUTRAL} size="sm" />
+              <div className="grow">
+                <div className="home-link-title">Key lines</div>
+                <div className="home-link-meta">
+                  {p.stats.blitzCodeBest > 0 ? `Best score ${p.stats.blitzCodeBest}` : '90 seconds. Type the key lines you learned.'}
+                </div>
+              </div>
+              <Icon name="chevron" className="home-link-chevron" />
+            </Link>
+          ) : (
+            <Link to="/blitz" className="home-link">
+              <IconTile icon={ICONS.blitz} color={NEUTRAL} size="sm" />
+              <div className="grow">
+                <div className="home-link-title">Pattern Blitz</div>
+                <div className="home-link-meta">{p.stats.blitzBest > 0 ? `Best score ${p.stats.blitzBest}` : '60 seconds. Name the pattern.'}</div>
+              </div>
+              <Icon name="chevron" className="home-link-chevron" />
+            </Link>
+          )}
         </li>
         {FOUNDATIONS.length > 0 && (
           <li>

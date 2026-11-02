@@ -267,6 +267,13 @@
   line-height: 28px;
   color: var(--text);
 }
+/* A short line under a stat ("About 5 min · you fill in the template") */
+.unit-stat-sub {
+  flex-basis: 100%;
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  color: var(--text-tertiary);
+}
 .unit-stat-text.is-done {
   color: var(--success-text);
 }

@@ -7,8 +7,9 @@ import { IconTile, SCIENCE_ICON } from '../components/icons';
 import { LogoMark, PageHeader, SectionHeader } from '../components/ui';
 
 const SHORT_VERSION: { verb: string; rest: ReactNode }[] = [
-  { verb: 'Learn', rest: ' a pattern with worked examples, broken into small chunks.' },
-  { verb: 'Retrieve', rest: ' it: guess before you are told, rebuild code from memory, order the steps yourself.' },
+  { verb: 'Learn', rest: ' a pattern with worked examples, broken into small parts.' },
+  { verb: 'Write', rest: ' the code yourself, part by part, with feedback on every line.' },
+  { verb: 'Retrieve', rest: ' it: guess before you are told, then write the code again from memory in reviews.' },
   { verb: 'Space', rest: ' it: each problem returns right as you are about to forget it.' },
   { verb: 'Mix', rest: ' it: reviews and Blitz shuffle patterns so you learn to tell them apart — exactly what an interview asks.' },
   { verb: 'Keep showing up', rest: ': streaks, goals and small wins turn practice into a daily habit.' },

@@ -7,12 +7,14 @@ import {
   BookOpen,
   Check,
   CircleCheck,
+  Eye,
   Flame,
   GraduationCap,
   Keyboard,
   Repeat2,
   Snowflake,
   Timer,
+  TextCursorInput,
   X,
   Zap,
 } from 'lucide-react';
@@ -20,13 +22,13 @@ import { CATEGORIES, CATEGORY_BY_ID, FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS, probl
 import { SCIENCE } from '../content/science';
 import { CategoryIcon, IconTile, LESSON_ICON, SCIENCE_ICON, type LucideIcon } from '../components/icons';
 import { CodeWindow } from '../components/interact';
-import { DifficultyChip, Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
-import { DRILL_LABEL } from '../lib/drills';
+import { Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
+import { DRILL_LABEL, reviewGaps } from '../lib/drills';
+import { codeLines } from '../lib/codegrade';
 import { XP } from '../lib/game';
 import { addDays, lastNDays, today, weekdayShort } from '../lib/date';
 import { highlightLine } from '../lib/highlight';
-import { inline } from '../lib/markdown';
-import { parseSolution } from '../lib/parseSolution';
+import { lessonParts, parseSolution } from '../lib/parseSolution';
 import { preview as previewIntervals } from '../lib/srs';
 import { useProgress } from '../lib/store';
 
@@ -50,8 +52,12 @@ function goTo(id: SectionId) {
   el.querySelector<HTMLElement>('[data-section-heading]')?.focus({ preventScroll: true });
 }
 
-const DRILL_TYPES = Object.keys(DRILL_LABEL).length;
-const SCIENCE_PICKS = ['retrieval-practice', 'spaced-repetition', 'interleaving', 'worked-examples'];
+/** Lines of Python a learner writes in the guided lessons, part by part (all 150 problems). */
+const LINES_WRITTEN = PROBLEMS.reduce(
+  (n, p) => n + lessonParts(parseSolution(p.solution)).reduce((m, part) => m + codeLines(part.body).length, 0),
+  0,
+);
+const SCIENCE_PICKS = ['retrieval-practice', 'generation-effect', 'spaced-repetition', 'interleaving'];
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
@@ -135,8 +141,8 @@ function Hero({ primary }: { primary: { to: string; label: string } }) {
             Master the coding interview, <span className="lp-hero-title-soft">one pattern at a time.</span>
           </h1>
           <p className="lead lp-hero-lead">
-            Learn the {PROBLEMS.length} classic interview problems step by step, then make every pattern stick with a few minutes of spaced review a
-            day.
+            Learn the {PROBLEMS.length} classic interview problems step by step and write every solution yourself. A few minutes of spaced review
+            a day keeps the code in memory.
           </p>
           <div className="lp-hero-ctas">
             <Link to={primary.to} className="btn btn-primary btn-xl">
@@ -168,8 +174,12 @@ function Hero({ primary }: { primary: { to: string; label: string } }) {
 const TWO_SUM = PROBLEM_BY_ID['two-sum'];
 const TWO_SUM_LINES = parseSolution(TWO_SUM.solution).lines;
 const TWO_SUM_FOCUS = TWO_SUM_LINES.findIndex((l) => l.key);
-// Real distractors the drill engine uses for Arrays & Hashing.
-const PREVIEW_CHOICES: CategoryId[] = ['two-pointers', 'arrays-hashing', 'sliding-window', 'greedy'];
+// The review's Fill the gaps card for a problem learned earlier: its real first set of gaps.
+const GAPS_P = PROBLEM_BY_ID['contains-duplicate'];
+const GAPS = reviewGaps(GAPS_P, 0);
+// Shown from the def line, dedented one level, so the card's code fits a phone.
+const GAPS_FROM = GAPS.header[GAPS.header.length - 1] ?? 0;
+const GAPS_DEDENT = 4;
 
 /** The Dashboard's "Last 7 days" strip: circles with a flame per practiced day, today solid. */
 function MockWeek({ frozen = -1 }: { frozen?: number }) {
@@ -195,7 +205,7 @@ function HeroPreview() {
     <div
       className="lp-stage"
       role="img"
-      aria-label="Preview of IntPrep: a Spot the pattern drill for Two Sum, the Python solution with its key lines marked, and a daily goal and streak tracker."
+      aria-label={`Preview of IntPrep: the Two Sum solution with its key lines marked, a review card where you fill in the missing lines of ${GAPS_P.title}, and a daily goal and streak tracker.`}
     >
       {/* Code window */}
       <CodeWindow
@@ -228,7 +238,7 @@ function HeroPreview() {
         </div>
       </div>
 
-      {/* Spot the pattern drill */}
+      {/* A review card: Fill the gaps, the second gap being typed */}
       <div className="lp-pv lp-pv-quiz">
         <div className="lp-pv-quiz-top">
           <X aria-hidden="true" />
@@ -238,42 +248,49 @@ function HeroPreview() {
           </span>
         </div>
         <div className="lp-pv-quiz-body">
-          <div className="kicker">{DRILL_LABEL.pattern}</div>
-          <div className="lp-pv-q">Which pattern fits this problem best?</div>
-          <div className="lp-pv-prompt">
-            <div className="lp-pv-prompt-head">
-              <span className="fw-600">{TWO_SUM.title}</span>
-              <span className="text-xs text-tertiary tabular">#{TWO_SUM.num}</span>
-              <span className="grow" />
-              <DifficultyChip d={TWO_SUM.difficulty} />
-            </div>
-            <p>{inline(TWO_SUM.prompt)}</p>
+          <div className="kicker lp-pv-kicker">
+            <TextCursorInput aria-hidden="true" />
+            {DRILL_LABEL.gaps}
           </div>
-          <div className="lp-pv-choices">
-            {PREVIEW_CHOICES.map((c, i) => {
-              const ok = c === TWO_SUM.category;
-              return (
-                <div key={c} className={`choice ${ok ? 'correct' : ''}`}>
-                  <span className="num">{i + 1}</span>
-                  <span className="grow">{CATEGORY_BY_ID[c].name}</span>
-                  {ok && (
-                    <span className="choice-mark">
-                      <Check strokeWidth={2.4} />
+          <div className="lp-pv-q">Fill the gaps in {GAPS_P.title}</div>
+          <div className="code lp-pv-gaps">
+            <div className="lp-pv-gaps-lines">
+              {GAPS.lines.slice(GAPS_FROM).map((raw, j) => {
+                const i = GAPS_FROM + j;
+                const text = raw.slice(Math.min(GAPS_DEDENT, raw.length - raw.trimStart().length));
+                const k = GAPS.gaps.indexOf(i);
+                const pad = text.length - text.trimStart().length;
+                if (k < 0)
+                  return (
+                    <div key={i} className="code-line">
+                      <span className="ln">{i + 1}</span>
+                      {text === '' ? ' ' : highlightLine(text)}
+                    </div>
+                  );
+                // The first gap is filled in; the last one is being typed.
+                const typing = k === GAPS.gaps.length - 1;
+                const code = text.trim();
+                const shown = typing ? code.slice(0, Math.ceil(code.length * 0.6)) : code;
+                return (
+                  <div key={i} className={`code-line lp-pv-gap ${typing ? 'is-typing' : ''}`}>
+                    <span className="ln">{i + 1}</span>
+                    {' '.repeat(pad)}
+                    <span className="lp-pv-gap-box">
+                      {shown}
+                      {typing && <span className="lp-pv-caret" />}
                     </span>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-        <div className="lp-pv-feedback">
-          <div className="lp-pv-feedback-title">
-            <CircleCheck aria-hidden="true" /> Correct
-          </div>
-          <div className="lp-pv-feedback-body">
-            <strong>{CATEGORY_BY_ID[TWO_SUM.category].name}</strong>
-            <span>{TWO_SUM.pattern}.</span>
-          </div>
+        <div className="lp-pv-bar">
+          <span className="lp-pv-bar-quiet">
+            <Eye aria-hidden="true" />
+            Show answer
+          </span>
+          <span className="lp-pv-bar-check">Check</span>
         </div>
       </div>
 
@@ -315,7 +332,7 @@ function Stats() {
     { value: PROBLEMS.length, label: 'Classic interview problems' },
     { value: CATEGORIES.length, label: 'Core patterns, in roadmap order' },
     { value: FOUNDATIONS.length, label: 'Beginner lessons to start from zero' },
-    { value: DRILL_TYPES, label: 'Drill types in your daily review' },
+    { value: LINES_WRITTEN.toLocaleString('en-US'), label: 'Lines of Python you write in the lessons' },
   ];
   return (
     <section className="lp-stats" aria-label="IntPrep at a glance">
@@ -339,20 +356,20 @@ const STEPS: { icon: LucideIcon; title: string; body: string; points: string[] }
   {
     icon: BookOpen,
     title: 'Learn the pattern',
-    body: 'Every unit opens with a short pattern intro: what the pattern is, when to reach for it, and a reusable Python template. A quick quiz checks it landed.',
-    points: ['Recognition cues', 'Reusable template', 'Quick quiz'],
+    body: 'Every unit opens with a short pattern intro: what the pattern is, when to reach for it, and a reusable Python template. Then you fill in its missing lines yourself.',
+    points: ['Recognition cues', 'Reusable template', 'Fill in the template'],
   },
   {
     icon: GraduationCap,
     title: 'Solve step by step',
-    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then build the code one part at a time.',
-    points: ['Progressive hints', 'Key insight', 'Code part by part'],
+    body: 'Guided lessons take each problem apart. Guess the pattern, use hints if you need them, find the key insight, then write the code yourself, one part at a time.',
+    points: ['Progressive hints', 'Key insight', 'Write it part by part'],
   },
   {
     icon: Repeat2,
     title: 'Review on schedule',
-    body: 'Learned problems come back just before you would forget them, mixed with other patterns, so you learn to tell them apart like you must in an interview.',
-    points: ['Spaced repetition', `${DRILL_TYPES} drill types`, 'Mixed practice'],
+    body: 'Learned problems come back just before you would forget them, mixed with other patterns. Spot the pattern, then write the code from memory.',
+    points: ['Spaced repetition', 'Write code from memory', 'Mixed practice'],
   },
 ];
 
@@ -399,7 +416,7 @@ const REVIEW_INTERVALS = (() => {
   const t = today();
   return previewIntervals({ due: t, interval: 4, ease: 2.5, reps: 2, lapses: 0, last: addDays(t, -4) });
 })();
-// Same labels as the real rating buttons (Drills.tsx RATINGS).
+// Same labels as the review's results (Review.tsx GRADE_UI) and rating buttons (Drills.tsx RATINGS).
 const GRADES = [
   ['again', 'Forgot'],
   ['hard', 'Fuzzy'],
@@ -420,8 +437,8 @@ function FeatureVisual({ kind }: { kind: string }) {
           {[
             ['done', 'Spot the pattern'],
             ['done', 'Find the key insight'],
-            ['current', 'Build the code, part by part'],
-            ['todo', 'Check the complexity'],
+            ['current', 'Write the code, part by part'],
+            ['todo', 'Fill the gaps from memory'],
           ].map(([state, label]) => (
             <li key={label} className={state}>
               <span className="lp-fv-steps-mark">{state === 'done' && <Check strokeWidth={3} aria-hidden="true" />}</span>
@@ -434,7 +451,7 @@ function FeatureVisual({ kind }: { kind: string }) {
       return (
         <div className="lp-fv-review">
           <div className="lp-fv-review-q">
-            How well did you recall <strong>{TWO_SUM.title}</strong>?
+            <strong>{TWO_SUM.title}</strong> comes back in…
           </div>
           <div className="lp-fv-grades">
             {GRADES.map(([g, label]) => (
@@ -532,25 +549,25 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
     kind: 'lessons',
     icon: BookOpen,
     title: 'Guided lessons',
-    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to writing the solution and checking its complexity.`,
+    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to writing every part of the solution yourself.`,
   },
   {
     kind: 'review',
     icon: Repeat2,
     title: 'Spaced review',
-    body: 'An SM-2 style scheduler brings each problem back at the right moment. Grade your recall and the gaps grow.',
+    body: 'An SM-2 style scheduler brings each problem back at the right moment: spot its pattern, then write its code from memory. Get it right and the gaps between reviews grow.',
   },
   {
     kind: 'rebuild',
     icon: Keyboard,
     title: 'Code from memory',
-    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file.',
+    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file, on desktop or phone.',
   },
   {
     kind: 'blitz',
     icon: Zap,
     title: 'Pattern Blitz',
-    body: 'Sixty seconds of rapid-fire “which pattern is this?” with combo multipliers, or an untimed Zen mode.',
+    body: 'Two games against the clock: spot the pattern of a problem in 60 seconds, or type the key lines of solutions you learned in 90. Or play untimed in Zen mode.',
   },
   {
     kind: 'guide',
@@ -632,7 +649,7 @@ function Curriculum() {
                 {FOUNDATIONS.length} lessons · about {hours} {hours === 1 ? 'hour' : 'hours'}
               </span>
             </div>
-            <p>Python basics, loops, lists and dicts, Big-O, recursion and a problem-solving framework, before your first pattern.</p>
+            <p>You write Python from the first minute: basics, loops, lists and dicts, Big-O, recursion and a problem-solving framework, before your first pattern.</p>
           </div>
           <ul className="lp-foundations-list" aria-label="Some of the beginner lessons">
             {FOUNDATIONS.slice(1, 4).map((l) => {
@@ -747,7 +764,7 @@ function Science() {
 const FAQ: { q: string; a: ReactNode }[] = [
   {
     q: 'Is IntPrep free?',
-    a: 'Yes. Every lesson, drill and game is free to use. There is no paid tier and nothing to unlock.',
+    a: 'Yes. Every lesson, review and game is free to use. There is no paid tier and nothing to unlock.',
   },
   {
     q: 'Do I need an account?',
@@ -767,7 +784,7 @@ const FAQ: { q: string; a: ReactNode }[] = [
   },
   {
     q: 'Does it work on my phone?',
-    a: 'Yes. IntPrep is designed for phones first and works in any modern browser. You can add it to your home screen, and drills that need code switch to tapping instead of typing.',
+    a: 'Yes. IntPrep is designed for phones first and works in any modern browser, and you can add it to your home screen. You type code on your phone too, with a key bar for indents and symbols. Would you rather pick lines than type them in reviews? Switch to Tap to choose in your profile.',
   },
 ];
 

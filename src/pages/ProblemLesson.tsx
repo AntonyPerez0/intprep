@@ -35,7 +35,7 @@ import { XP } from '../lib/game';
 import { gapSource, gapsSummary, type GapSource, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
-import { parseSolution, type Chunk, type ParsedSolution } from '../lib/parseSolution';
+import { lessonParts as bodyParts, parseSolution } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
 import { getProgress, learnProblem, useProgress } from '../lib/store';
 import { ActionBar, Choices, ProblemPrompt, type CheckStatus } from '../components/interact';
@@ -512,42 +512,6 @@ interface PartRecord {
 }
 const NO_RECORD: PartRecord = { checked: false, right: false, peeked: false };
 
-interface Part {
-  chunk: Chunk;
-  /** Index of the chunk in the parsed solution (its lines carry it as `chunk`). */
-  ci: number;
-  /** Signature lines the part opens with: given while writing, like the header. */
-  lead: string[];
-  /** The lines to write. Signature lines a part ends with are given with the next part. */
-  body: string[];
-}
-
-/**
- * A class line, or a function or method signature at class level: the lines LeetCode's starter
- * code gives (`class Solution:`, `def get(self, key: int) -> int:`) or that only name a helper.
- * They are given, like the header; nested helpers (`def dfs(r, c):`) are part of the logic.
- */
-const SIGNATURE = /^(class\s+\w+.*|def\s+\w+\(.*\).*|    def\s+\w+\(self\b.*\).*):\s*(#.*)?$/;
-
-/**
- * The parts the learner writes: every chunk but the header. Signature lines at the start or end
- * of a chunk (design problems put each method in its own part) are given, not typed.
- */
-function bodyParts(parsed: ParsedSolution): Part[] {
-  return parsed.chunks.flatMap((chunk, ci) => {
-    if (chunk.header) return [];
-    const { lines } = chunk;
-    const given = (l: string) => l.trim() === '' || SIGNATURE.test(l);
-    let a = 0;
-    while (a < lines.length && given(lines[a])) a++;
-    let b = lines.length;
-    while (b > a && given(lines[b - 1])) b--;
-    // A part that is only signatures (none today) is written whole.
-    if (a === b) return [{ chunk, ci, lead: [], body: lines }];
-    return [{ chunk, ci, lead: lines.slice(0, a), body: lines.slice(a, b) }];
-  });
-}
-
 /** Markdown-free text, for comments in the file and screen-reader descriptions. */
 const plain = (s: string) => s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1');
 
@@ -745,7 +709,7 @@ function CodeStep({
       fbTitle = 'Right, after a peek';
       fbBody = 'Only parts you write without peeking count toward your tally.';
     } else if (grade.perfect) {
-      fbTitle = 'Right now';
+      fbTitle = 'All lines right now';
       fbBody = 'Your tally keeps the first try. The fix still counts as practice.';
     } else {
       fbTitle = indentOnly ? 'Right code, wrong indentation' : undefined;

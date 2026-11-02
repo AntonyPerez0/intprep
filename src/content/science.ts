@@ -24,7 +24,17 @@ export const SCIENCE: SciencePrinciple[] = [
       "Pulling an answer out of memory strengthens it far more than rereading. Students who practiced recalling a text remembered much more a week later than students who reread it, even though rereading looked better on a test five minutes later.",
     source: "Roediger & Karpicke (2006), Psychological Science",
     howWeUseIt:
-      "Almost every drill makes you produce the answer before you see it: name the pattern, recall the key insight, fill in the key line, or rebuild the whole solution from memory.",
+      "Reviews make you produce the answer before you see it: spot the pattern, then write the key line, the missing lines or a whole part from memory. Code from memory goes up to the whole solution.",
+  },
+  {
+    id: "generation-effect",
+    title: "Write it, don't pick it",
+    icon: "pencil",
+    finding:
+      "People remember what they produce themselves better than what they only read. In the classic experiments, words learners generated from a cue were remembered better than the same words read, and a later meta-analysis found the benefit across many studies.",
+    source: "Slamecka & Graf (1978), J. Experimental Psychology: Human Learning and Memory; Bertsch et al. (2007), Memory & Cognition",
+    howWeUseIt:
+      "You write code rather than choose it: each lesson part (look, cover, write, check), the template after each pattern intro, and two coding cards per problem in reviews. Feedback comes line by line, and misses return in the same session.",
   },
   {
     id: "spaced-repetition",
@@ -44,7 +54,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Mixing different problem types in one session feels harder than practicing one type at a time, but it teaches you to tell similar problems apart and pick the right strategy. A meta-analysis found a moderate benefit, largest for easily confused categories.",
     source: "Brunmair & Richter (2019), Psychological Bulletin",
     howWeUseIt:
-      "Units teach one pattern at a time. Then the daily drill and Pattern Blitz shuffle patterns together, so you practice the real interview skill: spotting which pattern a new problem needs.",
+      "Units teach one pattern at a time. Then daily review and Pattern Blitz shuffle patterns together, so you practice the real interview skill: spotting which pattern a new problem needs.",
   },
   {
     id: "pretesting",
@@ -64,7 +74,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Beginners learn problem solving faster from fully worked examples than from struggling alone, because it frees working memory. As skill grows, guidance should fade: help that aids novices can hold more experienced learners back.",
     source: "Renkl & Atkinson (2003); Kalyuga et al. (2003), Educational Psychologist",
     howWeUseIt:
-      "Lessons walk from brute force to key insight to step-by-step code. Progressive hints let you take only the help you need, and drills climb from recognizing a solution to rebuilding it unaided.",
+      "Lessons walk from brute force to key insight to code you write yourself, part by part. Progressive hints let you take only the help you need, and practice climbs from filling gaps to a blank file.",
   },
   {
     id: "chunking",
@@ -74,7 +84,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Experts see meaningful chunks, not single pieces: chess masters recall real positions at a glance but not random ones. Expert programmers likewise think in reusable plans, freeing working memory for what is new in a problem.",
     source: "Chase & Simon (1973), Cognitive Psychology",
     howWeUseIt:
-      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained in small labeled chunks, so you learn the plan behind the code.",
+      "Each pattern unit gives you a reusable code template and the cues that trigger it, and every solution is explained and written in small labeled parts, so you learn the plan behind the code.",
   },
   {
     id: "self-explanation",
@@ -84,7 +94,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Learners who explain to themselves why each step of an example works understand it better and solve new problems better. A meta-analysis of 64 reports found a medium-sized benefit from prompting self-explanation.",
     source: "Bisra et al. (2018), Educational Psychology Review",
     howWeUseIt:
-      "Code walkthroughs pair every chunk with a plain-English why, and insight-recall drills ask you to bring the key idea to mind before you check it against ours.",
+      "Every part of the code comes with a plain-English why, and you write it from memory right after reading it. Insight-recall cards ask you to bring the key idea to mind before you check it against ours.",
   },
   {
     id: "parsons-problems",
@@ -94,7 +104,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Putting the scrambled lines of a solution in order took students significantly less time than writing or fixing the same code, with no difference in learning or in retention a week later.",
     source: "Ericson, Margulieux & Rick (2017), Koli Calling",
     howWeUseIt:
-      "Order-the-steps quizzes and Parsons drills are a stepping stone between recognizing a solution and rebuilding it from memory.",
+      "The steps-in-order card in reviews is a stepping stone between recognizing a solution and writing it from memory.",
   },
   {
     id: "desirable-difficulties",
@@ -104,7 +114,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Practice that feels harder, such as testing, spacing and mixing, often produces better long-term learning. Smooth, fluent practice can lift today's performance while hiding how little will last.",
     source: "Bjork & Bjork (2011), Psychology and the Real World",
     howWeUseIt:
-      "We choose effortful drills over rereading and tell you when struggle is a good sign. A mistake in a drill simply brings that problem back sooner.",
+      "We choose writing code over rereading it and tell you when struggle is a good sign. A missed card comes back later in the same session, and the problem returns sooner.",
   },
   {
     id: "calibration",
@@ -124,7 +134,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Skill grows fastest from focused practice on specific weaknesses with immediate feedback, not just hours logged. A later meta-analysis found practice matters but explains less than once claimed, so quality beats quantity.",
     source: "Ericsson et al. (1993); Macnamara et al. (2014)",
     howWeUseIt:
-      "Each drill trains one skill (spotting the pattern, the key line, the complexity) with instant feedback, and problems you miss come back more often than ones you know well.",
+      "Each card trains one skill (spotting the pattern, writing a key line, filling the gaps, writing a part) with instant feedback, and problems you miss come back more often than ones you know well.",
   },
   {
     id: "flow",

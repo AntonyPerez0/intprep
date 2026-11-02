@@ -24,6 +24,12 @@ export const DRILL_LABEL: Record<DrillKind, string> = {
   part: 'Write a part',
 };
 
+/**
+ * Problems per review session. Each brings three cards (one recognition card, two coding cards),
+ * and coding cards take longer than a multiple-choice question.
+ */
+export const SESSION_PROBLEMS = { due: 8, ahead: 5, unit: 5 } as const;
+
 // ── Pattern recognition ─────────────────────────────────────────────────────
 
 /** Categories that are fair answers for this problem. */

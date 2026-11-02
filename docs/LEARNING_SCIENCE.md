@@ -61,21 +61,21 @@ page, or the original blog post). Full references are at the end.
 | IntPrep feature | Main principles (section numbers) |
 |---|---|
 | Beginner foundations track (Python, Big-O, recursion, problem-solving framework) | Beginners need guidance (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
-| Pattern unit intro (analogy, recognition cues, template, quiz) | Schemas and templates (9), worked examples (4), retrieval (1), interleaving needs clear categories first (3) |
+| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; a revealed answer comes back at the end) | Generation (6), retrieval (1), immediate feedback (12), successive relearning (2) |
+| Pattern unit intro (analogy, recognition cues, template, fill in the template, quiz) | Schemas and templates (9), worked examples (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
 | Guided lesson: predict the pattern first | Pretesting (6), calibration (11) |
 | Guided lesson: progressive hints | Faded guidance (4), productive struggle (6), expertise reversal (4) |
 | Guided lesson: brute force, then key insight, then algorithm | Worked examples (4), contrasting cases (3), self-explanation (8) |
-| Guided lesson: chunked code walkthrough | Chunking (9), subgoal labels (4), self-explanation (8) |
-| Guided lesson: complexity check, order-the-steps quiz | Retrieval (1), Parsons problems (5) |
+| Guided lesson: write the code part by part (look, cover, write, check) | Worked examples (4), generation (6), retrieval (1), immediate feedback (12), chunking and subgoal labels (9, 4), self-explanation (8) |
+| Guided lesson: complexity check, final fill-the-gaps check | Retrieval (1), generation (6) |
 | Spaced-repetition review queue (SM-2 style, auto-graded) | Spacing (2), retrieval (1), successive relearning (2), calibration (11) |
-| Interleaved daily drill | Interleaving (3), spacing (2), deliberate practice (10) |
-| Drill: pattern-recognition multiple choice | Retrieval (1), interleaving (3), feedback on MC (12) |
-| Drill: insight recall with self-rating | Retrieval (1), generation (6), calibration (11) |
-| Drill: Parsons step ordering | Parsons problems (5) |
-| Drill: key-line fill-in | Retrieval (1), generation (6), chunking (9) |
-| Drill: complexity multiple choice | Retrieval (1), feedback (12) |
-| Drill: rebuild the solution from memory | Recall beats recognition (1), desirable difficulty (7), deliberate practice (10) |
-| Pattern Blitz (60 s, combo multiplier) | Interleaving (3), flow (14), fluency through retrieval (1); risks in Part C |
+| Interleaved daily review | Interleaving (3), spacing (2), deliberate practice (10) |
+| Review: one recognition card per problem (spot the pattern, insight, technique, complexity or steps in order) | Retrieval (1), interleaving (3), feedback on MC (12), Parsons problems (5) |
+| Review: two coding cards per problem (write the key line, fill the gaps, write a part), chosen by schedule stage | Generation (6), recall beats recognition (1), faded guidance (4), feedback (12) |
+| Review: a missed card comes back in the same session as a fresh version | Successive relearning (2), feedback (12) |
+| Insight recall with self-rating | Retrieval (1), generation (6), calibration (11) |
+| Code from memory (part by part, fill the gaps, from scratch) and Template practice (fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10) |
+| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
 | XP, daily XP goal, levels, achievements | Gamification evidence (16), goal setting (18), self-determination theory (15) |
 | Streak, streak freezes bought with gems | Habit formation (19), Duolingo data (17), emergency reserves (18), broken-streak effects (18) |
 | Mastery crowns per problem (from review interval) | Spacing (2), competence feedback (15), goal gradient (18) |
@@ -103,14 +103,17 @@ Dunlosky et al. (2013) rated practice testing one of only two "high utility" stu
 Rowland (2014); Adesope, Trevisan & Sundararajan (2017); Pan & Rickard (2018); Dunlosky et al. (2013).
 
 **How IntPrep uses it.**
-- Every drill asks the learner to *produce* something before showing the answer: the pattern name, the
-  key insight, the missing key line, the step order, the complexity, or the whole solution.
-- The order-the-steps quiz and complexity check at the end of each guided lesson are the first retrieval of
-  that problem. The review queue then repeats retrieval on a spaced schedule.
-- Because recall beats recognition, drills should **climb a format ladder** as a problem matures:
-  recognition (pattern MC, complexity MC), then partial recall (Parsons, key-line fill-in), then full recall
-  ("rebuild from memory"). The top mastery crowns should require a successful recall-format drill, not only
-  multiple choice.
+- Every review card asks the learner to *produce* something before showing the answer. Each problem gets one
+  recognition card (the pattern name, the key insight, the technique, the complexity or the step order) and
+  two coding cards: the key line, the missing lines of the solution, or a whole part written from its cue.
+- In a guided lesson, writing each part from memory right after studying it (look, cover, write, check), the
+  complexity check and the final fill-the-gaps check are the first retrieval of that problem. The review queue
+  then repeats retrieval on a spaced schedule.
+- Because recall beats recognition, the coding cards **climb a format ladder** as a problem matures (see the
+  [scheduling rules](#intpreps-review-scheduling-rules)): while it is being learned, the key line and the gaps;
+  then the gaps and a whole part; once it is mature, two parts. Code from memory and Template practice climb
+  the same way, from filling gaps to a blank file. The top mastery crowns should still require a successful
+  recall-format drill, not only multiple choice.
 
 ## 2. Spacing and spaced-repetition scheduling
 
@@ -147,8 +150,12 @@ item correctly during practice, then relearn it again in several later spaced se
 **How IntPrep uses it.**
 - Every problem a learner finishes enters the review queue with an SM-2-style schedule. The app grades each
   review Again, Hard, Good or Easy from performance (see the [scheduling rules](#intpreps-review-scheduling-rules)).
-- Items answered "Again" come back **later in the same session** until answered correctly once (SM-2's
-  end-of-session repeat and the successive-relearning criterion), then return the next day.
+- A missed card comes back **once, later in the same session** (SM-2's end-of-session repeat and the
+  successive-relearning criterion). A coding card comes back as a fresh version (other gaps, another key line
+  or another part), so the retry is recall rather than a copy of the answer just shown. The problem then
+  returns sooner on the schedule.
+- Practicing ahead and unit practice are optional: a miss there never resets the schedule of a problem that is
+  not due.
 - Mastery crowns are derived from the current review interval, so a crown means "you have remembered this across
   a long gap", which is an honest signal of durable learning.
 - SM-2 is a good, explainable starting point. If enough review data builds up, FSRS can replace it. The
@@ -172,12 +179,12 @@ Brunmair & Richter (2019).
 
 **How IntPrep uses it.**
 - Each pattern unit is taught as a block first, so the learner has a clear idea of the category before mixing.
-- The **interleaved daily drill** and **Pattern Blitz** shuffle problems from every pattern the learner has
+- The **interleaved daily review** and **Pattern Blitz** shuffle problems from every pattern the learner has
   studied. Identifying the pattern is exactly the discrimination skill an interview tests.
 - The mix should **favour confusable pairs** (for example, two pointers vs. sliding window, BFS vs. DFS,
   1-D DP vs. greedy), because that is where interleaving helps most. Problems with an `alsoAccept` pattern
   are good contrast cases.
-- Tell learners why the mixed drill feels harder, since people misjudge interleaving as less effective.
+- Tell learners why the mixed review feels harder, since people misjudge interleaving as less effective.
 
 ## 4. Worked examples, faded guidance and cognitive load
 
@@ -198,12 +205,15 @@ Kalyuga et al. (2003); Kirschner, Sweller & Clark (2006); Sweller, van Merriënb
 Morrison, Margulieux & Guzdial (2015).
 
 **How IntPrep uses it.**
-- Guided lessons are worked examples: brute force, then key insight, then step-by-step algorithm, then a
-  chunked code walkthrough. The `#@` chunk explanations in the content format work as subgoal labels.
+- Guided lessons are worked examples: brute force, then key insight, then step-by-step algorithm, then the code
+  one part at a time. Each part is studied and then written from memory right away (look, cover, write,
+  check), so the worked example fades part by part. The `#@` chunk explanations in the content format work as
+  subgoal labels.
 - **Progressive hints** (gentle, then strong) let each learner take only as much guidance as they need.
 - **Fading across a unit:** the first problem in a pattern should be fully worked; later problems in the same
   unit can start with the walkthrough collapsed and invite an attempt first.
-- **Fading across reviews:** the drill format ladder (Section 1) removes scaffolding as the review interval grows.
+- **Fading across reviews:** the coding cards' format ladder (Section 1) removes scaffolding as the review
+  interval grows, and Code from memory and Template practice open one rung above what the learner has shown.
 - **Expertise reversal:** learners who already know a pattern (high accuracy in its drills) should be able to skip
   straight to "try it, then check", rather than sit through the full walkthrough.
 
@@ -223,8 +233,10 @@ and its gaps (Ericson et al., 2022).
 Ericson, Foley & Rick (2018); Ericson et al. (2022).
 
 **How IntPrep uses it.**
-- The **order-the-steps quiz** (plain-English steps) ends each guided lesson.
-- The **Parsons drill** in reviews sits between recognition and full recall on the format ladder.
+- Each guided lesson now ends with a fill-the-gaps check over the whole solution; the order-the-steps (Parsons)
+  card stays in reviews as one of the recognition cards.
+- The opt-in "Tap to choose" input mode (for learners who cannot type comfortably) turns the coding cards into
+  lines to pick, Parsons-style, so it still sits between recognition and full recall.
 - Add **code-line Parsons with one or two distractor lines** (for example an off-by-one bound or a wrong
   pointer move) and indentation, as in Ericson's studies. If the learner makes two wrong moves, make it
   easier by merging two blocks or removing a distractor (adaptive Parsons).
@@ -250,7 +262,15 @@ to make a real attempt (Kapur, 2016).
   no XP loss and no effect on the streak. You can even award a little XP for making the guess.
 - **Brute force before the insight.** Asking "what is the obvious way?" is a generation step and sets up the
   contrast that makes the key insight meaningful.
-- **Key-line fill-in** and **insight recall** are generation tasks.
+- **Writing code instead of choosing it** is IntPrep's main generation task. The learner types the key line,
+  the missing lines or a whole part in reviews, every part of the solution in a guided lesson, the template's
+  missing lines at the end of each pattern intro, and small programs on most slides of the beginner lessons.
+  Multiple choice stays only for recognition skills: spotting the pattern, the technique, the complexity,
+  constraints and output predictions.
+- **Look, cover, write, check.** In a guided lesson each part is shown with its explanation (look), then hidden
+  (cover) while the learner writes it under the code before it (write), then compared line by line (check).
+  Peeking is allowed but the part no longer counts as written right.
+- **Insight recall** is a generation task too.
 - **Attempt-first mode** (productive failure) should be offered once a learner has some knowledge of the pattern,
   for example after the first problem in a unit. It should not be forced on complete beginners.
 
@@ -268,7 +288,7 @@ A difficulty is only *desirable* if the learner can eventually succeed; impossib
 **Key sources.** Bjork (1994); Bjork & Bjork (2011); Soderstrom & Bjork (2015); Kirk-Johnson, Galla & Fraundorf (2019).
 
 **How IntPrep uses it.**
-- IntPrep favours effortful drills (recall, rebuild, mixed practice) over rereading solutions.
+- IntPrep favors effortful practice (writing code from memory, recall, mixed review) over rereading solutions.
 - **Normalise struggle in the UI copy**, for example "Feeling stuck? That effort is what makes it stick." Show the
   learner their long-term retention (crowns kept) so effort is visibly connected to results.
 - Keep difficulties achievable: hints are always available, and the scheduler aims for a high but not perfect
@@ -379,6 +399,13 @@ Karpicke & Roediger, 2007).
 **How IntPrep uses it.**
 - **Immediate feedback after every answer:** correct or not, plus a one-line *why* (the recognition cue, the key
   line, the reason for the complexity).
+- **Corrective feedback on code, line by line.** Every check shows a diff: lines that match, lines that are off
+  (with the right line under them) and lines with the wrong indentation. The first check decides the score;
+  "Fix and check again" then lets the learner correct their own lines with the answer in view, which turns the
+  feedback into one more retrieval instead of a glance.
+- **Missed work comes back in the same session:** a missed review card returns as a fresh version at the end of
+  the session, a "Your turn" exercise whose answer was shown (or a missed template check) returns at the end of
+  the lesson, and Pattern Blitz lists each missed line with the right one when the round ends.
 - **End-of-session recap:** list the misses with the correct answers again. This adds the benefit of delayed,
   spaced re-exposure without slowing the drill.
 - Multiple-choice distractors should be **plausible neighbours** (similar patterns, off-by-one complexities),
@@ -402,8 +429,11 @@ monitor where they are, increased productivity, independence and self-efficacy i
 Pólya (1945).
 
 **How IntPrep uses it.**
-- The **foundations track** should teach *reading and tracing* before *writing*: "What does this print?" and
-  "What is `i` after the loop?" exercises come before "write a function that...".
+- The **foundations track** teaches *reading and tracing* before *writing*: "What does this print?" and
+  "What is `i` after the loop?" come first, then the learner writes code on most concept slides ("Your turn"),
+  from a single line up to a small program or function, with the starter code given and the result checked
+  line by line. The first lesson demonstrates retrieval itself: the learner writes a line, then recalls its
+  shape from memory a few slides later.
 - The **problem-solving framework** (understand, examples, brute force, optimise, code, test) is taught once in
   foundations and then shown as a slim progress bar in every guided lesson, so the learner always knows which stage
   they are in.
@@ -584,7 +614,7 @@ not yet built.
 
 **Streak**
 1. A day counts when the learner completes **one meaningful session**: either all due reviews (if any) or one
-   guided lesson or one daily drill set. The streak is **not tied to the daily XP goal** (Yu, 2020).
+   guided lesson or one review session. The streak is **not tied to the daily XP goal** (Yu, 2020).
 2. **Streak freezes** are auto-applied on a missed day. Hold at most **2** (Mansur, 2022; Sharif & Shu, 2017). They
    cost gems that a learner earns in about two days of normal practice, so they are slack with a modest cost, not
    a paywall. New learners start with one free freeze.
@@ -620,9 +650,10 @@ not yet built.
 
 **Combo meter, Pattern Blitz, celebrations**
 1. In normal drills, the combo meter counts consecutive correct answers but never rewards speed.
-2. Pattern Blitz: 60 seconds, combo multiplier, a personal best, and an untimed mode. It unlocks after 3 patterns,
-   draws only from studied patterns, and sends misses to the review queue. Show an end-of-round recap with the
-   recognition cue for each miss.
+2. Pattern Blitz: two games with a combo multiplier, a personal best each, and an untimed Zen mode. *Spot the
+   pattern* runs 60 seconds; *Key lines* (typing the key line of a learned solution) runs 90, since typing takes
+   longer than tapping, and opens once 3 problems are learned. Misses on learned problems go to the review
+   queue, and the round ends with a recap of each miss (the clues, or your line and the right one).
 3. Confetti and sounds are for session end, goal met, crown earned and milestones. Use a small tick or shimmer for
    single correct answers. Nothing animates during reading.
 
@@ -630,7 +661,7 @@ not yet built.
 1. Aim for a **10–15 minute** daily session. Introduce at most **1–3 new problems per day** for beginners (more
    when review accuracy is high), and cap a day's reviews at around **20–30 problems**, spreading any backlog over
    several days.
-2. Order a session as due reviews first (the most fragile memories), then the interleaved drill, then new material.
+2. Order a session as due reviews first (the most fragile memories), then the interleaved review, then new material.
 
 ## IntPrep's review-scheduling rules
 
@@ -648,9 +679,11 @@ not yet built.
   interval a little, Easy a lot.
 - **Again:** the problem comes back later in the same session until answered correctly, then returns tomorrow
   (successive relearning; SM-2 step 7).
-- **Format ladder:** choose the drill type from the current interval, for example under 7 days: recognition or
-  Parsons; 7–21 days: key-line fill-in or insight recall; over 21 days: rebuild from memory (with key-line fill-in
-  as a fallback on mobile).
+- **Format ladder:** every problem gets one recognition card (spot the pattern about 70% of the time) and two
+  coding cards chosen from its schedule: while it is being learned (interval under 4 days, or fewer than 2 good
+  reviews in a row), write the key line + fill the gaps; 4–20 days, fill the gaps + write a part; 21 days or
+  more, two different parts. Phones type too (a key bar supplies indents and symbols); "Tap to choose" is an
+  opt-in.
 - **Self-rating cross-check:** if a self-rated "Easy" is followed by a failed objective drill on the same problem,
   treat the review as Again.
 - **Retention target:** monitor the learner's review accuracy. Aim for 85–90%. Lengthen intervals if accuracy stays

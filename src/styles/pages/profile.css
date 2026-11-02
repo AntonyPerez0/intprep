@@ -213,14 +213,10 @@
 .profile-unit.profile-of {
   margin-left: 2px;
 }
+/* Eight cards: two rows of four from a tablet up */
 @container profile (min-width: 600px) {
   .profile-stats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-@container profile (min-width: 940px) {
-  .profile-stats {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

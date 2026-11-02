@@ -796,7 +796,7 @@ function TemplateGapsStep({
         : 'Lines with a plus show the template. Fix yours now, or continue.';
     }
   } else if (ex.revealed) {
-    title = grade.perfect ? 'All fixed' : undefined;
+    title = grade.perfect ? 'All gaps right now' : undefined;
     feedback = grade.perfect ? 'Every gap matches the template now.' : `${gapsSummary(grade)}. Fix the rest, or continue.`;
   }
 

@@ -666,9 +666,21 @@ export function Profile() {
         <StatCard icon="sparkles" label="Mastered" value={fmt(mastered)} meta={learned ? `Of ${fmt(learned)} learned` : 'None learned yet'} />
         <StatCard
           icon="target"
-          label="Drill accuracy"
+          label="Practice accuracy"
           value={p.stats.answered ? `${acc}%` : '—'}
-          meta={p.stats.answered ? `${fmt(p.stats.correct)}/${fmt(p.stats.answered)} correct` : 'No drills answered yet'}
+          meta={p.stats.answered ? `${fmt(p.stats.correct)}/${fmt(p.stats.answered)} right first try` : 'No answers yet'}
+        />
+        <StatCard
+          icon="blitz"
+          label="Pattern Blitz best"
+          value={p.stats.blitzBest ? fmt(p.stats.blitzBest) : '—'}
+          meta={p.stats.blitzPlays ? `${fmt(p.stats.blitzPlays)} timed round${p.stats.blitzPlays === 1 ? '' : 's'}` : 'No timed rounds yet'}
+        />
+        <StatCard
+          icon="keyboard"
+          label="Key lines best"
+          value={p.stats.blitzCodeBest ? fmt(p.stats.blitzCodeBest) : '—'}
+          meta={p.stats.blitzCodePlays ? `${fmt(p.stats.blitzCodePlays)} timed round${p.stats.blitzCodePlays === 1 ? '' : 's'}` : 'No timed rounds yet'}
         />
       </div>
 
@@ -702,7 +714,7 @@ export function Profile() {
             </SettingRow>
           </SettingsGroup>
 
-          <SettingsGroup title="Practice" desc="Set your daily target and how code drills take input.">
+          <SettingsGroup title="Practice" desc="Set your daily target and how you enter code in reviews.">
             <SettingRow label="Daily goal" desc={goal ? `XP per day, about ${goal.blurb.replace('≈', '').replace('a day', '').trim()} of practice.` : 'XP to earn each day.'}>
               <div className="seg profile-seg profile-seg-4" role="radiogroup" aria-label="Daily goal">
                 {DAILY_GOALS.map((g) => (

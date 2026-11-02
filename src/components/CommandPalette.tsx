@@ -25,6 +25,8 @@ const PAGES: { label: string; to: string; icon: LucideIcon; hint?: string }[] = 
   { label: 'Learning path', to: '/learn', icon: ICONS.learn },
   { label: 'Daily review', to: '/review', icon: ICONS.review },
   { label: 'Pattern Blitz', to: '/blitz', icon: ICONS.blitz },
+  // Pattern Blitz's typing game (the lobby explains the lock until 3 problems are learned).
+  { label: 'Key lines', to: '/blitz?game=lines', icon: ICONS.keyboard, hint: 'Pattern Blitz' },
   { label: 'Problem library', to: '/problems', icon: ICONS.list },
   { label: 'Pattern guide', to: '/patterns', icon: ICONS.book },
   { label: 'Profile & settings', to: '/profile', icon: ICONS.user },
@@ -75,7 +77,15 @@ export function CommandPalette() {
 
   const all = useMemo<Item[]>(
     () => [
-      ...PAGES.map((p) => ({ id: `page:${p.to}`, group: 'Pages' as const, label: p.label, to: p.to, icon: p.icon, haystack: p.label.toLowerCase() })),
+      ...PAGES.map((p) => ({
+        id: `page:${p.to}`,
+        group: 'Pages' as const,
+        label: p.label,
+        hint: p.hint,
+        to: p.to,
+        icon: p.icon,
+        haystack: `${p.label} ${p.hint ?? ''}`.toLowerCase(),
+      })),
       ...CATEGORIES.map((c) => ({
         id: `cat:${c.id}`,
         group: 'Patterns' as const,

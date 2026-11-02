@@ -165,7 +165,10 @@ export function Unit() {
                     Completed
                   </span>
                 ) : (
-                  <span className="unit-stat-text">Not started</span>
+                  <>
+                    <span className="unit-stat-text">Not started</span>
+                    <span className="unit-stat-sub">About 5 min · you fill in the template</span>
+                  </>
                 )
               ) : (
                 <span className="unit-stat-text">Coming soon</span>

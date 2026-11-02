@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Learn the 150 classic coding-interview problems step by step, then lock the patterns in with spaced-repetition drills and streaks.",
+  "description": "Learn the 150 classic coding-interview problems step by step, write every solution yourself, then keep it in memory with spaced review and streaks.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

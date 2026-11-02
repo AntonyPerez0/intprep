@@ -21,8 +21,10 @@ Plain English with American spelling (practice, color, neighbor, optimize), shor
 4. **Annotations.** A `#@` explanation above every 1–6 lines (small, digestible chunks; 4–9 chunks is typical).
    Mark 1–4 **key lines** with two spaces + `#!` — the single lines that embody the insight
    (e.g. the window-shrink condition, the DP recurrence, the complement lookup). Not trivial lines like `return res`.
-5. **steps**: 3–7 unique, plain-English steps that mirror the chunks (used in "put the steps in order" drills,
-   so each must be distinguishable). **hints**: 2–3 progressive (gentle → strong).
+   Key lines are what learners type most: always a gap in the lesson's final check, and what the review's "Write
+   the key line" card and Pattern Blitz's Key lines ask for. Each `#@` chunk is a part the learner writes in the lesson.
+5. **steps**: 3–7 unique, plain-English steps that mirror the chunks (used in the review's "Put the steps in order"
+   card, so each must be distinguishable). **hints**: 2–3 progressive (gentle → strong).
    **signals**: words/features in the problem that should trigger the pattern.
    **mnemonic**: ≤ 12 words, sticky. **pitfalls**: 2–4 real bugs/edge cases.
 6. **alsoAccept**: set it when another unit's technique is also a fair answer to "which pattern is this?"
@@ -35,9 +37,12 @@ Plain English with American spelling (practice, color, neighbor, optimize), shor
    (use double quotes or template literals for those strings).
 
 ## Foundations: "Your turn" slides
-Code lessons (not purely conceptual ones) let beginners write code themselves with `kind: 'type'` slides
-(see `TypeSlide` in `src/content/types.ts`). Put one right after the slide that taught the idea, about 2–3 per
-lesson, growing from one line to a few lines to a whole small function.
+Beginners learn by writing code, not by picking it. Code lessons let them write it themselves with `kind: 'type'`
+slides (see `TypeSlide` in `src/content/types.ts`). Put one right after the slide that taught the idea: **6 or
+more per code lesson** (conceptual lessons such as Big-O or how to solve a problem still get a few), ramping from a
+single line to a few lines to a small program or function by the end. Keep **at most 2 quizzes** per code lesson,
+and use them for recognition only: predicting output, spotting a bug or gotcha, reading complexity. A slide whose
+answer the learner reveals comes back at the end of the lesson, so make each one worth writing twice.
 - **Answerable from the lesson so far**, and unambiguous: name every variable, function and loop variable the
   answer uses (`Use i as the loop variable`), because the learner's code is compared with the answer line by line.
 - `starter`: read-only lines shown above the editor (a `def` line, a variable to use). Write `answer` at its real
@@ -46,7 +51,8 @@ lesson, growing from one line to a few lines to a whole small function.
   return). Whitespace, quote style and comments never matter; indentation does.
 - `output`: exactly what `starter` + `answer` prints, shown as the expected output. `hint`: a nudge, not the answer.
   `explain`: why it works, shown after checking.
-- `npm run validate -- foundations` compiles `starter` + `answer` (and every `accept`) with python3.
+- `npm run validate -- foundations` compiles `starter` + `answer` (and every `accept`) with python3, and runs every
+  one that declares an `output` (and every code slide with an `output`): what it prints must match exactly.
 
 ## Every solution must be tested
 In your own scratch directory, build a harness: `from typing import *`, `import heapq, collections, math`,

@@ -589,6 +589,7 @@ function codeFeedback({
   gaveUp,
   summary,
   comesBack,
+  unit,
 }: {
   checks: number;
   perfect: boolean;
@@ -596,6 +597,8 @@ function codeFeedback({
   /** "2 of 3 gaps correct": said after a fix that is still off. */
   summary: string;
   comesBack?: boolean;
+  /** What the card asks for, for the title after a right fix ("All gaps right now"). */
+  unit: 'gaps' | 'lines';
 }): { title?: string; body: ReactNode } {
   const again = comesBack ? ' It comes back later in this session.' : '';
   if (checks <= 1) {
@@ -603,7 +606,7 @@ function codeFeedback({
     if (gaveUp) return { title: 'Answer shown', body: `Lines with a plus are the answer. Type them once, or continue.${again}` };
     return { body: `Lines with a plus show the answer. Fix yours, or continue.${again}` };
   }
-  if (perfect) return { title: 'All right now', body: 'Your first check is what counts for this review. The fix still helps it stick.' };
+  if (perfect) return { title: `All ${unit} right now`, body: 'Your first check is what counts for this review. The fix still helps it stick.' };
   return { body: `${summary}. Your first check is what counts for this review.` };
 }
 
@@ -799,7 +802,7 @@ export function GapsDrill({ problem: p, onDone, kicker, combo = 0, badge, meta, 
   const finish = () =>
     onDone({ kind: 'gaps', correct: !!first?.perfect, coded: true, lines: first ? { correct: first.correct, total: first.total } : undefined });
 
-  const fb = ex.revealed ? codeFeedback({ checks, perfect: g.perfect, gaveUp, summary: gapsSummary(g), comesBack }) : null;
+  const fb = ex.revealed ? codeFeedback({ checks, perfect: g.perfect, gaveUp, summary: gapsSummary(g), comesBack, unit: 'gaps' }) : null;
   const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
 
   return (
@@ -937,7 +940,7 @@ export function PartDrill({ problem: p, onDone, kicker, combo = 0, badge, meta, 
   };
   const finish = () => onDone({ kind: 'part', correct: !!first?.perfect, coded: true, lines: first ? { correct: first.correct, total: first.total } : undefined });
 
-  const fb = grade ? codeFeedback({ checks, perfect: grade.perfect, gaveUp, summary: gradeSummary(grade), comesBack }) : null;
+  const fb = grade ? codeFeedback({ checks, perfect: grade.perfect, gaveUp, summary: gradeSummary(grade), comesBack, unit: 'lines' }) : null;
 
   // The part to write, as a comment in the file: the cue.
   const cue = (

@@ -370,7 +370,10 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
   const { back, backToUnit } = useBack(g);
   const meta = CATEGORY_BY_ID[g.category];
   const src = useMemo(() => gapSource(g.template), [g]);
-  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: rounds.current[g.category] ?? 0 });
+  // Round 0 is the set the pattern intro's "Your turn" slide asks (and its first check is this
+  // drill's first gaps score). Once the template has a gaps score, open on other lines.
+  const [startRound] = useState(() => rounds.current[g.category] ?? (getProgress().templates?.[g.category]?.gapsBest !== undefined ? 1 : 0));
+  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, round: startRound });
   // Read once: the best before this round, so the header and "New best" do not move mid-drill.
   const [prevBest] = useState(() => getProgress().templates?.[g.category]?.gapsBest);
   const [first, setFirst] = useState<GapsGrade | null>(null);
@@ -492,7 +495,7 @@ function GapsDrill({ g, modes, onChecked, onRestart, rounds }: DrillProps & { ro
       ? `All ${grade.total} gaps right on the first check.`
       : 'Your first check sets the score. Lines with a plus show the template: fix yours, or continue.';
   } else if (ex.revealed) {
-    title = grade.perfect ? 'All fixed' : undefined;
+    title = grade.perfect ? 'All gaps right now' : undefined;
     feedback = grade.perfect
       ? `Every gap matches now. Your score stays at ${pctFirst} from the first check.`
       : `${gapsSummary(grade)}. Your score stays at ${pctFirst} from the first check.`;
@@ -585,6 +588,8 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
   const [hint, setHint] = useState(false);
   const [capped, setCapped] = useState(false); // a hint before the first check halves the XP
   const [result, setResult] = useState<MemoryResult | null>(null);
+  // Phones wait for a tap, so the keyboard does not cover the cues on arrival.
+  const [autoFocus] = useState(isFinePointer);
   // Read once: the best before this round, so the header and "New best" do not move mid-drill.
   const [prevBest] = useState(() => {
     const t = progress.templates?.[g.category];
@@ -700,7 +705,7 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
             grade={grade}
             label={`${meta.name} template`}
             textareaRef={taRef}
-            autoFocus
+            autoFocus={autoFocus}
             minRows={Math.min(total + 1, 14)}
             filename={`${g.category}.py`}
             meta="From memory"
@@ -736,15 +741,15 @@ function MemoryDrill({ g, modes, onChecked, onRestart }: DrillProps) {
           canCheck={text.trim().length > 0}
           onCheck={check}
           onContinue={finish}
-          title={status === 'correct' && attempt > 1 ? 'All fixed' : undefined}
+          title={status === 'correct' && attempt > 1 ? 'All lines right now' : undefined}
           feedback={
             status === 'wrong'
               ? attempt > 1
-                ? 'Lines with a plus show the template. Your first try still sets the score.'
-                : 'Your first try sets the score. Lines with a plus show the template: fix yours from memory, or continue.'
+                ? 'Lines with a plus show the template. Your first check still sets the score.'
+                : 'Your first check sets the score. Lines with a plus show the template: fix yours from memory, or continue.'
               : status === 'correct'
                 ? attempt > 1
-                  ? 'Every line matches now. Your first try still sets the score.'
+                  ? 'Every line matches now. Your first check still sets the score.'
                   : 'Every line matches the template.'
                 : undefined
           }

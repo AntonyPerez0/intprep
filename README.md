@@ -3,8 +3,9 @@
 **Go from little or no coding experience to confidently solving coding-interview problems.**
 
 IntPrep teaches the 150 classic interview problems (the same set as the popular NeetCode 150 list) one step at a
-time. Then it makes the patterns *stick* with short, game-like daily drills built on spaced repetition, plus
-streaks, XP, gems and achievements in the style of Duolingo.
+time, and you write the code yourself from the first lesson. Then it makes the patterns *stick* with short daily
+reviews built on spaced repetition, where you spot the pattern and write the code from memory, plus streaks, XP,
+gems and achievements in the style of Duolingo.
 
 It is a static web app with no account and no server. It works on desktop and phones, can be installed to your home
 screen, works offline after the first visit, and saves progress in your browser.
@@ -17,15 +18,15 @@ jumping to any problem, pattern or page.
 
 | | |
 |---|---|
-| 🧱 **Foundations track** | 11 beginner lessons: Python basics, loops, lists, dicts and sets, functions and classes, Big-O, recursion, a data-structure tour, a problem-solving framework, and how LeetCode works. |
-| 📖 **18 pattern units** | Arrays & Hashing → Two Pointers → Stack → Binary Search → Sliding Window → Linked List → Trees → Tries → Heap → Backtracking → Graphs → 1-D DP → Intervals → Greedy → Advanced Graphs → 2-D DP → Bit Manipulation → Math. Each starts with a pattern lesson: an analogy, recognition cues, a reusable Python template and a quiz. |
-| 🪜 **Guided problem lessons** | All 150 problems. Read the problem → guess the pattern → progressive hints → brute force → key insight + mnemonic → the plan step by step → code built chunk by chunk with explanations → complexity check → common traps → order-the-steps puzzle → fill in the key line. |
-| 🔁 **Daily review (spaced repetition)** | Each learned problem gets an SM-2–style schedule. Reviews mix problems together (interleaving) and use six drill types: *spot the pattern*, *name the technique*, *recall the insight* (self-rated), *put the steps in order*, *fill in the key line* and *know the complexity*. Missed cards come back in the same session. |
-| ⌨️ **Code from memory** | Rebuild a full solution chunk by chunk from plain-English cues, inspired by AlgoDrill-style recall. Type it on desktop; on phones, tap the right next line. |
-| ⚡ **Pattern Blitz** | A 60-second "which pattern is this?" game with combo multipliers, or an untimed Zen mode. Misses go into your review queue. |
+| 🧱 **Foundations track** | 11 beginner lessons where you write Python from the first minute: Python basics, loops, lists, dicts and sets, functions and classes, Big-O, recursion, a data-structure tour, a problem-solving framework, and how LeetCode works. 64 "Your turn" exercises check your code line by line (7 or 8 in each core Python lesson), growing from one line to small programs and functions, plus a few quizzes for predicting output and reading complexity. An exercise you needed the answer for comes back at the end of the lesson. |
+| 📖 **18 pattern units** | Arrays & Hashing → Two Pointers → Stack → Binary Search → Sliding Window → Linked List → Trees → Tries → Heap → Backtracking → Graphs → 1-D DP → Intervals → Greedy → Advanced Graphs → 2-D DP → Bit Manipulation → Math. Each starts with a pattern intro: an analogy, recognition cues and a reusable Python template, then you fill in the template's missing lines yourself (a missed check comes back at the end), plus a few quick questions. That first check feeds *Template practice*: fill the gaps, then type the template from memory. |
+| 🪜 **Guided problem lessons** | All 150 problems. Read the problem → guess the pattern → progressive hints → brute force → key insight + mnemonic → the plan step by step → write the code yourself, part by part (read a part, then write it from memory and check it line by line) → complexity check → common traps → final check: fill the gaps in the whole solution. |
+| 🔁 **Daily review (spaced repetition)** | Each learned problem gets an SM-2–style schedule, and reviews mix problems together (interleaving). Each problem gets one recognition card (usually *spot the pattern*; otherwise the key insight, the technique, the complexity or the steps in order) and two coding cards picked by how well you know it: *write the key line*, *fill the gaps* in the solution, or *write a part* from its plain-English cue. Missed cards come back in the same session as a fresh version. Practicing ahead never resets the schedule of a problem that is not due. |
+| ⌨️ **Code from memory** | Three rungs, inspired by AlgoDrill-style recall: rebuild a solution part by part from plain-English cues, fill the gaps in it, then write it from a blank file. Type it on any device (phones get a key bar for indents and symbols); picking lines from choices is an opt-in in Profile. |
+| ⚡ **Pattern Blitz** | Two games with combo multipliers: *Spot the pattern* (60 seconds of "which pattern is this?") and *Key lines* (90 seconds to type the key lines of solutions you have learned; opens at 3 learned problems). Zen mode has no clock. Misses go into your review queue. |
 | 📚 **Cheat sheet & problem list** | Searchable recognition cues ("sorted" → binary search / two pointers, "top k" → heap…), templates, and all 150 problems with filters. |
 | 🔥 **Motivation loop** | XP, levels, a selectable daily goal, streaks with automatic streak freezes, a 48-hour streak repair, gems, 21 achievements, mastery stars per problem (they fade when a review is overdue), a weekly XP chart, a practice calendar, confetti, sounds and haptics. |
-| 🔬 **The science** | Every mechanic maps to research on retrieval practice, spacing, interleaving, worked examples, Parsons problems, pretesting, flow, self-determination theory and published streak experiments. See the in-app *The science* page and [`docs/LEARNING_SCIENCE.md`](docs/LEARNING_SCIENCE.md). |
+| 🔬 **The science** | Every mechanic maps to research on retrieval practice, the generation effect, spacing, interleaving, worked examples, Parsons problems, pretesting, flow, self-determination theory and published streak experiments. See the in-app *The science* page and [`docs/LEARNING_SCIENCE.md`](docs/LEARNING_SCIENCE.md). |
 
 ## Run it locally
 
@@ -46,7 +47,7 @@ npm run build      # type-check and build to dist/
 ```
 
 ```bash
-npm run validate   # check all content + compile every Python solution (needs python3)
+npm run validate   # check all content, compile every Python solution and run the beginner exercises (needs python3)
 ```
 
 ## Deploy (free) with GitHub Pages
@@ -86,7 +87,9 @@ class Solution:
             need = target - x  #!
 ```
 
-`#@` starts a walkthrough chunk with its explanation, and `  #!` marks a key line used in the fill-in drills. Because
+`#@` starts a walkthrough chunk with its explanation (in a lesson, each chunk is a part you write), and `  #!` marks a
+key line: it gets a gold dot in lessons, is always a gap in the lesson's final check, and is what the review's key-line
+cards and Pattern Blitz's Key lines ask you to type. Because
 these are ordinary comments, every solution is compiled by `npm run validate` and was tested against brute-force
 answers on random inputs when it was written. See [`docs/CONTENT_GUIDE.md`](docs/CONTENT_GUIDE.md) to add or edit
 problems.

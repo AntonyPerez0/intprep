@@ -42,6 +42,12 @@ const clean = (line: string) =>
     .replace(/\s+$/, '')
     .replace(/^\s+/, (ws) => ws.replace(/\t/g, '    '));
 
+/**
+ * The first open gap's placeholder when it has no hint, longest first: a deeply indented gap on a
+ * narrow phone gets the shorter one, or none (its accessible name, "Line N, missing", stays).
+ */
+const GENERIC_PLACEHOLDER = ['Type the missing line', 'Type the line'];
+
 /** The trailing comment of a line (`# stop when the pointers meet`), or ''. */
 function trailingComment(line: string): string {
   const code = stripComment(line);
@@ -184,29 +190,39 @@ export function CodeGaps({
     } else if (was.revealed) focusGap(editable.find((k) => !grade.results[k]?.ok) ?? editable[0]);
   }, [gapsKey, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A hint longer than its gap (a phone, a narrow window) would be cut off as a placeholder, which
-  // cannot scroll: those gaps show the hint as a wrapping comment under the input instead.
+  const hintFor = (k: number, line: string): string | undefined => {
+    if (Array.isArray(hints)) return hints[k] ?? undefined;
+    return hints ? trailingComment(line) || undefined : undefined;
+  };
+  // The first open gap carries the generic placeholder when it has no hint of its own.
+  const genericGap = hints !== false && editable.length && !hintFor(editable[0], shown[gaps[editable[0]]] ?? '') ? editable[0] : -1;
+
+  // A placeholder wider than its gap (a phone, a narrow window, a deep indent) would be cut off,
+  // and a placeholder cannot scroll. Measured per gap (the input's width does not depend on its
+  // placeholder): 1 = the full text does not fit, 2 = the generic one's short form does not either.
+  // A hint that does not fit shows as a wrapping comment under the input instead; the generic
+  // placeholder gets shorter, then goes.
   const paneRef = useRef<HTMLDivElement>(null);
-  const [longHints, setLongHints] = useState<ReadonlySet<number>>(() => new Set());
+  const [tight, setTight] = useState<ReadonlyMap<number, 1 | 2>>(() => new Map());
   useLayoutEffect(() => {
     const pane = paneRef.current;
     if (!pane || revealed) return;
     const ctx = document.createElement('canvas').getContext('2d');
     const measure = () => {
-      const long = new Set<number>();
+      const next = new Map<number, 1 | 2>();
       inputs.current.forEach((el, k) => {
-        const text = el?.placeholder;
-        if (!el || !text || !el.isConnected) return;
+        if (!el || !el.isConnected) return;
+        const hint = hintFor(k, shown[gaps[k]] ?? '');
+        const texts = hint ? [hint] : k === genericGap ? GENERIC_PLACEHOLDER : [];
+        if (!texts.length) return;
         const cs = getComputedStyle(el);
         const room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-        let width = text.length * parseFloat(cs.fontSize) * 0.6;
-        if (ctx) {
-          ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-          width = ctx.measureText(text).width;
-        }
-        if (width > room + 0.5) long.add(k);
+        if (ctx) ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const fits = (text: string) => (ctx ? ctx.measureText(text).width : text.length * parseFloat(cs.fontSize) * 0.6) <= room + 0.5;
+        if (fits(texts[0])) return;
+        next.set(k, texts.length > 1 && fits(texts[1]) ? 1 : hint ? 1 : 2);
       });
-      setLongHints((cur) => (cur.size === long.size && [...long].every((k) => cur.has(k)) ? cur : long));
+      setTight((cur) => (cur.size === next.size && [...next].every(([k, v]) => cur.get(k) === v) ? cur : next));
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
@@ -215,7 +231,7 @@ export function CodeGaps({
     // Web fonts change the measure once they load.
     document.fonts?.ready.then(measure).catch(() => {});
     return () => ro.disconnect();
-  }, [gapsKey, revealed, hints]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gapsKey, revealed, hints, genericGap]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setValue = (k: number, v: string) => {
     const next = gaps.map((_, j) => (j === k ? v : (values[j] ?? '')));
@@ -254,11 +270,6 @@ export function CodeGaps({
     }
   };
 
-  const hintFor = (k: number, line: string): string | undefined => {
-    if (Array.isArray(hints)) return hints[k] ?? undefined;
-    return hints ? trailingComment(line) || undefined : undefined;
-  };
-
   // Screen readers in forms mode jump from input to input: say which code the gap follows.
   const contextFor = (i: number) => {
     for (let j = i - 1; j >= 0; j--) {
@@ -268,7 +279,6 @@ export function CodeGaps({
   };
 
   const missing = gaps.length;
-  let first = true; // the first editable gap carries the generic placeholder when it has no hint
 
   return (
     <>
@@ -315,9 +325,9 @@ export function CodeGaps({
             }
 
             const hint = hintFor(k, line);
-            const placeholder = hint ?? (first && hints !== false ? 'Type the missing line' : undefined);
-            const caption = !!hint && longHints.has(k);
-            first = false;
+            const fit = tight.get(k);
+            const placeholder = hint ?? (k === genericGap ? (fit === 2 ? undefined : GENERIC_PLACEHOLDER[fit ?? 0]) : undefined);
+            const caption = !!hint && !!fit;
             // Enter's label on a phone keyboard: "next" while another gap is still empty.
             const lastOpen = editable[editable.length - 1] === k && !editable.some((j) => j !== k && !(values[j] ?? '').trim());
             // The description replaces the placeholder for screen readers, so it carries the hint too.

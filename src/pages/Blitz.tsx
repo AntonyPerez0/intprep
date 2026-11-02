@@ -1,4 +1,5 @@
-// Pattern Blitz: two quick games against the clock (60 seconds) or untimed (Zen).
+// Pattern Blitz: two quick games against the clock (60 seconds to spot patterns, 90 to type key
+// lines, since typing takes longer than tapping) or untimed (Zen).
 // - Spot the pattern: rapid-fire "which pattern is this?" across all units (recognition).
 // - Key lines: type the key line of a solution you have learned, from the code around it (recall).
 // Misses on learned problems join today's review.
@@ -53,14 +54,15 @@ import { CheckedAction, CodeLine, CodePane, TyperWindow } from '../components/Co
 import { CodeGaps, GapsFooter, type CodeGapsHandle } from '../components/CodeGaps';
 import { Completion, DifficultyChip, Kbd, Ring, SectionHeader, StatCard } from '../components/ui';
 
-const DURATION = 60;
+type Game = 'pattern' | 'lines';
+
+/** Seconds in a timed round. Typing a line takes longer than tapping a pattern. */
+const DURATION: Record<Game, number> = { pattern: 60, lines: 90 };
 const ZEN_QUESTIONS = 20;
 /** Key lines in a Zen round: each one is typed, so a round is shorter than the pattern game's. */
 const ZEN_LINES = 10;
 /** Points for a hit, before the streak multiplier (both games). */
 const POINTS = 10;
-
-type Game = 'pattern' | 'lines';
 
 interface Answer {
   p: Problem;
@@ -110,10 +112,10 @@ function Clues({ p }: { p: Problem }) {
   );
 }
 
-/** Seconds left in a timed round; calls `onEnd` once at zero. Inactive (Zen): stays at the full time. */
-function useCountdown(active: boolean, onEnd: () => void) {
-  const [endAt] = useState(() => performance.now() + DURATION * 1000);
-  const [left, setLeft] = useState(DURATION);
+/** Seconds left in a timed round of `seconds`; calls `onEnd` once at zero. Inactive (Zen): stays at the full time. */
+function useCountdown(active: boolean, seconds: number, onEnd: () => void) {
+  const [endAt] = useState(() => performance.now() + seconds * 1000);
+  const [left, setLeft] = useState(seconds);
   const end = useRef(onEnd);
   end.current = onEnd;
   useEffect(() => {
@@ -142,6 +144,7 @@ function Hud({
   pops,
   zen,
   timeLeft,
+  duration,
   tone,
   done,
   total,
@@ -153,6 +156,8 @@ function Hud({
   pops: { id: number; text: string }[];
   zen: boolean;
   timeLeft: number;
+  /** Seconds in the timed round. */
+  duration: number;
   tone: Tone;
   /** Zen: answered so far, out of `total`. */
   done: number;
@@ -215,7 +220,7 @@ function Hud({
             </span>
           </HudRing>
         ) : (
-          <HudRing value={timeLeft / DURATION} tone={tone} label={`${secs} seconds left`}>
+          <HudRing value={timeLeft / duration} tone={tone} label={`${secs} seconds left`}>
             <span className="blitz-ring-num">{secs}</span>
             <span className="blitz-ring-unit">sec</span>
           </HudRing>
@@ -407,10 +412,10 @@ function Lobby({
                 {lines
                   ? zen
                     ? `${ZEN_LINES} lines, no clock. Each comes with a hint.`
-                    : `${DURATION} seconds. Type as many lines as you can.`
+                    : `${DURATION.lines} seconds. Type as many lines as you can.`
                   : zen
                     ? `${ZEN_QUESTIONS} questions, no clock. Each miss shows its clues.`
-                    : `${DURATION} seconds. Score as many as you can.`}
+                    : `${DURATION.pattern} seconds. Score as many as you can.`}
               </div>
             </div>
             <div className="seg blitz-seg" role="radiogroup" aria-labelledby="blitz-mode-label">
@@ -550,7 +555,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
 
   const current = queue[qi];
   const finish = useCallback(() => setPhase('over'), []);
-  const timeLeft = useCountdown(phase === 'play' && !zen, finish);
+  const timeLeft = useCountdown(phase === 'play' && !zen, DURATION.pattern, finish);
 
   // Settle rewards once when the game ends.
   const settled = useRef(false);
@@ -719,7 +724,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
   const questionNo = flash ? answers.length : answers.length + 1;
   return (
     <SessionShell
-      progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION}
+      progress={zen ? answers.length / ZEN_QUESTIONS : timeLeft / DURATION.pattern}
       progressColor={tone === 'calm' ? undefined : TONE_COLOR[tone]}
       progressLinear={!zen}
       onClose={finish}
@@ -732,6 +737,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
           pops={pops}
           zen={zen}
           timeLeft={timeLeft}
+          duration={DURATION.pattern}
           tone={tone}
           done={answers.length}
           total={ZEN_QUESTIONS}
@@ -896,7 +902,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   const rootRef = useRef<HTMLDivElement>(null);
 
   const finish = useCallback(() => setPhase('over'), []);
-  const timeLeft = useCountdown(phase === 'play' && !zen, finish);
+  const timeLeft = useCountdown(phase === 'play' && !zen, DURATION.lines, finish);
 
   // A miss: bring the right line into view above the action bar (a short phone screen would
   // otherwise hide it under the feedback). After the bar has grown, as it sets the scroll padding.
@@ -1094,7 +1100,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
 
   return (
     <SessionShell
-      progress={zen ? answers.length / ZEN_LINES : timeLeft / DURATION}
+      progress={zen ? answers.length / ZEN_LINES : timeLeft / DURATION.lines}
       progressColor={tone === 'calm' ? undefined : TONE_COLOR[tone]}
       progressLinear={!zen}
       onClose={finish}
@@ -1107,6 +1113,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
           pops={pops}
           zen={zen}
           timeLeft={timeLeft}
+          duration={DURATION.lines}
           tone={tone}
           done={answers.length}
           total={ZEN_LINES}

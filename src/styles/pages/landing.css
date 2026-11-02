@@ -456,83 +456,97 @@
   margin-bottom: 12px;
   text-wrap: balance;
 }
-.lp-pv-prompt {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
+/* The card's own code: the review's Fill the gaps window in miniature (always dark) */
+.lp-pv-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.lp-pv-kicker svg {
+  width: 13px;
+  height: 13px;
+}
+.lp-pv-gaps {
+  padding: 10px 0 12px;
   border-radius: var(--r-md);
-  background: var(--surface);
-  font-size: var(--fs-sm);
-  line-height: 1.55;
-  color: var(--text-secondary);
+  font-size: 12px;
 }
-.lp-pv-prompt-head {
+/* A long def line fades out at the edge; the dark background stays square */
+.lp-pv-gaps-lines {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, #000 86%, transparent);
+  mask-image: linear-gradient(to right, #000 86%, transparent);
+}
+.lp-pv-gaps .code-line {
+  padding: 0 12px;
+}
+.lp-pv-gaps .code-line .ln {
+  width: 1em;
+  margin-right: 12px;
+}
+.lp-pv-gap .ln {
+  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+}
+.lp-pv-gap-box {
+  display: inline-flex;
+  align-items: center;
+  min-width: 14ch;
+  margin: 1px 0 1px -6px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--code-text) 18%, transparent);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--code-text) 4%, transparent);
+  color: var(--code-text);
+  line-height: 18px;
+}
+.lp-pv-gap.is-typing {
+  background: var(--code-line-hl);
+}
+.lp-pv-gap.is-typing .ln {
+  color: var(--brand-300);
+}
+.lp-pv-gap.is-typing .lp-pv-gap-box {
+  border-color: var(--brand-400);
+  background: color-mix(in srgb, var(--brand-500) 12%, var(--code-bg));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-400) 30%, transparent);
+}
+.lp-pv-caret {
+  width: 1.5px;
+  height: 14px;
+  margin-left: 1px;
+  background: var(--brand-300);
+}
+
+/* The card's action bar: Show answer (quiet) and Check (primary) */
+.lp-pv-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  color: var(--text);
-  font-size: var(--fs-md);
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border-subtle);
 }
-.lp-pv-prompt p {
-  margin: 0;
-}
-.lp-pv-prompt code {
-  font-size: 0.9em;
-}
-.lp-pv-prompt strong {
-  color: var(--text);
-  font-weight: 600;
-}
-.lp-pv-choices {
-  display: grid;
-  gap: 6px;
-  margin-top: 12px;
-}
-.lp-pv-choices .choice {
-  min-height: 40px;
-  padding: 8px 12px;
-  gap: 10px;
-  font-size: var(--fs-sm);
-  cursor: default;
-  box-shadow: none;
-}
-.lp-pv-choices .choice .num {
-  width: 20px;
-  height: 20px;
-  font-size: 10.5px;
-}
-.lp-pv-choices .choice-mark svg {
-  width: 16px;
-  height: 16px;
-}
-.lp-pv-feedback {
-  padding: 12px 16px 14px;
-  border-top: 1px solid var(--success-border);
-  background: var(--success-subtle);
-}
-.lp-pv-feedback-title {
-  display: flex;
+.lp-pv-bar-quiet {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: var(--fs-md);
-  color: var(--success-text);
-}
-.lp-pv-feedback-title svg {
-  width: 18px;
-  height: 18px;
-}
-.lp-pv-feedback-body {
-  display: flex;
-  flex-direction: column;
-  margin-top: 2px;
-  padding-left: 26px;
+  gap: 6px;
   font-size: var(--fs-sm);
-  line-height: 1.45;
+  font-weight: 500;
   color: var(--text-secondary);
 }
-.lp-pv-feedback-body strong {
-  color: var(--text);
+.lp-pv-bar-quiet svg {
+  width: 14px;
+  height: 14px;
+}
+.lp-pv-bar-check {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: var(--r-md);
+  background: var(--brand);
+  color: #fff;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 

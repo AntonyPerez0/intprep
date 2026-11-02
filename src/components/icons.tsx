@@ -61,6 +61,7 @@ import {
   Moon,
   Mountain,
   Network,
+  PencilLine,
   Pi,
   Play,
   Puzzle,
@@ -139,6 +140,7 @@ export const LESSON_ICON: Record<string, LucideIcon> = {
 
 export const SCIENCE_ICON: Record<string, LucideIcon> = {
   'retrieval-practice': Brain,
+  'generation-effect': PencilLine,
   'spaced-repetition': CalendarCheck,
   interleaving: Shuffle,
   pretesting: Target,
