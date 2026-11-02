@@ -269,6 +269,21 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   with the same code, is a gap); with nothing typed the primary reads "Show answers", so nobody is stuck. The
   completion shows "Parts right", "Final check" (first check) and "XP earned", with the next review in the
   subtitle and "Code from memory" as the primary action.
+- **Pattern intro (`/unit/:cat/intro`)** — the guide as slides (`guideSlides()` in `LessonPlayer.tsx`): the
+  pattern, the analogy, "When to reach for it", quiz 1, the template (its lede says the learner types its key lines
+  in a moment), the template notes, then **"Your turn · Fill the gaps"**, then the other quizzes. That slide is
+  "Fill in the template": a `GapsWindow` over the template with the template drill's first set of gaps
+  (`gapSource`, about 30% of the lines, at least 2; each gap's hint is its line's comment). Check is always
+  enabled, so a learner who cannot recall a line is never stuck (blank gaps show "left blank" and the line);
+  Enter in a gap still moves to the next empty one and checks only on the last once every gap has text, and
+  Ctrl/⌘ + Enter checks. The first check counts toward "First try" (quiz XP). A miss says "Not quite — it will
+  come back later" as a missed quiz does, puts "Fix and check again" (`CheckedAction`) left of Continue, and
+  brings the slide back once, empty, at the end ("Missed earlier"). The first visit's first check is the
+  template's Fill the gaps score (`recordTemplate(cat, score, 'gaps')`, which only raises the best; a check with
+  nothing typed is not recorded), so the template drill's ladder moves up. The completion shows "Gaps correct"
+  in place of "Slides", keeps "Start the problems" primary, and its secondary follows this run: 80% or more
+  reads "Type the template from memory" (`?mode=memory`; "Template from memory" below 360px, the full label
+  staying the accessible name), else "Practice the template" (`?mode=gaps`).
 - **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
   accessible name): **Part by part** (one part at a time, cued by its comment), **Fill the gaps** (the problem, the
