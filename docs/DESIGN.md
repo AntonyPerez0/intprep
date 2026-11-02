@@ -338,7 +338,10 @@ picked cards report `input: 'pick'` and no `lines` in `DrillResult`.
 
 **Store** — `TemplateProgress.pickBest?` (optional, like `gapsBest`). `recordTemplate(cat, acc, mode: 'pick' |
 'gaps' | 'memory')` only raises a best and returns true on a new best for that mode (`TemplateMode`).
-`templateScore` still reports From memory, else gaps (extend it if a page shows a pick score).
+`templateScore` still reports From memory, else gaps (extend it if a page shows a pick score). Code from memory
+keeps picked runs apart too: `ProblemProgress.rebuildPickBest?` / `gapsPickBest?`, written by
+`recordRebuild(id, acc, mode, 'pick')` (which leaves the typed bests, `rebuiltAt` and the perfect-rebuild count
+alone), so picking never climbs the typed ladder.
 
 **Shared APIs**
 
@@ -483,6 +486,17 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
   solution and the next step. Each mode keeps its own best (`rebuildBest`, `gapsBest`, `scratchBest`), shown on
   the problem page as one "Code from memory, best" list, and every mode counts as the review of a due problem. Entry points: the problem page (Code from memory, Write it from scratch) and the dashboard's review card
   (one learned problem to write from memory).
+  **Picking** ("Pick first, then type"): `problemInput` decides per visit. While the code is new, Part by part
+  picks each next line (a `PickGaps` slot under the cue, in the file, "Pick the next line", four options from
+  `gapChoices` with lines not on screen yet as fallbacks; pick, then Check; a miss offers "Fix and check again",
+  the line's first check counts) and Fill the gaps is **Pick the gaps** (`usePickGaps` + `PickGapsWindow`, the
+  same round's gaps, meta "Pick the gaps", "New gaps"); From scratch always types. "Type instead" (any mode but
+  Always pick, at a part's start or before the first check) and "Pick instead" (Part by part's typed screen; it
+  was "Tap lines") switch the rest of the visit. Picked runs earn XP at 5/8 (`XP.pickCorrect / XP.codeCorrect`),
+  count as the review of a due problem, and record `rebuildPickBest` / `gapsPickBest` only (a session with any
+  picked line counts as picked). The ladder reads typed bests; picking climbs Part by part → Fill the gaps and
+  stops there, so a perfect Pick the gaps leads to **"Now type the gaps"** (the same gaps, typed), never to From
+  scratch (Always pick: "Try new gaps"). `.rebuild[data-input]` says which.
 - **Template drill (`/patterns/:cat/type?mode=gaps|memory`)** — "Template practice" in the session header (as its
   entry points say), the unit's guide template, in two rungs under a `.seg` switch: **Fill the gaps**
   (`gapSource(template)`; each gap's hint is its line's comment) and **From memory** (a blank `CodeTyper` with an
@@ -525,6 +539,18 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
   "Fixed" and no points. Results: Score, Accuracy, Best, XP earned, then "Lines to practice", one card per miss
   (problem, pattern and line number, your line and the right one as diff rows, and "Code from memory" for that
   problem). Actions on both games' results: Play again, Back to dashboard, Choose a game (back to the lobby).
+  **Picked rounds** ("Pick first, then type"): each round's input is `problemInput` for its problem
+  (`.blitz-lines[data-input]`), so in auto a problem still new is picked and a known one typed (Always pick:
+  every round; Always type: none). A picked round keeps the window and slot (`PickGaps`, one gap, the line's four
+  options from `keyLineChoices`, a new seed each time the line comes up) and, as in Spot the pattern, **a pick
+  is the answer**: keys 1–4, a tap or Enter on a focused option check at once (kicker "Pick the missing line",
+  the primary reads "Pick a line" and stays off, the strip says "Your pick is checked right away."). Same points,
+  combo, clock, XP and bests as typed; no Show answer; "Type instead" (auto, before the check) turns the round
+  into a typed one; a miss shows "Your pick, then the right line", and "Fix and check again" opens the options
+  again with nothing picked (a right fix: "Fixed"). On a short phone the options scroll into view above the
+  action bar. The lobby says "Problems you're still learning show choices." (auto, when some are) and its
+  copy says Pick when every round will be picked; results add "N picked from choices, M typed." and label a
+  picked miss "picked".
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid (eight cards, two rows of four from 600px: streaks,
@@ -553,7 +579,8 @@ Automated tests drive the UI through these hooks — keep them working:
   `data-problem` and `data-input` (`pick` / `type` on coding cards), the part card's `.drill-cue` and `.drill-fold`;
   pick twins: `button.pick-slot` ("Line N, pick a line"), `.pick-panel .choice` (the open slot's options),
   `.parsons-slot .arrange-line` ("Remove line N: …"), `.parsons-bank .parsons-item` ("Add line: …"), `.arrange-tag`,
-  the switch's button **"Type instead"**.
+  the switch's button **"Type instead"**; `data-input` (`pick` / `type`) on `.blitz-lines` (the Key lines round)
+  and on `.rebuild` (Code from memory).
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
   and **"Got it"** (the review's Fill the gaps, Write a part and Write the key line cards also have a **"Show answer"** button,

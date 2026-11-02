@@ -1,7 +1,10 @@
-// Key lines, Pattern Blitz's typing game: which learned problem and key line comes next, and the
-// few lines of code shown around the blank. Pure: no React, no DOM. The game is src/pages/Blitz.tsx.
+// Key lines, Pattern Blitz's code game: which learned problem and key line comes next, the few
+// lines of code shown around the blank, and the options when the line is picked. Pure: no React,
+// no DOM. The game is src/pages/Blitz.tsx.
 //
 // - A round is one key line (`#!` in the solution) of a learned problem, blanked as a single gap.
+//   It is typed, or picked from four options while the problem's code is still new ("Pick first,
+//   then type": `problemInput` in lib/input.ts decides per round; `keyLineChoices` gives the options).
 // - Only a window of code is shown (a few lines before, a few after) plus the def lines that
 //   enclose it, so a round is quick on a phone. `class Solution:` is dropped and the code is
 //   dedented to its first visible level, which saves columns on a narrow screen.
@@ -9,6 +12,7 @@
 //   is another), and a key line comes back only once every other one has had its turn.
 
 import type { Problem } from '../content/types';
+import { gapChoices, type GapChoice } from './choices';
 import { indentOf, lineKey } from './codegrade';
 import { today } from './date';
 import { gapCandidates } from './gaps';
@@ -87,6 +91,20 @@ export function keyLineView(p: Problem, k: number, { before = BEFORE, after = AF
     explain: chunk?.explain ?? '',
     twinVisible: shown.some((i) => i !== k && all[i].trim() !== '' && lineKey(all[i]) === key),
   };
+}
+
+/**
+ * The options of a picked round: the key line (code only, as the window shows it) and three
+ * plausible wrong lines, mutations of it first (`gapChoices`), then lines of the solution that are
+ * not on screen. Deterministic per `seed`, so "Fix and check again" shows the same options; pass a
+ * new seed each time the line comes up, so the right option moves.
+ */
+export function keyLineChoices(p: Problem, k: number, view: KeyLineView, seed: number): GapChoice {
+  const all = parseSolution(p.solution).lines.map((l) => l.text);
+  const from = view.start - 1;
+  const shown = new Set([...view.head.map((h) => h.n - 1), ...view.lines.map((_, i) => from + i)]);
+  const hidden = all.filter((l, i) => i !== k && !shown.has(i) && l.trim() !== '');
+  return gapChoices(view.lines, [view.gap], seed, 3, hidden)[0];
 }
 
 /**

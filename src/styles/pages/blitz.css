@@ -213,6 +213,23 @@
   line-height: 1.5;
   color: var(--text-tertiary);
 }
+/* "Problems you're still learning show choices" (Pick first, then type): one quiet line under the help */
+.blitz-setting-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.blitz-setting-note svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: var(--brand-text);
+}
 .blitz-seg {
   flex: none;
   flex-wrap: nowrap;
@@ -1056,8 +1073,9 @@
     padding: 9px 12px;
   }
 }
-/* Show answer / Skip: a quiet action flush with the content edge, as on the review cards */
-.blitz-show {
+/* Show answer / Skip / Type instead: a quiet action flush with the content edge, as on the review cards */
+.blitz-show,
+.blitz-switch {
   margin-left: -12px;
 }
 @media (max-width: 379px) {

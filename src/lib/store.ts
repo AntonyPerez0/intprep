@@ -21,7 +21,15 @@ export interface ProblemProgress {
   scratchBest?: number;
   /** Best Code from memory score, fill the gaps (0–1). Optional: older saves do not have it. */
   gapsBest?: number;
-  /** When this problem was last written from memory (any mode). */
+  /**
+   * Best Code from memory score with the lines picked from choices ("Pick first, then type", see
+   * `problemInput` in lib/input.ts): part by part, and fill the gaps (0–1). Kept apart from the
+   * typed bests above, so picking never moves the typed ladder (Rebuild's `ladderMode`) or the
+   * scores shown as written from memory. Optional: older saves do not have them.
+   */
+  rebuildPickBest?: number;
+  gapsPickBest?: number;
+  /** When this problem was last written from memory (any mode, typed). */
   rebuiltAt?: number;
 }
 
@@ -444,14 +452,22 @@ export function recordBlitzCode(score: number) {
 
 /**
  * A finished Code from memory session: part by part (default), fill the gaps, or the whole
- * solution from scratch.
+ * solution from scratch. `input` 'pick' (lines picked from choices: part by part or fill the gaps)
+ * records its own best (`rebuildPickBest`, `gapsPickBest`) and leaves the typed bests, the last
+ * written date and the perfect-rebuild count alone.
  */
-export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gaps' | 'scratch' = 'parts') {
+export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gaps' | 'scratch' = 'parts', input: 'pick' | 'type' = 'type') {
+  const picked = input === 'pick' && mode !== 'scratch';
   update((d) => {
     d.stats.rebuilds += 1;
-    if (accuracy >= 1) d.stats.perfectRebuilds += 1;
+    if (accuracy >= 1 && !picked) d.stats.perfectRebuilds += 1;
     const p = d.problems[id];
     if (!p) return;
+    if (picked) {
+      if (mode === 'gaps') p.gapsPickBest = Math.max(p.gapsPickBest ?? 0, accuracy);
+      else p.rebuildPickBest = Math.max(p.rebuildPickBest ?? 0, accuracy);
+      return;
+    }
     if (mode === 'scratch') p.scratchBest = Math.max(p.scratchBest ?? 0, accuracy);
     else if (mode === 'gaps') p.gapsBest = Math.max(p.gapsBest ?? 0, accuracy);
     else p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
