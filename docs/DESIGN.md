@@ -403,6 +403,24 @@ picked cards report `input: 'pick'` and no `lines` in `DrillResult`.
 **Look** — picking is code practice, not a quiz: slots, options and blocks are code on the code surface, in the
 typing window's frame, rows and status bar; 44px targets on touch; nothing scrolls the page sideways.
 
+**Guided lesson** (`pages/ProblemLesson.tsx`) — the input is decided once, when the lesson opens:
+`problemInput(settings.typingMode, progress)`, so a problem not learned yet is picked in 'auto', a replay of a
+known problem (a right review) types, 'type' always types and 'tap' always picks. Picked, the code step is
+**"Build the code"** ("Build the solution one part at a time"): each part's Look offers **"Arrange it"** (an
+`ArrangeWindow` over the part's body, `arrangeBlocks(body, 0, { keyLines })`, under the earlier code, the cue and
+the given signature) or, for a part of one code line, **"Pick it"** (a one-slot `PickGapsWindow`, options from
+`gapChoices` with later parts' lines as fallbacks). Check, then right → Continue; wrong → the diff, "Fix and
+check again" (the order or the pick kept), Continue. Peek, the per-part segments and the tally ("Right on the first
+try") work as when typed; the placed lines and the pick are kept per part through Peek and Back. The final check is
+**"Pick the gaps"** (`usePickGaps` over the same gaps as Fill the gaps; Check once every gap is picked). "Type
+instead" (`InputSwitch`, 'auto' only) sits beside Peek on a part not checked yet, and left of Check on the final
+check before its first check; it types the rest of the lesson and the step names follow ("Write the code", "Fill
+the gaps"). The completion's first stat reads "Parts built" (all picked), "Parts written" (all typed) or "Parts
+right" (both). Lesson XP is unchanged (the problem's reward at the end; nothing per part). After "Fix and check
+again" the part card says how to fix it ("Tap a line to send it back, then add the lines again in order."). Hook:
+`.plesson[data-input]` (`pick` / `type`). Below 380px, with "Type instead" beside it, Peek shows its icon only (named
+for screen readers), so "Type instead" keeps its words.
+
 ## Page blueprints
 
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
@@ -447,8 +465,10 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
   stays for screen readers), and each move scrolls that row into view. Final check is Fill the gaps over the whole
   solution (`useGaps` + `GapsWindow`, about 30% of the body, with `min` raised so every key line, and any line
   with the same code, is a gap); with nothing typed the primary reads "Show answers", so nobody is stuck. The
-  completion shows "Parts right", "Final check" (first check) and "XP earned", with the next review in the
-  subtitle and "Code from memory" as the primary action.
+  completion shows "Parts written" ("Parts built" when picked, "Parts right" when both), "Final check" (first check)
+  and "XP earned", with the next review in the subtitle and "Code from memory" as the primary action. While the
+  code is new, the code step is "Build the code" and the final check "Pick the gaps" (see **Pick first, then
+  type**, Guided lesson).
 - **Pattern intro (`/unit/:cat/intro`)** — the guide as slides (`guideSlides()` in `LessonPlayer.tsx`): the
   pattern, the analogy, "When to reach for it", quiz 1, the template (its lede says the learner types its key lines
   in a moment), the template notes, then **"Your turn · Fill the gaps"**, then the other quizzes. That slide is
@@ -553,7 +573,7 @@ Automated tests drive the UI through these hooks — keep them working:
   `data-problem` and `data-input` (`pick` / `type` on coding cards), the part card's `.drill-cue` and `.drill-fold`;
   pick twins: `button.pick-slot` ("Line N, pick a line"), `.pick-panel .choice` (the open slot's options),
   `.parsons-slot .arrange-line` ("Remove line N: …"), `.parsons-bank .parsons-item` ("Add line: …"), `.arrange-tag`,
-  the switch's button **"Type instead"**.
+  the switch's button **"Type instead"**; the guided lesson's `.plesson[data-input]` (`pick` / `type`).
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
   and **"Got it"** (the review's Fill the gaps, Write a part and Write the key line cards also have a **"Show answer"** button,
