@@ -19,7 +19,6 @@ import {
   Pointer,
   RotateCcw,
   Snowflake,
-  Sparkles,
   Star,
   Sun,
   TriangleAlert,
@@ -583,10 +582,13 @@ const THEMES: { id: Progress['settings']['theme']; label: string; icon: LucideIc
   { id: 'dark', label: 'Dark', icon: Moon },
 ];
 
-const INPUT_MODES: { id: Progress['settings']['typingMode']; label: string; icon: LucideIcon }[] = [
-  { id: 'auto', label: 'Auto', icon: Sparkles },
-  { id: 'type', label: 'Always type', icon: Keyboard },
-  { id: 'tap', label: 'Always tap', icon: Pointer },
+/**
+ * Code input: typing (the default, on every device) or the tap-to-choose opt-in. Older saves may
+ * hold 'type', which means the same as 'auto' now (see lib/input.ts), so it shows as "Type code".
+ */
+const INPUT_MODES: { id: Progress['settings']['typingMode']; label: string; icon: LucideIcon; stored: Progress['settings']['typingMode'][] }[] = [
+  { id: 'auto', label: 'Type code', icon: Keyboard, stored: ['auto', 'type'] },
+  { id: 'tap', label: 'Tap to choose', icon: Pointer, stored: ['tap'] },
 ];
 
 // ── Page ────────────────────────────────────────────────────────────────────
@@ -718,16 +720,21 @@ export function Profile() {
                 ))}
               </div>
             </SettingRow>
-            <SettingRow label="Code-drill input" desc="Auto types on a computer and taps choices on a phone. Typing is harder and builds stronger memory.">
-              <div className="seg profile-seg profile-seg-compact" role="radiogroup" aria-label="Code-drill input">
-                {INPUT_MODES.map(({ id, label, icon: I }) => (
+            <SettingRow
+              label="Code input"
+              desc="Typing is recommended on every device: writing code yourself builds stronger memory, and phones get a key bar for symbols."
+            >
+              <div className="seg profile-seg profile-seg-compact" role="radiogroup" aria-label="Code input">
+                {INPUT_MODES.map(({ id, label, icon: I, stored }) => (
                   <button
                     key={id}
                     type="button"
                     role="radio"
-                    aria-checked={p.settings.typingMode === id}
-                    className={p.settings.typingMode === id ? 'on' : ''}
-                    onClick={() => updateSettings({ typingMode: id })}
+                    aria-checked={stored.includes(p.settings.typingMode)}
+                    className={stored.includes(p.settings.typingMode) ? 'on' : ''}
+                    onClick={() => {
+                      if (!stored.includes(p.settings.typingMode)) updateSettings({ typingMode: id });
+                    }}
                   >
                     <I aria-hidden="true" />
                     {label}

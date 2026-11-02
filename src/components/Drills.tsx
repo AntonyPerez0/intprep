@@ -1,9 +1,13 @@
 import '../styles/pages/drills.css';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import {
   Brain,
+  ChevronsDownUp,
+  ChevronsUpDown,
   CodeXml,
   Eye,
+  FileText,
   Gauge,
   Keyboard,
   Lightbulb,
@@ -11,36 +15,50 @@ import {
   ListOrdered,
   MessageSquareText,
   Minus,
+  PencilLine,
   Plus,
   ScanSearch,
+  TextCursorInput,
   Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
 import type { CategoryId, Problem } from '../content/types';
+import { baseIndent, codeLines, gradeCode, gradeSummary, isIgnorable, type Grade as CodeGrade } from '../lib/codegrade';
 import {
   acceptedCategories,
   complexityChoices,
   DRILL_LABEL,
   keyLineDrill,
   patternChoices,
+  pickPart,
+  reviewGaps,
   sameCode,
   techniqueChoices,
   type DrillKind,
 } from '../lib/drills';
+import { gapsSummary, type GapsGrade } from '../lib/gaps';
+import { preferTyping } from '../lib/input';
 import { inline, Md } from '../lib/markdown';
 import { parseSolution } from '../lib/parseSolution';
 import { preview, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
 import { getProgress, useProgress } from '../lib/store';
+import { GapsWindow, useGaps, type CodeGapsHandle } from './CodeGaps';
+import { CheckedAction, CodeDiff, CodeEditor, TyperFooter, TyperWindow } from './CodeTyper';
 import { CategoryIcon } from './icons';
 import { ActionBar, Choices, CodeView, CodeWindow, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
-import { Kbd } from './ui';
+import { DifficultyChip, Kbd } from './ui';
 
 export interface DrillResult {
   kind: DrillKind;
+  /** Right on the first check (later checks after "Fix and check again" are practice only). */
   correct: boolean;
   selfGrade?: Grade;
+  /** The learner wrote code: Fill the gaps, Write a part, or a key line typed without showing the options. */
+  coded?: boolean;
+  /** Code lines on the first check, for coding cards: how many were right, out of how many. */
+  lines?: { correct: number; total: number };
 }
 
 interface DrillProps {
@@ -53,6 +71,14 @@ interface DrillProps {
   badge?: ReactNode;
   /** Right-aligned context in the header, e.g. "3 of 12". */
   meta?: ReactNode;
+  /** Coding cards: which instance (see `DrillCardSpec` in lib/drills.ts). */
+  seed?: number;
+  /** Write the key line: the line to blank (index into `parseSolution(...).lines`). */
+  line?: number;
+  /** Write a part: the chunk to write (index into `parseSolution(...).chunks`). */
+  chunk?: number;
+  /** A miss brings this card back later in the session: coding cards say so in their feedback. */
+  comesBack?: boolean;
 }
 
 const KIND_ICON: Record<DrillKind, LucideIcon> = {
@@ -62,11 +88,29 @@ const KIND_ICON: Record<DrillKind, LucideIcon> = {
   order: ListOrdered,
   keyline: CodeXml,
   complexity: Gauge,
+  gaps: TextCursorInput,
+  part: PencilLine,
 };
+
+/** Phones and tablets wait for a tap before focusing an editor, so the keyboard does not cover the code on arrival. */
+const isFinePointer = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches;
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * A check disables the answer controls. If one of them has focus (a choice picked with the
+ * keyboard, the typed key line), let it go first: the ActionBar then moves focus to Continue,
+ * instead of the browser dropping it to the page a moment later.
+ */
+function releaseFocus() {
+  const a = document.activeElement as HTMLElement | null;
+  if (a?.matches('.drill .choice, .drill .parsons-item, .drill input, .drill textarea')) a.blur();
+}
 
 function useCheck(onCorrect?: () => void) {
   const [status, setStatus] = useState<CheckStatus>('idle');
   const resolve = (ok: boolean, combo = 0) => {
+    releaseFocus();
     setStatus(ok ? 'correct' : 'wrong');
     sfx(ok ? 'correct' : 'wrong', combo);
     if (ok) onCorrect?.();
@@ -492,21 +536,94 @@ export function OrderDrill({ problem: p, onDone, kicker, combo = 0, badge, meta 
   );
 }
 
-// ── 5. Fill in the key line ─────────────────────────────────────────────────
+// ── Coding cards: shared pieces ─────────────────────────────────────────────
 
-function preferTyping(mode: 'auto' | 'type' | 'tap') {
-  if (mode !== 'auto') return mode === 'type';
-  return typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: fine)').matches && window.innerWidth >= 820;
+/** The problem statement, collapsed: the learner can look, but the code is the task. */
+function ProblemDisclosure({ p }: { p: Problem }) {
+  return (
+    <details className="disclosure drill-prompt">
+      <summary>
+        <FileText aria-hidden="true" />
+        <span className="drill-prompt-title">Problem statement</span>
+        <span className="drill-summary-meta">
+          <DifficultyChip d={p.difficulty} />
+        </span>
+      </summary>
+      <ProblemPrompt p={p} compact showTitle={false} />
+    </details>
+  );
 }
 
-export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
+/** "Show answer" left of Check: reveals the answer as a miss, for a card the learner cannot recall. */
+function ShowAnswerButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" className="btn btn-quiet btn-sm drill-give-up" onClick={onClick}>
+      <Eye aria-hidden="true" />
+      Show answer
+    </button>
+  );
+}
+
+/** Once checked, bring the first line to fix (or the whole result) into view, above the action bar. */
+function useRevealScroll(root: RefObject<HTMLElement | null>, revealed: boolean, perfect: boolean, target: string) {
+  useEffect(() => {
+    if (!revealed) return;
+    const el = root.current?.querySelector<HTMLElement>(target) ?? root.current?.querySelector<HTMLElement>('.typer-window');
+    if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Two frames: after the action bar has grown with its feedback (it sets the scroll padding).
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => el.scrollIntoView({ block: perfect ? 'nearest' : 'center', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [revealed]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/**
+ * The action bar's title and body for a coding card. The first check is the score; a fix after
+ * "Fix and check again" is practice and says so.
+ */
+function codeFeedback({
+  checks,
+  perfect,
+  gaveUp,
+  summary,
+  comesBack,
+}: {
+  checks: number;
+  perfect: boolean;
+  gaveUp: boolean;
+  /** "2 of 3 gaps correct": said after a fix that is still off. */
+  summary: string;
+  comesBack?: boolean;
+}): { title?: string; body: ReactNode } {
+  const again = comesBack ? ' It comes back later in this session.' : '';
+  if (checks <= 1) {
+    if (perfect) return { body: 'Every line matches the solution.' };
+    if (gaveUp) return { title: 'Answer shown', body: `Lines with a plus are the answer. Type them once, or continue.${again}` };
+    return { body: `Lines with a plus show the answer. Fix yours, or continue.${again}` };
+  }
+  if (perfect) return { title: 'All right now', body: 'Your first check is what counts for this review. The fix still helps it stick.' };
+  return { body: `${summary}. Your first check is what counts for this review.` };
+}
+
+// ── 5. Write the key line ───────────────────────────────────────────────────
+
+export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, meta, line, comesBack }: DrillProps) {
   const settings = useProgress().settings;
-  const drill = useMemo(() => keyLineDrill(p), [p]);
+  const drill = useMemo(() => keyLineDrill(p, undefined, line), [p, line]);
   const parsed = parseSolution(p.solution);
+  // Typed by default on every device. "Show options" is a helper: a line picked from the options,
+  // or typed after seeing them, counts as recognition, not as code written.
   const [typing, setTyping] = useState(() => preferTyping(settings.typingMode));
+  const [sawOptions, setSawOptions] = useState(() => !preferTyping(settings.typingMode));
   const [sel, setSel] = useState<string | null>(null);
   const [typed, setTyped] = useState('');
-  const { status, resolve } = useCheck();
+  const [status, setStatus] = useState<CheckStatus>('idle');
+  const [first, setFirst] = useState<{ ok: boolean; coded: boolean } | null>(null);
+  const [checks, setChecks] = useState(0);
+  const [autoFocus] = useState(isFinePointer);
+  const inputRef = useRef<HTMLInputElement>(null);
   if (!drill) {
     return <OrderDrill problem={p} onDone={onDone} kicker={kicker} combo={combo} badge={badge} meta={meta} />;
   }
@@ -514,6 +631,31 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   const ok = sameCode(chosen, drill.answer);
   const explain = parsed.chunks[parsed.lines[drill.lineIndex].chunk]?.explain;
   const filled = typing ? typed.trim() : sel?.trim();
+
+  const check = () => {
+    releaseFocus();
+    setStatus(ok ? 'correct' : 'wrong');
+    setChecks((c) => c + 1);
+    sfx(ok ? 'correct' : 'wrong', combo);
+    if (!first) setFirst({ ok, coded: typing && !sawOptions });
+  };
+  // "Fix and check again": the input comes back in this click (flushSync), so it takes focus inside
+  // the tap and a phone opens its keyboard.
+  const fix = () => {
+    flushSync(() => setStatus('idle'));
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  };
+  const toggle = () => {
+    if (typing) setSawOptions(true);
+    setTyping((t) => !t);
+  };
+  const finish = () => {
+    const r = first ?? { ok, coded: false };
+    onDone({ kind: 'keyline', correct: r.ok, coded: r.coded, lines: r.coded ? { correct: r.ok ? 1 : 0, total: 1 } : undefined });
+  };
+  const later = checks > 1;
+
   return (
     <section className="drill" data-drill="keyline" data-problem={p.id}>
       <DrillHead
@@ -521,7 +663,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
         kicker={kicker}
         badge={badge}
         meta={meta}
-        title={`Which line completes ${p.title}?`}
+        title={typing ? `Write the missing line of ${p.title}` : `Choose the missing line of ${p.title}`}
       />
       {explain && (
         <div className="callout callout-brand drill-explain">
@@ -549,12 +691,16 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
             </span>
           </label>
           <input
+            ref={inputRef}
             id={`line-${p.id}`}
             className="input mono drill-line-input"
-            autoFocus
+            autoFocus={autoFocus}
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
+            autoComplete="off"
+            enterKeyHint="done"
+            translate="no"
             placeholder="Type the missing line"
             value={typed}
             disabled={status !== 'idle'}
@@ -580,19 +726,28 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
       )}
       <ActionBar
         status={status}
+        step={checks}
         canCheck={chosen.trim().length > 0}
-        onCheck={() => resolve(ok, combo)}
-        onContinue={() => onDone({ kind: 'keyline', correct: ok })}
+        onCheck={check}
+        onContinue={finish}
+        title={later && ok ? 'Right now' : undefined}
         secondary={
-          <button type="button" className="btn btn-quiet btn-sm" onClick={() => setTyping((t) => !t)}>
+          <button type="button" className="btn btn-quiet btn-sm" onClick={toggle}>
             {typing ? <List aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
             {typing ? 'Show options' : 'Type it'}
           </button>
         }
+        checkedSecondary={typing && status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
         feedback={
           <div className="drill-fb">
             {!ok && <LineDiff yours={chosen.trim()} expected={drill.answer.trim()} />}
-            {explain && <div>{inline(explain)}</div>}
+            {later ? (
+              <div>{ok ? 'Your first check is what counts for this review. The fix still helps it stick.' : 'Your first check is what counts for this review.'}</div>
+            ) : (
+              // After a miss the diff says it all (the explanation is in the callout above), so the bar stays short on phones.
+              explain && (ok || !comesBack) && <div>{inline(explain)}</div>
+            )}
+            {!later && !ok && comesBack && <div className="drill-fb-note">It comes back later in this session.</div>}
           </div>
         }
       />
@@ -600,7 +755,266 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   );
 }
 
-// ── 6. Complexity ───────────────────────────────────────────────────────────
+// ── 6. Fill the gaps (review) ───────────────────────────────────────────────
+
+export function GapsDrill({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, comesBack }: DrillProps) {
+  const src = useMemo(() => reviewGaps(p, seed), [p, seed]);
+  // The set was picked for this card (2 or 3 lines, a key line among them, see `reviewGaps`):
+  // pin it by keeping every other line visible.
+  const keep = useMemo(() => src.lines.flatMap((_, i) => (src.gaps.includes(i) ? [] : [i])), [src]);
+  const ex = useGaps(src.lines, { exclude: keep, min: src.gaps.length, max: src.gaps.length });
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [checks, setChecks] = useState(0);
+  const [autoFocus] = useState(isFinePointer);
+  const rootRef = useRef<HTMLElement>(null);
+  const gapsRef = useRef<CodeGapsHandle>(null);
+  useRevealScroll(rootRef, ex.revealed, ex.grade.perfect, '.gaps .diff.del');
+
+  const g = ex.grade;
+  const n = ex.gaps.length;
+  const status: CheckStatus = ex.revealed ? (g.perfect ? 'correct' : 'wrong') : 'idle';
+
+  const reveal = (giveUp: boolean) => {
+    if (ex.revealed) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      setGaveUp(giveUp && !r.perfect);
+    }
+    if (!giveUp || r.perfect) sfx(r.perfect ? 'correct' : 'wrong', combo);
+  };
+  // Enter on the last gap and Ctrl/⌘ + Enter both land here.
+  const check = () => {
+    if (ex.filled > 0) reveal(false);
+  };
+  // "Fix and check again": the gaps come back in this click (flushSync), so the first gap to fix
+  // takes focus inside the tap and a phone opens its keyboard.
+  const retry = () => {
+    const k = ex.gaps.findIndex((_, j) => !g.results[j]?.ok);
+    flushSync(ex.retry);
+    gapsRef.current?.focus(k >= 0 ? k : undefined);
+  };
+  const finish = () =>
+    onDone({ kind: 'gaps', correct: !!first?.perfect, coded: true, lines: first ? { correct: first.correct, total: first.total } : undefined });
+
+  const fb = ex.revealed ? codeFeedback({ checks, perfect: g.perfect, gaveUp, summary: gapsSummary(g), comesBack }) : null;
+  const left = ex.gaps.filter((_, k) => !ex.locked[k]).length;
+
+  return (
+    <section ref={rootRef} className="drill drill-code" data-drill="gaps" data-problem={p.id}>
+      <DrillHead
+        kind="gaps"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title={`Fill the gaps in ${p.title}`}
+        sub={
+          first && !ex.revealed
+            ? 'Fix the lines that were off, then check again.'
+            : `Type the ${plural(n, 'missing line')} from memory, then check.`
+        }
+      />
+      <ProblemDisclosure p={p} />
+      <GapsWindow
+        lines={src.lines}
+        gaps={ex.gaps}
+        values={ex.values}
+        onChange={(v) => ex.setValues(v)}
+        revealed={ex.revealed}
+        locked={ex.locked}
+        onSubmit={check}
+        autoFocus={autoFocus}
+        ref={gapsRef}
+        label={`${p.title} solution with ${plural(n, 'missing line')}`}
+        filename="solution.py"
+        meta={plural(n, 'gap')}
+        note={left === n ? `${plural(n, 'line')} missing` : `${left} to fix`}
+      />
+      <ActionBar
+        status={status}
+        step={`${seed}:${checks}`}
+        canCheck={ex.filled > 0}
+        onCheck={check}
+        onContinue={finish}
+        title={fb?.title}
+        feedback={fb && <span>{fb.body}</span>}
+        secondary={first ? undefined : <ShowAnswerButton onClick={() => reveal(true)} />}
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
+      />
+    </section>
+  );
+}
+
+// ── 7. Write a part ─────────────────────────────────────────────────────────
+
+/** Above this many lines before the part, only the last `KEEP_BEFORE` show until expanded. */
+const LONG_BEFORE = 10;
+const KEEP_BEFORE = 8;
+
+/**
+ * Where "Fix and check again" puts the caret: at the end of the first line to fix, or of the line
+ * a missing one belongs after. Indices in a grade skip blank and comment lines; map them back.
+ */
+function fixCaret(text: string, g: CodeGrade): number {
+  let target: number | undefined;
+  let found = false;
+  for (const r of g.rows) {
+    if (r.kind === 'ok') {
+      target = r.gotIndex;
+      continue;
+    }
+    if (r.gotIndex !== undefined) target = r.gotIndex;
+    found = true;
+    break;
+  }
+  if (!found) return text.length;
+  if (target === undefined) return 0;
+  let k = -1;
+  let pos = 0;
+  for (const l of text.split('\n')) {
+    if (!isIgnorable(l)) k++;
+    if (k === target) return pos + l.length;
+    pos += l.length + 1;
+  }
+  return text.length;
+}
+
+export function PartDrill({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, chunk, comesBack }: DrillProps) {
+  const parsed = parseSolution(p.solution);
+  const ci = useMemo(() => chunk ?? pickPart(p, seed), [p, chunk, seed]);
+  const part = parsed.chunks[ci];
+  const body = parsed.chunks.filter((c) => !c.header);
+  const partNo = body.indexOf(part) + 1;
+  // Everything before the part is given (the header and the earlier parts); nothing after it.
+  const before = parsed.chunks.slice(0, ci).flatMap((c) => c.lines);
+  const n = codeLines(part.lines).length;
+  // Typing starts at the part's least indented line, and grading is anchored there: the part must
+  // line up under the code above it.
+  const indent = Math.min(baseIndent(part.lines), 16);
+  const [text, setText] = useState('');
+  const [grade, setGrade] = useState<CodeGrade | null>(null);
+  const [first, setFirst] = useState<CodeGrade | null>(null);
+  const [gaveUp, setGaveUp] = useState(false);
+  const [checks, setChecks] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [autoFocus] = useState(isFinePointer);
+  const rootRef = useRef<HTMLElement>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  useRevealScroll(rootRef, !!grade, !!grade?.perfect, '.typer-diff .diff:not(.ok)');
+
+  const hidden = !expanded && before.length > LONG_BEFORE ? before.length - KEEP_BEFORE : 0;
+  const given = before.slice(hidden);
+  const start = hidden + 1;
+  const firstLine = before.length + 2; // after the cue comment
+  const status: CheckStatus = grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+
+  const reveal = (typed: string, giveUp: boolean) => {
+    const r = gradeCode(typed, part.lines, { anchor: indent });
+    setGrade(r);
+    setChecks((c) => c + 1);
+    if (!first) {
+      setFirst(r);
+      setGaveUp(giveUp && !r.perfect);
+    }
+    if (!giveUp || r.perfect) sfx(r.perfect ? 'correct' : 'wrong', combo);
+  };
+  const check = () => {
+    if (!grade && text.trim()) reveal(text, false);
+  };
+  // "Fix and check again": the editor comes back in this click with the caret on the first line to
+  // fix (flushSync, so a phone opens its keyboard inside the tap).
+  const fix = () => {
+    if (!grade) return;
+    const pos = fixCaret(text, grade);
+    flushSync(() => setGrade(null));
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(pos, pos);
+    ta.scrollIntoView({ block: 'nearest' });
+  };
+  const finish = () => onDone({ kind: 'part', correct: !!first?.perfect, coded: true, lines: first ? { correct: first.correct, total: first.total } : undefined });
+
+  const fb = grade ? codeFeedback({ checks, perfect: grade.perfect, gaveUp, summary: gradeSummary(grade), comesBack }) : null;
+
+  // The part to write, as a comment in the file: the cue.
+  const cue = (
+    <div className="typer-line drill-cue">
+      <span className="typer-ln">{before.length + 1}</span>
+      <span className="drill-cue-text" style={{ ['--indent' as string]: `${indent}ch` }}>
+        <span className="drill-cue-hash"># </span>
+        {part.explain}
+      </span>
+    </div>
+  );
+
+  return (
+    <section ref={rootRef} className="drill drill-code" data-drill="part" data-problem={p.id}>
+      <DrillHead
+        kind="part"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title={`Write the next part of ${p.title}`}
+        sub={
+          first && !grade
+            ? 'Fix the lines that were off, then check again.'
+            : `Write the ${plural(n, 'line')} the highlighted comment describes, under the code above.`
+        }
+      />
+      <ProblemDisclosure p={p} />
+      <TyperWindow
+        status={status}
+        filename="solution.py"
+        meta={`Part ${partNo} of ${body.length}`}
+        footer={<TyperFooter grade={grade} note={first && !grade ? `Check ${checks + 1}` : `${plural(n, 'line')} to write`} />}
+      >
+        {before.length > LONG_BEFORE && (
+          <button type="button" className="drill-fold" aria-expanded={expanded} onClick={() => setExpanded((e) => !e)}>
+            {expanded ? <ChevronsDownUp aria-hidden="true" /> : <ChevronsUpDown aria-hidden="true" />}
+            {expanded ? 'Hide earlier lines' : `Show ${plural(before.length - KEEP_BEFORE, 'earlier line')}`}
+          </button>
+        )}
+        {grade ? (
+          <CodeDiff grade={grade} given={given} start={start} firstLine={firstLine} indent={indent}>
+            {cue}
+          </CodeDiff>
+        ) : (
+          <CodeEditor
+            value={text}
+            onChange={setText}
+            label={`Code for this part: ${part.explain}`}
+            given={given}
+            start={start}
+            firstLine={firstLine}
+            indent={indent}
+            minRows={Math.max(2, n + 1)}
+            autoFocus={autoFocus}
+            textareaRef={taRef}
+            placeholder={`Write the ${plural(n, 'line')} for this part`}
+          >
+            {cue}
+          </CodeEditor>
+        )}
+      </TyperWindow>
+      <ActionBar
+        status={status}
+        step={`${ci}:${checks}`}
+        canCheck={text.trim().length > 0}
+        onCheck={check}
+        onContinue={finish}
+        title={fb?.title}
+        feedback={fb && <span>{fb.body}</span>}
+        secondary={first ? undefined : <ShowAnswerButton onClick={() => reveal('', true)} />}
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
+      />
+    </section>
+  );
+}
+
+// ── 8. Complexity ───────────────────────────────────────────────────────────
 
 export function ComplexityDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
   const which = useMemo<'time' | 'space'>(() => (Math.random() < 0.7 ? 'time' : 'space'), []);
@@ -680,6 +1094,10 @@ export function Drill(props: DrillProps & { kind: DrillKind }) {
       return <KeyLineDrill {...rest} />;
     case 'complexity':
       return <ComplexityDrill {...rest} />;
+    case 'gaps':
+      return <GapsDrill {...rest} />;
+    case 'part':
+      return <PartDrill {...rest} />;
   }
 }
 

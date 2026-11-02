@@ -13,6 +13,8 @@ export const XP = {
   problem: { Easy: 20, Medium: 30, Hard: 45 } as Record<Difficulty, number>,
   relearn: 5,
   drillCorrect: 4,
+  /** A review coding card (Fill the gaps, Write a part, a typed key line) right on the first check. */
+  codeCorrect: 8,
   comboBonus: 2,
   sessionBonus: 10,
   rebuildMax: 35,
