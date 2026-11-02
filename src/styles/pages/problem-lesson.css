@@ -505,15 +505,45 @@ div.plesson-locked {
     padding-left: calc(min(var(--indent), 4ch) + 2ch);
   }
 }
-.plesson-code .typer-input {
+.plesson-code .typer-input,
+.plesson-code .arrange-bank,
+.plesson-code .pick-panel-row {
   scroll-margin: 96px 0 24px;
 }
 
-/* Action bar: the quiet Peek, and the label above the feedback */
-/* A quiet secondary action sits flush with the content edge, as on every other card */
-.plesson-peek-btn {
+/* Action bar: the quiet Peek (and, while building from choices, "Type instead"), and the label
+   above the feedback. Quiet secondary actions sit flush with the content edge, as on every other
+   card. */
+.plesson-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   margin-left: -12px;
+}
+.plesson-peek-btn {
   color: var(--text-secondary);
+}
+/* The narrowest phones, with "Type instead" beside it: Peek shows its icon only (its name stays
+   for screen readers and the tooltip), so "Type instead" keeps its words and Check its room. */
+@media (max-width: 379px) {
+  .plesson-tools:has(.input-switch) .btn {
+    padding-inline: 10px;
+  }
+  .plesson-tools:has(.input-switch) .plesson-tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .plesson-step-code .actionbar:has(.input-switch) .buttons > .btn:last-child {
+    min-width: 112px;
+  }
 }
 .plesson-fb {
   display: flex;
