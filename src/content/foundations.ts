@@ -108,7 +108,7 @@ The problem then joins your drills, so you will meet it again in a few days. Sol
     title: 'Python Basics',
     icon: '🐍',
     blurb: 'Values, variables, types, arithmetic, comparisons and printing.',
-    minutes: 13,
+    minutes: 16,
     slides: [
       {
         kind: 'text',
@@ -117,7 +117,7 @@ The problem then joins your drills, so you will meet it again in a few days. Sol
 
 We use **Python**: it reads almost like English, it is short to write, and every major company accepts it in interviews. Each code box in these lessons shows exactly what it prints underneath. Read the code, predict the output, then check.
 
-Every few slides it is **your turn**: you write a few lines yourself, and IntPrep checks them line by line.`,
+After almost every new idea it is **your turn**: you write the code yourself, and IntPrep checks it line by line. Writing code, not just reading it, is what makes it stick.`,
       },
       {
         kind: 'code',
@@ -210,6 +210,24 @@ print(int(3.9))        # chops off the decimals`,
 3`,
       },
       {
+        kind: 'type',
+        title: 'Turn text into a number',
+        prompt: '`age_text` holds the text `"41"`. Convert it to a number with `int` and store it in `age`. Then print `age + 1`.',
+        starter: 'age_text = "41"',
+        answer: py`
+age = int(age_text)
+print(age + 1)`,
+        accept: [
+          py`
+age = int(age_text)
+print(1 + age)`,
+        ],
+        hint: '`int(...)` turns text that looks like a number into a real number you can do math with.',
+        explain:
+          'Text in quotes is a `str`, even when it looks like a number, so `"41" + 1` would be an error. `int(age_text)` gives the number 41, and `age + 1` is 42.',
+        output: '42',
+      },
+      {
         kind: 'code',
         title: 'Arithmetic',
         body: '`/` always gives a float. `//` is **floor division**: divide, then round *down*. `%` gives the **remainder**. You will use `//` and `%` constantly.',
@@ -261,7 +279,7 @@ False
       {
         kind: 'type',
         title: 'Split off the last digit',
-        prompt: '`n` holds a number. Print its **last digit**. Then, on the next line, print `n` **without** its last digit. Use `%` and `//`.',
+        prompt: '`n` holds a number. Print its **last digit**, then on the next line print `n` **without** its last digit. Use `%` and `//`.',
         starter: 'n = 917',
         answer: py`
 print(n % 10)
@@ -294,12 +312,28 @@ True
 False`,
       },
       {
-        kind: 'quiz',
-        q: 'Which line checks whether `x` equals 10?',
-        options: ['`x = 10`', '`x == 10`', '`x === 10`', '`x equals 10`'],
-        answer: 1,
+        kind: 'type',
+        title: 'Compare with ==',
+        prompt: 'Store in `is_ten` whether `x` equals `10`. Then print `is_ten`.',
+        starter: 'x = 10',
+        answer: py`
+is_ten = x == 10
+print(is_ten)`,
+        accept: [
+          py`
+is_ten = (x == 10)
+print(is_ten)`,
+          py`
+is_ten = 10 == x
+print(is_ten)`,
+          py`
+is_ten = (10 == x)
+print(is_ten)`,
+        ],
+        hint: 'The first line needs both: a single `=` to store, and a double `==` to compare.',
         explain:
-          'A single `=` **stores** a value; `==` **compares** two values. (`===` is JavaScript, not Python.)',
+          '`x == 10` **compares** and gives `True` or `False`; the single `=` then **stores** that answer in `is_ten`. (`===` is JavaScript, not Python.)',
+        output: 'True',
       },
       {
         kind: 'code',
@@ -322,6 +356,19 @@ a-b-c
 no newline... same line`,
       },
       {
+        kind: 'type',
+        title: 'Build a message',
+        prompt: 'Print `Kai solved 5 problems` with an f-string, putting `name` and `solved` inside `{}`.',
+        starter: py`
+name = "Kai"
+solved = 5`,
+        answer: 'print(f"{name} solved {solved} problems")',
+        hint: 'Start the text with `f"`, then write the sentence with `{name}` and `{solved}` where the values go.',
+        explain:
+          'The `f` before the quotes tells Python to fill in each `{...}` with its value, so the message stays right whenever `name` or `solved` changes.',
+        output: 'Kai solved 5 problems',
+      },
+      {
         kind: 'quiz',
         q: 'What does this print?',
         code: py`
@@ -334,6 +381,29 @@ print(a, b)`,
         explain:
           '`b = a` makes `b` name the value 3. Then `a` is pointed at a new value, 4. Nothing changed `b`, so it still names 3.',
       },
+      {
+        kind: 'type',
+        title: 'Minutes to hours',
+        prompt: '`duration` is a number of minutes. Store the whole hours in `hours` and the minutes left over in `mins`, using `//` and `%` with `60`. Then print them as `2h 15m` with an f-string.',
+        starter: 'duration = 135',
+        answer: py`
+hours = duration // 60
+mins = duration % 60
+print(f"{hours}h {mins}m")`,
+        accept: [
+          py`
+mins = duration % 60
+hours = duration // 60
+print(f"{hours}h {mins}m")`,
+          py`
+hours, mins = duration // 60, duration % 60
+print(f"{hours}h {mins}m")`,
+        ],
+        hint: '`duration // 60` counts the full hours, and `duration % 60` is what is left over. In the f-string, the `h` goes right after `{hours}`.',
+        explain:
+          '135 minutes is 2 full hours (`135 // 60`) with 15 minutes left over (`135 % 60`). The f-string drops both values into the text.',
+        output: '2h 15m',
+      },
     ],
   },
 
@@ -343,7 +413,7 @@ print(a, b)`,
     title: 'Decisions and Loops',
     icon: '🔀',
     blurb: 'if/elif/else, for loops with range, while, break and continue.',
-    minutes: 13,
+    minutes: 17,
     slides: [
       {
         kind: 'text',
@@ -404,6 +474,28 @@ if 30 < temp:
         output: 'hot',
       },
       {
+        kind: 'type',
+        title: 'Add an else',
+        prompt: 'Print `pass` when `score` is at least `50`, and `fail` otherwise. Use `if` and `else`.',
+        starter: 'score = 42',
+        answer: py`
+if score >= 50:
+    print("pass")
+else:
+    print("fail")`,
+        accept: [
+          py`
+if 50 <= score:
+    print("pass")
+else:
+    print("fail")`,
+        ],
+        hint: '*At least 50* means `>= 50`. `else:` lines up with the `if` and has no condition; Backspace removes the indent.',
+        explain:
+          '42 is not at least 50, so Python skips the `if` block and runs the `else` block. Exactly one of the two branches always runs.',
+        output: 'fail',
+      },
+      {
         kind: 'code',
         title: 'for loops and range',
         body: '`range(stop)` counts from 0 up to **but not including** `stop`. That *stop is excluded* rule appears all over Python.',
@@ -454,57 +546,25 @@ print(list(range(3, 3)))       # start == stop: empty`,
 []`,
       },
       {
-        kind: 'quiz',
-        q: 'Which range produces 10, 8, 6, 4?',
-        options: ['`range(10, 4, -2)`', '`range(10, 3, -2)`', '`range(10, 4, 2)`', '`range(4, 10, 2)`'],
-        answer: 1,
+        kind: 'type',
+        title: 'Count down by twos',
+        prompt: 'Print `10`, `8`, `6` and `4`, one per line. Loop over a `range` with a step of `-2`, using `i` as the loop variable.',
+        answer: py`
+for i in range(10, 3, -2):
+    print(i)`,
+        accept: [
+          py`
+for i in range(10, 2, -2):
+    print(i)`,
+        ],
+        hint: 'The stop value is never included, so it has to sit one step *past* 4 in the direction you are counting.',
         explain:
-          'The stop value is never included, so to reach 4 when counting down, stop must be *past* it: 3 works. `range(10, 4, -2)` ends at 6, and a positive step cannot count down.',
-      },
-      {
-        kind: 'code',
-        title: 'while loops',
-        body: '`while` repeats as long as its condition is true. Use it when you do not know the number of steps in advance, and make sure each pass moves toward the exit, or it runs forever.',
-        code: py`
-n = 37
-steps = 0
-while n > 1:
-    n = n // 2    # halve it
-    steps += 1
-print(steps)`,
-        output: '5',
-      },
-      {
-        kind: 'code',
-        title: 'break and continue',
-        body: '`continue` jumps straight to the next pass of the loop. `break` leaves the loop immediately.',
-        code: py`
-for n in range(1, 10):
-    if n % 2 == 0:
-        continue     # skip even numbers
-    if n > 6:
-        break        # stop the whole loop
-    print(n)
-print("after the loop")`,
+          '`range(10, 3, -2)` starts at 10 and steps down by 2, stopping before it reaches 3: 10, 8, 6, 4. `range(10, 4, -2)` would end at 6, because the stop is never included.',
         output: py`
-1
-3
-5
-after the loop`,
-      },
-      {
-        kind: 'quiz',
-        q: 'What does this print?',
-        code: py`
-total = 0
-for i in range(5):
-    if i == 3:
-        break
-    total += i
-print(total)`,
-        options: ['3', '6', '10', '7'],
-        answer: 0,
-        explain: 'The loop adds 0, 1 and 2, then reaches `i == 3` and breaks before adding 3 or 4. Total: 0 + 1 + 2 = 3.',
+10
+8
+6
+4`,
       },
       {
         kind: 'type',
@@ -529,6 +589,93 @@ for n in range(0, 9):
 4
 6
 8`,
+      },
+      {
+        kind: 'code',
+        title: 'while loops',
+        body: '`while` repeats as long as its condition is true. Use it when you do not know the number of steps in advance, and make sure each pass moves toward the exit, or it runs forever.',
+        code: py`
+n = 37
+steps = 0
+while n > 1:
+    n = n // 2    # halve it
+    steps += 1
+print(steps)`,
+        output: '5',
+      },
+      {
+        kind: 'type',
+        title: 'Write a while loop',
+        prompt: 'Count down from `n`: while `n` is greater than `0`, print `n`, then subtract `1` from it.',
+        starter: 'n = 3',
+        answer: py`
+while n > 0:
+    print(n)
+    n -= 1`,
+        accept: [
+          py`
+while n > 0:
+    print(n)
+    n = n - 1`,
+          py`
+while 0 < n:
+    print(n)
+    n -= 1`,
+          py`
+while 0 < n:
+    print(n)
+    n = n - 1`,
+        ],
+        hint: 'Inside the loop, print first, then make `n` smaller. Without that last step the loop would never end.',
+        explain:
+          'Each pass prints `n` and then makes it 1 smaller: 3, 2, 1. Once `n` is 0, `n > 0` is false and the loop stops.',
+        output: py`
+3
+2
+1`,
+      },
+      {
+        kind: 'code',
+        title: 'break and continue',
+        body: '`continue` jumps straight to the next pass of the loop. `break` leaves the loop immediately.',
+        code: py`
+for n in range(1, 10):
+    if n % 2 == 0:
+        continue     # skip even numbers
+    if n > 6:
+        break        # stop the whole loop
+    print(n)
+print("after the loop")`,
+        output: py`
+1
+3
+5
+after the loop`,
+      },
+      {
+        kind: 'type',
+        title: 'Stop early with break',
+        prompt: 'Loop over `range(1, 10)` with `n`. When `n` equals `4`, leave the loop with `break`; otherwise print `n`.',
+        answer: py`
+for n in range(1, 10):
+    if n == 4:
+        break
+    print(n)`,
+        accept: [
+          py`
+for n in range(1, 10):
+    if n == 4:
+        break
+    else:
+        print(n)`,
+        ],
+        hint: 'Check for 4 *before* printing. The `print` lines up with the `if`, not with `break`.',
+        explain:
+          'The loop prints 1, 2 and 3. When `n` is 4, `break` leaves the loop at once, so nothing from 4 to 9 is printed.',
+        output: py`
+1
+2
+3`,
       },
       {
         kind: 'code',
@@ -574,6 +721,29 @@ False True
 False
 count is zero`,
       },
+      {
+        kind: 'type',
+        title: 'Count the multiples',
+        prompt: 'Count how many numbers from `1` to `20` divide evenly by `3`. Start `count` at `0`, loop over `range(1, 21)` with `n`, add `1` to `count` when `n % 3 == 0`, and print `count` after the loop.',
+        answer: py`
+count = 0
+for n in range(1, 21):
+    if n % 3 == 0:
+        count += 1
+print(count)`,
+        accept: [
+          py`
+count = 0
+for n in range(1, 21):
+    if n % 3 == 0:
+        count = count + 1
+print(count)`,
+        ],
+        hint: 'Five lines: `count = 0`, the loop, the `if` inside it, the `+= 1` inside the `if`, and the `print` back at the left edge.',
+        explain:
+          '`count` starts at 0 and grows by 1 for each multiple of 3: 3, 6, 9, 12, 15 and 18. The `print` is not indented, so it runs once, after the loop has finished.',
+        output: '6',
+      },
     ],
   },
 
@@ -583,7 +753,7 @@ count is zero`,
     title: 'Lists and Strings',
     icon: '📚',
     blurb: 'Indexing, slicing, list methods, sorting, string tricks and comprehensions.',
-    minutes: 15,
+    minutes: 18,
     slides: [
       {
         kind: 'text',
@@ -612,14 +782,6 @@ print(nums)`,
 16
 5
 [4, 99, 15, 16, 23]`,
-      },
-      {
-        kind: 'quiz',
-        q: 'With `nums = [10, 20, 30, 40]`, what is `nums[len(nums) - 1]`?',
-        options: ['40', '30', 'An IndexError', '10'],
-        answer: 0,
-        explain:
-          '`len(nums)` is 4, so this is `nums[3]`: the last item, the same as `nums[-1]`. It is `nums[4]` that would be out of range.',
       },
       {
         kind: 'type',
@@ -651,6 +813,18 @@ print(a[::-1])     # a reversed copy`,
 [5, 4, 3, 2, 1, 0]`,
       },
       {
+        kind: 'type',
+        title: 'Take a slice',
+        prompt: 'Print the first three items of `nums`, using a slice.',
+        starter: 'nums = [5, 10, 15, 20, 25]',
+        answer: 'print(nums[:3])',
+        accept: ['print(nums[0:3])'],
+        hint: 'A slice is `nums[start:stop]`, and the stop index is not included. Leave `start` out to begin at the front.',
+        explain:
+          '`nums[:3]` copies indices 0, 1 and 2 and stops before index 3, so you get the first three items. It is the same *stop is excluded* rule as `range`.',
+        output: '[5, 10, 15]',
+      },
+      {
         kind: 'code',
         title: 'Changing a list',
         body: 'Adding or removing at the **end** is fast. At the **front**, every other item has to shift over by one, which is slow on big lists.',
@@ -669,6 +843,20 @@ print(items)`,
 3 [1, 2]
 [9, 1, 2]
 [1, 2]`,
+      },
+      {
+        kind: 'type',
+        title: 'Push and pop',
+        prompt: 'Add `2` to the end of `stack` with `append`. Then remove the last item with `pop`, storing it in `top`. Finally, print `top` and `stack`.',
+        starter: 'stack = [1]',
+        answer: py`
+stack.append(2)
+top = stack.pop()
+print(top, stack)`,
+        hint: '`pop()` with nothing in the parentheses removes the last item and hands it back, so you can store it.',
+        explain:
+          '`append` adds 2 at the end, making `[1, 2]`. `pop()` takes the last item back off and returns it, so `top` is 2 and `stack` is `[1]` again. Both are fast because they work at the end.',
+        output: '2 [1]',
       },
       {
         kind: 'code',
@@ -697,18 +885,18 @@ lime 2`,
       {
         kind: 'type',
         title: 'Loop with enumerate',
-        prompt: 'Print each fruit with its index, using `enumerate`. Name the loop variables `i` and `f`, and print them with `print(i, f)`.',
-        starter: 'fruits = ["fig", "kiwi", "lime"]',
+        prompt: 'Print each color with its index, using `enumerate`. Name the loop variables `i` and `c`, and print them with `print(i, c)`.',
+        starter: 'colors = ["red", "green", "blue"]',
         answer: py`
-for i, f in enumerate(fruits):
-    print(i, f)`,
-        hint: 'The loop line is `for i, f in ...:` with `enumerate(fruits)` after `in`.',
+for i, c in enumerate(colors):
+    print(i, c)`,
+        hint: 'The loop line is `for i, c in ...:` with `enumerate(colors)` after `in`.',
         explain:
-          '`enumerate` hands you two things on every pass, the index and the item, and `i, f` unpacks them into two names.',
+          '`enumerate` hands you two things on every pass, the index and the item, and `i, c` unpacks them into two names.',
         output: py`
-0 fig
-1 kiwi
-2 lime`,
+0 red
+1 green
+2 blue`,
       },
       {
         kind: 'code',
@@ -740,6 +928,24 @@ print(nums)`,
         answer: 1,
         explain:
           '`.sort()` sorts the list and returns `None`, and that `None` is what got stored back in `nums`. Write `nums.sort()` on its own line, or `nums = sorted(nums)`.',
+      },
+      {
+        kind: 'type',
+        title: 'Sort in place',
+        prompt: 'Now do it right: sort `nums` in place with `.sort()`, then print `nums`.',
+        starter: 'nums = [4, 2, 9]',
+        answer: py`
+nums.sort()
+print(nums)`,
+        accept: [
+          py`
+nums = sorted(nums)
+print(nums)`,
+        ],
+        hint: '`.sort()` changes the list itself and returns `None`, so call it on its own line and do not store what it returns.',
+        explain:
+          '`nums.sort()` rearranges the list itself, so printing `nums` afterward shows `[2, 4, 9]`. `nums = sorted(nums)` works too: `sorted` returns a new sorted list, which you store back in `nums`.',
+        output: '[2, 4, 9]',
       },
       {
         kind: 'code',
@@ -780,16 +986,22 @@ the-quick-brown-fox
 cba`,
       },
       {
-        kind: 'quiz',
-        q: 'What does this print?',
-        code: py`
-s = "abc"
-s.upper()
-print(s)`,
-        options: ['`abc`', '`ABC`', '`None`', 'An error'],
-        answer: 0,
+        kind: 'type',
+        title: 'Split and join',
+        prompt: 'Split `sentence` into a list of words called `words`. Then print the words joined with `_` between them.',
+        starter: 'sentence = "keep it simple"',
+        answer: py`
+words = sentence.split()
+print("_".join(words))`,
+        accept: [
+          py`
+words = sentence.split(" ")
+print("_".join(words))`,
+        ],
+        hint: '`.split()` breaks text apart at the spaces. `"_".join(words)` glues a list of strings back together with `_` in between.',
         explain:
-          'String methods never change the original; they **return a new string**. Here that new string is thrown away. You would need `s = s.upper()`.',
+          '`split` returns a new list, `["keep", "it", "simple"]`, and `join` builds one new string from it. `sentence` itself never changes: string methods always return a new string.',
+        output: 'keep_it_simple',
       },
       {
         kind: 'code',
@@ -841,6 +1053,30 @@ print(grid)`,
         explain:
           'Multiplying the outer list repeats a reference to the **same** inner list, so both rows are one object. Build grids with a comprehension so every row is a fresh list.',
       },
+      {
+        kind: 'type',
+        title: 'Find the longest word',
+        prompt: 'Start `longest` at `words[0]`. Loop over `words` with `w`, and replace `longest` with `w` whenever `len(w)` is greater than `len(longest)`. Print `longest` after the loop.',
+        starter: 'words = ["fig", "banana", "kiwi"]',
+        answer: py`
+longest = words[0]
+for w in words:
+    if len(w) > len(longest):
+        longest = w
+print(longest)`,
+        accept: [
+          py`
+longest = words[0]
+for w in words:
+    if len(longest) < len(w):
+        longest = w
+print(longest)`,
+        ],
+        hint: 'Set `longest`, loop, compare the lengths with an `if`, and update `longest` inside it. The `print` goes back to the left edge.',
+        explain:
+          '`longest` holds the best word so far. Each pass keeps the longer of the two, so after the loop it is `"banana"`. Keeping a *best so far* while you loop is a shape you will use again and again.',
+        output: 'banana',
+      },
     ],
   },
 
@@ -850,7 +1086,7 @@ print(grid)`,
     title: 'Dicts and Sets',
     icon: '🔑',
     blurb: 'Instant lookups by key: dict, set, Counter and defaultdict.',
-    minutes: 13,
+    minutes: 17,
     slides: [
       {
         kind: 'text',
@@ -912,6 +1148,17 @@ print(count.get("z", 0))`,
       },
       {
         kind: 'type',
+        title: 'Look up safely',
+        prompt: 'Print how many `"pear"` there are in `stock`, using `.get` so that a missing key gives `0`.',
+        starter: 'stock = {"apple": 3, "plum": 7}',
+        answer: 'print(stock.get("pear", 0))',
+        hint: 'Give `.get` two things: the key, then the value to use when the key is missing.',
+        explain:
+          '`"pear"` is not a key in `stock`, so `.get` returns the default, 0, instead of raising a `KeyError` the way `stock["pear"]` would.',
+        output: '0',
+      },
+      {
+        kind: 'type',
         title: 'Count with a dict',
         prompt: 'Count how often each letter appears in `word`. Loop over `word` with the variable `ch`, and add 1 to `count[ch]` using `count.get(ch, 0)`. After the loop, print `count`.',
         starter: py`
@@ -951,6 +1198,28 @@ plum
 apple 3
 plum 7
 [3, 0, 7]`,
+      },
+      {
+        kind: 'type',
+        title: 'Loop over items',
+        prompt: 'Print the name of everyone in `scores` who scored `8` or more. Loop over `scores.items()` with the variables `name` and `score`.',
+        starter: 'scores = {"ana": 9, "bo": 7, "cy": 8}',
+        answer: py`
+for name, score in scores.items():
+    if score >= 8:
+        print(name)`,
+        accept: [
+          py`
+for name, score in scores.items():
+    if 8 <= score:
+        print(name)`,
+        ],
+        hint: '`.items()` gives each key together with its value, so the loop line is `for name, score in scores.items():`.',
+        explain:
+          'Each pass unpacks one key and its value into `name` and `score`. `"ana"` (9) and `"cy"` (8) pass the check; `"bo"` (7) does not.',
+        output: py`
+ana
+cy`,
       },
       {
         kind: 'code',
@@ -1019,12 +1288,24 @@ True
 2 1`,
       },
       {
-        kind: 'quiz',
-        q: 'You keep a set of visited grid cells, each described by a row `r` and a column `c`. Which line works?',
-        options: ['`visited.add([r, c])`', '`visited.add((r, c))`', '`visited.add({r, c})`', '`visited.add(r, c)`'],
-        answer: 1,
+        kind: 'type',
+        title: 'Store a grid cell',
+        prompt: 'Add the cell at row `r`, column `c` to the set `visited`, as a tuple. Then print whether `(1, 2)` is in `visited`.',
+        starter: py`
+visited = set()
+r, c = 1, 2`,
+        answer: py`
+visited.add((r, c))
+print((1, 2) in visited)`,
+        accept: [
+          py`
+visited.add((r, c))
+print((r, c) in visited)`,
+        ],
+        hint: 'A tuple is written with parentheses, so the call needs two pairs: one for `add(...)` and one for the tuple `(r, c)`.',
         explain:
-          'Set items must be hashable. A tuple is; a list or a set is not (you get `TypeError: unhashable type`). And `add` takes exactly one argument.',
+          'Set items must be immutable. A tuple is, so `(r, c)` can go in a set; a list `[r, c]` cannot (`TypeError: unhashable type`). And `add` takes exactly one item: the tuple.',
+        output: 'True',
       },
       {
         kind: 'code',
@@ -1041,6 +1322,21 @@ print(Counter("listen") == Counter("silent"))`,
 4 0
 [('i', 4), ('s', 4)]
 True`,
+      },
+      {
+        kind: 'type',
+        title: 'Count with Counter',
+        prompt: 'Count the letters of `word` with `Counter`, storing the result in `c`. Then print the counts for `"l"` and `"z"` with one `print`.',
+        starter: py`
+from collections import Counter
+word = "hello"`,
+        answer: py`
+c = Counter(word)
+print(c["l"], c["z"])`,
+        hint: '`Counter(word)` counts every letter at once. Then read a count with square brackets, as with a dict.',
+        explain:
+          '`"l"` appears twice. `"z"` never appears, but a `Counter` gives 0 for a missing key instead of raising a `KeyError`.',
+        output: '2 0',
       },
       {
         kind: 'code',
@@ -1062,16 +1358,31 @@ print(counts["x"], counts["y"])`,
 1 0`,
       },
       {
-        kind: 'quiz',
-        q: 'What does this print?',
-        code: py`
-from collections import Counter
-c = Counter([2, 7, 2, 2, 7])
-print(c[2], c[5])`,
-        options: ['3 0', '2 0', '3 None', 'It raises a KeyError'],
-        answer: 0,
+        kind: 'type',
+        title: 'First repeated letter',
+        prompt: 'Print the first letter that shows up twice in `word`. Start an empty set called `seen` and loop over `word` with `ch`: if `ch` is already in `seen`, print it and `break`; otherwise add it to `seen`.',
+        starter: 'word = "abcdbe"',
+        answer: py`
+seen = set()
+for ch in word:
+    if ch in seen:
+        print(ch)
+        break
+    seen.add(ch)`,
+        accept: [
+          py`
+seen = set()
+for ch in word:
+    if ch in seen:
+        print(ch)
+        break
+    else:
+        seen.add(ch)`,
+        ],
+        hint: 'Check `ch in seen` *before* adding `ch`. `seen.add(ch)` lines up with the `if`, not with `break`.',
         explain:
-          '2 appears three times. 5 never appears, and a `Counter` returns 0 for a missing key instead of raising a `KeyError`.',
+          'The set remembers every letter so far, and `in` checks it instantly. `a`, `b`, `c` and `d` are new; the second `b` is already in `seen`, so it is printed and the loop stops.',
+        output: 'b',
       },
     ],
   },
@@ -1082,7 +1393,7 @@ print(c[2], c[5])`,
     title: 'Functions and Classes',
     icon: '🧩',
     blurb: 'def and return, nested helpers with nonlocal, and why answers live in class Solution.',
-    minutes: 15,
+    minutes: 18,
     slides: [
       {
         kind: 'text',
@@ -1112,6 +1423,19 @@ print(result)`,
 101
 hi Sam
 None`,
+      },
+      {
+        kind: 'type',
+        title: 'Call a function',
+        prompt: 'In one line, print the result of calling `area` with a width of `3` and a height of `5`.',
+        starter: py`
+def area(width, height):
+    return width * height`,
+        answer: 'print(area(3, 5))',
+        hint: 'Write the function name, then the arguments in parentheses, in the same order as the parameters. Wrap it all in `print(...)`.',
+        explain:
+          '`area(3, 5)` runs the function with `width` = 3 and `height` = 5. Its `return` hands back 15, and `print` shows it.',
+        output: '15',
       },
       {
         kind: 'type',
@@ -1222,6 +1546,26 @@ def outer():
           '`total += x` reassigns `total`, so Python treats it as a local of `add`, one that has no value yet. Adding `nonlocal total` inside `add` fixes it.',
       },
       {
+        kind: 'type',
+        title: 'Fix the helper',
+        prompt: 'Here is the helper from that quiz, without its body. Write the body of `add`: declare `total` as `nonlocal`, then add `x` to it.',
+        starter: py`
+def outer():
+    total = 0
+    def add(x):`,
+        answer: py`
+        nonlocal total
+        total += x`,
+        accept: [
+          py`
+        nonlocal total
+        total = total + x`,
+        ],
+        hint: '`nonlocal total` goes on its own line, before the line that changes `total`.',
+        explain:
+          "`nonlocal total` tells Python that `total` is the outer function's variable, not a new local one, so `total += x` updates it instead of raising an `UnboundLocalError`.",
+      },
+      {
         kind: 'code',
         title: 'Mutating vs reassigning',
         body: 'You only need `nonlocal` to **reassign** a name. Changing a list or dict in place (`append`, `d[k] = v`) works without it, which is why many solutions keep a `res = []` and append to it from a helper.',
@@ -1264,6 +1608,21 @@ b = Tally(0)
 a.bump()
 print(a.bump(), b.bump())`,
         output: '12 1',
+      },
+      {
+        kind: 'type',
+        title: 'Write a class',
+        prompt: 'Write a class `Pet` whose `__init__` takes `name` and stores it in `self.name`. Then create `p = Pet("Rex")` and print `p.name`.',
+        answer: py`
+class Pet:
+    def __init__(self, name):
+        self.name = name
+p = Pet("Rex")
+print(p.name)`,
+        hint: '`__init__` takes `self` first, then `name`. After the class, go back to the left edge to create the object.',
+        explain:
+          '`Pet("Rex")` makes a new object and runs `__init__` with `name` set to `"Rex"`, which saves it on the object as `self.name`. Afterward, `p.name` reads it back.',
+        output: 'Rex',
       },
       {
         kind: 'code',
@@ -1338,12 +1697,32 @@ class Solution:
           '`best` starts as the first number. Each pass keeps the smaller of `best` and `n`, so after the loop `best` is the smallest number, and the method returns it.',
       },
       {
-        kind: 'quiz',
-        q: 'Inside `class Solution`, you wrote a helper method `def check(self, x)`. How do you call it from another method of the class?',
-        options: ['`check(x)`', '`self.check(x)`', '`check(self, x)`', '`Solution(x)`'],
-        answer: 1,
+        kind: 'type',
+        title: 'Call a helper method',
+        prompt: 'Make `countEvens` return how many numbers in `nums` are even. Start `count` at `0`, loop with `n`, and add `1` to `count` whenever the helper method `isEven` says `n` is even.',
+        starter: py`
+class Solution:
+    def isEven(self, n: int) -> bool:
+        return n % 2 == 0
+
+    def countEvens(self, nums: List[int]) -> int:`,
+        answer: py`
+        count = 0
+        for n in nums:
+            if self.isEven(n):
+                count += 1
+        return count`,
+        accept: [
+          py`
+        count = 0
+        for n in nums:
+            if self.isEven(n):
+                count = count + 1
+        return count`,
+        ],
+        hint: 'Inside a class, call another method through `self` with a dot. A bare `isEven(n)` raises a `NameError`.',
         explain:
-          'Methods live on the object, so you reach them through `self`. A bare `check(x)` raises a `NameError`. (A helper defined *inside* the method is just called by name.)',
+          'Methods live on the object, so one method calls another as `self.isEven(n)`. Each even number adds 1 to `count`, and `return count` runs once, after the loop.',
       },
     ],
   },
