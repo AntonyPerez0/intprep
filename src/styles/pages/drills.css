@@ -495,3 +495,108 @@ details.disclosure.drill-code-disclosure > .code {
   font-size: var(--fs-sm);
   animation: none;
 }
+
+/* ── Coding cards: Fill the gaps, Write a part (review) ──────────────────── */
+/* The problem statement, collapsed above the code: one frame, not a card inside a card */
+.drill-prompt > summary {
+  gap: 8px;
+  padding: 12px 16px;
+}
+.drill-prompt-title {
+  min-width: 0;
+}
+.drill-prompt .drill-summary-meta {
+  display: inline-flex;
+}
+details.disclosure.drill-prompt > .prompt-card {
+  margin: 0;
+  padding: 2px 16px 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  font-size: var(--fs-md);
+}
+
+/* The part to write, as a comment in the file (the cue) */
+.drill-code .typer-line.drill-cue {
+  min-width: 0;
+  margin: 2px 0;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  white-space: normal;
+  background: color-mix(in srgb, var(--brand-500) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--brand-400);
+}
+.drill-code .typer-line.drill-cue .typer-ln {
+  color: var(--brand-300);
+}
+.drill-cue-text {
+  --indent: 0ch;
+  display: block;
+  padding-left: calc(var(--indent) + 2ch);
+  text-indent: -2ch;
+  color: var(--brand-200);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.drill-cue-hash {
+  color: var(--code-comment);
+  font-style: normal;
+}
+@media (max-width: 479px) {
+  .drill-cue-text {
+    padding-left: calc(min(var(--indent), 4ch) + 2ch);
+  }
+}
+
+/* Earlier lines folded away above a long part, like a collapsed region in an editor */
+.drill-fold {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 16px 0 22px;
+  border: 0;
+  border-bottom: 1px solid var(--code-border);
+  background: color-mix(in srgb, var(--code-text) 5%, transparent);
+  color: var(--code-comment);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+.drill-fold svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+@media (hover: hover) {
+  .drill-fold:hover {
+    color: var(--code-text);
+    background: color-mix(in srgb, var(--code-text) 9%, transparent);
+  }
+}
+.drill-fold:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: -2px;
+}
+@media (pointer: coarse) {
+  .drill-fold {
+    min-height: 40px;
+  }
+}
+
+/* A note under the feedback ("This card comes back later in this session") */
+.drill-fb-note {
+  color: var(--text-secondary);
+}
+/* The difficulty sits beside the chevron, not halfway across */
+details.disclosure.drill-prompt > summary::after {
+  margin-left: 4px;
+}

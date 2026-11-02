@@ -7,9 +7,10 @@ import { PROBLEM_BY_ID } from '../content/index';
 import type { CategoryId } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { daysBetween, parseDay, today } from '../lib/date';
-import { cardsForProblem, type DrillCardSpec } from '../lib/drills';
+import { cardsForProblem, orderDeck, retryCard, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
-import { interleave, shuffle } from '../lib/random';
+import { preferTyping } from '../lib/input';
+import { shuffle } from '../lib/random';
 import { gradeFrom, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
 import { awardXp, dueProblemIds, finishSession, getProgress, learnedIds, recordAnswers, reviewProblem, useProgress } from '../lib/store';
@@ -18,8 +19,11 @@ import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { Badge, Completion, EmptyState } from '../components/ui';
 
-const MAX_DUE = 10;
-const MAX_EXTRA = 6;
+// Problems per session. Each brings three cards (one recognition card, two coding cards), and
+// coding cards take longer than a multiple-choice question.
+const MAX_DUE = 8;
+const MAX_AHEAD = 5;
+const MAX_UNIT = 5;
 
 type Mode = { kind: 'due' } | { kind: 'ahead' } | { kind: 'unit'; cat: CategoryId };
 
@@ -27,32 +31,26 @@ function buildDeck(mode: Mode): { ids: string[]; deck: DrillCardSpec[] } {
   const p = getProgress();
   let ids: string[];
   if (mode.kind === 'unit') {
-    ids = shuffle(CATEGORY_BY_ID[mode.cat].problemIds.filter((id) => p.problems[id]?.learnedAt)).slice(0, 8);
+    ids = shuffle(CATEGORY_BY_ID[mode.cat].problemIds.filter((id) => p.problems[id]?.learnedAt)).slice(0, MAX_UNIT);
   } else {
     const due = dueProblemIds(p);
     if (mode.kind === 'due' && due.length) ids = due.slice(0, MAX_DUE);
     else
       ids = learnedIds(p)
         .sort((a, b) => (p.problems[a].srs!.due < p.problems[b].srs!.due ? -1 : 1))
-        .slice(0, MAX_EXTRA);
+        .slice(0, MAX_AHEAD);
   }
   ids = ids.filter((id) => PROBLEM_BY_ID[id]);
-  const perProblem = mode.kind === 'due' ? 3 : 2;
-  const deck = interleave(
-    ids.flatMap((id) => cardsForProblem(PROBLEM_BY_ID[id], perProblem)),
-    (c) => c.problemId,
+  const typing = preferTyping(p.settings.typingMode);
+  // Interleaved across problems; each problem opens with its recognition card (see orderDeck).
+  const deck = orderDeck(
+    shuffle(ids).map((id) => {
+      const pp = p.problems[id];
+      // The coding cards follow the problem's schedule; each review rotates to other lines.
+      return cardsForProblem(PROBLEM_BY_ID[id], { srs: pp?.srs, round: pp?.reviews ?? 0, typing });
+    }),
   );
-  // Always open each problem with pattern recognition before deeper recall.
-  const seen = new Set<string>();
-  const ordered: DrillCardSpec[] = [];
-  const pending = [...deck];
-  while (pending.length) {
-    const i = pending.findIndex((c) => seen.has(c.problemId) || c.kind === 'pattern');
-    const [c] = pending.splice(i === -1 ? 0 : i, 1);
-    seen.add(c.problemId);
-    ordered.push(c);
-  }
-  return { ids, deck: ordered };
+  return { ids, deck };
 }
 
 interface Tally {
@@ -92,6 +90,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
     return t;
   });
   const [grades, setGrades] = useState<Record<string, Grade>>({});
+  // Code written on the first check of each coding card: lines right, out of how many.
+  const [code, setCode] = useState({ correct: 0, total: 0 });
   const [done, setDone] = useState(false);
   const [popKey, setPopKey] = useState(0);
 
@@ -104,10 +104,12 @@ function ReviewSession({ mode }: { mode: Mode }) {
       setCombo(nextCombo);
       setBestCombo((b) => Math.max(b, nextCombo));
 
-      // XP: full for due problems, half for practicing ahead, a little for retries.
+      // XP: code written right on the first check earns the most; full for due problems, half
+      // for practicing ahead, half for retries.
       let gained = 0;
       if (r.correct) {
-        const base = card.retry ? XP.drillCorrect / 2 : dueAtStart.has(card.problemId) ? XP.drillCorrect : XP.drillCorrect / 2;
+        const full = r.coded ? XP.codeCorrect : XP.drillCorrect;
+        const base = card.retry ? full / 2 : dueAtStart.has(card.problemId) ? full : full / 2;
         gained = Math.round(base + (nextCombo >= 5 ? XP.comboBonus : 0));
         if (nextCombo > 0 && nextCombo % 5 === 0) {
           sfx('combo');
@@ -122,6 +124,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
       if (!card.retry) {
         if (r.correct) firstCorrect += 1;
         setCorrect(firstCorrect);
+        const lines = r.lines;
+        if (lines) setCode((c) => ({ correct: c.correct + lines.correct, total: c.total + lines.total }));
         const t = { ...tally[card.problemId] };
         t.total += 1;
         t.remaining -= 1;
@@ -133,9 +137,10 @@ function ReviewSession({ mode }: { mode: Mode }) {
           reviewProblem(card.problemId, g);
           setGrades((gs) => ({ ...gs, [card.problemId]: g }));
         }
-        // Missed it? It comes back later in this session (relearning step).
+        // Missed it? It comes back later in this session (relearning step); a coding card comes
+        // back as a fresh instance (other gaps, another key line or part).
         if (!r.correct) {
-          nextDeck = [...deck, { ...card, uid: `${card.uid}:retry`, retry: true }];
+          nextDeck = [...deck, retryCard(PROBLEM_BY_ID[card.problemId], card, deck)];
           setDeck(nextDeck);
         }
       }
@@ -209,6 +214,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
   if (done) {
     const acc = Math.round((correct / Math.max(1, firstTotal)) * 100);
     const perfect = acc === 100;
+    const wrote = code.total > 0;
+    const codeLine = wrote ? ` You wrote ${code.correct} of ${code.total} lines of code right on the first check.` : '';
     return (
       <SessionShell progress={1} onClose={() => nav('/')} title={title}>
         <div className="review-done">
@@ -218,16 +225,37 @@ function ReviewSession({ mode }: { mode: Mode }) {
             title="Review complete"
             subtitle={
               perfect ? (
-                <>Flawless: all {firstTotal} cards right on the first try. These problems now move further out on your schedule.</>
+                <>
+                  Flawless: all {firstTotal} cards right on the first try{wrote ? `, ${code.total} lines of code included` : ''}. These problems now move
+                  further out on your schedule.
+                </>
               ) : (
                 <>
-                  {correct} of {firstTotal} cards right on the first try. Missed problems come back sooner, so they stick.
+                  {correct} of {firstTotal} cards right on the first try.{codeLine} Missed problems come back sooner, so they stick.
                 </>
               )
             }
             stats={[
               { label: 'XP earned', value: `+${xp}` },
               { label: 'Accuracy', value: `${acc}%` },
+              ...(wrote
+                ? [
+                    {
+                      label: 'Lines written',
+                      value: (
+                        <>
+                          <span aria-hidden="true">
+                            {code.correct}
+                            <span className="review-of">/{code.total}</span>
+                          </span>
+                          <span className="sr-only">
+                            {code.correct} of {code.total} right
+                          </span>
+                        </>
+                      ),
+                    },
+                  ]
+                : []),
               { label: 'Best combo', value: bestCombo },
             ]}
           >
@@ -328,6 +356,10 @@ function ReviewSession({ mode }: { mode: Mode }) {
         problem={p}
         onDone={onDone}
         combo={combo}
+        seed={card.seed}
+        line={card.line}
+        chunk={card.chunk}
+        comesBack={!card.retry}
         badge={
           card.retry ? (
             <Badge tone="warning">
@@ -366,6 +398,6 @@ const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'suc
 
 const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: GraduationCap, title: 'Learn a problem', body: 'A guided lesson walks you from the prompt to working code.' },
-  { icon: Brain, title: 'Recall it', body: 'Short drills test the pattern, the key insight and the code.' },
+  { icon: Brain, title: 'Recall it', body: 'Spot the pattern, then write the code from memory: a key line, the missing lines, a whole part.' },
   { icon: CalendarCheck, title: 'Space it out', body: 'Each good review pushes the next one further away.' },
 ];

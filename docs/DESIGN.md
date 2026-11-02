@@ -194,6 +194,42 @@ shows your line with the minus ("left blank" if empty) above the expected line w
 revealed, grade, filled, locked, round, check, retry, fresh }`: `check()` reveals, `retry()` ("Fix and check again")
 keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the next round with empty gaps.
 
+### Review deck (`pages/Review.tsx`, `lib/drills.ts`, `components/Drills.tsx`)
+
+Daily review, Practice ahead and Unit practice are code-first. Each problem brings three cards: **one
+recognition card first** (Spot the pattern about 70% of the time, otherwise Recall the key insight, Name the
+technique, Know the complexity or Put the steps in order), then **two coding cards** picked by the problem's
+schedule (`codeStage(srs)`): learning (interval under 4 days or fewer than 2 good reviews in a row) gets Write the
+key line + Fill the gaps; young (4 to 20 days) Fill the gaps + Write a part; mature (21 days or more) Write a part
+twice, two different parts (or a part + Fill the gaps). Sessions hold up to 8 due problems, or 5 when practicing
+ahead or by unit. Cards are interleaved across problems, and each problem still opens with its recognition card.
+A missed card comes back once at the end of the session ("Try again" badge, half XP); a coding card comes back as
+a fresh instance (`retryCard`: other gaps, another key line, another part). The problem's review grade is
+`gradeFrom` over the first try of its three cards, coding cards counting like the others.
+
+- **Fill the gaps** (`gaps`, `GapsDrill`): the whole solution in a `GapsWindow`, header given, 2 gaps (6 code
+  lines or fewer) or 3, always a key line among them (`reviewGaps(p, seed)`; the seed moves with the problem's
+  review count, so each session blanks other lines).
+- **Write a part** (`part`, `PartDrill`): one body chunk, key-line chunks of 2 to 6 lines first (`pickPart`). The
+  lines before it are given (only the last 8 when there are more than 10, with a "Show N earlier lines" fold row),
+  its explanation is a highlighted `# comment` row (the cue), nothing after it is shown, and the `CodeEditor` starts
+  at the chunk's base indentation, graded with `gradeCode(text, chunk, { anchor })`.
+- **Write the key line** (`keyline`): typed by default on every device; "Show options" stays as a helper, and a
+  line picked from (or typed after seeing) the options counts as recognition, not as code written.
+
+Every coding card says what to do in its title ("Fill the gaps in Two Sum", "Write the next part of Two Sum",
+"Write the missing line of Two Sum"), keeps the problem statement in a collapsed disclosure, and shows the kit's
+keyboard hint in the window footer. "Show answer" (left of Check, before the first check) reveals the answer as a
+miss for a card the learner cannot recall. The first check decides the card; after a miss, "Fix and check again"
+is the `checkedSecondary` and Continue stays the primary. XP: `XP.codeCorrect` (8) for code right on the first
+check, `XP.drillCorrect` (4) for recognition, half for practicing ahead and for retries, plus the combo bonus. The
+completion adds a "Lines written" stat (lines right on the first check, out of the lines asked); its four stats sit
+two by two below 480px.
+
+Input mode (`lib/input.ts`, `preferTyping`): 'auto' (the default) and 'type' both mean typing, phones included;
+'tap' is the explicit opt-in to pick lines from choices, and then the review's coding cards become key lines to
+pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
+
 ## Page blueprints
 
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
@@ -263,11 +299,13 @@ Automated tests drive the UI through these hooks — keep them working:
   (+`.correct/.wrong`), `.actionbar .buttons > .btn:last-child` (primary action), `.parsons-slot`,
   `.parsons-bank .parsons-item`, `textarea.code-input`, `input.gaps-input` (one per gap, `aria-label` "Line N,
   missing"), `.session-body input.input` (typed key line),
-  `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button).
+  `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button), review cards `.drill[data-drill]` (kind:
+  `pattern`, `gaps`, `part`, `keyline`…) with `data-problem`, the part card's `.drill-cue` and `.drill-fold`.
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
-  and **"Got it"**; completion titles containing **"Lesson complete"**, **"Problem learned"**,
-  **"Review complete"**; repair button containing **"Repair"**.
+  and **"Got it"** (the review's Fill the gaps and Write a part cards also have a **"Show answer"** button, left of
+  Check before the first check); completion titles containing **"Lesson complete"**, **"Problem learned"**,
+  **"Review complete"**, and its **"Lines written"** stat; repair button containing **"Repair"**.
 
 ## Working on a page
 

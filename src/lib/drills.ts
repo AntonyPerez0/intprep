@@ -1,21 +1,27 @@
-// Builds drill questions from content: pattern recognition, technique, key-line
-// fill-ins (with plausible "mutant" distractors) and complexity questions.
+// Builds drill questions from content: pattern recognition, technique, key lines (typed, or
+// picked from plausible "mutant" distractors), complexity questions, and the coding cards of the
+// review deck (Fill the gaps, Write a part). Also builds the review deck itself.
 
 import { CATEGORIES } from '../content/categories';
 import { PROBLEMS } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
-import { normalizeCode, parseSolution } from './parseSolution';
+import { codeLines, lineKey } from './codegrade';
+import { gapCandidates, gapSource, lineWeight, pickGaps, type GapSource } from './gaps';
+import { normalizeCode, parseSolution, type Chunk } from './parseSolution';
 import { pick, sample, shuffle } from './random';
+import type { SrsCard } from './srs';
 
-export type DrillKind = 'pattern' | 'technique' | 'insight' | 'order' | 'keyline' | 'complexity';
+export type DrillKind = 'pattern' | 'technique' | 'insight' | 'order' | 'keyline' | 'complexity' | 'gaps' | 'part';
 
 export const DRILL_LABEL: Record<DrillKind, string> = {
   pattern: 'Spot the pattern',
   technique: 'Name the technique',
   insight: 'Recall the key insight',
   order: 'Put the steps in order',
-  keyline: 'Fill in the key line',
+  keyline: 'Write the key line',
   complexity: 'Know the complexity',
+  gaps: 'Fill the gaps',
+  part: 'Write a part',
 };
 
 // ── Pattern recognition ─────────────────────────────────────────────────────
@@ -189,12 +195,21 @@ export interface KeyLineDrill {
   options: string[];
 }
 
-export function keyLineDrill(p: Problem, avoid?: number): KeyLineDrill | null {
+/** Indices into `parseSolution(p.solution).lines` of the key lines a drill can blank (never the header). */
+export function keyLineIndices(p: Problem): number[] {
+  return parseSolution(p.solution).lines.flatMap((l, i) => (l.key && !l.header ? [i] : []));
+}
+
+/**
+ * A key line to blank, with three plausible wrong options. `at` asks for a specific line (an
+ * index from `keyLineIndices`); otherwise a random key line, other than `avoid` when there is one.
+ */
+export function keyLineDrill(p: Problem, avoid?: number, at?: number): KeyLineDrill | null {
   const parsed = parseSolution(p.solution);
   const keys = parsed.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.key && !l.header);
   if (!keys.length) return null;
   const choices = keys.length > 1 && avoid !== undefined ? keys.filter((k) => k.i !== avoid) : keys;
-  const { l, i } = pick(choices);
+  const { l, i } = keys.find((k) => k.i === at) ?? pick(choices);
   const answer = l.text;
   const norm = new Set([normalizeCode(answer)]);
   const options: string[] = [];
@@ -219,6 +234,76 @@ export function keyLineDrill(p: Problem, avoid?: number): KeyLineDrill | null {
 /** Lines are "the same" if they only differ in whitespace/quotes/trailing commas. */
 export const sameCode = (a: string, b: string) => normalizeCode(a) === normalizeCode(b);
 
+// ── Coding cards ────────────────────────────────────────────────────────────
+
+/** A review "Fill the gaps" card: the whole solution, the header given, and the lines to type. */
+export interface ReviewGaps extends GapSource {
+  /** Indices into `lines` to blank, sorted. */
+  gaps: number[];
+}
+
+/**
+ * The few lines a review "Fill the gaps" card blanks: 2 for a short solution (6 code lines or
+ * fewer), else 3, always including a key line. `seed` is the instance: 0 is the canonical set
+ * (key lines first); each later seed steps away from the one before (see `pickGaps`), so a retry
+ * or the next session practices other lines.
+ */
+export function reviewGaps(p: Problem, seed = 0): ReviewGaps {
+  const src = gapSource(p.solution);
+  const body = codeLines(src.lines.filter((_, i) => !src.header.includes(i))).length;
+  const n = body <= 6 ? 2 : 3;
+  let gaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min: n, max: n, seed });
+  const cands = new Set(gapCandidates(src.lines, src.header));
+  const keys = src.keyLines.filter((i) => cands.has(i));
+  if (keys.length && gaps.length && !gaps.some((i) => keys.includes(i))) {
+    // Swap the lightest gap for a key line, preferring one whose code is not on screen elsewhere.
+    const unique = keys.filter((i) => !src.lines.some((l, j) => j !== i && lineKey(l) === lineKey(src.lines[i])));
+    const pool = unique.length ? unique : keys;
+    const add = pool[seed % pool.length];
+    const drop = gaps.reduce((a, b) => (lineWeight(src.lines[b]) < lineWeight(src.lines[a]) ? b : a));
+    gaps = [...gaps.filter((i) => i !== drop), add].sort((a, b) => a - b);
+  }
+  return { ...src, gaps };
+}
+
+/** How much a "Write a part" card wants a chunk: key lines first, then a part of 2 to 6 lines. */
+function partScore(c: Chunk): number {
+  const n = codeLines(c.lines).length;
+  return (c.keyLines.length ? 2 : 0) + (n >= 2 && n <= 6 ? 1 : 0);
+}
+
+/** The body chunks a "Write a part" card can ask for (indices into `parseSolution(p.solution).chunks`), best first. */
+export function partChunks(p: Problem): number[] {
+  const { chunks } = parseSolution(p.solution);
+  return chunks
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => !c.header && codeLines(c.lines).length > 0)
+    .sort((a, b) => partScore(b.c) - partScore(a.c) || a.i - b.i)
+    .map(({ i }) => i);
+}
+
+/**
+ * The chunk for a "Write a part" card: from the best tier (see `partScore`), rotating by `seed`
+ * (the session), never one in `avoid` (parts already asked) while another exists.
+ */
+export function pickPart(p: Problem, seed = 0, avoid: readonly number[] = []): number {
+  const { chunks } = parseSolution(p.solution);
+  const all = partChunks(p);
+  const free = all.filter((i) => !avoid.includes(i));
+  const pool = free.length ? free : all;
+  const top = partScore(chunks[pool[0]]);
+  const tier = pool.filter((i) => partScore(chunks[i]) === top);
+  return tier[seed % tier.length];
+}
+
+/** A key line for a "Write the key line" card (index into `parseSolution(p.solution).lines`), rotating by `seed`. */
+export function pickKeyLine(p: Problem, seed = 0, avoid: readonly number[] = []): number | undefined {
+  const all = keyLineIndices(p);
+  const free = all.filter((i) => !avoid.includes(i));
+  const pool = free.length ? free : all;
+  return pool.length ? pool[seed % pool.length] : undefined;
+}
+
 // ── Session decks ───────────────────────────────────────────────────────────
 
 export interface DrillCardSpec {
@@ -227,17 +312,134 @@ export interface DrillCardSpec {
   uid: string;
   /** A second try at a card missed earlier in the session (not graded). */
   retry?: boolean;
+  /** The recognition card that opens this problem's cards in the session. */
+  lead?: boolean;
+  /** Coding cards: which instance (Fill the gaps: the gap set's seed; key line and part: the rotation). */
+  seed?: number;
+  /** Write the key line: the line to blank (index into `parseSolution(...).lines`). */
+  line?: number;
+  /** Write a part: the chunk to write (index into `parseSolution(...).chunks`). */
+  chunk?: number;
+}
+
+/** Where a problem is in its schedule, which decides its coding cards. */
+export type CodeStage = 'learning' | 'young' | 'mature';
+
+/** Learning: interval under 4 days or fewer than 2 good reviews in a row; young: 4 to 20 days; mature: 21 days or more. */
+export function codeStage(card?: Pick<SrsCard, 'interval' | 'reps'>): CodeStage {
+  if (!card || card.interval < 4 || card.reps < 2) return 'learning';
+  return card.interval >= 21 ? 'mature' : 'young';
+}
+
+/** The recognition cards other than Spot the pattern: they stay in the mix, rarely. */
+const RECOGNITION_OTHER: DrillKind[] = ['insight', 'technique', 'complexity', 'order'];
+
+export interface DeckOptions {
+  /** The problem's spaced-repetition card (picks the coding cards; see `codeStage`). */
+  srs?: Pick<SrsCard, 'interval' | 'reps'>;
+  /** Reviews done so far: each session rotates to other gaps, parts and key lines. */
+  round?: number;
+  /** False when the learner opted into tapping choices: the coding cards become key lines to pick. */
+  typing?: boolean;
 }
 
 /**
- * The cards used to review one problem. Pattern recognition always comes first
- * (it is the skill interviews test hardest); the rest is varied.
+ * The cards used to review one problem: one recognition card first (Spot the pattern about 70% of
+ * the time, otherwise the key insight, the technique, the complexity or the steps in order), then
+ * two coding cards chosen by how well the problem is known:
+ * - learning: Write the key line + Fill the gaps;
+ * - young: Fill the gaps + Write a part;
+ * - mature: Write a part twice (two different parts), or a part + Fill the gaps.
+ * With the tap opt-in, the coding cards become key lines picked from choices (or the steps in order).
  */
-export function cardsForProblem(p: Problem, count = 3): DrillCardSpec[] {
-  const extra: DrillKind[] = shuffle(['insight', 'order', 'keyline', 'complexity', 'technique'] as DrillKind[]);
-  // Insight recall is the most valuable after pattern: include it most of the time.
-  const chosen: DrillKind[] = ['pattern'];
-  if (Math.random() < 0.7) chosen.push('insight');
-  for (const k of extra) if (chosen.length < count && !chosen.includes(k)) chosen.push(k);
-  return chosen.map((kind, i) => ({ kind, problemId: p.id, uid: `${p.id}:${kind}:${i}` }));
+export function cardsForProblem(p: Problem, { srs, round = 0, typing = true }: DeckOptions = {}): DrillCardSpec[] {
+  const lead: DrillKind = Math.random() < 0.7 ? 'pattern' : pick(RECOGNITION_OTHER);
+  let coding: DrillKind[];
+  if (!typing) coding = ['keyline', keyLineIndices(p).length > 1 ? 'keyline' : lead === 'order' ? 'complexity' : 'order'];
+  else {
+    const stage = codeStage(srs);
+    coding =
+      stage === 'learning'
+        ? ['keyline', 'gaps']
+        : stage === 'young'
+          ? ['gaps', 'part']
+          : partChunks(p).length > 1
+            ? ['part', 'part']
+            : ['part', 'gaps'];
+  }
+  const out: DrillCardSpec[] = [{ kind: lead, problemId: p.id, uid: `${p.id}:${lead}:0`, lead: true }];
+  coding.forEach((kind, k) => {
+    const spec: DrillCardSpec = { kind, problemId: p.id, uid: `${p.id}:${kind}:${k + 1}` };
+    if (kind === 'gaps') spec.seed = 2 * round;
+    if (kind === 'keyline') {
+      spec.seed = round;
+      spec.line = pickKeyLine(p, round, out.flatMap((c) => (c.line !== undefined ? [c.line] : [])));
+    }
+    if (kind === 'part') {
+      spec.seed = round;
+      spec.chunk = pickPart(p, round, out.flatMap((c) => (c.chunk !== undefined ? [c.chunk] : [])));
+    }
+    out.push(spec);
+  });
+  // The lead card stays first; the coding cards come in either order, so a session's kinds mix.
+  return [out[0], ...shuffle(out.slice(1))];
+}
+
+/**
+ * One session's order, from each problem's cards (lead card first, as `cardsForProblem` gives
+ * them). Interleaved: a new problem starts every other card while any is left, the cards between
+ * continue the started problem with the most cards left (the earliest started on a tie), and the
+ * same problem never shows twice in a row while another has cards left. So each problem opens with
+ * its recognition card, coding starts early, and its three cards are spread out.
+ */
+export function orderDeck(problems: readonly (readonly DrillCardSpec[])[]): DrillCardSpec[] {
+  const queues = problems.map((cards) => [...cards]);
+  const total = queues.reduce((n, q) => n + q.length, 0);
+  const started: number[] = [];
+  let next = 0;
+  let last = -1;
+  const out: DrillCardSpec[] = [];
+  while (out.length < total) {
+    const going = started.filter((k) => queues[k].length && k !== last);
+    // Most cards left first; ties keep the order the problems started in (sort is stable).
+    going.sort((a, b) => queues[b].length - queues[a].length);
+    const fresh = next < queues.length && queues[next].length ? next : -1;
+    let k: number;
+    if (fresh >= 0 && (out.length % 2 === 0 || !going.length)) {
+      k = fresh;
+      started.push(next++);
+    } else if (going.length) k = going[0];
+    else {
+      // Only the problem just shown has cards left (or empty problems to skip).
+      if (next < queues.length && !queues[next].length) {
+        next++;
+        continue;
+      }
+      k = last;
+    }
+    out.push(queues[k].shift()!);
+    last = k;
+  }
+  return out;
+}
+
+/**
+ * The card that comes back later in the session after a miss. Coding cards come back as a fresh
+ * instance: other gaps, another key line, another part (when the solution has one), so the
+ * second try is recall, not a copy of the answer just shown.
+ */
+export function retryCard(p: Problem, card: DrillCardSpec, deck: readonly DrillCardSpec[]): DrillCardSpec {
+  const next: DrillCardSpec = { ...card, uid: `${card.uid}:retry`, retry: true, lead: false };
+  const seed = (card.seed ?? 0) + 1;
+  if (card.kind === 'gaps') next.seed = seed;
+  if (card.kind === 'keyline' && card.line !== undefined) {
+    next.seed = seed;
+    next.line = pickKeyLine(p, seed, [card.line]);
+  }
+  if (card.kind === 'part' && card.chunk !== undefined) {
+    const asked = deck.flatMap((c) => (c.problemId === p.id && c.kind === 'part' && c.chunk !== undefined ? [c.chunk] : []));
+    next.seed = seed;
+    next.chunk = pickPart(p, seed, asked);
+  }
+  return next;
 }

@@ -42,6 +42,7 @@ import { XP } from '../lib/game';
 import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
+import { preferTyping } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { normalizeCode, parseSolution, stripComment } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
@@ -89,11 +90,6 @@ export function RebuildRoute() {
 
 const isWide = () => !!window.matchMedia?.('(min-width: 820px)').matches;
 const isFinePointer = () => !!window.matchMedia?.('(pointer: fine)').matches;
-
-function preferTyping(mode: 'auto' | 'type' | 'tap') {
-  if (mode !== 'auto') return mode === 'type';
-  return isFinePointer() && window.innerWidth >= 820;
-}
 
 const reviewGrade = (acc: number) => (acc >= 0.9 ? 'good' : acc >= 0.6 ? 'hard' : 'again');
 
