@@ -10,6 +10,7 @@ import {
   GraduationCap,
   Keyboard,
   Lightbulb,
+  ListChecks,
   Search,
   SearchX,
   TextCursorInput,
@@ -21,12 +22,20 @@ import { guideFor, problemsFor } from '../content/index';
 import type { Difficulty } from '../content/types';
 import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
+import { templateInput } from '../lib/input';
 import { isDue } from '../lib/srs';
-import { templateScore, useProgress, type Progress } from '../lib/store';
+import { templateScore, useProgress, type Progress, type TemplateMode } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon } from '../components/icons';
 import { CodeWindow } from '../components/interact';
 import { EmptyState, ProgressBar } from '../components/ui';
+
+/** The template's best-score chip, by the rung it comes from (`templateScore`). */
+const TEMPLATE_BEST: Record<TemplateMode, { Icon: typeof Trophy; short: string; sr: string; title: string }> = {
+  memory: { Icon: Trophy, short: 'Best', sr: 'Typed from memory, best first try: ', title: 'Your best first try typing it from memory' },
+  gaps: { Icon: TextCursorInput, short: 'Gaps', sr: 'Filled the gaps, best first check: ', title: 'Your best first check filling the gaps' },
+  pick: { Icon: ListChecks, short: 'Picked', sr: 'Picked the gaps, best first check: ', title: 'Your best first check picking the gaps' },
+};
 
 // Two panes need room for the template code; below this, an accordion reads better.
 const WIDE_QUERY = '(min-width: 1180px)';
@@ -260,8 +269,11 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
   const g = guideFor(c.id);
   const s = unitStats(c, progress);
   const introDone = !!progress.lessonsDone[`g:${c.id}`];
-  // The best template score so far: typed from memory, else filling the gaps.
+  // The best template score so far, on the highest rung practiced (from memory, else filling the
+  // gaps, else picking them), and how Template practice will open (picked while the template is new).
   const typed = templateScore(progress.templates?.[c.id]);
+  const best = typed && TEMPLATE_BEST[typed.mode];
+  const PracticeIcon = templateInput(progress.settings.typingMode, progress.templates?.[c.id]) === 'pick' ? ListChecks : Keyboard;
 
   const actions = (
     <div className="patterns-actions">
@@ -347,19 +359,16 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
       <section className="patterns-section">
         <div className="patterns-template-head">
           <h3>Template</h3>
-          {typed && (
-            <span
-              className={`patterns-best is-${typed.mode}`}
-              title={typed.mode === 'memory' ? 'Your best first try typing it from memory' : 'Your best first check filling the gaps'}
-            >
-              {typed.mode === 'memory' ? <Trophy strokeWidth={2.2} aria-hidden="true" /> : <TextCursorInput strokeWidth={2.2} aria-hidden="true" />}
-              <span className="sr-only">{typed.mode === 'memory' ? 'Typed from memory, best first try: ' : 'Filled the gaps, best first check: '}</span>
-              <span aria-hidden="true">{typed.mode === 'memory' ? 'Best ' : 'Gaps '}</span>
+          {typed && best && (
+            <span className={`patterns-best is-${typed.mode}`} title={best.title}>
+              <best.Icon strokeWidth={2.2} aria-hidden="true" />
+              <span className="sr-only">{best.sr}</span>
+              <span aria-hidden="true">{best.short} </span>
               {Math.round(typed.best * 100)}%
             </span>
           )}
           <Link to={`/patterns/${c.id}/type`} state={{ from: `/patterns?p=${c.id}` }} className="btn btn-secondary btn-sm patterns-type">
-            <Keyboard aria-hidden="true" />
+            <PracticeIcon aria-hidden="true" />
             Practice the template
           </Link>
         </div>

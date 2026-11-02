@@ -855,8 +855,9 @@
   height: 12px;
   color: var(--xp);
 }
-/* Only the gaps done so far: the score of the easier rung, in a quieter tone */
-.unit-type-best.is-gaps svg {
+/* Only the gaps done so far (typed or picked): the score of an easier rung, in a quieter tone */
+.unit-type-best.is-gaps svg,
+.unit-type-best.is-pick svg {
   color: var(--text-tertiary);
 }
 /* Phones: the drill link takes its own full-width row under the label */

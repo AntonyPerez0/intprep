@@ -493,12 +493,14 @@ export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode
 }
 
 /**
- * The template score to show next to "Practice the template": the from-memory best once the
- * template has been typed from memory, else the fill-the-gaps best, else null.
+ * The template score to show next to "Practice the template": the highest rung practiced, so the
+ * from-memory best once the template has been typed from memory, else the fill-the-gaps best,
+ * else the pick-the-gaps best, else null.
  */
-export function templateScore(t: TemplateProgress | undefined): { mode: 'memory' | 'gaps'; best: number } | null {
+export function templateScore(t: TemplateProgress | undefined): { mode: TemplateMode; best: number } | null {
   if (t && t.tries > 0) return { mode: 'memory', best: t.best };
   if (t?.gapsBest !== undefined) return { mode: 'gaps', best: t.gapsBest };
+  if (t?.pickBest !== undefined) return { mode: 'pick', best: t.pickBest };
   return null;
 }
 

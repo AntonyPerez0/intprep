@@ -1,9 +1,10 @@
 /* ==========================================================================
-   Template from memory — src/pages/TemplateDrill.tsx (/patterns/:cat/type?mode=gaps|memory)
-   Header (drills.css anatomy) with the mode switch (Fill the gaps / From
-   memory) → "when to reach for it" cues → the typing kit (src/styles/typer.css,
-   gaps.css). After a miss, "Fix and check again" sits in the action bar.
-   Completion shows the score and the reference template.
+   Template practice — src/pages/TemplateDrill.tsx (/patterns/:cat/type?mode=pick|gaps|memory)
+   Header (drills.css anatomy) with the mode switch (Pick the gaps / Fill the
+   gaps / From memory) → "when to reach for it" cues → the pick kit
+   (src/styles/pick.css) or the typing kit (src/styles/typer.css, gaps.css).
+   After a miss, "Fix and check again" sits in the action bar. Completion shows
+   the score and the reference template.
    ========================================================================== */
 
 .tdrill {
@@ -122,7 +123,7 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   }
 }
 
-/* ── Mode switch (Fill the gaps / From memory) ─────────────────────────── */
+/* ── Mode switch (Pick the gaps / Fill the gaps / From memory) ─────────── */
 .tdrill-modes {
   display: flex;
   flex-wrap: wrap;
@@ -151,7 +152,10 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   width: 13px;
   height: 13px;
 }
-/* Phones: the switch spans the column like a pair of tabs, with the touch-size buttons */
+.tdrill-seg-short {
+  display: none;
+}
+/* Phones: the switch spans the column like a row of tabs, with the touch-size buttons */
 @media (max-width: 639px) {
   .tdrill-modes {
     flex-direction: column;
@@ -159,7 +163,7 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   }
   .tdrill-seg {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .tdrill-seg button {
     min-width: 0;
@@ -169,6 +173,27 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
   }
   .tdrill-modes-note {
     justify-content: center;
+  }
+}
+/* The three names fit with their icons down to here; below, the names alone */
+@media (max-width: 459px) {
+  .tdrill-seg button svg {
+    display: none;
+  }
+}
+/* The narrowest phones: short names ("Pick", "Fill", "Memory"); the full name stays the
+   accessible name */
+@media (max-width: 379px) {
+  .tdrill-seg-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .tdrill-seg-short {
+    display: inline;
   }
 }
 

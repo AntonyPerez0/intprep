@@ -430,8 +430,9 @@ dd.patterns-mix {
   height: 12px;
   color: var(--xp);
 }
-/* Only the gaps done so far: the score of the easier rung, in a quieter tone */
-.patterns-best.is-gaps svg {
+/* Only the gaps done so far (typed or picked): the score of an easier rung, in a quieter tone */
+.patterns-best.is-gaps svg,
+.patterns-best.is-pick svg {
   color: var(--text-tertiary);
 }
 .patterns-type {

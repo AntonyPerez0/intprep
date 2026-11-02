@@ -32,6 +32,8 @@ export const XP = {
   templateHintMax: 10,
   /** Template drill, fill the gaps: up to this much, scaled by first-check accuracy. */
   templateGapsMax: 12,
+  /** Template drill, pick the gaps: up to this much, scaled by first-check accuracy (about 5/8 of typing them, as `pickCorrect` to `codeCorrect`). */
+  templatePickMax: 8,
   blitzPerCorrect: 2,
   /** Pattern Blitz, Key lines: each key line typed right on the first check. */
   blitzCodePerCorrect: 4,
