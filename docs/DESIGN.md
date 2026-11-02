@@ -390,6 +390,12 @@ alone), so picking never climbs the typed ladder.
   option (never Check), Up/Down move, Escape → `onEscape`. A `radiogroup` of `button.choice.pick-option`
   (`role="radio"`); "Press 1–4" on desktop. Standalone (not `inline`) it is a rounded panel to put under any
   code window; with `revealed` + `answer` the right option is marked correct and a wrong pick wrong.
+  With `block`, the options are whole snippets written at their real column in the file (one line or several,
+  "Pick the right code"): shown line by line with an indent guide per level (a long line wraps under its own
+  indentation), read to screen readers as "Line 2, indented 4 spaces: …", and the answer is matched line by line
+  with its indentation (a snippet one level off is a different option). Indentation every option shares is
+  dropped (the slot shows where the code goes, and phones keep the width); options that start at different
+  columns show at their real columns, so an indentation mistake reads as one.
 - **Arrange** (`components/Arrange.tsx`): `useArrange(lines, { seed, keyLines, distractor })` → `{ set, blocks,
   placed, bank, place, remove, total, canCheck, revealed, result, check, retry }` (`canCheck`: as many lines placed
   as the solution has; `retry` keeps the order). `<ArrangeWindow blocks placed onPlace onRemove total revealed
@@ -457,6 +463,20 @@ for screen readers), so "Type instead" keeps its words.
   answer" (the answer, then Continue; the slide comes back once at the end of the lesson). Before a check, the idle
   secondary is "Hint" while unused, then "Show answer" (right away on a slide with no hint), so a beginner who
   cannot start is never stuck; it counts as a miss the same way.
+  **Pick the right code** (`PickSlideStep`): a "Your turn" slide with authored wrong options (`pick`, about a third
+  of a lesson's slides, the first exercise on each new idea) is picked first in "Pick first, then type" and
+  "Always pick", typed in "Always type". Same eyebrow ("Your turn · 2 of 8", ListChecks icon), title and task; the
+  typing window holds the starter as `given` and a dashed slot at the answer's column ("Pick the 2 lines below"; a
+  tap brings the options into view), with the expected output and the status bar ("2 lines to pick", "Ready to
+  check"); under it `<CodeOptions block>` "Pick the right code": the answer and the wrong options, shuffled once
+  per visit. A pick fills the slot in place (tinted, numbered); a pick made on an option moves focus to Check, a
+  number key leaves it. Check: the window shows the pick against the answer as the kit's diff (graded at real
+  columns, `anchor: 0`, so a body one level off reads as wrong indentation), the legend under it, the options
+  mark the answer and a wrong pick, and the bar gives the explanation. The first check counts toward "First
+  try"; a miss is titled "Not quite — it will come back later" and comes back once at the end ("Missed earlier",
+  reshuffled). After a miss, "Fix and check again" (left of Continue) re-opens the options with the last pick
+  focused; a right fix is "Right now". Before the first check, "Type instead" ('auto' only) turns the slide into
+  its typed view for the rest of the lesson (its comeback is typed too).
 - **Guided problem lesson (`/p/:id/learn`)** — ten steps, "Step 7 of 10 · Write the code" in the eyebrow: read,
   guess (pattern choice), hints, brute force, insight, plan, **Write the code**, complexity (choice), traps, **Final
   check**. Write the code goes through every part of the solution except the class / def header (always given;
@@ -636,6 +656,9 @@ Automated tests drive the UI through these hooks — keep them working:
   left of Check before the first check; on phones the key line's reads "Answer", its accessible name staying
   "Show answer"; after it, the checked action is **"Type it now"**); completion titles containing **"Lesson complete"**, **"Problem learned"**,
   **"Review complete"**, and its **"Lines written"** stat; repair button containing **"Repair"**.
+- Beginner "Pick the right code": `.lplayer-pick[data-input="pick"]` (typed slides stay `.lplayer-type`), its
+  options `.lplayer-pick-options .pick-option` (each line a `.pick-option-line` with its column in `--indent`),
+  the slot `.lplayer-pick-slot`, the picked code `.lplayer-pick-line`.
 
 ## Working on a page
 

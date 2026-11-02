@@ -260,6 +260,19 @@
   flex: 1;
   min-width: 0;
 }
+/* Block options (`block`): a snippet line by line at its real indentation, with a faint guide per
+   level as an editor draws it; a line wider than the panel wraps under its own indentation */
+.pick-option-line {
+  display: block;
+  min-height: 20px;
+  padding-left: var(--indent, 0ch);
+  background: repeating-linear-gradient(
+      to right,
+      color-mix(in srgb, var(--code-text) 14%, transparent) 0 1px,
+      transparent 1px 4ch
+    )
+    0 0 / var(--indent, 0ch) 100% no-repeat;
+}
 .pick-option-mark {
   flex: none;
   display: inline-grid;

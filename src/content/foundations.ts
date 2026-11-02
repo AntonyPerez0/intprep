@@ -194,6 +194,20 @@ score = 10
 score = score + 5
 print(score)`,
         ],
+        pick: [
+          py`
+score = 10
+score + 5
+print(score)`,
+          py`
+10 = score
+score += 5
+print(score)`,
+          py`
+score = 10
+score += 5
+print("score")`,
+        ],
         hint: '`score += 5` is short for `score = score + 5`. Press Enter to start a new line.',
         explain:
           'The first line stores 10 under the name `score`. `+=` reads the old value, adds 5 and stores the result back, so `print` shows 15.',
@@ -306,6 +320,14 @@ False
         answer: py`
 print(n % 10)
 print(n // 10)`,
+        pick: [
+          py`
+print(n // 10)
+print(n % 10)`,
+          py`
+print(n % 10)
+print(n / 10)`,
+        ],
         hint: 'Divide by 10: the remainder (`%`) is the last digit, and floor division (`//`) drops it.',
         explain:
           '`917 % 10` is the remainder after dividing by 10, which is always the last digit: `7`. `917 // 10` divides and rounds down, which drops that digit: `91`.',
@@ -385,6 +407,11 @@ no newline... same line`,
 name = "Kai"
 solved = 5`,
         answer: 'print(f"{name} solved {solved} problems")',
+        pick: [
+          'print("{name} solved {solved} problems")',
+          'print(f"name solved solved problems")',
+          'print(name + " solved " + solved + " problems")',
+        ],
         hint: 'Start the text with `f"`, then write the sentence with `{name}` and `{solved}` where the values go.',
         explain:
           'The `f` before the quotes tells Python to fill in each `{...}` with its value, so the message stays right whenever `name` or `solved` changes.',
@@ -479,8 +506,8 @@ else:
       },
       {
         kind: 'type',
-        title: 'Write an if',
-        prompt: '`temp` holds a temperature. Write an `if` that prints `hot` when `temp` is greater than `30`.',
+        title: 'Your first if',
+        prompt: '`temp` holds a temperature. Use an `if` to print `hot` when `temp` is greater than `30`.',
         starter: 'temp = 34',
         answer: py`
 if temp > 30:
@@ -489,6 +516,17 @@ if temp > 30:
           py`
 if 30 < temp:
     print("hot")`,
+        ],
+        pick: [
+          py`
+if temp > 30
+    print("hot")`,
+          py`
+if temp > 30:
+print("hot")`,
+          py`
+if temp > 30:
+    print(hot)`,
         ],
         hint: 'End the `if` line with a colon. Press Enter after it and the editor indents the next line for you.',
         explain:
@@ -532,14 +570,25 @@ lap 3`,
       },
       {
         kind: 'type',
-        title: 'Write a for loop',
-        prompt: 'Write a loop that prints the numbers `0` to `4`, one per line. Use `i` as the loop variable.',
+        title: 'Your first for loop',
+        prompt: 'Print the numbers `0` to `4`, one per line, with a `for` loop. Use `i` as the loop variable.',
         answer: py`
 for i in range(5):
     print(i)`,
         accept: [
           py`
 for i in range(0, 5):
+    print(i)`,
+        ],
+        pick: [
+          py`
+for i in range(4):
+    print(i)`,
+          py`
+for i in range(5)
+    print(i)`,
+          py`
+for i in 5:
     print(i)`,
         ],
         hint: '`range(5)` counts 0, 1, 2, 3, 4. It stops *before* 5.',
@@ -600,6 +649,20 @@ for n in range(9):
           py`
 for n in range(0, 9):
     if n % 2 == 0:
+        print(n)`,
+        ],
+        pick: [
+          py`
+for n in range(9):
+    if n % 2 = 0:
+        print(n)`,
+          py`
+for n in range(9):
+    if n % 2 == 0:
+    print(n)`,
+          py`
+for n in range(9):
+    if n % 2 == 1:
         print(n)`,
         ],
         hint: 'Three lines: the loop, an `if` inside it (indented once), and the `print` inside the `if` (indented twice).',
@@ -811,6 +874,11 @@ print(nums)`,
         prompt: 'Print the **last** item of `nums`, using a negative index.',
         starter: 'nums = [4, 8, 15, 16]',
         answer: 'print(nums[-1])',
+        pick: [
+          'print(nums[4])',
+          'print(nums(-1))',
+          'print(nums[0])',
+        ],
         hint: 'Index `-1` means the last item.',
         explain:
           '`nums[-1]` counts from the end, so it is always the last item, however long the list is. `nums[len(nums) - 1]` finds the same item the long way.',
@@ -875,6 +943,20 @@ print(items)`,
 stack.append(2)
 top = stack.pop()
 print(top, stack)`,
+        pick: [
+          py`
+stack.add(2)
+top = stack.pop()
+print(top, stack)`,
+          py`
+stack.append(2)
+top = stack.pop(0)
+print(top, stack)`,
+          py`
+stack = stack.append(2)
+top = stack.pop()
+print(top, stack)`,
+        ],
         hint: '`pop()` with nothing in the parentheses removes the last item and hands it back, so you can store it.',
         explain:
           '`append` adds 2 at the end, making `[1, 2]`. `pop()` takes the last item back off and returns it, so `top` is 2 and `stack` is `[1]` again. Both are fast because they work at the end.',
@@ -912,6 +994,17 @@ lime 2`,
         answer: py`
 for i, c in enumerate(colors):
     print(i, c)`,
+        pick: [
+          py`
+for i, c in colors:
+    print(i, c)`,
+          py`
+for c, i in enumerate(colors):
+    print(i, c)`,
+          py`
+for i, c in enumerate(colors):
+print(i, c)`,
+        ],
         hint: 'The loop line is `for i, c in ...:` with `enumerate(colors)` after `in`.',
         explain:
           '`enumerate` hands you two things on every pass, the index and the item, and `i, c` unpacks them into two names.',
@@ -1141,6 +1234,11 @@ True False
         prompt: 'Add the key `"cy"` with the value `40` to the dict `ages`.',
         starter: 'ages = {"ana": 31, "bo": 25}',
         answer: 'ages["cy"] = 40',
+        pick: [
+          'ages["cy"] == 40',
+          'ages.append("cy", 40)',
+          'ages = {"cy": 40}',
+        ],
         hint: 'Put the key in square brackets after `ages`, then assign the value with `=`.',
         explain:
           'Assigning to a key that is not there yet adds it. If the key were already there, the same line would replace its value.',
@@ -1174,6 +1272,11 @@ print(count.get("z", 0))`,
         prompt: 'Print how many `"pear"` there are in `stock`, using `.get` so that a missing key gives `0`.',
         starter: 'stock = {"apple": 3, "plum": 7}',
         answer: 'print(stock.get("pear", 0))',
+        pick: [
+          'print(stock["pear"])',
+          'print(stock.get("pear"))',
+          'print(stock.get(0, "pear"))',
+        ],
         hint: 'Give `.get` two things: the key, then the value to use when the key is missing.',
         explain:
           '`"pear"` is not a key in `stock`, so `.get` returns the default, 0, instead of raising a `KeyError` the way `stock["pear"]` would.',
@@ -1271,6 +1374,20 @@ print({1, 2, 3} & {2, 3, 4}, {1, 2} | {2, 5})`,
 seen = set()
 seen.add("a")
 print("a" in seen)`,
+        pick: [
+          py`
+seen = {}
+seen.add("a")
+print("a" in seen)`,
+          py`
+seen = set()
+seen.append("a")
+print("a" in seen)`,
+          py`
+seen = set()
+seen.add("a")
+print(seen in "a")`,
+        ],
         hint: '`{}` would make an empty *dict*, so an empty set is written `set()`.',
         explain:
           '`set()` makes an empty set, `.add` puts a value in it, and `in` answers *is it there?* instantly. You will use exactly these three moves in dozens of problems.',
@@ -1454,6 +1571,11 @@ None`,
 def area(width, height):
     return width * height`,
         answer: 'print(area(3, 5))',
+        pick: [
+          'print(area)',
+          'area(3, 5)',
+          'print(area(3 * 5))',
+        ],
         hint: 'Write the function name, then the arguments in parentheses, in the same order as the parameters. Wrap it all in `print(...)`.',
         explain:
           '`area(3, 5)` runs the function with `width` = 3 and `height` = 5. Its `return` hands back 15, and `print` shows it.',
@@ -1462,10 +1584,15 @@ def area(width, height):
       {
         kind: 'type',
         title: 'Finish a function',
-        prompt: 'The first line of `double` is written for you. Write the line inside it that **returns** `n` times 2.',
+        prompt: 'The first line of `double` is written for you. Finish it with the line inside that **returns** `n` times 2.',
         starter: 'def double(n):',
         answer: '    return n * 2',
         accept: ['    return 2 * n', '    return n + n'],
+        pick: [
+          '    print(n * 2)',
+          '    n * 2',
+          'return n * 2',
+        ],
         hint: 'One line that starts with `return`.',
         explain:
           '`return` hands the result back to whoever called `double`, so `double(4)` gives 8. The line is indented because it belongs to the function.',
@@ -1842,6 +1969,20 @@ for i in range(n):
     steps = steps + 1
 print(steps)`,
         ],
+        pick: [
+          py`
+for i in range(n):
+    steps += 1
+    print(steps)`,
+          py`
+for i in range(n):
+    steps = 1
+print(steps)`,
+          py`
+for i in n:
+    steps += 1
+print(steps)`,
+        ],
         hint: 'The loop body is one indented line, `steps += 1`. The `print` goes after the loop, back at the left edge.',
         explain:
           'One pass does one step per item: 1,000 items, 1,000 steps. Double `n` and the steps double too. Work that grows in a straight line with the input is **O(n)**.',
@@ -2092,14 +2233,19 @@ print(factorial(1))`,
       },
       {
         kind: 'type',
-        title: 'Write the recursive step',
-        prompt: '`power(base, exp)` returns `base` multiplied by itself `exp` times. The base case is done. Write the last line: return `base` times `power` with one less `exp`.',
+        title: 'The recursive step',
+        prompt: '`power(base, exp)` returns `base` multiplied by itself `exp` times. The base case is done. Finish it with the last line: return `base` times `power` with one less `exp`.',
         starter: py`
 def power(base, exp):
     if exp == 0:
         return 1`,
         answer: '    return base * power(base, exp - 1)',
         accept: ['    return power(base, exp - 1) * base'],
+        pick: [
+          '    return base * power(base, exp)',
+          '    return power(base, exp - 1)',
+          '        return base * power(base, exp - 1)',
+        ],
         hint: 'Copy the shape of `factorial`: `n * factorial(n - 1)`. This time the call keeps `base` and makes `exp` one smaller.',
         explain:
           '2⁴ is 2 × 2³, so `power(base, exp)` is `base * power(base, exp - 1)`. Each call makes `exp` one smaller until the base case returns 1.',
@@ -2173,6 +2319,17 @@ print(mystery(4))`,
         return n
     else:
         return digit_sum(n // 10) + n % 10`,
+        ],
+        pick: [
+          '    return n % 10 + digit_sum(n // 10)',
+          py`
+    if n < 10:
+        return 0
+    return n % 10 + digit_sum(n // 10)`,
+          py`
+    if n < 10:
+        return n
+    return n // 10 + digit_sum(n % 10)`,
         ],
         hint: '`472 % 10` is 2, the last digit, and `472 // 10` is 47, the rest. The recursive call gets the smaller number.',
         explain:
@@ -2554,6 +2711,17 @@ Great for *have I seen this?*, counting, grouping, and remembering where somethi
         answer: py`
 unique = set(nums)
 print(len(unique), 7 in unique)`,
+        pick: [
+          py`
+unique = {nums}
+print(len(unique), 7 in unique)`,
+          py`
+unique = set(nums)
+print(len(nums), 7 in unique)`,
+          py`
+unique = set(nums)
+print(len(unique), unique in 7)`,
+        ],
         hint: '`set(nums)` drops the repeats. `print(a, b)` prints both values with a space between them.',
         explain:
           'A set keeps one copy of each value, so the five numbers shrink to three: 4, 7 and 1. `7 in unique` is an O(1) lookup, where `7 in nums` would scan the whole list.',
@@ -2614,6 +2782,19 @@ b
 stack.append("x")
 stack.append("y")
 print(stack.pop())`,
+        pick: [
+          py`
+stack.append("x")
+stack.append("y")
+print(stack.pop(0))`,
+          py`
+stack.push("x")
+stack.push("y")
+print(stack.pop())`,
+          py`
+stack.append("x", "y")
+print(stack.pop())`,
+        ],
         hint: '`stack.pop()` removes the top item and gives it back, so you can print it directly.',
         explain:
           '`append` pushes onto the top and `pop()` takes the newest item off, so the last one in, `"y"`, is the first one out.',
@@ -3055,6 +3236,22 @@ print(first_repeat("abcbad"))`,
             seen[x] = i
     return []`,
         ],
+        pick: [
+          py`
+    seen = {}
+    for i, x in enumerate(nums):
+        seen[x] = i
+        if target - x in seen:
+            return [seen[target - x], i]
+    return []`,
+          py`
+    seen = {}
+    for i, x in enumerate(nums):
+        if x in seen:
+            return [seen[x], i]
+        seen[x] = i
+    return []`,
+        ],
         hint: 'Check for the partner **before** you store `x`, so a number never pairs with itself. `seen = {}` makes an empty dict.',
         explain:
           'One O(1) dict lookup replaces the whole inner loop: *have I already seen the partner, and where?* That makes it O(n) time and O(n) space. This is *Two Sum*, which you will meet again in the first unit.',
@@ -3238,7 +3435,7 @@ Return the right **type**, too: \`True\` or \`False\` for a yes/no question, an 
       {
         kind: 'type',
         title: 'Fix it: return the answer',
-        prompt: 'This `isEven` used `print(n % 2 == 0)`, so it returned `None` and failed every test. Write its body so it **returns** whether `n` is even.',
+        prompt: 'This `isEven` used `print(n % 2 == 0)`, so it returned `None` and failed every test. Fix its body so it **returns** whether `n` is even.',
         starter: py`
 class Solution:
     def isEven(self, n: int) -> bool:`,
@@ -3253,6 +3450,11 @@ class Solution:
             return True
         else:
             return False`,
+        ],
+        pick: [
+          '        print(n % 2 == 0)',
+          '        return n % 2',
+          '    return n % 2 == 0',
         ],
         hint: 'Keep the same check, `n % 2 == 0`, and hand it back with `return` instead of `print`.',
         explain:

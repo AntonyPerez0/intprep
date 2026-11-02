@@ -8,7 +8,8 @@
  * Checks structure, the annotated-solution format, quiz answers, mini-markdown
  * balance, and compiles every Python solution/template with python3. Foundations
  * snippets that declare an `output` (code slides, and "Your turn" starter + answer
- * and every accepted answer) are also run, and must print exactly that output.
+ * and every accepted answer) are also run, and must print exactly that output; a
+ * slide's wrong options (`pick`) are run too, and must not.
  * A few self-checks keep the typing kit's grading honest (e.g. curly quotes).
  */
 import { execFileSync } from 'node:child_process';
@@ -19,10 +20,10 @@ import { CATEGORIES } from '../src/content/categories';
 import { CONTENT } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { isSignatureLine, lessonParts, parseSolution } from '../src/lib/parseSolution';
-import { baseIndent, codeLines, gradeCode, indentOf, lineKey, reindent } from '../src/lib/codegrade';
+import { baseIndent, codeLines, gradeBest, gradeCode, indentOf, lineKey, reindent } from '../src/lib/codegrade';
 import { gradeGaps } from '../src/lib/gaps';
 import { normalizeCode, stripComment } from '../src/lib/parseSolution';
-import type { CategoryId, QuizQuestion } from '../src/content/types';
+import type { CategoryId, QuizQuestion, TypeSlide } from '../src/content/types';
 import { addDays, today } from '../src/lib/date';
 import { gradeFrom, review, type SrsCard } from '../src/lib/srs';
 
@@ -30,8 +31,11 @@ const args = process.argv.slice(2);
 const wantAll = args.length === 0;
 const errors: string[] = [];
 const warnings: string[] = [];
-/** Python to compile; with `output`, also run it and compare what it prints. */
-const pyFiles: { label: string; code: string; output?: string }[] = [];
+/**
+ * Python to compile; with `output`, also run it and compare what it prints. A `wrong` snippet (a
+ * slide's wrong option) may fail to compile or raise, but must not print `output`.
+ */
+const pyFiles: { label: string; code: string; output?: string; wrong?: boolean }[] = [];
 
 const err = (where: string, msg: string) => errors.push(`✗ ${where}: ${msg}`);
 const warn = (where: string, msg: string) => warnings.push(`⚠ ${where}: ${msg}`);
@@ -193,10 +197,49 @@ function checkFoundations() {
         answers.forEach((a, k) =>
           pyFiles.push({ label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`, code: s.starter ? `${s.starter}\n${a}` : a, output: s.output }),
         );
+        if (s.pick !== undefined) checkPick(sw, s);
       } else {
         err(sw, `unknown slide kind`);
       }
     });
+    // "Pick first, then type": picked slides introduce an idea, typed ones practice it, so a lesson
+    // keeps more typed than picked.
+    const types = l.slides.filter((s) => s.kind === 'type');
+    const picked = types.filter((s) => s.kind === 'type' && s.pick).length;
+    if (picked > 0 && picked >= types.length - picked)
+      err(w, `${picked} of ${types.length} "Your turn" slides have wrong options: keep more typed than picked`);
+  });
+}
+
+/** A snippet's comparison key with its indentation, as "Pick the right code" matches options. */
+const blockKey = (code: string) =>
+  codeLines(code)
+    .map((l) => `${indentOf(l)}:${lineKey(l)}`)
+    .join('\n');
+
+/**
+ * A "Your turn" slide's wrong options (`pick`, "Pick the right code"): 2–3 distinct snippets, each
+ * written at its real column in the file like `answer`, none the answer or an accepted answer
+ * (normalized line by line, indentation included) and none graded right against them; with an
+ * `output`, none may print it (the python3 run below).
+ */
+function checkPick(sw: string, s: TypeSlide) {
+  const pick = s.pick ?? [];
+  if (pick.length < 2 || pick.length > 3) err(sw, `"pick" needs 2–3 wrong options, has ${pick.length}`);
+  if (pick.some((p) => !p.trim())) err(sw, 'a "pick" option is empty');
+  if (new Set(pick.map(blockKey)).size !== pick.length) err(sw, '"pick" repeats an option after normalizing');
+  const answers = [s.answer, ...(s.accept ?? [])];
+  const right = new Set(answers.map(blockKey));
+  const col = baseIndent(s.answer);
+  pick.forEach((p, k) => {
+    const pw = `${sw}/pick[${k}]`;
+    if (/\t/.test(p)) err(pw, 'code contains tabs — use 4 spaces');
+    if (right.has(blockKey(p))) err(pw, 'equals the answer or an accepted answer after normalizing');
+    // The pick is graded at its real columns (anchored at 0), as the lesson player grades it.
+    else if (gradeBest(p, answers, { anchor: 0 }).grade.perfect) err(pw, 'grades as correct against the answer');
+    if (codeLines(p).some((l) => indentOf(l) % 4 !== 0)) err(pw, 'indent with 4 spaces per level');
+    if (Math.abs(baseIndent(p) - col) > 4) err(pw, `starts at column ${baseIndent(p)}, more than a level from the answer's ${col}`);
+    if (s.output !== undefined) pyFiles.push({ label: pw, code: s.starter ? `${s.starter}\n${p}` : p, output: s.output, wrong: true });
   });
 }
 
@@ -267,7 +310,7 @@ if (pyFiles.length) {
   const manifest = pyFiles.map((f, i) => {
     const file = path.join(dir, `s${i}.py`);
     fs.writeFileSync(file, f.code + '\n');
-    return { label: f.label, file, output: f.output ?? null };
+    return { label: f.label, file, output: f.output ?? null, wrong: !!f.wrong };
   });
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest));
   const checker = `
@@ -275,10 +318,41 @@ import contextlib, io, json, signal, sys
 m = json.load(open(sys.argv[1]))
 bad = 0
 ran = 0
+wrong = 0
 def timeout(*_):
-    raise TimeoutError("ran longer than 5 seconds")
+    raise TimeoutError("ran too long")
 signal.signal(signal.SIGALRM, timeout)
+class Capped(io.StringIO):
+    # A wrong option may loop forever printing: stop it once it has printed far more than the answer.
+    def __init__(self, cap):
+        super().__init__()
+        self.cap = cap
+    def write(self, s):
+        if self.tell() + len(s) > self.cap:
+            raise OverflowError("printed too much")
+        return super().write(s)
 for e in m:
+    if e["wrong"]:
+        # A wrong option may fail to compile or raise (that is often the mistake); it must not print the output.
+        wrong += 1
+        try:
+            code = compile(open(e["file"]).read(), e["label"], "exec")
+        except SyntaxError:
+            continue
+        buf = Capped(4 * len(e["output"]) + 1000)
+        try:
+            signal.setitimer(signal.ITIMER_REAL, 1.0)
+            with contextlib.redirect_stdout(buf):
+                exec(code, {"__name__": "__main__"})
+        except BaseException:
+            pass
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+        got = buf.getvalue()
+        if got == e["output"] or got == e["output"] + "\\n":
+            bad += 1
+            print("PYERR", e["label"], "is a wrong option but prints the expected output", json.dumps(got))
+        continue
     try:
         code = compile(open(e["file"]).read(), e["label"], "exec")
     except SyntaxError as ex:
@@ -303,12 +377,18 @@ for e in m:
     if got != e["output"] and got != e["output"] + "\\n":
         bad += 1
         print("PYERR", e["label"], "prints", json.dumps(got), "but output is", json.dumps(e["output"]))
-print("PYOK", len(m) - bad, "/", len(m), "ran", ran)
+print("PYOK", len(m) - wrong - bad, "/", len(m) - wrong, "ran", ran, "wrong", wrong)
 `;
   const out = execFileSync('python3', ['-I', '-c', checker, path.join(dir, 'manifest.json')], { stdio: ['ignore', 'pipe', 'inherit'] }).toString();
   for (const line of out.trim().split('\n')) {
     if (line.startsWith('PYERR')) errors.push('✗ ' + line.slice(6));
-    else console.log(line.replace(/^PYOK (\d+ \/ \d+) ran (\d+)$/, '✓ python compiled $1, ran $2 snippets with their expected output'));
+    else
+      console.log(
+        line.replace(
+          /^PYOK (-?\d+ \/ \d+) ran (\d+) wrong (\d+)$/,
+          '✓ python compiled $1, ran $2 snippets with their expected output and $3 wrong options without it',
+        ),
+      );
   }
   fs.rmSync(dir, { recursive: true, force: true });
 }

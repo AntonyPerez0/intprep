@@ -24,7 +24,7 @@ import {
 import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide, TypeSlide } from '../content/types';
-import { baseIndent, codeLines, gradeBest, type Grade } from '../lib/codegrade';
+import { baseIndent, codeLines, gradeBest, gradeCode, type Grade } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
@@ -35,8 +35,8 @@ import { sfx } from '../lib/sound';
 import { TEMPLATE_READY, templateInput, type CodeInput } from '../lib/input';
 import { completeLesson, getProgress, recordTemplate, type TemplateMode } from '../lib/store';
 import { ActionBar, Choices, CodeWindow, type CheckStatus } from '../components/interact';
-import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
-import { GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
+import { CheckedAction, CodeDiff, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { CodeOptions, GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type CodeOptionsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { InputSwitch } from '../components/InputSwitch';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
@@ -147,6 +147,8 @@ export function LessonPlayer({ mode }: Props) {
   const [tries, setTries] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [hint, setHint] = useState(false);
+  // "Pick the right code": slides the learner chose to type instead (their comeback is typed too).
+  const [typedSlides, setTypedSlides] = useState<Record<number, true>>({});
   const codeRef = useRef<HTMLTextAreaElement | null>(null);
   // Guides: the first check of "Fill in the template" (first visit) and how its lines were given
   // (picked or typed), for the completion screen.
@@ -389,6 +391,46 @@ export function LessonPlayer({ mode }: Props) {
       )}
     </div>
   );
+
+  // ── "Your turn" with wrong options: pick the right code ───────────────────
+  // New code is picked before it is typed (docs/DESIGN.md, "Pick first, then type"): a slide with
+  // authored wrong options (`pick`) is "Pick the right code" unless the learner chose "Always type"
+  // or "Type instead" on it. The first check counts toward "First try", and a miss comes back once
+  // at the end, as a missed quiz does.
+  if (slide.kind === 'type' && slide.pick?.length && !typedSlides[idx]) {
+    const typingMode = getProgress().settings.typingMode;
+    if (typingMode !== 'type') {
+      const pickChecked = (ok: boolean) => {
+        if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: ok }));
+        if (!ok && !isRequeue) setQueue((q) => [...q, idx]);
+      };
+      return (
+        <SessionShell progress={pos / total} onClose={() => nav(lesson.back)} title={lesson.title} right={counter}>
+          <PickSlideStep
+            key={pos}
+            slide={slide}
+            kicker={
+              <div className="kicker lplayer-kicker">
+                <ListChecks strokeWidth={2} />
+                <span>{kicker}</span>
+                {isRequeue && (
+                  <Badge tone="warning" pill>
+                    <RotateCcw />
+                    Missed earlier
+                  </Badge>
+                )}
+              </div>
+            }
+            retake={isRequeue}
+            canType={typingMode === 'auto'}
+            onChecked={pickChecked}
+            onTypeInstead={() => setTypedSlides((t) => ({ ...t, [idx]: true }))}
+            onContinue={advance}
+          />
+        </SessionShell>
+      );
+    }
+  }
 
   // ── Guides: "Your turn", fill in the template ─────────────────────────────
   if (slide.kind === 'template-gaps') {
@@ -704,6 +746,211 @@ function TypeSlideView({
         </div>
       )}
     </div>
+  );
+}
+
+// ── "Your turn", picked: "Pick the right code" ──────────────────────────────
+
+/**
+ * The pick twin of a "Your turn" slide with authored wrong options (`pick`): the task, the code
+ * window with the read-only starter and a slot where the code goes, and under it the answer among
+ * the wrong options as code at its real indentation, shuffled once per visit (keys 1–N). A pick
+ * fills the slot; Check grades it, and the window shows the pick against the answer as the typing
+ * kit's diff while the options mark the right one. After a miss, "Fix and check again"; before the
+ * first check, "Type instead" ('auto' only) turns the slide into its typed view. Owns its action
+ * bar; keyed by queue position, so the comeback at the end starts fresh and reshuffled.
+ */
+function PickSlideStep({
+  slide,
+  kicker,
+  retake,
+  canType,
+  onChecked,
+  onTypeInstead,
+  onContinue,
+}: {
+  slide: TypeSlide;
+  /** The slide's eyebrow row. */
+  kicker: ReactNode;
+  /** The comeback at the end of the lesson after a missed first visit. */
+  retake: boolean;
+  /** Offer "Type instead" before the first check ("Pick first, then type" only). */
+  canType: boolean;
+  /** The first check of this visit: right or not. */
+  onChecked: (ok: boolean) => void;
+  onTypeInstead: () => void;
+  onContinue: () => void;
+}) {
+  const [options] = useState(() => shuffle([slide.answer, ...(slide.pick ?? [])]));
+  const [picked, setPicked] = useState<string | null>(null);
+  // The pick at the last check; null while picking (before the first check, or after "Fix").
+  const [checked, setChecked] = useState<string | null>(null);
+  const [checks, setChecks] = useState(0);
+  const optionsRef = useRef<CodeOptionsHandle>(null);
+  const workRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const starter = slide.starter ? slide.starter.split('\n') : [];
+  const n = codeLines(slide.answer).length;
+  const revealed = checked !== null;
+  const ok = checked === slide.answer;
+  const status: CheckStatus = revealed ? (ok ? 'correct' : 'wrong') : 'idle';
+  // The pick against the answer, both at their real columns in the file (anchored at 0): a snippet
+  // a level too deep shows as wrong indentation, as it would typed.
+  const grade = useMemo(() => (checked === null ? null : gradeCode(checked, slide.answer, { anchor: 0 })), [checked, slide.answer]);
+  const indent = baseIndent(slide.answer);
+
+  // After a check, bring the code window (the pick against the answer) into view above the action
+  // bar, two frames later, once the taller feedback bar has been measured.
+  useEffect(() => {
+    if (!checks || !revealed) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => workRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [checks, revealed]);
+
+  const primaryButton = () => document.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child');
+  // A pick made on an option (a tap, a click, Enter or Space) moves focus on to Check, so Enter
+  // checks next; a pick with a number key leaves focus where it is.
+  const pick = (o: string) => {
+    if (revealed) return;
+    const fromOptions = !!panelRef.current?.contains(document.activeElement);
+    flushSync(() => setPicked(o));
+    sfx('tap');
+    if (fromOptions) primaryButton()?.focus({ preventScroll: true });
+  };
+  const check = () => {
+    if (picked === null || revealed) return;
+    // The options are disabled once checked: an option that has focus hands it to the page, and
+    // the action bar gives it to Continue.
+    if (panelRef.current?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+    const right = picked === slide.answer;
+    setChecked(picked);
+    setChecks((c) => c + 1);
+    sfx(right ? 'correct' : 'wrong');
+    if (checks === 0) onChecked(right);
+  };
+  // "Fix and check again": the options come back (the last pick still selected) inside the click,
+  // so focus lands on them.
+  const fix = () => {
+    flushSync(() => setChecked(null));
+    optionsRef.current?.focus();
+    panelRef.current?.scrollIntoView({ block: 'nearest' });
+  };
+  const toOptions = () => {
+    if (revealed) return;
+    optionsRef.current?.focus();
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    panelRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  };
+
+  let title: string | undefined;
+  let feedback: ReactNode;
+  if (checks <= 1) {
+    // As a missed quiz says: the slide comes back at the end (first visit only).
+    if (!ok && !retake) title = 'Not quite — it will come back later';
+    feedback = <Md text={slide.explain} />;
+  } else if (ok) {
+    title = 'Right now';
+    feedback = 'Your first check is what counts for this lesson. The fix still helps it stick.';
+  } else feedback = 'The lines with a plus are the right code. Pick again, or continue.';
+
+  const firstLine = starter.length + 1;
+  const output = slide.output ? <OutputPane text={slide.output} label={ok ? 'Output' : 'Expected output'} /> : null;
+  const shown = picked ?? '';
+  const lines = n === 1 ? 'the line' : `the ${n} lines`;
+
+  return (
+    <>
+      <div className="lplayer lplayer-pick" data-input="pick">
+        {kicker}
+        <div className="lplayer-slide">
+          {slide.title ? (
+            <>
+              <h1 className="q-title">{slide.title}</h1>
+              <Md text={slide.prompt} className="lplayer-lede lplayer-type-prompt" />
+            </>
+          ) : (
+            <div className="q-title lplayer-question" role="heading" aria-level={1}>
+              <Md text={slide.prompt} />
+            </div>
+          )}
+
+          <div ref={workRef} className="lplayer-type-work lplayer-pick-work">
+            <TyperWindow
+              status={status}
+              filename="example.py"
+              className="pick-window"
+              footer={
+                <TyperFooter
+                  grade={grade}
+                  note={checks > 0 ? 'Pick again, then check' : picked === null ? `${n} line${n === 1 ? '' : 's'} to pick` : 'Ready to check'}
+                  keys="Number keys to pick · Enter to check"
+                />
+              }
+            >
+              {grade ? (
+                <CodeDiff grade={grade} given={starter} />
+              ) : (
+                <CodePane>
+                  <GivenLines lines={starter} />
+                  {picked === null ? (
+                    // Where the code goes: a tap brings the options below into view.
+                    <div className="typer-line lplayer-pick-slot-row" onClick={toOptions}>
+                      <span className="typer-ln">{firstLine}</span>
+                      <span className="lplayer-pick-slot-wrap" style={{ ['--indent' as string]: `${indent}ch` }}>
+                        <span className="lplayer-pick-slot">Pick {lines} below</span>
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="lplayer-pick-code" key={shown} onClick={toOptions}>
+                      {shown.split('\n').map((l, k) => (
+                        <CodeLine key={k} n={firstLine + k} className="written lplayer-pick-line">
+                          {l === '' ? ' ' : highlightLine(l)}
+                        </CodeLine>
+                      ))}
+                    </div>
+                  )}
+                </CodePane>
+              )}
+              {output}
+            </TyperWindow>
+            {grade && !grade.perfect && <DiffKey grade={grade} />}
+          </div>
+
+          <div ref={panelRef} className="lplayer-pick-options">
+            <CodeOptions
+              ref={optionsRef}
+              block
+              options={options}
+              selected={picked}
+              onPick={pick}
+              label="Pick the right code"
+              prompt={null}
+              groupLabel="Pick the right code"
+              revealed={revealed}
+              answer={slide.answer}
+            />
+          </div>
+        </div>
+      </div>
+      <ActionBar
+        step={`${checks}:${revealed ? 1 : 0}`}
+        status={status}
+        onCheck={check}
+        canCheck={picked !== null}
+        onContinue={onContinue}
+        title={title}
+        feedback={feedback}
+        secondary={canType && checks === 0 ? <InputSwitch to="type" onClick={onTypeInstead} /> : undefined}
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
+      />
+    </>
   );
 }
 
