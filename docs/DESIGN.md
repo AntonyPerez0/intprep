@@ -250,6 +250,25 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   slides (`kind: 'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the
   explanation; a miss offers "Try again" (the primary: keeps the text) and, left of it in the action bar, "Show
   answer" (the answer, then Continue; the slide comes back once at the end of the lesson).
+- **Guided problem lesson (`/p/:id/learn`)** — ten steps, "Step 7 of 10 · Write the code" in the eyebrow: read,
+  guess (pattern choice), hints, brute force, insight, plan, **Write the code**, complexity (choice), traps, **Final
+  check**. Write the code goes through every part of the solution except the class / def header (always given;
+  so are class lines and class-level `def` signatures that open or close a part, as in design problems, while
+  nested helpers such as `def dfs(r, c):` are typed):
+  **Look** (the part's explanation in a card, its code highlighted under the earlier parts, key lines with a gold
+  dot in the gutter, later parts hidden; primary "Write it" with Enter, "Back" to the part before), then **Write**
+  (the part is covered: the earlier code stays as `given`, the editor starts at the part's indentation, capped at 16
+  columns, and grading is anchored there; quiet "Peek" goes back to Look and the part no longer counts as written
+  right), then **Check** (the diff; a miss puts "Fix and check again" left of "Next part", which is always there).
+  The first check of a part decides the tally ("Right on the first try · 2 of 3 parts", and a colored segment per
+  part). Look and Write share one typing window, so covering the code swaps rows in place. Wide screens: code left,
+  a sticky card right (the cue while writing). Phones and tablets: the explanation is a comment row above the
+  part in the file (unnumbered; the card keeps the part counter, segments, key-line note and tally, and its text
+  stays for screen readers), and each move scrolls that row into view. Final check is Fill the gaps over the whole
+  solution (`useGaps` + `GapsWindow`, about 30% of the body, with `min` raised so every key line, and any line
+  with the same code, is a gap); with nothing typed the primary reads "Show answers", so nobody is stuck. The
+  completion shows "Parts right", "Final check" (first check) and "XP earned", with the next review in the
+  subtitle and "Code from memory" as the primary action.
 - **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
   accessible name): **Part by part** (one part at a time, cued by its comment), **Fill the gaps** (the problem, the
