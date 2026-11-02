@@ -77,7 +77,8 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 ## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
 
 Use it wherever the learner types code: Code from memory (part by part, filling the gaps, or the whole solution
-from scratch), the template drill (filling the gaps, or from memory), and beginner "Your turn" slides of 1–5 lines.
+from scratch), the template drill (filling the gaps, or from memory), beginner "Your turn" slides of 1–5 lines,
+and Pattern Blitz's Key lines game (a one-gap `<CodeGaps>` in a `TyperWindow`).
 For choosing between given lines, use `<Choices code>` instead; for a single key line, the key-line drill's input.
 
 **The ladder** — Code from memory and the template drill offer the same rungs, most support first: Part by part
@@ -242,6 +243,33 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
   "Gaps N%"): the Pattern guide and Unit template headings, and the pattern intro's completion (primary "Start the
   problems", secondary "Practice the template", quiet "Back to dashboard"). Pass `state={{ from }}` so Close and
   Back return to the page that opened it.
+- **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against a 60-second clock (Timed) or
+  without one (Zen), then results. The lobby opens with the game choice, native radio cards (one per row, arrow
+  keys move between them): **Spot the pattern** (read a problem, pick its pattern from four: recognition, keys
+  1–4) and **Key lines** (type the key line of a learned solution: recall). The last choice is remembered
+  (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
+  card is a quiet dashed one with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
+  lesson, and the pattern game is selected. Personal best and games played below the choice are the chosen game's
+  (each game keeps its own timed best: `stats.blitzBest`, `stats.blitzCodeBest`; Zen rounds set no best). Both
+  games share the HUD (score, streak, ×1–×4 multiplier, clock or Zen ring), 10 points × multiplier a hit, and send
+  misses on learned problems to today's review (`flagForReview`).
+  **Key lines round** (`lib/blitzLines.ts` picks the line, `<CodeGaps>` shows it): kicker "Type the missing line",
+  "Round N" (Zen "Round N of 10"), the problem title (`h1`) with its difficulty, and a `TyperWindow` with a short
+  window of the solution (up to 6 lines before, 3 after, trimmed of blank edges), the enclosing `def` / `class`
+  lines above it with real line numbers and a fold row (`⋮ ⋯`) for the code left out, `class Solution:` dropped and
+  the code dedented to save columns on a phone; the key line is one gap. Key lines that are part of a multi-line
+  statement, or whose exact code is visible elsewhere in the window, are never asked. Due and weak problems come
+  up more, a problem never comes twice in a row, and every key line has a turn before any comes back. Zen gives
+  each gap the part's explanation as its hint; Timed keeps the cue to the code. Enter checks (Enter on an empty gap
+  does nothing). A hit moves on inside the same key press (`flushSync`, then focus the new gap), so a phone keeps
+  its keyboard open, and a strip under the window says "Correct +20" (polite live region, with the next problem's
+  name for screen readers). A miss (or **Show answer**, the idle secondary, which counts as one) reveals the diff
+  rows in the window and scrolls the right line into view above the action bar; the bar says what the part does
+  ("This part"), Continue is the primary (focused; "See results" after the last Zen line) and "Fix and check
+  again" ("Type it now" after Show answer) brings the gap back with the text kept: a right fix moves on with
+  "Fixed" and no points. Results: Score, Accuracy, Best, XP earned, then "Lines to practice", one card per miss
+  (problem, pattern and line number, your line and the right one as diff rows, and "Code from memory" for that
+  problem). Actions on both games' results: Play again, Back to dashboard, Choose a game (back to the lobby).
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
   main column + meta sidebar on desktop.
 - **Profile** — identity header + level progress, stats grid, activity heatmap, achievements (icon medallions,
@@ -263,7 +291,9 @@ Automated tests drive the UI through these hooks — keep them working:
   (+`.correct/.wrong`), `.actionbar .buttons > .btn:last-child` (primary action), `.parsons-slot`,
   `.parsons-bank .parsons-item`, `textarea.code-input`, `input.gaps-input` (one per gap, `aria-label` "Line N,
   missing"), `.session-body input.input` (typed key line),
-  `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button).
+  `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button), `input[name="blitz-game"]` (Blitz game
+  radios, values `pattern` / `lines`), `.blitz-lines-title` (Key lines problem title), `.blitz-show` (Key lines
+  Show answer).
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
   and **"Got it"**; completion titles containing **"Lesson complete"**, **"Problem learned"**,

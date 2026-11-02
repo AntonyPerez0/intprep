@@ -50,6 +50,8 @@ export interface Progress {
     haptics: boolean;
     theme: 'system' | 'light' | 'dark';
     typingMode: 'auto' | 'type' | 'tap';
+    /** The last game picked in Pattern Blitz: spot the pattern, or type key lines. */
+    blitzGame: 'pattern' | 'lines';
   };
   xp: number;
   gems: number;
@@ -78,6 +80,9 @@ export interface Progress {
     bestCombo: number;
     blitzBest: number;
     blitzPlays: number;
+    /** Pattern Blitz, Key lines: best timed score and timed rounds played (the pattern game's are above). */
+    blitzCodeBest: number;
+    blitzCodePlays: number;
     rebuilds: number;
     perfectRebuilds: number;
   };
@@ -98,6 +103,7 @@ function fresh(): Progress {
       haptics: true,
       theme: 'system',
       typingMode: 'auto',
+      blitzGame: 'pattern',
     },
     xp: 0,
     gems: 20,
@@ -115,6 +121,8 @@ function fresh(): Progress {
       bestCombo: 0,
       blitzBest: 0,
       blitzPlays: 0,
+      blitzCodeBest: 0,
+      blitzCodePlays: 0,
       rebuilds: 0,
       perfectRebuilds: 0,
     },
@@ -408,6 +416,16 @@ export function recordBlitz(score: number) {
   update((d) => {
     d.stats.blitzPlays += 1;
     d.stats.blitzBest = Math.max(d.stats.blitzBest, score);
+  });
+  return best;
+}
+
+/** A finished timed round of Key lines (Pattern Blitz's typing game). Returns true on a new best. */
+export function recordBlitzCode(score: number) {
+  const best = score > state.stats.blitzCodeBest;
+  update((d) => {
+    d.stats.blitzCodePlays += 1;
+    d.stats.blitzCodeBest = Math.max(d.stats.blitzCodeBest, score);
   });
   return best;
 }
