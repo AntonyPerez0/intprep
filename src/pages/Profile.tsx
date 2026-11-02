@@ -12,12 +12,13 @@ import {
   FlaskConical,
   Gem,
   Keyboard,
+  List,
   Lock,
   Monitor,
   Moon,
   Pencil,
-  Pointer,
   RotateCcw,
+  Route,
   Snowflake,
   Star,
   Sun,
@@ -29,6 +30,7 @@ import {
 import { PROBLEMS } from '../content/index';
 import { addDays, dayKey, lastNDays, parseDay, today } from '../lib/date';
 import { ACHIEVEMENTS, DAILY_GOALS, GEMS, levelInfo, levelTitle } from '../lib/game';
+import { CODE_PRACTICE, type InputMode } from '../lib/input';
 import { crowns } from '../lib/srs';
 import {
   buyFreeze,
@@ -550,6 +552,8 @@ function SettingRow({
   desc,
   htmlFor,
   inline,
+  stacked,
+  id,
   children,
 }: {
   label: ReactNode;
@@ -557,19 +561,29 @@ function SettingRow({
   htmlFor?: string;
   /** Keep the control beside the label at every width (toggles, small buttons). */
   inline?: boolean;
+  /** Put the control under the label at every width (a list of options). */
+  stacked?: boolean;
+  /** Ids `${id}-label` and `${id}-desc`, for a control that names itself after the row. */
+  id?: string;
   children: ReactNode;
 }) {
   return (
-    <div className={`profile-row ${inline ? 'is-inline' : ''}`}>
+    <div className={`profile-row ${inline ? 'is-inline' : ''} ${stacked ? 'is-stacked' : ''}`}>
       <div className="profile-row-text">
         {htmlFor ? (
           <label className="profile-row-label" htmlFor={htmlFor}>
             {label}
           </label>
         ) : (
-          <div className="profile-row-label">{label}</div>
+          <div className="profile-row-label" id={id && `${id}-label`}>
+            {label}
+          </div>
         )}
-        {desc && <div className="profile-row-desc">{desc}</div>}
+        {desc && (
+          <div className="profile-row-desc" id={id && `${id}-desc`}>
+            {desc}
+          </div>
+        )}
       </div>
       <div className="profile-row-control">{children}</div>
     </div>
@@ -582,14 +596,42 @@ const THEMES: { id: Progress['settings']['theme']; label: string; icon: LucideIc
   { id: 'dark', label: 'Dark', icon: Moon },
 ];
 
-/**
- * Code input: typing (the default, on every device) or the tap-to-choose opt-in. Older saves may
- * hold 'type', which means the same as 'auto' now (see lib/input.ts), so it shows as "Type code".
- */
-const INPUT_MODES: { id: Progress['settings']['typingMode']; label: string; icon: LucideIcon; stored: Progress['settings']['typingMode'][] }[] = [
-  { id: 'auto', label: 'Type code', icon: Keyboard, stored: ['auto', 'type'] },
-  { id: 'tap', label: 'Tap to choose', icon: Pointer, stored: ['tap'] },
-];
+/** "Code practice" (lib/input.ts): pick first, then type (recommended), always type, or always pick. */
+const CODE_PRACTICE_ICON: Record<InputMode, LucideIcon> = { auto: Route, type: Keyboard, tap: List };
+
+function CodePractice({ value }: { value: InputMode }) {
+  return (
+    <div className="profile-choices" role="radiogroup" aria-labelledby="code-practice-label" aria-describedby="code-practice-desc">
+      {CODE_PRACTICE.map(({ id, label, sub, recommended }) => {
+        const I = CODE_PRACTICE_ICON[id];
+        const on = value === id;
+        return (
+          <label key={id} className={`profile-choice ${on ? 'on' : ''}`}>
+            <input
+              type="radio"
+              name="code-practice"
+              value={id}
+              checked={on}
+              onChange={() => updateSettings({ typingMode: id })}
+              className="profile-choice-input"
+            />
+            <span className="profile-choice-icon" aria-hidden="true">
+              <I />
+            </span>
+            <span className="profile-choice-text">
+              <span className="profile-choice-title">
+                {label}
+                {recommended && <Badge tone="brand">Recommended</Badge>}
+              </span>
+              <span className="profile-choice-sub">{sub}</span>
+            </span>
+            <span className="profile-choice-radio" aria-hidden="true" />
+          </label>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
@@ -714,7 +756,7 @@ export function Profile() {
             </SettingRow>
           </SettingsGroup>
 
-          <SettingsGroup title="Practice" desc="Set your daily target and how you enter code in reviews.">
+          <SettingsGroup title="Practice" desc="Set your daily target and how you practice code.">
             <SettingRow label="Daily goal" desc={goal ? `XP per day, about ${goal.blurb.replace('≈', '').replace('a day', '').trim()} of practice.` : 'XP to earn each day.'}>
               <div className="seg profile-seg profile-seg-4" role="radiogroup" aria-label="Daily goal">
                 {DAILY_GOALS.map((g) => (
@@ -732,27 +774,8 @@ export function Profile() {
                 ))}
               </div>
             </SettingRow>
-            <SettingRow
-              label="Code input"
-              desc="Typing is recommended on every device: writing code yourself builds stronger memory, and phones get a key bar for symbols."
-            >
-              <div className="seg profile-seg profile-seg-compact" role="radiogroup" aria-label="Code input">
-                {INPUT_MODES.map(({ id, label, icon: I, stored }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="radio"
-                    aria-checked={stored.includes(p.settings.typingMode)}
-                    className={stored.includes(p.settings.typingMode) ? 'on' : ''}
-                    onClick={() => {
-                      if (!stored.includes(p.settings.typingMode)) updateSettings({ typingMode: id });
-                    }}
-                  >
-                    <I aria-hidden="true" />
-                    {label}
-                  </button>
-                ))}
-              </div>
+            <SettingRow id="code-practice" stacked label="Code practice" desc="New code starts as choices. Typing takes over once you know it.">
+              <CodePractice value={p.settings.typingMode} />
             </SettingRow>
           </SettingsGroup>
 

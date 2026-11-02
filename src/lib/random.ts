@@ -38,3 +38,39 @@ export function interleave<T>(items: readonly T[], group: (t: T) => string): T[]
   }
   return out;
 }
+
+// ── Seeded randomness ───────────────────────────────────────────────────────
+// For choices that must stay the same on a retry or a reload (the options of a gap, the order of
+// a part's lines): the same seed and content always give the same result.
+
+/** A deterministic random source in [0, 1) (mulberry32). */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A 32-bit hash of a string (FNV-1a), to mix content into a seed. */
+export function hashString(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** `shuffle` with a given random source (e.g. `seededRandom(seed)`). */
+export function shuffleWith<T>(arr: readonly T[], rnd: () => number): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}

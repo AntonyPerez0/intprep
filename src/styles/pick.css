@@ -1,0 +1,593 @@
+/* ==========================================================================
+   Pick first, then type — the pick twins of the typing kit
+   src/components/CodeGaps.tsx (CodeOptions, PickGaps), src/components/Arrange.tsx,
+   src/components/InputSwitch.tsx.
+   Picking is code practice, not a quiz: slots, options and blocks are code on the
+   code surface (always dark, --code-* tokens), in the typing window's frame, rows
+   and rhythm (src/styles/typer.css, gaps.css).
+   ========================================================================== */
+
+/* ── Pick the gaps: a slot where the missing line goes ───────────────────── */
+.pick-row {
+  align-items: center;
+}
+.pick-row .typer-ln {
+  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+}
+.pick-row.is-open {
+  background: var(--code-line-hl);
+}
+.pick-row.is-open .typer-ln {
+  color: var(--brand-300);
+}
+.pick-slot-wrap {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  padding-left: var(--indent, 0ch);
+}
+/* Same box as a typed gap (.gaps-input): its text starts exactly at the indentation */
+.pick-slot {
+  --gap-pad: 6px;
+  --slot-min: 18ch;
+  /* To the window's visible right edge (not the widest line's), so the whole slot shows */
+  flex: none;
+  width: max(var(--slot-min), calc(100cqi - 52px - var(--indent, 0ch) - 12px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 20px;
+  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1px);
+  padding: 0 4px 0 var(--gap-pad);
+  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--code-key) 7%, transparent);
+  color: var(--code-text);
+  font: inherit;
+  font-variant-ligatures: none;
+  line-height: 18px;
+  text-align: left;
+  white-space: pre;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.pick-slot-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.pick-slot-hint {
+  color: var(--code-comment);
+  font-style: italic;
+}
+.pick-slot-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: color-mix(in srgb, var(--code-key) 75%, var(--code-comment));
+}
+.pick-row.is-filled .pick-slot {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--code-text) 18%, transparent);
+  background: color-mix(in srgb, var(--code-text) 4%, transparent);
+}
+.pick-row.is-filled .pick-slot-icon {
+  color: var(--code-gutter);
+}
+@media (hover: hover) {
+  .pick-slot:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--code-key) 80%, transparent);
+    background: color-mix(in srgb, var(--code-key) 12%, transparent);
+  }
+  .pick-row.is-filled .pick-slot:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--code-text) 35%, transparent);
+    background: color-mix(in srgb, var(--code-text) 7%, transparent);
+  }
+}
+.pick-row.is-open .pick-slot {
+  border-style: solid;
+  border-color: var(--brand-400);
+  background: color-mix(in srgb, var(--brand-500) 14%, var(--code-bg));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-400) 30%, transparent);
+}
+.pick-row.is-open .pick-slot-icon {
+  color: var(--brand-300);
+}
+.pick-slot:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 1px;
+}
+.pick-slot:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+/* The window shows a focus ring only while typing; a slot carries its own */
+.pick-window.typer-window:focus-within {
+  border-color: var(--code-border);
+  box-shadow: var(--shadow-sm);
+}
+/* Every row as wide as the longest line, so the options panel can stay put while the code scrolls */
+.pick-lines {
+  width: max-content;
+  min-width: 100%;
+}
+
+/* ── Code options: inline under the open slot, or on their own ───────────── */
+.pick-panel-row {
+  /* Spans the window's visible width and stays there while the code scrolls sideways */
+  position: sticky;
+  left: 0;
+  width: 100cqi;
+  max-width: 100%;
+  min-width: 0;
+  scroll-margin: 64px 0 calc(var(--actionbar-h, 96px) + 16px);
+}
+.pick-panel {
+  --opt-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  font-family: var(--font-sans);
+  background: color-mix(in srgb, var(--code-text) 4%, var(--code-bg));
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-lg);
+  white-space: normal;
+}
+@media (min-width: 640px) {
+  .pick-panel {
+    --opt-size: 13px;
+  }
+}
+.pick-panel.is-inline {
+  margin: 4px 0 8px;
+  border-radius: 0;
+  border-inline: 0;
+  box-shadow:
+    inset 2px 0 0 var(--brand-400),
+    inset 0 1px 0 color-mix(in srgb, var(--brand-400) 18%, transparent);
+  animation: pick-open var(--dur) var(--ease);
+}
+@container code-window (min-width: 480px) {
+  /* Under the code column, like an editor's suggestions */
+  .pick-panel.is-inline {
+    padding-left: 52px;
+  }
+}
+@keyframes pick-open {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+.pick-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--code-comment);
+}
+.pick-panel-label {
+  min-width: 0;
+}
+.pick-panel-line {
+  font-weight: 600;
+  color: var(--code-text);
+}
+.pick-panel-sep {
+  margin: 0 6px;
+}
+.pick-panel-keys {
+  display: none;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 640px) {
+  .pick-panel-keys {
+    display: inline;
+  }
+}
+/* An option wider than the panel wraps (a phone): the whole line shows, so options compare at a
+   glance, and the page never scrolls sideways */
+.pick-options {
+  min-width: 0;
+}
+.pick-options-list {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.pick-panel .choice.pick-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px 6px 8px;
+  background: color-mix(in srgb, var(--code-text) 5%, var(--code-bg));
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-sm);
+  box-shadow: none;
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: var(--opt-size);
+  font-weight: 400;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (hover: hover) {
+  .pick-panel .choice.pick-option:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--code-text) 28%, transparent);
+    background: color-mix(in srgb, var(--code-text) 9%, var(--code-bg));
+  }
+}
+.pick-panel .choice.pick-option:active:not(:disabled) {
+  background: color-mix(in srgb, var(--code-text) 12%, var(--code-bg));
+}
+.pick-panel .choice.pick-option:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 1px;
+}
+.pick-option-num {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-xs);
+  border: 1px solid var(--code-border);
+  background: color-mix(in srgb, var(--code-text) 6%, transparent);
+  color: var(--code-comment);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.pick-option-code {
+  flex: 1;
+  min-width: 0;
+}
+.pick-option-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  height: 20px;
+  margin-left: 8px;
+}
+.pick-option-mark svg {
+  width: 16px;
+  height: 16px;
+}
+.pick-panel .choice.pick-option.selected {
+  border-color: var(--brand-400);
+  background: color-mix(in srgb, var(--brand-500) 18%, var(--code-bg));
+  box-shadow: 0 0 0 1px var(--brand-400);
+}
+.pick-panel .choice.pick-option.selected .pick-option-num {
+  border-color: var(--brand-400);
+  background: var(--brand);
+  color: #fff;
+}
+.pick-panel .choice.pick-option.correct {
+  border-color: var(--code-success-border);
+  background: var(--code-success-bg);
+  box-shadow: 0 0 0 1px var(--code-success-border);
+}
+.pick-panel .choice.pick-option.correct .pick-option-num {
+  border-color: var(--success-solid);
+  background: var(--success-solid);
+  color: #fff;
+}
+.pick-panel .choice.pick-option.correct .pick-option-mark {
+  color: var(--code-success-text);
+}
+.pick-panel .choice.pick-option.wrong {
+  border-color: var(--code-danger-border);
+  background: var(--code-danger-bg);
+  box-shadow: 0 0 0 1px var(--code-danger-border);
+}
+.pick-panel .choice.pick-option.wrong .pick-option-num {
+  border-color: var(--danger-solid);
+  background: var(--danger-solid);
+  color: #fff;
+}
+.pick-panel .choice.pick-option.wrong .pick-option-mark {
+  color: var(--code-danger-text);
+}
+.pick-panel .choice.pick-option:disabled {
+  cursor: default;
+  opacity: 1;
+}
+.pick-panel.is-revealed .choice.pick-option:not(.correct):not(.wrong) {
+  opacity: 0.55;
+}
+
+/* Touch screens: 44px slots and options (the code keeps its size) */
+@media (pointer: coarse) {
+  .pick-row {
+    min-height: 44px;
+  }
+  .pick-slot {
+    --gap-pad: 8px;
+    --slot-min: 14ch;
+    height: 38px;
+    margin-block: 3px;
+    line-height: 36px;
+  }
+  .pick-slot-icon {
+    width: 15px;
+    height: 15px;
+  }
+  .pick-panel .choice.pick-option {
+    min-height: 44px;
+    padding-block: 11px;
+  }
+}
+
+/* ── Arrange a part ──────────────────────────────────────────────────────── */
+/* "Your code": placed lines read as lines of the file, each one a button that sends it back */
+.arrange .parsons-slot.arrange-slot {
+  display: block;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  width: max-content;
+  min-width: 100%;
+}
+.arrange-li {
+  display: block;
+}
+.typer-line.arrange-line {
+  width: 100%;
+  align-items: center;
+  margin: 0;
+  padding: 0 10px 0 0;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  font-variant-ligatures: none;
+  line-height: 22px;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 55%, transparent);
+  /* Placed lines are tinted, so the learner's code reads apart from the given lines */
+  background: color-mix(in srgb, var(--brand-500) 7%, transparent);
+  animation: arrange-in var(--dur) var(--ease);
+}
+@keyframes arrange-in {
+  from {
+    background: color-mix(in srgb, var(--brand-500) 22%, transparent);
+  }
+}
+.typer-line.arrange-line .typer-src {
+  flex: 0 1 auto;
+}
+/* Right after the code, so it shows on a phone without scrolling */
+.arrange-remove {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-left: 2ch;
+  color: var(--code-gutter);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+@media (hover: hover) {
+  .typer-line.arrange-line:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--danger) 60%, transparent);
+  }
+  .typer-line.arrange-line:hover:not(:disabled) .arrange-remove {
+    opacity: 1;
+    color: color-mix(in srgb, var(--danger) 70%, var(--code-text));
+  }
+}
+.typer-line.arrange-line:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: -2px;
+}
+.typer-line.arrange-line:focus-visible .arrange-remove {
+  opacity: 1;
+}
+.typer-line.arrange-line:disabled {
+  cursor: default;
+}
+/* The next line goes here */
+.arrange-next {
+  align-items: center;
+}
+.arrange-next .typer-ln {
+  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+}
+.arrange-next-wrap {
+  flex: 1;
+  display: flex;
+  padding-left: var(--indent, 0ch);
+}
+.arrange-next-slot {
+  flex: none;
+  width: max(18ch, calc(100cqi - 52px - var(--indent, 0ch) - 12px));
+  height: 20px;
+  margin: 1px 0 1px -7px;
+  padding: 0 6px;
+  border: 1px dashed color-mix(in srgb, var(--code-key) 45%, transparent);
+  border-radius: var(--r-xs);
+  color: var(--code-comment);
+  font-style: italic;
+  line-height: 18px;
+}
+
+/* The bank: a tray of lines under the code */
+.arrange-bank {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--code-border);
+  background: color-mix(in srgb, var(--code-text) 3%, var(--code-bg));
+}
+.arrange-bank-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--code-text);
+}
+.arrange-bank-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--code-text) 10%, transparent);
+  color: var(--code-comment);
+  font-weight: 600;
+  text-align: center;
+}
+.arrange-bank-list {
+  min-width: 0;
+}
+.arrange-bank-inner {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.arrange-bank .parsons-item.arrange-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--code-text) 5%, var(--code-bg));
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-sm);
+  box-shadow: none;
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 20px;
+  /* A block wider than the tray wraps under its own indentation: the whole line shows */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (min-width: 640px) {
+  .arrange-bank .parsons-item.arrange-item {
+    font-size: 13px;
+  }
+}
+.arrange-bank .parsons-item.arrange-item:hover:not(:disabled) {
+  border-color: var(--code-border);
+}
+@media (hover: hover) {
+  .arrange-bank .parsons-item.arrange-item:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--code-text) 28%, transparent);
+    background: color-mix(in srgb, var(--code-text) 9%, var(--code-bg));
+  }
+  .arrange-bank .parsons-item.arrange-item:hover:not(:disabled) .arrange-add {
+    color: var(--brand-300);
+  }
+}
+.arrange-bank .parsons-item.arrange-item:active:not(:disabled) {
+  background: color-mix(in srgb, var(--code-text) 12%, var(--code-bg));
+}
+.arrange-bank .parsons-item.arrange-item:focus-visible {
+  outline: 2px solid var(--brand-400);
+  outline-offset: 1px;
+}
+/* The block's indentation, with a faint guide per level (as an editor draws it) */
+.arrange-item-code {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--indent, 0ch);
+  background: repeating-linear-gradient(
+      to right,
+      color-mix(in srgb, var(--code-text) 14%, transparent) 0 1px,
+      transparent 1px 4ch
+    )
+    0 0 / var(--indent, 0ch) 100% no-repeat;
+}
+.arrange-add {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 3px 0 0 12px;
+  color: var(--code-gutter);
+}
+/* After checking: the distractor named on a row of its own under it (from the gutter, so a phone shows it) */
+.typer-line.arrange-note {
+  min-height: 0;
+  padding-bottom: 4px;
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+}
+.arrange-tag {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--danger) 22%, transparent);
+  color: var(--code-danger-text);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 18px;
+}
+.arrange.is-revealed .arrange-diff {
+  width: max-content;
+  min-width: 100%;
+}
+@media (pointer: coarse) {
+  .typer-line.arrange-line,
+  .arrange-next {
+    min-height: 40px;
+  }
+  .arrange-remove {
+    opacity: 0.7;
+    width: 15px;
+    height: 15px;
+  }
+  .arrange-bank .parsons-item.arrange-item {
+    min-height: 44px;
+    padding-block: 11px;
+  }
+}
+/* The window shows a focus ring only while typing */
+.arrange-window.typer-window:focus-within {
+  border-color: var(--code-border);
+  box-shadow: var(--shadow-sm);
+}
+.arrange-window.typer-window.is-correct:focus-within {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
+}
+.arrange-window.typer-window.is-wrong:focus-within,
+.pick-window.typer-window.is-wrong:focus-within {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--code-border));
+}
+.pick-window.typer-window.is-correct:focus-within {
+  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
+}
+
+/* ── Input switch ("Type instead" / "Pick instead") ──────────────────────── */
+.input-switch svg {
+  width: 16px;
+  height: 16px;
+}

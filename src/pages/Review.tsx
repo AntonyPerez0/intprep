@@ -11,7 +11,7 @@ import { holdToasts } from '../lib/events';
 import { daysBetween, parseDay, today } from '../lib/date';
 import { cardsForProblem, orderDeck, retryCard, SESSION_PROBLEMS, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
-import { preferTyping } from '../lib/input';
+import { problemInput } from '../lib/input';
 import { shuffle } from '../lib/random';
 import { gradeFrom, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
@@ -39,13 +39,13 @@ function buildDeck(mode: Mode): { ids: string[]; deck: DrillCardSpec[] } {
         .slice(0, MAX_AHEAD);
   }
   ids = ids.filter((id) => PROBLEM_BY_ID[id]);
-  const typing = preferTyping(p.settings.typingMode);
   // Interleaved across problems; each problem opens with its recognition card (see orderDeck).
   const deck = orderDeck(
     shuffle(ids).map((id) => {
       const pp = p.problems[id];
-      // The coding cards follow the problem's schedule; each review rotates to other lines.
-      return cardsForProblem(PROBLEM_BY_ID[id], { srs: pp?.srs, round: pp?.reviews ?? 0, typing });
+      // The coding cards follow the problem's schedule; each review rotates to other lines. In
+      // "Pick first, then type", a problem whose code is still new is picked (problemInput).
+      return cardsForProblem(PROBLEM_BY_ID[id], { srs: pp?.srs, round: pp?.reviews ?? 0, input: problemInput(p.settings.typingMode, pp) });
     }),
   );
   return { ids, deck };
@@ -61,10 +61,10 @@ interface Tally {
 }
 
 /**
- * A coding card missed by a little: at least 3 lines in 4 right on the first check, or one line
- * wrong in two or more. It counts as half right toward the problem's grade, so a typo is not
- * scheduled like a blank recall. A key line (one line) is all or nothing, and "Show answer" with
- * nothing typed has no line right, so it stays a full miss.
+ * A typed coding card missed by a little: at least 3 lines in 4 right on the first check, or one
+ * line wrong in two or more. It counts as half right toward the problem's grade, so a typo is not
+ * scheduled like a blank recall. A key line (one line) is all or nothing, "Show answer" with
+ * nothing typed has no line right, and picked cards have no partial credit, so those stay a miss.
  */
 function nearMiss(r: DrillResult): boolean {
   const l = r.lines;
@@ -124,11 +124,11 @@ function ReviewSession({ mode }: { mode: Mode }) {
       setCombo(nextCombo);
       setBestCombo((b) => Math.max(b, nextCombo));
 
-      // XP: code written right on the first check earns the most; full for due problems, half
-      // for practicing ahead, half for retries.
+      // XP: code written right on the first check earns the most, code picked right next, then
+      // recognition; full for due problems, half for practicing ahead, half for retries.
       let gained = 0;
       if (r.correct) {
-        const full = r.coded ? XP.codeCorrect : XP.drillCorrect;
+        const full = r.input === 'pick' ? XP.pickCorrect : r.coded ? XP.codeCorrect : XP.drillCorrect;
         const base = card.retry ? full / 2 : dueAtStart.has(card.problemId) ? full : full / 2;
         gained = Math.round(base + (nextCombo >= 5 ? XP.comboBonus : 0));
         if (nextCombo > 0 && nextCombo % 5 === 0) {
@@ -392,6 +392,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
         seed={card.seed}
         line={card.line}
         chunk={card.chunk}
+        input={card.input}
         comesBack={!card.retry}
         badge={
           card.retry ? (
@@ -431,6 +432,6 @@ const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'suc
 
 const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: GraduationCap, title: 'Learn a problem', body: 'A guided lesson walks you from the prompt to working code.' },
-  { icon: Brain, title: 'Recall it', body: 'Spot the pattern, then write the code from memory: a key line, the missing lines, a whole part.' },
+  { icon: Brain, title: 'Recall it', body: 'Spot the pattern, then the code: pick its lines while they are new, type them once you know them.' },
   { icon: CalendarCheck, title: 'Space it out', body: 'Each good review pushes the next one further away.' },
 ];

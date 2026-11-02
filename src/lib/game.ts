@@ -15,6 +15,11 @@ export const XP = {
   drillCorrect: 4,
   /** A review coding card (Fill the gaps, Write a part, a typed key line) right on the first check. */
   codeCorrect: 8,
+  /**
+   * Code picked right on the first check (Pick the key line, Pick the gaps, Arrange a part): real
+   * practice, between recognition (`drillCorrect`) and typed code (`codeCorrect`).
+   */
+  pickCorrect: 5,
   comboBonus: 2,
   sessionBonus: 10,
   rebuildMax: 35,

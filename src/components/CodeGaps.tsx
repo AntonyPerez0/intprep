@@ -7,10 +7,16 @@
 //   <GapsFooter>  the window's status bar; its "2 of 3 gaps correct" is an aria-live region
 //   <GapsWindow>  CodeGaps + GapsFooter in a TyperWindow (the all-in-one, like <CodeTyper>)
 //   useGaps()     the exercise state: gaps for this round, values, check / retry / new gaps
-// Documented in docs/DESIGN.md ("Fill in the gaps").
+// Its pick twin, "Pick the gaps" (the same window; each gap is a slot whose options open under it):
+//   <CodeOptions>      code options to pick from (keys 1–N), inline under a slot or on their own
+//   <PickGaps>         the snippet with one slot button per gap, then the graded rows
+//   <PickGapsWindow>   PickGaps + GapsFooter in a TyperWindow
+//   usePickGaps()      the state: gaps, options, picks, the open slot, check / retry / new gaps
+// Documented in docs/DESIGN.md ("Fill in the gaps", "Pick first, then type").
 
 import '../styles/typer.css';
 import '../styles/gaps.css';
+import '../styles/pick.css';
 import {
   Fragment,
   useEffect,
@@ -24,7 +30,9 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { indentOf } from '../lib/codegrade';
+import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { gapChoices, type GapChoice } from '../lib/choices';
+import { indentOf, lineKey } from '../lib/codegrade';
 import { gapsSummary, gradeGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { stripComment } from '../lib/parseSolution';
@@ -32,6 +40,7 @@ import { CodeLine, CodePane, TyperWindow } from './CodeTyper';
 import type { CheckStatus } from './interact';
 
 export { gradeGaps, gapsSummary, pickGaps, gapSource, type GapsGrade, type GapResult } from '../lib/gaps';
+export { gapChoices, lineChoices, type GapChoice } from '../lib/choices';
 
 const KEY_MARK = /\s+#!\s*$/;
 
@@ -577,6 +586,558 @@ export function useGaps(lines: string[], opts: Omit<PickGapsOptions, 'seed'> & {
       return grade;
     },
     retry: () => setState({ ...cur, revealed: false, locked: grade.results.map((r) => r.ok) }),
+    fresh: () => setRound((r) => r + 1),
+  };
+}
+
+// ── Pick the gaps ───────────────────────────────────────────────────────────
+//
+// The pick twin of Fill the gaps, for code that is still new ("Pick first, then type"): the same
+// window and rows, but each gap is a slot button and its options (the right line and plausible
+// wrong ones, `gapChoices`) open right under it, inside the code, like an editor's suggestions.
+// Picking fills the slot and opens the next empty one. Stable hooks: `button.pick-slot` (one per
+// open gap, named "Line N, pick a line"), `.choice` (the options of the open slot; keys 1–N).
+
+/** True while a modal dialog is open: page-wide keys leave the page behind it alone. */
+const modalOpen = () => !!document.querySelector('[aria-modal="true"]');
+
+/** The page's primary action (the ActionBar's last button): where focus goes once every slot is picked. */
+const primaryButton = () => document.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child');
+
+export interface CodeOptionsHandle {
+  /** Focus an option (default: the picked one, else the first). */
+  focus: (index?: number) => void;
+}
+
+export interface CodeOptionsProps {
+  /** The options: lines of code (shown trimmed; the slot or the window fixes the indentation). */
+  options: string[];
+  /** The option picked so far (shown selected). */
+  selected?: string | null;
+  onPick: (option: string, index: number) => void;
+  /** The panel's visible label, e.g. "Line 7". */
+  label: ReactNode;
+  /** What to do, after the label: default "Pick the missing line". */
+  prompt?: ReactNode;
+  /** Accessible name of the option group. Default "Options for {label}" when `label` is a string. */
+  groupLabel?: string;
+  /** Once revealed: the right option is marked correct, a wrong pick wrong, and the options are disabled. */
+  revealed?: boolean;
+  answer?: string | null;
+  /** Number keys 1–N pick an option while not revealed. Default true (one panel per screen). */
+  keys?: boolean;
+  /** Inside a code pane, under a slot: spans the window and stays put while the code scrolls sideways. */
+  inline?: boolean;
+  /** Escape: e.g. close the panel and go back to the slot. */
+  onEscape?: () => void;
+  id?: string;
+  className?: string;
+  ref?: Ref<CodeOptionsHandle>;
+}
+
+/**
+ * Code options to pick from: syntax-highlighted lines on the code surface, each with its number
+ * (keys 1–N pick it, Enter or Space on a focused option picks it). A radio group named after the
+ * line. Inline under a `PickGaps` slot, or on its own under any code window (a single line to
+ * pick, "Pick the right code").
+ */
+export function CodeOptions({
+  options,
+  selected,
+  onPick,
+  label,
+  prompt = 'Pick the missing line',
+  groupLabel,
+  revealed = false,
+  answer,
+  keys = true,
+  inline,
+  onEscape,
+  id,
+  className = '',
+  ref,
+}: CodeOptionsProps) {
+  const uid = useId();
+  const btns = useRef<(HTMLButtonElement | null)[]>([]);
+  const isAnswer = (o: string) => answer != null && lineKey(o) === lineKey(answer);
+  useImperativeHandle(ref, () => ({
+    focus: (i?: number) => {
+      const k = i ?? Math.max(0, options.findIndex((o) => o === selected));
+      btns.current[k]?.focus({ preventScroll: true });
+    },
+  }));
+  // Number keys pick, as in every option list.
+  const live = useRef({ options, onPick, revealed, keys });
+  live.current = { options, onPick, revealed, keys };
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      const { options: opts, onPick: pickIt, revealed: rv, keys: on } = live.current;
+      if (!on || rv || e.metaKey || e.ctrlKey || e.altKey || e.isComposing || modalOpen()) return;
+      const el = e.target as HTMLElement;
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable) return;
+      const n = Number(e.key);
+      if (!(n >= 1 && n <= opts.length)) return;
+      e.preventDefault();
+      pickIt(opts[n - 1], n - 1);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, []);
+  const name = groupLabel ?? (typeof label === 'string' ? `Options for ${label.toLowerCase().startsWith('line') ? label : `the ${label}`}` : 'Options');
+  return (
+    <div id={id} className={`pick-panel ${inline ? 'is-inline' : ''} ${revealed ? 'is-revealed' : ''} ${className}`}>
+      <div className="pick-panel-head">
+        <span className="pick-panel-label" id={`${uid}-label`}>
+          <span className="pick-panel-line">{label}</span>
+          {prompt && (
+            <>
+              <span className="pick-panel-sep" aria-hidden="true">
+                ·
+              </span>
+              {prompt}
+            </>
+          )}
+        </span>
+        {keys && !revealed && options.length > 1 && (
+          <span className="pick-panel-keys" aria-hidden="true">
+            Press 1–{options.length}
+          </span>
+        )}
+      </div>
+      <div className="pick-options" role="radiogroup" aria-label={name}>
+        <div className="pick-options-list">
+          {options.map((o, i) => {
+            let cls = '';
+            let mark: ReactNode = null;
+            if (revealed) {
+              if (isAnswer(o)) {
+                cls = 'correct';
+                mark = <Check strokeWidth={2.4} aria-hidden="true" />;
+              } else if (o === selected) {
+                cls = 'wrong';
+                mark = <X strokeWidth={2.4} aria-hidden="true" />;
+              }
+            } else if (o === selected) cls = 'selected';
+            return (
+              <button
+                key={`${i}:${o}`}
+                ref={(el) => {
+                  btns.current[i] = el;
+                }}
+                type="button"
+                role="radio"
+                aria-checked={o === selected}
+                className={`choice pick-option ${cls}`}
+                disabled={revealed}
+                translate="no"
+                onClick={() => onPick(o, i)}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    // Enter picks this option (the ActionBar would treat it as Check).
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onPick(o, i);
+                  } else if (e.key === 'Escape' && onEscape) {
+                    e.preventDefault();
+                    onEscape();
+                  } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const to = (i + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
+                    btns.current[to]?.focus();
+                  }
+                }}
+              >
+                <span className="pick-option-num" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span className="pick-option-code">{highlightLine(o.trim())}</span>
+                {mark && <span className="pick-option-mark">{mark}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export interface PickGapsHandle {
+  /** Focus a gap's slot (by position in `gaps`; default: the open one, else the first that can be picked). */
+  focus: (gap?: number) => void;
+  /** Focus the open slot's options (the picked one, else the first): e.g. right after "Fix and check again" (call it after a flushSync'd retry). */
+  focusOptions: () => void;
+}
+
+export interface PickGapsProps {
+  /** The whole snippet, one entry per line, as displayed (blank and comment lines included). */
+  lines: string[];
+  /** Indices into `lines` to blank, sorted. */
+  gaps: number[];
+  /** The options of each gap, in the order of `gaps` (`gapChoices`). */
+  choices: GapChoice[];
+  /** The option picked for each gap ('' while empty), in the order of `gaps`. */
+  values: string[];
+  /** The gap whose options are open (position in `gaps`), or null. */
+  active: number | null;
+  onActivate: (gap: number | null) => void;
+  /** A pick: fill the gap (and open the next empty one; `usePickGaps` does). */
+  onPick: (gap: number, option: string) => void;
+  /** Show the result: each gap becomes a graded row (correct, or your pick + the expected line). */
+  revealed?: boolean;
+  /** Gaps right at an earlier check (after "Fix and check again"): shown as correct, not pickable. */
+  locked?: boolean[];
+  disabled?: boolean;
+  /**
+   * Hint on an empty slot. `true` (default): the line's own trailing comment; `false`: none (the
+   * slot says "Pick a line"); an array: your own, per gap.
+   */
+  hints?: boolean | (string | null | undefined)[];
+  /** What each panel asks, after "Line N". Default "Pick the missing line". */
+  prompt?: string;
+  /** Line number of `lines[0]`. Default 1. */
+  start?: number;
+  /** Rows above `lines[0]` (given context such as a part's cue), like CodeEditor's children. */
+  before?: ReactNode;
+  /** Accessible name of the code area. Default "Code with N lines to pick". */
+  label?: string;
+  ref?: Ref<PickGapsHandle>;
+}
+
+/**
+ * The snippet with a slot button per gap, at its line's indentation, and the open slot's options
+ * right under it (`CodeOptions`, inline). Picking fills the slot and opens the next empty one;
+ * a filled slot reopens on a tap; Escape closes the options. Once `revealed`, the rows read as in
+ * Fill the gaps: a right pick with the check, a wrong one with the minus above the expected line.
+ * Render it inside a <TyperWindow> with a <GapsFooter>, or use <PickGapsWindow>.
+ */
+export function PickGaps({
+  lines,
+  gaps,
+  choices,
+  values,
+  active,
+  onActivate,
+  onPick,
+  revealed = false,
+  locked,
+  disabled,
+  hints = true,
+  prompt,
+  start = 1,
+  before,
+  label,
+  ref,
+}: PickGapsProps) {
+  const uid = useId();
+  const shown = useMemo(() => lines.map(clean), [lines]);
+  const gapAt = useMemo(() => new Map(gaps.map((line, k) => [line, k])), [gaps]);
+  const expected = useMemo(() => gaps.map((i) => shown[i] ?? ''), [gaps, shown]);
+  const grade = useMemo(() => gradeGaps(values, expected), [values, expected]);
+  const slots = useRef<(HTMLButtonElement | null)[]>([]);
+  const optionsRef = useRef<CodeOptionsHandle>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const isLocked = (k: number) => !!locked?.[k];
+  const open = revealed || disabled ? null : active;
+
+  useImperativeHandle(ref, () => ({
+    focus: (k?: number) => slots.current[k ?? open ?? gaps.findIndex((_, j) => !isLocked(j))]?.focus(),
+    focusOptions: () => optionsRef.current?.focus(),
+  }));
+
+  // Focus follows the picking: a pick (or opening a slot) made from inside the window moves focus
+  // to the next open panel's options, or to the page's primary action once every slot is picked,
+  // so the keyboard never drops to the page. Picks with the number keys leave focus where it is.
+  const follow = useRef(false);
+  const inside = () => !!rootRef.current?.contains(document.activeElement);
+  const moved = useRef(false);
+  useLayoutEffect(() => {
+    if (!follow.current) return;
+    follow.current = false;
+    if (open !== null) optionsRef.current?.focus();
+    else if (values.every((v) => v.trim()) && !revealed) primaryButton()?.focus({ preventScroll: true });
+  }, [open, values, revealed]);
+
+  // A slot that opens (after the first) scrolls its options into view.
+  useEffect(() => {
+    if (open === null) return;
+    if (!moved.current) {
+      moved.current = true;
+      return;
+    }
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    panelRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [open]);
+
+  const hintFor = (k: number, line: string): string | undefined => {
+    if (Array.isArray(hints)) return hints[k] ?? undefined;
+    return hints ? trailingComment(line) || undefined : undefined;
+  };
+
+  const pick = (k: number, option: string) => {
+    if (disabled || revealed) return;
+    if (inside()) follow.current = true;
+    onPick(k, option);
+  };
+  const activate = (k: number | null) => {
+    if (disabled || revealed) return;
+    if (k !== null && k === open) {
+      optionsRef.current?.focus();
+      return;
+    }
+    follow.current = k !== null;
+    onActivate(k);
+  };
+  const closeTo = (k: number) => {
+    onActivate(null);
+    requestAnimationFrame(() => slots.current[k]?.focus());
+  };
+
+  const missing = gaps.length;
+  const panelId = `${uid}-options`;
+
+  return (
+    <div ref={rootRef} className="pick-gaps-root">
+      {/* A new pane on reveal, so a sideways scroll does not carry over */}
+      <CodePane key={revealed ? 'graded' : 'picking'} className={`gaps pick-gaps ${revealed ? 'is-revealed' : ''}`}>
+        {before}
+        <div role="group" className="gaps-lines pick-lines" aria-label={label ?? `Code with ${missing} line${missing === 1 ? '' : 's'} to pick`}>
+          {shown.map((line, i) => {
+            const n = start + i;
+            const k = gapAt.get(i);
+            if (k === undefined)
+              return (
+                <CodeLine key={i} n={n} className="given">
+                  {line === '' ? ' ' : highlightLine(line)}
+                </CodeLine>
+              );
+            const pad = ' '.repeat(indentOf(line));
+            const r = grade.results[k];
+            const picked = (values[k] ?? '').trim();
+            if (revealed || isLocked(k)) {
+              if (r.ok)
+                return (
+                  <CodeLine key={i} n={n} sign="ok" className="diff ok">
+                    {pad}
+                    {highlightLine(picked)}
+                  </CodeLine>
+                );
+              return (
+                <Fragment key={i}>
+                  <CodeLine n={n} sign="del" className="diff del">
+                    {pad}
+                    {r.empty ? <span className="gaps-empty">left blank</span> : picked}
+                  </CodeLine>
+                  <CodeLine sign="add" className="diff add">
+                    {highlightLine(line)}
+                  </CodeLine>
+                </Fragment>
+              );
+            }
+            const isOpen = open === k;
+            const hint = hintFor(k, line);
+            const choice = choices[k];
+            return (
+              <Fragment key={i}>
+                <div className={`typer-line pick-row ${picked ? 'is-filled' : 'is-empty'} ${isOpen ? 'is-open' : ''}`}>
+                  <span className="typer-ln">{n}</span>
+                  <span className="pick-slot-wrap" style={{ ['--indent' as string]: `${indentOf(line)}ch` }}>
+                    <button
+                      ref={(el) => {
+                        slots.current[k] = el;
+                      }}
+                      type="button"
+                      className="pick-slot"
+                      aria-label={picked ? `Line ${n}: ${picked}. Pick again` : `Line ${n}, pick a line`}
+                      aria-expanded={isOpen}
+                      aria-controls={isOpen ? panelId : undefined}
+                      disabled={disabled}
+                      translate="no"
+                      onClick={() => activate(k)}
+                    >
+                      <span className="pick-slot-text">
+                        {picked ? highlightLine(picked) : <span className="pick-slot-hint">{hint ?? 'Pick a line'}</span>}
+                      </span>
+                      <ChevronsUpDown className="pick-slot-icon" strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </span>
+                </div>
+                {isOpen && choice && (
+                  <div ref={panelRef} className="pick-panel-row">
+                    <CodeOptions
+                      ref={optionsRef}
+                      id={panelId}
+                      inline
+                      options={choice.options}
+                      selected={values[k] || null}
+                      label={`Line ${n}`}
+                      prompt={prompt}
+                      onPick={(o) => pick(k, o)}
+                      onEscape={() => closeTo(k)}
+                    />
+                  </div>
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
+      </CodePane>
+    </div>
+  );
+}
+
+export interface PickGapsWindowProps extends PickGapsProps {
+  /** Frame state. Default: idle while picking, then correct if every gap is right, else wrong. */
+  status?: CheckStatus;
+  filename?: string;
+  /** Window head: meta (default "N lines") or a whole right slot. */
+  meta?: ReactNode;
+  right?: ReactNode;
+  /** Footer note while picking. Default "3 lines to pick" (then "1 to fix"). */
+  note?: ReactNode;
+  /** Footer keyboard hint (desktop); false hides it. */
+  keys?: ReactNode | false;
+  /** Rendered inside the window above the code (e.g. a fold row over earlier lines). */
+  top?: ReactNode;
+  /** Rendered inside the window under the code. */
+  after?: ReactNode;
+  className?: string;
+}
+
+const PICK_KEYS = 'Number keys to pick · Enter to check';
+
+/** PickGaps in the typing window with the gaps status bar: the twin of <GapsWindow>. */
+export function PickGapsWindow({ status, filename, meta, right, note, keys = PICK_KEYS, top, after, className, ...picks }: PickGapsWindowProps) {
+  const grade = useMemo(
+    () => (picks.revealed ? gradeGaps(picks.values, picks.gaps.map((i) => clean(picks.lines[i] ?? ''))) : null),
+    [picks.revealed, picks.values, picks.gaps, picks.lines],
+  );
+  const st: CheckStatus = status ?? (grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle');
+  const open = picks.gaps.map((_, k) => k).filter((k) => !picks.locked?.[k]);
+  const left = open.filter((k) => !(picks.values[k] ?? '').trim()).length;
+  const fixing = open.length < picks.gaps.length;
+  return (
+    <TyperWindow
+      status={st}
+      filename={filename}
+      meta={meta ?? `${picks.lines.length} lines`}
+      right={right}
+      className={`pick-window ${className ?? ''}`}
+      footer={
+        <GapsFooter
+          grade={grade}
+          keys={keys}
+          note={note ?? (fixing ? `${open.length} to fix` : left ? `${left} line${left === 1 ? '' : 's'} to pick` : 'Ready to check')}
+        />
+      }
+    >
+      {top}
+      <PickGaps {...picks} disabled={picks.disabled ?? st !== 'idle'} />
+      {after}
+    </TyperWindow>
+  );
+}
+
+export interface PickGapsState {
+  /** Line indices blanked this round. */
+  gaps: number[];
+  /** The options of each gap (stable for the round). */
+  choices: GapChoice[];
+  /** The option picked for each gap ('' while empty). */
+  values: string[];
+  /** The gap whose options are open, or null. */
+  active: number | null;
+  setActive: (gap: number | null) => void;
+  /** Fill a gap and open the next empty one (none once every gap is picked). */
+  pick: (gap: number, option: string) => void;
+  revealed: boolean;
+  /** Always current; show it only once revealed. */
+  grade: GapsGrade;
+  /** Gaps with a pick. */
+  filled: number;
+  /** Every gap has a pick: Check can run. */
+  complete: boolean;
+  /** Gaps right at an earlier check of this round (pass as `locked`). */
+  locked: boolean[];
+  /** 0 for the first set, +1 for every new set. */
+  round: number;
+  /** Reveal the answers. Returns the grade. */
+  check: () => GapsGrade;
+  /** "Fix and check again": hide the answers, keep the picks, lock the right gaps, open the first wrong one. */
+  retry: () => void;
+  /** "New gaps": the next round's set, empty. */
+  fresh: () => void;
+}
+
+export interface PickGapsHookOptions extends Omit<PickGapsOptions, 'seed'> {
+  /** The gaps to use (e.g. from `reviewGaps`); without it they are picked like `useGaps` does (`pickGaps`, seed = round). */
+  gaps?: number[];
+  /** First round. Default 0. */
+  round?: number;
+  /** Seed for the options (`gapChoices`). Default: the round. */
+  seed?: number;
+}
+
+/**
+ * The state of a Pick the gaps exercise over `lines`: the twin of `useGaps`, with the same
+ * rounds. Options are `gapChoices(lines, gaps, seed)`, stable for a round, so a retry or a reload
+ * shows the same ones. The first slot opens on arrival.
+ */
+export function usePickGaps(lines: string[], opts: PickGapsHookOptions = {}): PickGapsState {
+  const { round: startRound = 0, keyLines, exclude, ratio, min, max, gaps: fixed, seed } = opts;
+  const [round, setRound] = useState(startRound);
+  const linesKey = lines.join('\n');
+  const optsKey = JSON.stringify([keyLines, exclude, ratio, min, max, fixed]);
+  const gaps = useMemo(
+    () => fixed ?? pickGaps(lines, { keyLines, exclude, ratio, min, max, seed: round }),
+    [linesKey, round, optsKey], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const optSeed = seed ?? round;
+  const choices = useMemo(() => gapChoices(lines, gaps, optSeed), [linesKey, gaps, optSeed]); // eslint-disable-line react-hooks/exhaustive-deps
+  type Round = { key: string; values: string[]; revealed: boolean; locked: boolean[]; active: number | null };
+  const key = `${round}|${optSeed}|${gaps.join(',')}|${linesKey}`;
+  const empty = (): Round => ({ key, values: gaps.map(() => ''), revealed: false, locked: gaps.map(() => false), active: gaps.length ? 0 : null });
+  const [state, setState] = useState<Round>(empty);
+  const cur = state.key === key ? state : empty();
+  const expected = useMemo(() => gaps.map((i) => clean(lines[i] ?? '')), [gaps]); // eslint-disable-line react-hooks/exhaustive-deps
+  const grade = useMemo(() => gradeGaps(cur.values, expected), [cur.values, expected]);
+  const filled = cur.values.filter((v) => v.trim()).length;
+  return {
+    gaps,
+    choices,
+    values: cur.values,
+    active: cur.revealed ? null : cur.active,
+    setActive: (active) => setState({ ...cur, active }),
+    pick: (k, option) => {
+      const values = cur.values.map((v, j) => (j === k ? option : v));
+      // The next empty slot after this one (wrapping), else none.
+      const n = gaps.length;
+      let next: number | null = null;
+      for (let d = 1; d <= n; d++) {
+        const j = (k + d) % n;
+        if (!cur.locked[j] && !values[j].trim()) {
+          next = j;
+          break;
+        }
+      }
+      setState({ ...cur, values, active: next });
+    },
+    revealed: cur.revealed,
+    grade,
+    filled,
+    complete: gaps.length > 0 && filled === gaps.length,
+    locked: cur.locked,
+    round,
+    check: () => {
+      setState({ ...cur, revealed: true, active: null });
+      return grade;
+    },
+    retry: () => {
+      const locked = grade.results.map((r) => r.ok);
+      const first = locked.findIndex((ok) => !ok);
+      setState({ ...cur, revealed: false, locked, active: first >= 0 ? first : null });
+    },
     fresh: () => setRound((r) => r + 1),
   };
 }

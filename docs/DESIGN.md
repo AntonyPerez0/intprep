@@ -68,6 +68,7 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
 | Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
 | Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
+| Picking code | The pick kit whenever the learner chooses code rather than typing it (new code in "Pick first, then type", or "Always pick"): `<PickGapsWindow>` + `usePickGaps` (Pick the gaps, Pick the key line), `<ArrangeWindow>` + `useArrange` (Arrange a part), `<CodeOptions>` (one line from options), `<InputSwitch>` ("Type instead" / "Pick instead"); distractors from `lib/choices.ts`. Never `<Choices>` for code. See **Pick first, then type** |
 | Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (Enter runs the primary action, except while a modal dialog is open; re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; when a check from the keyboard removes the focused input or editor, focus moves to the primary button; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
 | Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` (stat values share a bottom line even when a label wraps on a narrow phone) |
@@ -79,7 +80,8 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 Use it wherever the learner types code: Code from memory (part by part, filling the gaps, or the whole solution
 from scratch), the template drill (filling the gaps, or from memory), beginner "Your turn" slides of 1–5 lines,
 and Pattern Blitz's Key lines game (a one-gap `<CodeGaps>` in a `TyperWindow`).
-For choosing between given lines, use `<Choices code>` instead; for a single key line, the key-line drill's input.
+For choosing between given lines of code, use the pick kit (**Pick first, then type**): `<CodeOptions>`,
+`<PickGapsWindow>`, `<ArrangeWindow>`; `<Choices>` stays for non-code answers.
 
 **The ladder** — Code from memory and the template drill offer the same rungs, most support first: Part by part
 (Code from memory only) → Fill the gaps → From scratch / From memory. Without `?mode=` a page opens one rung above
@@ -217,12 +219,13 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
 Daily review, Practice ahead and Unit practice are code-first. Each problem brings three cards: **one
 recognition card first** (Spot the pattern about 70% of the time, otherwise Recall the key insight, Name the
 technique, Know the complexity or Put the steps in order), then **two coding cards** picked by the problem's
-schedule (`codeStage(srs)`): learning (interval under 4 days or fewer than 2 good reviews in a row) gets Write the
-key line + Fill the gaps; young (4 to 20 days) Fill the gaps + Write a part; mature (21 days or more) Write a part
-twice, two different parts (or a part + Fill the gaps). Sessions hold up to 8 due problems, or 5 when practicing
+stage (`codeStage(srs)`) and input (`problemInput`; see **Pick first, then type** for the table): new code is
+picked (Arrange a part + Pick the gaps), then a fill stage (interval under 10 days) gets Write the key line + Fill
+the gaps, young (10 to 20 days) Fill the gaps + Write a part, mature (21 days or more) Write a part twice, two
+different parts (or a part + Fill the gaps). Sessions hold up to 8 due problems, or 5 when practicing
 ahead or by unit. Cards are interleaved across problems, and each problem still opens with its recognition card.
 A missed card comes back once at the end of the session ("Try again" badge, half XP); a coding card comes back as
-a fresh instance (`retryCard`: other gaps, another key line, another part). The problem's review grade is
+a fresh instance with the same input (`retryCard`: other gaps and options, another key line, another part). The problem's review grade is
 `gradeFrom` over the first try of its three cards, coding cards counting like the others. Practice ahead and unit
 practice are optional: a problem that was not due when the session started is reviewed with `{ lapse: false }`,
 so a miss never resets its schedule. Session sizes live in `SESSION_PROBLEMS` (`lib/drills.ts`).
@@ -241,30 +244,164 @@ so a miss never resets its schedule. Session sizes live in `SESSION_PROBLEMS` (`
   { anchor })`. The sub names what the part defines that is nowhere on screen ("Use the solution's names: need",
   `definedNames`), since it is compared line by line. Content rule (checked by `npm run validate`): a part's
   explanation mentions a closing `return` one level out, and a class-level `def` only ever opens a part.
-- **Write the key line** (`keyline`): typed by default on every device, never a line whose code also stands
+- **Write the key line** (`keyline`): typed in its stage, never a line whose code also stands
   elsewhere in the solution (`pickKeyLine`); touch screens get the symbol keys (`SymbolKeys`) under the input.
-  Beside Check: "Show answer" (a miss) and "Show options", a helper: a line picked from (or typed after seeing) the
-  options counts as recognition, not as code written. Phones show them as "Answer" and "Options", the narrowest as
-  icons (the full name stays the accessible one). With the options showing, the kicker reads "Choose the key line".
+  Beside Check: "Show answer" (a miss) and "Show options", a helper that turns the card into Pick the key line:
+  a line picked from (or typed after seeing) the options counts as picked (`XP.pickCorrect`), not as code
+  written. Phones show them as "Answer" and "Options", the narrowest as icons (the full name stays the accessible
+  one). With the options showing, the kicker reads "Pick the key line" and "Type instead" goes back.
 
 Every coding card says what to do in its title ("Fill the gaps in Two Sum", "Write the next part of Two Sum",
 "Write the missing line of Two Sum"), keeps the problem statement in a collapsed disclosure, and shows the kit's
 keyboard hint in the window footer. "Show answer" (left of Check, before the first check) reveals the answer as a
 miss for a card the learner cannot recall; the checked action then reads "Type it now" (nothing typed to fix), as
 in Key lines. The first check decides the card; after a miss, "Fix and check again"
-is the `checkedSecondary` and Continue stays the primary. XP: `XP.codeCorrect` (8) for code right on the first
-check, `XP.drillCorrect` (4) for recognition, half for practicing ahead and for retries, plus the combo bonus. The
-completion adds a "Lines written" stat (lines right on the first check, out of the lines asked); its four stats sit
-two by two below 480px. A coding card nearly right on the first check (3 lines in 4, or one line wrong in two or
-more) counts as half right toward `gradeFrom`, so two typos make a problem "Fuzzy", not "Forgot". Every card is
+is the `checkedSecondary` and Continue stays the primary. XP: `XP.codeCorrect` (8) for typed code right on the
+first check, `XP.pickCorrect` (5) for picked code, `XP.drillCorrect` (4) for recognition, half for practicing
+ahead and for retries, plus the combo bonus. The completion adds a "Lines written" stat (typed lines right on the
+first check, out of the typed lines asked; picked cards do not count); its four stats sit two by two below 480px.
+A typed coding card nearly right on the first check (3 lines in 4, or one line wrong in two or more) counts as
+half right toward `gradeFrom`, so two typos make a problem "Fuzzy", not "Forgot"; picked cards have no partial
+credit. Every card is
 saved as it is answered (XP and streak, answers, each problem's schedule once its three cards are done), so a
 close keeps the work; the reward toasts are held (`holdToasts`) and shown at the end or after the close, so none
 covers a card. A problem pulled into today by a Pattern Blitz miss is reviewed as early (`review()` counts only
 the days that passed), so a miss never pushes it further out than getting it right would.
 
-Input mode (`lib/input.ts`, `preferTyping`): 'auto' (the default) and 'type' both mean typing, phones included;
-'tap' is the explicit opt-in to pick lines from choices, and then the review's coding cards become key lines to
-pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
+Input (`lib/input.ts`): each problem's coding cards take the input `problemInput(settings.typingMode, progress)`
+gives when the session starts (see **Pick first, then type**).
+
+## Pick first, then type (`lib/input.ts`, `lib/choices.ts`, `lib/arrange.ts`, `components/CodeGaps.tsx`, `components/Arrange.tsx`, `components/InputSwitch.tsx`)
+
+New code is picked from choices until the learner knows it; then typing takes over (faded guidance, Renkl &
+Atkinson 2003; Parsons problems with paired distractors, Parsons & Haden 2006, Ericson, Margulieux & Rick 2017;
+desirable difficulties only help when the learner can succeed, Bjork & Bjork 2011). Picking is real practice,
+not a lesser mode: its first check is scored like a typed one, a miss comes back in the session, and it earns XP.
+
+**The setting** — Profile, Practice, "Code practice" (`settings.typingMode`, values kept for old saves; an
+unknown value loads as 'auto'): radio cards with icons, one line each.
+
+| Value | Label | Meaning |
+|---|---|---|
+| `auto` (default) | **Pick first, then type** (Recommended) | New code is picked; typing takes over once it is known |
+| `type` | **Always type** | Every exercise typed (old saves holding 'type' land here) |
+| `tap` | **Always pick** | Every exercise picked, no "Type instead" |
+
+Description: "New code starts as choices. Typing takes over once you know it." (`CODE_PRACTICE` in
+`lib/input.ts` holds the labels.)
+
+**When code is new** — `lib/input.ts`, pure:
+
+- `type CodeInput = 'pick' | 'type'`.
+- `PICK_UNTIL_REPS = 1`. `isNewCode(pp)`: not learned yet (the guided lesson), or `pp.srs.reps < PICK_UNTIL_REPS`.
+  So the guided lesson and the first review are picked, typing starts at the second review, and a lapse (reps
+  back to 0) goes back to picking until the next right review. One constant to tune.
+- `problemInput(mode, pp?) → CodeInput`: 'tap' → pick, 'type' → type, 'auto' → pick while `isNewCode(pp)`.
+- `TEMPLATE_READY = 0.8`. `isNewTemplate(t)`: no From memory try, and both `t.pickBest` and `t.gapsBest` under
+  0.8. `templateInput(mode, t?) → CodeInput` likewise. The template ladder: Pick the gaps → Fill the gaps → From
+  memory.
+- `preferTyping(mode)` is deprecated (still true for 'auto') and stays only for screens not yet on the ladder.
+
+**Stages and the review's coding cards** — `codeStage(card)` (`lib/drills.ts`): `new` (no card, or reps under
+`PICK_UNTIL_REPS`), `fill` (interval under 10 days), `young` (10 to 20), `mature` (21+). `codingKinds(stage,
+input, parts)`:
+
+| Stage | Picked | Typed |
+|---|---|---|
+| new | Arrange a part + Pick the gaps | Write the key line + Fill the gaps |
+| fill | Pick the key line + Pick the gaps | Write the key line + Fill the gaps |
+| young | Pick the gaps + Arrange a part | Fill the gaps + Write a part |
+| mature | Arrange a part twice (2+ parts), else + Pick the gaps | Write a part twice, else + Fill the gaps |
+
+`cardsForProblem(p, { srs, round, input })` puts the input on every coding card (`DrillCardSpec.input`); a retry
+keeps it (`retryCard`). In 'auto' only `new` is picked; 'tap' picks every stage; 'type' types every stage.
+
+**The twins** — every typed exercise has a pick twin; `drillLabel(kind, input)` / `PICK_LABEL` name them:
+
+| Typed | Picked | How |
+|---|---|---|
+| Write the key line | **Pick the key line** | the missing line from 4: the answer + 3 mutants (`keyLineDrill`) |
+| Fill the gaps | **Pick the gaps** | each gap gets the answer + up to 3 wrong lines (`gapChoices`) |
+| Write a part | **Arrange a part** | a code-line Parsons problem (`arrangeBlocks`); a one-line part is picked from options ("Pick the next line") |
+| Foundations "Your turn" with authored wrong options | **Pick the right code** | `<CodeOptions>` |
+
+Pick screens offer a quiet **"Type instead"** (`<InputSwitch to="type">`, 'auto' only, before the first check)
+that turns the card into its typed twin; the card then counts as typed. A typed screen offers **"Pick instead"**
+only where it already had an equivalent helper (Write the key line's "Show options", Code from memory's "Tap
+lines"). Once a card is checked, its input is fixed. Kickers and titles say what to do: "Pick the gaps in Two
+Sum" / "Pick the 2 missing lines from the options, then check."; "Put the next part of Two Sum in order" / "Put
+this part's lines in order under the highlighted comment. One line does not belong."
+
+**XP** — `XP.pickCorrect` (5) for picked code right on the first check, `XP.codeCorrect` (8) typed,
+`XP.drillCorrect` (4) recognition; retries and practicing ahead half. "Lines written" counts typed lines only;
+picked cards report `input: 'pick'` and no `lines` in `DrillResult`.
+
+**Store** — `TemplateProgress.pickBest?` (optional, like `gapsBest`). `recordTemplate(cat, acc, mode: 'pick' |
+'gaps' | 'memory')` only raises a best and returns true on a new best for that mode (`TemplateMode`).
+`templateScore` still reports From memory, else gaps (extend it if a page shows a pick score).
+
+**Shared APIs**
+
+- `lib/choices.ts` (re-exported from `lib/drills.ts` and `components/CodeGaps.tsx`), pure:
+  `mutateLine(line)` (one token swapped: operators, bounds, pointers, methods, literals; an off-by-one; the
+  operands of a comparison, a subtraction or a plain assignment swapped; a `not` dropped; `enumerate(x, 1)`);
+  `codeOnly(line)` (an option as shown: code at its indentation, no trailing comment);
+  `lineChoices(answer, otherLines, n = 3, rnd = Math.random)` → up to `n` wrong lines, mutations first, then
+  `otherLines` re-indented, deduplicated with the grader's `lineKey`, never equal to the answer;
+  `gapChoices(lines, gaps, seed = 0, n = 3, extra = [])` → `{ answer, options }[]` per gap, deterministic per seed
+  and content (a retry or reload shows the same options), fallback lines that are not on screen first (the other
+  gaps' lines, `extra`); `lineOptions(answer, otherLines)` for a quick unseeded list.
+- `lib/arrange.ts`, pure: `arrangeBlocks(lines, seed = 0, { keyLines, distractor })` → `{ blocks, expected, base }`:
+  the part's code lines (comments dropped) as `ArrangeBlock`s `{ id ('b0'…, 'x'), text (relative indentation),
+  indent, distractor, pair }`, shuffled per seed and content, never in the solution's order, plus one paired
+  distractor (a mutation of a key line, else of the longest line, never equal to any line of the part) placed next
+  to its pair when there are 2+ code lines. `gradeArrange(placed, expected)` → `{ grade (the kit's `Grade`, LCS
+  diff: a line out of place marks only itself; equal lines are interchangeable), results (per position ok),
+  correct, total, usedDistractor, missing, perfect, score = correct / (total + 1 if the distractor was placed) }`.
+  `arrangeSummary(g)`: "3 of 5 lines in place · 1 not in the solution".
+- **Pick the gaps** (`components/CodeGaps.tsx`): `usePickGaps(lines, { gaps?, keyLines, exclude, ratio, min, max,
+  round, seed })` → `{ gaps, choices, values, active, setActive, pick, revealed, grade, filled, complete, locked,
+  round, check, retry, fresh }` (the twin of `useGaps`; pass `gaps` to pin a set, e.g. `reviewGaps(p, seed).gaps`;
+  the first slot opens on arrival; `pick` fills a gap and opens the next empty one; `retry` keeps the picks, locks
+  the right ones and opens the first wrong one). `<PickGapsWindow lines gaps choices values active onActivate onPick
+  revealed locked hints prompt start before label top after status filename meta right note keys ref>` (`ref`:
+  `focus(gap?)`, `focusOptions()`; `before` = rows above `lines[0]` inside the code, `top` = above the code, e.g. a
+  fold row). It looks exactly like `GapsWindow`: each gap is a slot (`button.pick-slot`, "Line N, pick a line",
+  `aria-expanded`) at its line's indentation, as wide as the visible window; its hint is the line's trailing
+  comment, else "Pick a line". The open slot's options appear **inline right under it** (`<CodeOptions inline>`,
+  sticky to the window's visible width, so they never scroll sideways with the code), labeled "Line 7 · Pick the
+  missing line"; picking fills the slot and opens the next empty one; a filled slot reopens with its pick
+  selected; Escape closes the options back to the slot. Check is enabled once every slot is filled (`complete`).
+  Grading and the result rows are Fill the gaps' (`gradeGaps`, `GapsFooter` "2 of 3 gaps correct"). Focus follows
+  a pick made inside the window to the next options, or to the primary action once every slot is filled; number
+  keys leave focus where it is.
+- `<CodeOptions options selected onPick label prompt groupLabel revealed answer keys inline onEscape id ref>`:
+  code options on the code surface (always dark), syntax-highlighted, trimmed (the slot or window fixes the
+  indentation), wrapping inside the panel on a phone, numbered: keys 1–N pick, Enter or Space picks the focused
+  option (never Check), Up/Down move, Escape → `onEscape`. A `radiogroup` of `button.choice.pick-option`
+  (`role="radio"`); "Press 1–4" on desktop. Standalone (not `inline`) it is a rounded panel to put under any
+  code window; with `revealed` + `answer` the right option is marked correct and a wrong pick wrong.
+- **Arrange** (`components/Arrange.tsx`): `useArrange(lines, { seed, keyLines, distractor })` → `{ set, blocks,
+  placed, bank, place, remove, total, canCheck, revealed, result, check, retry }` (`canCheck`: as many lines placed
+  as the solution has; `retry` keeps the order). `<ArrangeWindow blocks placed onPlace onRemove total revealed
+  result indent before firstLine label top after status filename meta right note keys ref>` (`indent` = the
+  part's base column in the file, `before` = the given rows above it (lines before, cue, signature), `ref`:
+  `focus(placed?)`). "Your code" is the code pane: placed lines at their real indentation with line numbers
+  (`.parsons-slot`; each `button.arrange-line`, "Remove line N: …", sends it back), then a dashed "Add the next
+  line" row. The bank is a tray under the code (`.parsons-bank`, "Lines to place" with a count): each block a code
+  button (`.parsons-item.arrange-item`, "Add line: …") at its relative indentation with indent guides, wrapping
+  under its indentation on a phone. Tap, Enter or Space adds a block at the end (Enter never checks there;
+  Ctrl/⌘ + Enter or Check does); focus follows to the next block (or the primary once the bank is empty); a polite
+  live region says what was added or removed. After the check the placed lines read as the kit's diff: right
+  lines with a check, a line out of place with a minus ("Out of place" for screen readers) and the right line
+  with a plus where it belongs, the distractor with a "Not in the solution" note row; `ArrangeFooter` says "4 of 5
+  lines in place · 1 not in the solution". "Fix and check again" keeps the order and focuses the first line that
+  is off.
+- `<InputSwitch to="type" | "pick" onClick label?>`: the quiet switch, Keyboard icon + "Type instead" or List icon
+  + "Pick instead", for the ActionBar's `secondary` (left of Check). Same look everywhere.
+
+**Look** — picking is code practice, not a quiz: slots, options and blocks are code on the code surface, in the
+typing window's frame, rows and status bar; 44px targets on touch; nothing scrolls the page sideways.
 
 ## Page blueprints
 
@@ -413,7 +550,10 @@ Automated tests drive the UI through these hooks — keep them working:
   `.modal`, `[aria-label="Close"]`, `.blitz-start` (Blitz start button), `input[name="blitz-game"]` (Blitz game
   radios, values `pattern` / `lines`), `.blitz-lines-title` (Key lines problem title), `.blitz-show` (Key lines
   Show answer), review cards `.drill[data-drill]` (kind: `pattern`, `gaps`, `part`, `keyline`…) with
-  `data-problem`, the part card's `.drill-cue` and `.drill-fold`.
+  `data-problem` and `data-input` (`pick` / `type` on coding cards), the part card's `.drill-cue` and `.drill-fold`;
+  pick twins: `button.pick-slot` ("Line N, pick a line"), `.pick-panel .choice` (the open slot's options),
+  `.parsons-slot .arrange-line` ("Remove line N: …"), `.parsons-bank .parsons-item` ("Add line: …"), `.arrange-tag`,
+  the switch's button **"Type instead"**.
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
   and **"Got it"** (the review's Fill the gaps, Write a part and Write the key line cards also have a **"Show answer"** button,

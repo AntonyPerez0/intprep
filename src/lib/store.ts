@@ -34,7 +34,15 @@ export interface TemplateProgress {
   at: number;
   /** Best first-check accuracy filling the gaps, 0–1. Optional: older saves do not have it. */
   gapsBest?: number;
+  /**
+   * Best first-check accuracy picking the gaps from choices, 0–1 (the template's first rung in
+   * "Pick first, then type": see `templateInput` in lib/input.ts). Optional: older saves do not have it.
+   */
+  pickBest?: number;
 }
+
+/** How a template was practiced: its gaps picked from choices, its gaps typed, or the whole template typed from memory. */
+export type TemplateMode = 'pick' | 'gaps' | 'memory';
 
 export type Experience = 'none' | 'some' | 'comfortable';
 
@@ -49,6 +57,7 @@ export interface Progress {
     sound: boolean;
     haptics: boolean;
     theme: 'system' | 'light' | 'dark';
+    /** "Code practice" (lib/input.ts): 'auto' = Pick first, then type (default); 'type' = Always type; 'tap' = Always pick. */
     typingMode: 'auto' | 'type' | 'tap';
     /** The last game picked in Pattern Blitz: spot the pattern, or type key lines. */
     blitzGame: 'pattern' | 'lines';
@@ -134,10 +143,13 @@ function hydrate(raw: unknown): Progress {
   const base = fresh();
   if (!raw || typeof raw !== 'object') return base;
   const r = raw as Partial<Progress>;
+  const settings = { ...base.settings, ...(r.settings ?? {}) };
+  // "Code practice": 'auto' (Pick first, then type), 'type' (Always type) or 'tap' (Always pick).
+  if (!['auto', 'type', 'tap'].includes(settings.typingMode)) settings.typingMode = 'auto';
   return {
     ...base,
     ...r,
-    settings: { ...base.settings, ...(r.settings ?? {}) },
+    settings,
     streak: { ...base.streak, ...(r.streak ?? {}) },
     stats: { ...base.stats, ...(r.stats ?? {}) },
     xpByDay: r.xpByDay ?? {},
@@ -448,20 +460,34 @@ export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gap
 }
 
 /**
- * Record a template drill for a unit: typed from memory (default) or by filling the gaps.
- * Returns true on a new best for that mode.
+ * Record a template drill for a unit: its gaps picked from choices, its gaps typed, or typed from
+ * memory (default). Only ever raises a best. Returns true on a new best for that mode.
  */
-export function recordTemplate(cat: string, accuracy: number, mode: 'memory' | 'gaps' = 'memory'): boolean {
+export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode = 'memory'): boolean {
   const prev = state.templates?.[cat];
-  const best = mode === 'gaps' ? prev?.gapsBest === undefined || accuracy > prev.gapsBest : !prev?.tries || accuracy > prev.best;
+  const best =
+    mode === 'pick'
+      ? prev?.pickBest === undefined || accuracy > prev.pickBest
+      : mode === 'gaps'
+        ? prev?.gapsBest === undefined || accuracy > prev.gapsBest
+        : !prev?.tries || accuracy > prev.best;
   update((d) => {
     const t = (d.templates ??= {});
     const cur = t[cat];
-    const base = { best: cur?.best ?? 0, tries: cur?.tries ?? 0, at: Date.now(), ...(cur?.gapsBest !== undefined ? { gapsBest: cur.gapsBest } : {}) };
-    t[cat] =
-      mode === 'gaps'
-        ? { ...base, gapsBest: Math.max(cur?.gapsBest ?? 0, accuracy) }
-        : { ...base, best: Math.max(cur?.best ?? 0, accuracy), tries: base.tries + 1 };
+    const next: TemplateProgress = {
+      best: cur?.best ?? 0,
+      tries: cur?.tries ?? 0,
+      at: Date.now(),
+      ...(cur?.gapsBest !== undefined ? { gapsBest: cur.gapsBest } : {}),
+      ...(cur?.pickBest !== undefined ? { pickBest: cur.pickBest } : {}),
+    };
+    if (mode === 'pick') next.pickBest = Math.max(cur?.pickBest ?? 0, accuracy);
+    else if (mode === 'gaps') next.gapsBest = Math.max(cur?.gapsBest ?? 0, accuracy);
+    else {
+      next.best = Math.max(cur?.best ?? 0, accuracy);
+      next.tries += 1;
+    }
+    t[cat] = next;
   });
   return best;
 }
