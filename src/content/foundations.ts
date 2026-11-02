@@ -14,14 +14,24 @@ export const FOUNDATIONS: Lesson[] = [
     title: 'How IntPrep Works',
     icon: '🧭',
     blurb: 'Learn a pattern, practice it, then drill it a little every day.',
-    minutes: 4,
+    minutes: 5,
     slides: [
       {
         kind: 'text',
         title: 'Welcome to IntPrep',
         body: `Coding interviews can feel like a test of genius. They aren't. The 150 classic problems are built from about **16 reusable patterns**, and once you know a pattern, the problems that use it start to look familiar.
 
-This beginner track gives you just enough Python and computer-science basics to begin. No experience needed.`,
+This beginner track gives you just enough Python and computer-science basics to begin. No experience needed, and you will write real code in every lesson, starting now.`,
+      },
+      {
+        kind: 'type',
+        title: 'Your first line of Python',
+        prompt: 'Type this line exactly as it is written, then check it:\n\n`print("Hello, IntPrep")`',
+        answer: 'print("Hello, IntPrep")',
+        hint: 'Type `print`, an opening parenthesis, the text inside double quotes, then a closing parenthesis.',
+        explain:
+          '`print(...)` shows whatever is inside the parentheses, and the quotes mark `Hello, IntPrep` as text. The next lessons explain every piece of it.',
+        output: 'Hello, IntPrep',
       },
       {
         kind: 'text',
@@ -37,7 +47,7 @@ This beginner track gives you just enough Python and computer-science basics to 
         title: "Test yourself, don't reread",
         body: `Rereading feels productive because the page looks familiar. But *recognizing* an answer is not the same as *recalling* it, and in an interview there is no page.
 
-Every time you pull an idea out of memory (answering a quiz, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep quizzes you constantly, starting now.`,
+Every time you pull an idea out of memory (writing a line of code, filling in a missing line, rebuilding a solution) that memory gets stronger. A little struggle is the point. That is why IntPrep quizzes you constantly, starting now.`,
       },
       {
         kind: 'quiz',
@@ -78,6 +88,18 @@ That is what **streaks** are for. A visible chain of days is motivating, and it 
         answer: 1,
         explain:
           'Short, spaced sessions that make you **recall** beat long, passive cramming, even when the total time is the same.',
+      },
+      {
+        kind: 'type',
+        title: 'From memory: print some math',
+        prompt:
+          'Write a `print` line from memory, the same shape as your first one. This time, put the math `25 * 30` inside the parentheses, with no quotes: 25 minutes a day for 30 days.',
+        answer: 'print(25 * 30)',
+        accept: ['print(30 * 25)'],
+        hint: 'Same shape as before: `print(`, then what to show, then `)`. Numbers and math need no quotes.',
+        explain:
+          'Without quotes, Python works out `25 * 30` and prints the result: 750 minutes, over 12 hours a month, with no cramming. Pulling the `print(...)` shape out of memory instead of looking it up is retrieval practice, the same move every drill here uses.',
+        output: '750',
       },
       {
         kind: 'text',
@@ -1354,7 +1376,7 @@ class Solution:
     title: 'Big-O: How Fast Is It?',
     icon: '📈',
     blurb: 'Describe how running time and memory grow, and read constraints like a pro.',
-    minutes: 12,
+    minutes: 15,
     slides: [
       {
         kind: 'text',
@@ -1425,6 +1447,52 @@ def f(nums):
 # O(n) + O(n^2) = O(n^2)`,
       },
       {
+        kind: 'type',
+        title: 'Count the steps of one loop',
+        prompt: 'Count the work one loop does. Loop with `for i in range(n):` and add 1 to `steps` on each pass. After the loop, print `steps`.',
+        starter: py`
+n = 1000
+steps = 0`,
+        answer: py`
+for i in range(n):
+    steps += 1
+print(steps)`,
+        accept: [
+          py`
+for i in range(n):
+    steps = steps + 1
+print(steps)`,
+        ],
+        hint: 'The loop body is one indented line, `steps += 1`. The `print` goes after the loop, back at the left edge.',
+        explain:
+          'One pass does one step per item: 1,000 items, 1,000 steps. Double `n` and the steps double too. Work that grows in a straight line with the input is **O(n)**.',
+        output: '1000',
+      },
+      {
+        kind: 'type',
+        title: 'Count the steps of a nested loop',
+        prompt: 'Now put a loop inside the loop: `for i in range(n):` and, inside it, `for j in range(n):`. Add 1 to `steps` in the inner loop, then print `steps` after both loops.',
+        starter: py`
+n = 1000
+steps = 0`,
+        answer: py`
+for i in range(n):
+    for j in range(n):
+        steps += 1
+print(steps)`,
+        accept: [
+          py`
+for i in range(n):
+    for j in range(n):
+        steps = steps + 1
+print(steps)`,
+        ],
+        hint: '`steps += 1` is indented twice, because it belongs to the inner loop. The `print` is not indented at all.',
+        explain:
+          'The inner loop runs all 1,000 times for **each** of the 1,000 outer passes: 1,000 × 1,000 is a million steps. Double `n` and the work grows four times. That is **O(n²)**, the cost of looking at every pair.',
+        output: '1000000',
+      },
+      {
         kind: 'code',
         title: 'Logarithmic: halving',
         body: 'When each step cuts the remaining work in half, even a million items take only about 20 steps. That is **O(log n)**: binary search, balanced trees and heaps all work this way.',
@@ -1438,6 +1506,46 @@ def halvings(n):
 
 print(halvings(8), halvings(1024), halvings(1_000_000))`,
         output: '3 10 19',
+      },
+      {
+        kind: 'type',
+        title: 'Count the doublings',
+        prompt: 'Doubling is halving in reverse. Loop with `while size < n:`, doubling `size` and adding 1 to `steps` on each pass. After the loop, print `steps`.',
+        starter: py`
+n = 1_000_000
+size = 1
+steps = 0`,
+        answer: py`
+while size < n:
+    size *= 2
+    steps += 1
+print(steps)`,
+        accept: [
+          py`
+while size < n:
+    size = size * 2
+    steps += 1
+print(steps)`,
+          py`
+while size < n:
+    size *= 2
+    steps = steps + 1
+print(steps)`,
+          py`
+while size < n:
+    size = size * 2
+    steps = steps + 1
+print(steps)`,
+          py`
+while size < n:
+    steps += 1
+    size *= 2
+print(steps)`,
+        ],
+        hint: 'Two lines inside the loop: `size *= 2` and `steps += 1`. The `print` goes after the loop, not inside it.',
+        explain:
+          'Starting from 1, doubling passes a million after just 20 steps, because 2²⁰ is about a million. A billion would take only 30. Halving and doubling loops both take about log₂ n steps: **O(log n)**.',
+        output: '20',
       },
       {
         kind: 'quiz',
@@ -1491,19 +1599,23 @@ print(has_dup_slow([4, 1, 4]), has_dup_fast([4, 1, 7]))`,
 Put a hidden O(n) inside a loop and you have O(n²).`,
       },
       {
-        kind: 'quiz',
-        q: '`a` and `b` are both lists of n numbers. What is the time complexity?',
-        code: py`
-def common(a, b):
-    res = []
-    for x in a:
-        if x in b:
-            res.append(x)
-    return res`,
-        options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(1)'],
-        answer: 2,
+        kind: 'type',
+        title: 'Swap a list scan for a set',
+        prompt: 'Checking `x in b` for every `x` in `a` scans the list `b` each time: O(n²). Make a set called `seen` from `b` instead. Then loop with `for x in a:` and print every `x` that is in `seen`.',
+        starter: py`
+a = [4, 9, 2, 7]
+b = [7, 1, 4, 5]`,
+        answer: py`
+seen = set(b)
+for x in a:
+    if x in seen:
+        print(x)`,
+        hint: '`set(b)` builds the set in one pass. Inside the loop, `if x in seen:` is the fast check.',
         explain:
-          '`x in b` scans the list b: O(n). Doing that for each of the n items of a gives O(n²). Converting b to a set first makes it O(n).',
+          'Building the set costs O(n) once, and each `x in seen` check is O(1), so the whole thing is **O(n)**. With `x in b`, it would be O(n) work inside an O(n) loop: O(n²). Spending a little memory to save that time is one of the most common moves in interviews.',
+        output: py`
+4
+7`,
       },
       {
         kind: 'text',
@@ -1538,7 +1650,7 @@ def common(a, b):
     title: 'Recursion',
     icon: '🌀',
     blurb: 'Functions that call themselves: base cases, the call stack, and trusting the recursion.',
-    minutes: 14,
+    minutes: 18,
     slides: [
       {
         kind: 'text',
@@ -1644,6 +1756,35 @@ print(mystery(4))`,
         explain: 'It adds n to the sum of everything below it: 4 + 3 + 2 + 1 + 0 = 10.',
       },
       {
+        kind: 'type',
+        title: 'Base case first',
+        prompt: '`digit_sum(n)` adds up the digits of `n`, so `digit_sum(472)` is 13. Base case: if `n` is less than `10`, it is a single digit, so return `n`. Otherwise, return the last digit, `n % 10`, plus `digit_sum(n // 10)`.',
+        starter: 'def digit_sum(n):',
+        answer: py`
+    if n < 10:
+        return n
+    return n % 10 + digit_sum(n // 10)`,
+        accept: [
+          py`
+    if n < 10:
+        return n
+    return digit_sum(n // 10) + n % 10`,
+          py`
+    if n < 10:
+        return n
+    else:
+        return n % 10 + digit_sum(n // 10)`,
+          py`
+    if n < 10:
+        return n
+    else:
+        return digit_sum(n // 10) + n % 10`,
+        ],
+        hint: '`472 % 10` is 2, the last digit, and `472 // 10` is 47, the rest. The recursive call gets the smaller number.',
+        explain:
+          '`digit_sum(472)` is 2 + `digit_sum(47)`, which is 7 + `digit_sum(4)`, and 4 is a single digit: the base case. Each call drops one digit, so the calls always reach a number under 10 and stop.',
+      },
+      {
         kind: 'text',
         title: 'Trust the recursion',
         body: `Don't trace every call in your head. Instead:
@@ -1742,6 +1883,62 @@ def length(nums):
           'An empty list has length 0: that is the base case. Any other list is one item plus the rest, and you trust the call on `nums[1:]` to measure the rest.',
       },
       {
+        kind: 'type',
+        title: 'Reverse a string',
+        prompt: 'Write `reverse(s)`, which returns `s` backward: `""` if `s` is empty, otherwise `reverse(s[1:])` with the first character, `s[0]`, added on the end. Then, below the function, print `reverse("stressed")`.',
+        answer: py`
+def reverse(s):
+    if s == "":
+        return ""
+    return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+        accept: [
+          py`
+def reverse(s):
+    if not s:
+        return ""
+    return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+          py`
+def reverse(s):
+    if len(s) == 0:
+        return ""
+    return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+          py`
+def reverse(s):
+    if s == "":
+        return ""
+    else:
+        return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+          py`
+def reverse(s):
+    if not s:
+        return ""
+    else:
+        return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+          py`
+def reverse(s):
+    if len(s) == 0:
+        return ""
+    else:
+        return reverse(s[1:]) + s[0]
+
+print(reverse("stressed"))`,
+        ],
+        hint: 'It is `length` with a twist: the base case returns `""`, and the step puts `s[0]` **after** the reversed rest. The `print` line starts at the left edge.',
+        explain:
+          '`reverse("abc")` is `reverse("bc") + "a"`, which is `reverse("c") + "b" + "a"`, all the way down to the empty string. Trust the call to reverse the rest, then put the first character last.',
+        output: 'desserts',
+      },
+      {
         kind: 'code',
         title: 'Fibonacci',
         body: 'Each Fibonacci number is the sum of the two before it: 0, 1, 1, 2, 3, 5, 8… This function makes **two** recursive calls.',
@@ -1805,6 +2002,116 @@ print(fib(50, {}))`,
         explain:
           '`fib(30)` makes about 2.7 million calls, mostly repeats. Remembering each result (memoization) cuts that to about 30 distinct subproblems.',
       },
+      {
+        kind: 'type',
+        title: 'How deep is the tree?',
+        prompt: 'Each `Node` has two children, `left` and `right`, which are `None` when missing. Write `depth(node)`: if `node is None`, return `0`; otherwise return `1` plus the `max` of the depths of `node.left` and `node.right`. Then print `depth(root)`.',
+        starter: py`
+class Node:
+    def __init__(self, val, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+# 1 -> 2 -> 4, and 1 -> 3
+root = Node(1, Node(2, Node(4)), Node(3))`,
+        answer: py`
+def depth(node):
+    if node is None:
+        return 0
+    return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+        accept: [
+          py`
+def depth(node):
+    if not node:
+        return 0
+    return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node == None:
+        return 0
+    return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node is None:
+        return 0
+    return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if not node:
+        return 0
+    return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node == None:
+        return 0
+    return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node is None:
+        return 0
+    else:
+        return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if not node:
+        return 0
+    else:
+        return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node == None:
+        return 0
+    else:
+        return 1 + max(depth(node.left), depth(node.right))
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node is None:
+        return 0
+    else:
+        return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if not node:
+        return 0
+    else:
+        return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+          py`
+def depth(node):
+    if node == None:
+        return 0
+    else:
+        return max(depth(node.left), depth(node.right)) + 1
+
+print(depth(root))`,
+        ],
+        hint: 'Like `fib`, it makes two recursive calls, one for each child. Trust each call to measure its own subtree, then add 1 for `node` itself.',
+        explain:
+          'The path 1 → 2 → 4 has three levels, so the depth is 3. No need to trace every call: trust `depth` on each child and add one level for the node itself. This exact function solves *Maximum Depth of Binary Tree* in the trees unit.',
+        output: '3',
+      },
     ],
   },
 
@@ -1814,7 +2121,7 @@ print(fib(50, {}))`,
     title: 'A Tour of Data Structures',
     icon: '🧰',
     blurb: 'Arrays, hash maps, stacks, queues, linked lists, trees, heaps and graphs.',
-    minutes: 15,
+    minutes: 20,
     slides: [
       {
         kind: 'text',
@@ -1844,6 +2151,48 @@ Great for ordered data, two pointers, sliding windows and prefix sums.`,
 - Keys must be hashable; there is no ordering by value
 
 Great for *have I seen this?*, counting, grouping, and remembering where something was. It is the single most useful structure in interviews.`,
+      },
+      {
+        kind: 'type',
+        title: 'Set: unique values, fast lookups',
+        prompt: 'Make a set called `unique` from `nums`. Then print two things on one line: how many values `unique` holds, using `len`, and whether `7` is in it.',
+        starter: 'nums = [4, 7, 4, 1, 7]',
+        answer: py`
+unique = set(nums)
+print(len(unique), 7 in unique)`,
+        hint: '`set(nums)` drops the repeats. `print(a, b)` prints both values with a space between them.',
+        explain:
+          'A set keeps one copy of each value, so the five numbers shrink to three: 4, 7 and 1. `7 in unique` is an O(1) lookup, where `7 in nums` would scan the whole list.',
+        output: '3 True',
+      },
+      {
+        kind: 'type',
+        title: 'Hash map: count things',
+        prompt: 'Count how often each number appears in `nums`. Loop with `for n in nums:` and add 1 to `count[n]` using `count.get(n, 0)`. After the loop, print `count[2]` and `count[7]` on one line.',
+        starter: py`
+nums = [2, 7, 2, 5, 2, 7]
+count = {}`,
+        answer: py`
+for n in nums:
+    count[n] = count.get(n, 0) + 1
+print(count[2], count[7])`,
+        accept: [
+          py`
+for n in nums:
+    count[n] = 1 + count.get(n, 0)
+print(count[2], count[7])`,
+          py`
+for n in nums:
+    if n in count:
+        count[n] += 1
+    else:
+        count[n] = 1
+print(count[2], count[7])`,
+        ],
+        hint: '`count.get(n, 0)` is the count so far, or 0 the first time a number shows up. The `print` goes after the loop, at the left edge.',
+        explain:
+          '2 shows up three times and 7 twice. Each number costs one O(1) dict update, so counting everything is O(n). Counting like this is the first step in problems like *Valid Anagram* and *Top K Frequent Elements*.',
+        output: '3 2',
       },
       {
         kind: 'code',
@@ -1892,6 +2241,32 @@ print(list(q))`,
         output: py`
 ann
 ['ben', 'cat']`,
+      },
+      {
+        kind: 'type',
+        title: 'Serve a queue',
+        prompt: '`"cy"` joins the back of the line: `append` it to `q`. Then, while `q` is not empty, take the name at the front with `popleft()` and print it.',
+        starter: py`
+from collections import deque
+
+q = deque(["ann", "bo"])`,
+        answer: py`
+q.append("cy")
+while q:
+    print(q.popleft())`,
+        accept: [
+          py`
+q.append("cy")
+while len(q) > 0:
+    print(q.popleft())`,
+        ],
+        hint: 'An empty deque counts as false, so `while q:` stops once everyone is served. `print(q.popleft())` removes and prints in one step.',
+        explain:
+          'First in, first out: the names leave in the order they arrived. This `while q:` loop with `popleft()` is the heart of breadth-first search (BFS), which you will write in the graphs unit.',
+        output: py`
+ann
+bo
+cy`,
       },
       {
         kind: 'quiz',
@@ -1994,6 +2369,36 @@ print(heapq.heappop(h))`,
 4`,
       },
       {
+        kind: 'type',
+        title: 'Pop the smallest, again and again',
+        prompt: 'Push every `x` in `nums` onto the heap `h` with `heapq.heappush`. Then, while `h` is not empty, pop the smallest with `heapq.heappop` and print it.',
+        starter: py`
+import heapq
+
+nums = [5, 1, 8, 3]
+h = []`,
+        answer: py`
+for x in nums:
+    heapq.heappush(h, x)
+while h:
+    print(heapq.heappop(h))`,
+        accept: [
+          py`
+for x in nums:
+    heapq.heappush(h, x)
+while len(h) > 0:
+    print(heapq.heappop(h))`,
+        ],
+        hint: '`heapq.heappush(h, x)` takes the heap first, then the value. The `while` loop starts at the left edge, after the `for` loop.',
+        explain:
+          'Each pop takes the smallest item left, so the numbers come out in sorted order, and every push and pop costs only O(log n). For a max-heap, push `-x` and flip the sign back when you pop.',
+        output: py`
+1
+3
+5
+8`,
+      },
+      {
         kind: 'quiz',
         q: 'You need the 3 largest numbers from a stream of a million numbers, using very little memory. Which structure fits best?',
         options: ['A stack', 'A heap that never holds more than 3 items', 'A queue', 'A linked list'],
@@ -2073,7 +2478,7 @@ print(graph[2])`,
     title: 'How to Solve a Problem',
     icon: '🧠',
     blurb: 'A repeatable framework from first read to tested, explained code.',
-    minutes: 12,
+    minutes: 16,
     slides: [
       {
         kind: 'text',
@@ -2147,6 +2552,21 @@ print(first_repeat("abcbad"), repr(first_repeat("xyz")))`,
         output: "b ''",
       },
       {
+        kind: 'type',
+        title: 'Brute force: pair sum',
+        prompt: 'New problem: return the indices `[i, j]` of two different numbers in `nums` that add up to `target`, or `[]` if none do. Try every pair: `for i in range(len(nums)):` and, inside it, `for j in range(i + 1, len(nums)):`.',
+        starter: 'def pair_sum(nums, target):',
+        answer: py`
+    for i in range(len(nums)):
+        for j in range(i + 1, len(nums)):
+            if nums[i] + nums[j] == target:
+                return [i, j]
+    return []`,
+        hint: 'Inside both loops, check `if nums[i] + nums[j] == target:` and return `[i, j]`. The final `return []` lines up with the first `for`.',
+        explain:
+          'Starting `j` at `i + 1` checks each pair once and never pairs a number with itself. It is correct, and saying it out loud first is smart, but it is O(n²): 10,000 numbers means about 50 million pairs.',
+      },
+      {
         kind: 'text',
         title: 'Step 4: Spot the pattern',
         body: `Ask: *what is the brute force doing over and over?* Here the inner loop only **searches** for something we have already seen. Repeated searching is a signal for a **hash set**.
@@ -2173,6 +2593,47 @@ def first_repeat(s):
 
 print(first_repeat("abcbad"))`,
         output: 'b',
+      },
+      {
+        kind: 'type',
+        title: 'Optimize: pair sum with a hash map',
+        prompt: 'Now in one pass: loop with `for i, x in enumerate(nums):` and keep a dict `seen` from each number to its index. If the partner, `target - x`, is in `seen`, return `[seen[target - x], i]`; otherwise store `seen[x] = i`. Return `[]` after the loop.',
+        starter: 'def pair_sum(nums, target):',
+        answer: py`
+    seen = {}
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+    return []`,
+        accept: [
+          py`
+    seen = {}
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        else:
+            seen[x] = i
+    return []`,
+          py`
+    seen = dict()
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+    return []`,
+          py`
+    seen = dict()
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        else:
+            seen[x] = i
+    return []`,
+        ],
+        hint: 'Check for the partner **before** you store `x`, so a number never pairs with itself. `seen = {}` makes an empty dict.',
+        explain:
+          'One O(1) dict lookup replaces the whole inner loop: *have I already seen the partner, and where?* That makes it O(n) time and O(n) space. This is *Two Sum*, which you will meet again in the first unit.',
       },
       {
         kind: 'quiz',
@@ -2209,6 +2670,28 @@ for s in ["", "a", "aa", "abc", "abba"]:
 'aa' -> 'a'
 'abc' -> ''
 'abba' -> 'b'`,
+      },
+      {
+        kind: 'type',
+        title: 'Test the edge cases',
+        prompt: '`assert` stops the program with an error when what follows it is false. Write three: `pair_sum([], 5)` is `[]`, `pair_sum([5], 10)` is `[]`, and `pair_sum([5, 5], 10)` is `[0, 1]`. Then print `all tests pass`.',
+        starter: py`
+def pair_sum(nums, target):
+    seen = {}
+    for i, x in enumerate(nums):
+        if target - x in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+    return []`,
+        answer: py`
+assert pair_sum([], 5) == []
+assert pair_sum([5], 10) == []
+assert pair_sum([5, 5], 10) == [0, 1]
+print("all tests pass")`,
+        hint: 'Each line reads `assert pair_sum(...) == expected`. Compare with `==`, not `=`.',
+        explain:
+          'An empty list, a single number (which must not pair with itself) and a repeated value are exactly the cases the clarifying questions uncovered. If any `assert` failed, Python would stop with an `AssertionError` before the `print`.',
+        output: 'all tests pass',
       },
       {
         kind: 'text',
@@ -2280,7 +2763,7 @@ def has_duplicate(nums):
     title: 'How LeetCode Works',
     icon: '💻',
     blurb: 'Starter signatures, running tests, reading constraints and catching edge cases.',
-    minutes: 10,
+    minutes: 13,
     slides: [
       {
         kind: 'text',
@@ -2307,6 +2790,21 @@ print(sol.twoLargestSum([5, 1, 9, 3]))`,
         output: '14',
       },
       {
+        kind: 'type',
+        title: 'Write a method',
+        prompt: 'Inside `class Solution`, write a method called `largest`. It takes `self` and `nums`, typed `List[int]`, and returns an `int`. Its body returns `max(nums)`.',
+        starter: py`
+from typing import List
+
+class Solution:`,
+        answer: py`
+    def largest(self, nums: List[int]) -> int:
+        return max(nums)`,
+        hint: 'Copy the shape of `twoLargestSum`: `self` first, then `nums: List[int]`, then `-> int` and a colon. The body is indented one more level.',
+        explain:
+          '`self` always comes first in a method, and LeetCode passes it for you. `nums: List[int]` and `-> int` are type hints: they say what goes in and what comes out, but Python does not enforce them.',
+      },
+      {
         kind: 'text',
         title: "Return, don't print",
         body: `Your method must **return** the answer. Printing it does nothing for the grader (prints only show up in the output panel, which is handy for debugging).
@@ -2314,21 +2812,27 @@ print(sol.twoLargestSum([5, 1, 9, 3]))`,
 Return the right **type**, too: \`True\` or \`False\` for a yes/no question, an int for *how many*, a list for *return all*. Some problems say *modify the input in place*: then you change it and return nothing.`,
       },
       {
-        kind: 'quiz',
-        q: 'Why does this fail every test?',
-        code: py`
+        kind: 'type',
+        title: 'Fix it: return the answer',
+        prompt: 'This `isEven` used `print(n % 2 == 0)`, so it returned `None` and failed every test. Write its body so it **returns** whether `n` is even.',
+        starter: py`
 class Solution:
-    def isEven(self, n: int) -> bool:
-        print(n % 2 == 0)`,
-        options: [
-          '`n % 2 == 0` is wrong for negative numbers',
-          'It prints the answer but returns `None`',
-          '`bool` is not a Python type',
-          'It should call `self.print`',
+    def isEven(self, n: int) -> bool:`,
+        answer: '        return n % 2 == 0',
+        accept: [
+          py`
+        if n % 2 == 0:
+            return True
+        return False`,
+          py`
+        if n % 2 == 0:
+            return True
+        else:
+            return False`,
         ],
-        answer: 1,
+        hint: 'Keep the same check, `n % 2 == 0`, and hand it back with `return` instead of `print`.',
         explain:
-          'The grader compares what you **return**. With no `return`, the method returns `None`. (And `n % 2 == 0` works fine for negatives in Python.)',
+          'The grader only sees what a method **returns**. `n % 2 == 0` is already `True` or `False`, so you can return it directly. (It works for negative numbers too.)',
       },
       {
         kind: 'text',
@@ -2336,6 +2840,25 @@ class Solution:
         body: `Click **Run** to try the given examples first, then add your own custom tests, especially tiny ones and edge cases.
 
 When a test fails, LeetCode shows the input, your output and the expected output. Read all three, trace your code on that exact input, and fix the real cause. Don't just patch that one case with an \`if\`.`,
+      },
+      {
+        kind: 'type',
+        title: 'Call it like LeetCode does',
+        prompt: 'Test the method yourself: make a `Solution` object called `sol`, then print `sol.largest([3, 8, 5])`.',
+        starter: py`
+from typing import List
+
+class Solution:
+    def largest(self, nums: List[int]) -> int:
+        return max(nums)`,
+        answer: py`
+sol = Solution()
+print(sol.largest([3, 8, 5]))`,
+        accept: ['print(Solution().largest([3, 8, 5]))'],
+        hint: '`Solution()`, with parentheses, makes the object. Then call the method on it with a dot: `sol.largest(...)`.',
+        explain:
+          'You pass only `nums`: Python fills in `self` with `sol`. LeetCode runs your code the same way on every test, and running it yourself on tiny inputs is the fastest way to find a bug.',
+        output: '8',
       },
       {
         kind: 'text',
@@ -2372,6 +2895,48 @@ When a test fails, LeetCode shows the input, your output and the expected output
 - The **largest** allowed input (is it fast enough?)
 
 Check the constraints to see which can really happen: \`1 <= nums.length\` rules out empty input.`,
+      },
+      {
+        kind: 'type',
+        title: 'Handle an empty input',
+        prompt: '`average` divides by `len(nums)`, so an empty list would crash it. Handle that first: if `nums` is empty, return `0.0`. Otherwise, return `sum(nums) / len(nums)`.',
+        starter: py`
+from typing import List
+
+class Solution:
+    def average(self, nums: List[int]) -> float:`,
+        answer: py`
+        if not nums:
+            return 0.0
+        return sum(nums) / len(nums)`,
+        accept: [
+          py`
+        if len(nums) == 0:
+            return 0.0
+        return sum(nums) / len(nums)`,
+          py`
+        if nums == []:
+            return 0.0
+        return sum(nums) / len(nums)`,
+          py`
+        if not nums:
+            return 0.0
+        else:
+            return sum(nums) / len(nums)`,
+          py`
+        if len(nums) == 0:
+            return 0.0
+        else:
+            return sum(nums) / len(nums)`,
+          py`
+        if nums == []:
+            return 0.0
+        else:
+            return sum(nums) / len(nums)`,
+        ],
+        hint: 'An empty list counts as false, so `if not nums:` catches it. Put the check **before** the division.',
+        explain:
+          'Without the check, `average([])` divides by zero and LeetCode reports a **Runtime Error**. Handling the edge case first, then the normal case, keeps the main logic clean.',
       },
       {
         kind: 'code',
