@@ -358,3 +358,28 @@
     transform: translateY(6px);
   }
 }
+
+/* ── Guides: "Your turn", fill in the template ──────────────────────────── */
+/* The gaps window and its legend; a scroll to the result clears the session header. */
+.lplayer-gaps-work {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top));
+}
+
+/* Completion: "Type the template from memory" reads "Template from memory" on the narrowest
+   phones, so it never truncates; the full label stays the accessible name. */
+.lplayer-cta-short {
+  display: none;
+}
+@media (max-width: 359px) {
+  .lplayer-done .lplayer-cta-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .lplayer-done .lplayer-cta-short {
+    display: inline;
+  }
+}

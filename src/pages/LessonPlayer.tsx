@@ -1,5 +1,5 @@
 import '../styles/pages/lesson-player.css';
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -14,6 +14,7 @@ import {
   Minus,
   MoveHorizontal,
   NotebookPen,
+  PencilLine,
   Plus,
   RotateCcw,
   ScanSearch,
@@ -24,21 +25,32 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide, TypeSlide } from '../content/types';
 import { baseIndent, codeLines, gradeBest, type Grade } from '../lib/codegrade';
+import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { confetti } from '../lib/confetti';
 import { XP } from '../lib/game';
 import { HighlightedCode, highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
-import { completeLesson, getProgress } from '../lib/store';
+import { completeLesson, getProgress, recordTemplate } from '../lib/store';
 import { ActionBar, Choices, CodeWindow, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
 import { Badge, Completion } from '../components/ui';
 
+/**
+ * "Your turn" in a pattern guide: the template with about 30% of its lines blank (Fill the gaps).
+ * Player-only: guides are built here from the PatternGuide, not authored as slides.
+ */
+type TemplateGapsSlide = { kind: 'template-gaps'; category: CategoryId; template: string };
+
 /** A slide plus optional presentation hints (eyebrow label, Lucide icon, file name, card footer). */
-type PlayerSlide = Slide & { eyebrow?: string; icon?: LucideIcon; file?: string; foot?: { label: string; text: string } };
+type PlayerSlide = (Slide | TemplateGapsSlide) & { eyebrow?: string; icon?: LucideIcon; file?: string; foot?: { label: string; text: string } };
+
+/** A first-check score at or above this opens the template drill From memory (its ladder's rule). */
+const TEMPLATE_READY = 0.8;
 
 /** Turn a pattern guide into a short slide lesson. */
 function guideSlides(g: PatternGuide): PlayerSlide[] {
@@ -55,7 +67,7 @@ function guideSlides(g: PatternGuide): PlayerSlide[] {
       icon: Wrench,
       file: `${g.category}.py`,
       title: 'The reusable template',
-      body: 'Most problems in this unit are a variation of this shape. You will see it again and again.',
+      body: 'Most problems in this unit are a variation of this shape. Read it closely: you will type its key lines in a moment.',
       code: g.template,
     },
     {
@@ -66,6 +78,7 @@ function guideSlides(g: PatternGuide): PlayerSlide[] {
       body: g.templateNotes.map((n) => `- ${n}`).join('\n'),
       foot: { label: 'Typical cost', text: g.complexity },
     },
+    { kind: 'template-gaps', eyebrow: 'Your turn · Fill the gaps', icon: Keyboard, category: g.category, template: g.template },
     ...restQ.map((q) => ({ kind: 'quiz' as const, ...q })),
   ];
 }
@@ -122,6 +135,8 @@ export function LessonPlayer({ mode }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [hint, setHint] = useState(false);
   const codeRef = useRef<HTMLTextAreaElement | null>(null);
+  // Guides: the first check of "Fill in the template" (first visit), for the completion screen.
+  const [gapsFirst, setGapsFirst] = useState<GapsGrade | null>(null);
   // After a check or "Show answer", bring the code window into view above the action bar. Two
   // frames later: the feedback bar is taller, and the session only reserves room for it once its
   // new height has been measured.
@@ -147,8 +162,9 @@ export function LessonPlayer({ mode }: Props) {
   const total = queue.length;
   const quizCount = lesson.slides.filter((s) => s.kind === 'quiz').length;
   const typeCount = lesson.slides.filter((s) => s.kind === 'type').length;
-  // Quizzes and "Your turn" slides both count toward "First try".
-  const scoredCount = quizCount + typeCount;
+  const gapsCount = lesson.slides.filter((s) => s.kind === 'template-gaps').length;
+  // Quizzes and "Your turn" slides (typed code, filled gaps) all count toward "First try".
+  const scoredCount = quizCount + typeCount + gapsCount;
 
   const advance = () => {
     setSel(null);
@@ -190,8 +206,21 @@ export function LessonPlayer({ mode }: Props) {
             },
           ]
         : []),
-      { label: 'Slides', value: lesson.slides.length },
+      gapsFirst
+        ? {
+            label: 'Gaps correct',
+            value: (
+              <>
+                {gapsFirst.correct}
+                <span className="lplayer-of">/{gapsFirst.total}</span>
+              </>
+            ),
+          }
+        : { label: 'Slides', value: lesson.slides.length },
     ];
+    // A strong first check on the template's gaps moves the drill up its ladder: say so, and open
+    // it in that mode (pinned, so the label always matches where the button goes).
+    const fromMemory = !!gapsFirst && gapsFirst.score >= TEMPLATE_READY;
     return (
       <SessionShell progress={1} onClose={() => nav(lesson.back)} title={lesson.title}>
         <div className="lplayer-done">
@@ -228,9 +257,23 @@ export function LessonPlayer({ mode }: Props) {
                   Start the problems
                   <ArrowRight />
                 </Link>
-                <Link to={`/patterns/${cat}/type`} state={{ from: lesson.back }} className="btn btn-secondary btn-lg btn-block">
-                  <Keyboard />
-                  Practice the template
+                <Link
+                  to={`/patterns/${cat}/type?mode=${fromMemory ? 'memory' : 'gaps'}`}
+                  state={{ from: lesson.back }}
+                  className="btn btn-secondary btn-lg btn-block"
+                >
+                  {fromMemory ? <PencilLine aria-hidden="true" /> : <Keyboard aria-hidden="true" />}
+                  {fromMemory ? (
+                    // Shorter on the narrowest phones; the full label stays the accessible name.
+                    <>
+                      <span className="truncate lplayer-cta-full">Type the template from memory</span>
+                      <span className="truncate lplayer-cta-short" aria-hidden="true">
+                        Template from memory
+                      </span>
+                    </>
+                  ) : (
+                    <span className="truncate">Practice the template</span>
+                  )}
                 </Link>
               </>
             )}
@@ -304,34 +347,61 @@ export function LessonPlayer({ mode }: Props) {
       ? `Your turn · ${typeNo} of ${typeCount}`
       : (slide.eyebrow ?? lesson.kind);
 
+  const counter = (
+    <span className="lplayer-count">
+      <span className="sr-only">
+        Slide {pos + 1} of {total}
+      </span>
+      <span aria-hidden="true">
+        {pos + 1}
+        <span className="lplayer-count-total">/{total}</span>
+      </span>
+    </span>
+  );
+  const kickerRow = (
+    <div className="kicker lplayer-kicker">
+      <KickerIcon strokeWidth={2} />
+      <span>{kicker}</span>
+      {isRequeue && (
+        <Badge tone="warning" pill>
+          <RotateCcw />
+          Missed earlier
+        </Badge>
+      )}
+    </div>
+  );
+
+  // ── Guides: "Your turn", fill in the template ─────────────────────────────
+  if (slide.kind === 'template-gaps') {
+    // The first check counts toward "First try". On the first visit it also feeds the template
+    // drill's ladder (a best only ever goes up; a check with nothing typed is not an attempt),
+    // and a miss brings the slide back once at the end, as a missed quiz comes back.
+    const gapsChecked = (r: GapsGrade, typed: number) => {
+      if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: r.perfect }));
+      if (isRequeue) return;
+      setGapsFirst(r);
+      if (typed > 0) recordTemplate(slide.category, r.score, 'gaps');
+      if (!r.perfect) setQueue((q) => [...q, idx]);
+    };
+    return (
+      <SessionShell progress={pos / total} onClose={() => nav(lesson.back)} title={lesson.title} right={counter}>
+        <TemplateGapsStep
+          key={pos}
+          slide={slide}
+          kicker={kickerRow}
+          retake={isRequeue}
+          autoFocus={finePointer}
+          onChecked={gapsChecked}
+          onContinue={advance}
+        />
+      </SessionShell>
+    );
+  }
+
   return (
-    <SessionShell
-      progress={pos / total}
-      onClose={() => nav(lesson.back)}
-      title={lesson.title}
-      right={
-        <span className="lplayer-count">
-          <span className="sr-only">
-            Slide {pos + 1} of {total}
-          </span>
-          <span aria-hidden="true">
-            {pos + 1}
-            <span className="lplayer-count-total">/{total}</span>
-          </span>
-        </span>
-      }
-    >
+    <SessionShell progress={pos / total} onClose={() => nav(lesson.back)} title={lesson.title} right={counter}>
       <div className={`lplayer lplayer-${slide.kind}`}>
-        <div className="kicker lplayer-kicker">
-          <KickerIcon strokeWidth={2} />
-          <span>{kicker}</span>
-          {isRequeue && (
-            <Badge tone="warning" pill>
-              <RotateCcw />
-              Missed earlier
-            </Badge>
-          )}
-        </div>
+        {kickerRow}
         {slide.kind === 'type' ? (
           <TypeSlideView
             slide={slide}
@@ -414,7 +484,7 @@ function SlideView({
   animKey: number;
 }) {
   const order = useMemo(() => (slide.kind === 'quiz' ? shuffle(slide.options.map((_, i) => i)) : []), [slide]);
-  if (slide.kind === 'type') return null; // rendered by TypeSlideView
+  if (slide.kind === 'type' || slide.kind === 'template-gaps') return null; // rendered by TypeSlideView / TemplateGapsStep
   if (slide.kind === 'text') {
     return (
       <div className="lplayer-slide" key={animKey}>
@@ -610,8 +680,8 @@ const DIFF_KEY = [
 ] as const;
 
 /** A legend for the diff markers, for learners seeing a diff for the first time. */
-function DiffKey({ grade }: { grade: Grade }) {
-  const kinds = new Set<string>(grade.rows.map((r) => r.kind));
+function DiffKey({ grade, kinds: shown }: { grade?: Grade; kinds?: string[] }) {
+  const kinds = new Set<string>(shown ?? grade?.rows.map((r) => r.kind) ?? []);
   if (kinds.has('indent')) kinds.add('add'); // a wrong indent is followed by the expected line
   return (
     <ul className="lplayer-diff-key" aria-hidden="true">
@@ -624,5 +694,146 @@ function DiffKey({ grade }: { grade: Grade }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// ── "Your turn" in a pattern guide: fill in the template ───────────────────
+
+/**
+ * The template from a few slides back, with about 30% of its lines blank (at least 2): the
+ * template drill's first set of gaps, so this first check is a fair score for its ladder. The
+ * learner types each missing line (each gap's hint is its line's comment); Check reveals every
+ * gap, and after a miss "Fix and check again" keeps the text and locks the right lines. Owns its
+ * gaps and its action bar; keyed by slide position, so the comeback at the end starts empty.
+ */
+function TemplateGapsStep({
+  slide,
+  kicker,
+  retake,
+  autoFocus,
+  onChecked,
+  onContinue,
+}: {
+  slide: TemplateGapsSlide;
+  /** The slide's eyebrow row, as the player draws it for every slide. */
+  kicker: ReactNode;
+  /** The comeback at the end of the lesson after a missed first visit. */
+  retake: boolean;
+  autoFocus: boolean;
+  /** The first check of this visit, with how many gaps had text. */
+  onChecked: (grade: GapsGrade, typed: number) => void;
+  onContinue: () => void;
+}) {
+  const name = CATEGORY_BY_ID[slide.category].name;
+  const src = useMemo(() => gapSource(slide.template), [slide.template]);
+  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min: 2 });
+  const [checks, setChecks] = useState(0);
+  const [blank, setBlank] = useState(false); // the first check had nothing typed
+  const gapsRef = useRef<CodeGapsHandle>(null);
+  const workRef = useRef<HTMLDivElement>(null);
+  const n = ex.gaps.length;
+  const grade = ex.grade;
+  const status: CheckStatus = ex.revealed ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+
+  // After a miss, bring the first line to fix (and the expected line under it) into view: a long
+  // template runs past the fold, and the taller feedback bar covers its end. Waits a beat so the
+  // bar's new height has been measured into the page's bottom padding.
+  useEffect(() => {
+    if (!ex.revealed || grade.perfect) return;
+    const t = window.setTimeout(() => {
+      const row = workRef.current?.querySelector<HTMLElement>('.diff.del');
+      if (!row) return;
+      const top = row.getBoundingClientRect().top;
+      const bottom = (row.nextElementSibling ?? row).getBoundingClientRect().bottom;
+      const head = document.querySelector<HTMLElement>('.session-head')?.offsetHeight ?? 56;
+      const bar = document.querySelector<HTMLElement>('.actionbar')?.offsetHeight ?? 0;
+      if (top >= head && bottom <= window.innerHeight - bar) return;
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      row.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [ex.revealed, checks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Check is always available, so a learner who cannot recall a line is never stuck: blank gaps
+  // are marked "left blank" with the line under them. Enter in a gap still moves to the next
+  // empty one first, so the keyboard never spends the first check on blanks by accident.
+  const check = () => {
+    if (ex.revealed) return;
+    const typed = ex.filled;
+    const r = ex.check();
+    if (checks === 0) {
+      setBlank(typed === 0);
+      onChecked(r, typed);
+    }
+    setChecks((c) => c + 1);
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": the gaps come back in this click (flushSync), so the first gap to fix
+  // takes focus inside the tap and a phone opens its keyboard.
+  const retry = () => {
+    const k = ex.gaps.findIndex((_, j) => !grade.results[j]?.ok);
+    flushSync(ex.retry);
+    gapsRef.current?.focus(k >= 0 ? k : undefined);
+  };
+
+  const lines = `${n} missing line${n === 1 ? '' : 's'}`;
+  const lede =
+    checks > 0 && !ex.revealed
+      ? 'Fix the lines that were off, then check again.'
+      : retake
+        ? `Once more, from memory: type the ${lines}.`
+        : `Most of the ${name} template is here. Type the ${lines} from memory.`;
+
+  let title: string | undefined;
+  let feedback: string | undefined;
+  if (ex.revealed && checks <= 1) {
+    if (grade.perfect) feedback = n === 1 ? 'The missing line is right.' : `All ${n} missing lines are right.`;
+    else {
+      // As a missed quiz says: the slide comes back at the end (first visit only).
+      if (!retake) title = 'Not quite — it will come back later';
+      feedback = blank
+        ? 'The lines with a plus are the missing ones. Type them in now, or continue.'
+        : 'Lines with a plus show the template. Fix yours now, or continue.';
+    }
+  } else if (ex.revealed) {
+    title = grade.perfect ? 'All fixed' : undefined;
+    feedback = grade.perfect ? 'Every gap matches the template now.' : `${gapsSummary(grade)}. Fix the rest, or continue.`;
+  }
+
+  return (
+    <>
+      <div className="lplayer lplayer-template-gaps">
+        {kicker}
+        <div className="lplayer-slide">
+          <h1 className="q-title">Fill in the template</h1>
+          <p className="lplayer-lede lplayer-type-prompt">{lede}</p>
+          <div ref={workRef} className="lplayer-gaps-work">
+            <GapsWindow
+              lines={src.lines}
+              gaps={ex.gaps}
+              values={ex.values}
+              onChange={(v) => ex.setValues(v)}
+              revealed={ex.revealed}
+              locked={ex.locked}
+              onSubmit={check}
+              autoFocus={autoFocus}
+              ref={gapsRef}
+              label={`${name} template with ${lines}`}
+              filename={`${slide.category}.py`}
+            />
+            {status === 'wrong' && <DiffKey kinds={grade.correct > 0 ? ['ok', 'del', 'add'] : ['del', 'add']} />}
+          </div>
+        </div>
+      </div>
+      <ActionBar
+        step={checks}
+        status={status}
+        onCheck={check}
+        onContinue={onContinue}
+        title={title}
+        feedback={feedback}
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
+      />
+    </>
   );
 }
