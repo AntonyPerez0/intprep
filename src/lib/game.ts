@@ -28,6 +28,8 @@ export const XP = {
   /** Template drill, fill the gaps: up to this much, scaled by first-check accuracy. */
   templateGapsMax: 12,
   blitzPerCorrect: 2,
+  /** Pattern Blitz, Key lines: each key line typed right on the first check. */
+  blitzCodePerCorrect: 4,
 };
 
 export const GEMS = {
