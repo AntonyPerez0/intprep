@@ -1,5 +1,6 @@
 import '../styles/pages/problem-lesson.css';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowRight,
@@ -7,6 +8,7 @@ import {
   Brain,
   Clock,
   Database,
+  Eye,
   ExternalLink,
   FileText,
   Gauge,
@@ -14,6 +16,7 @@ import {
   Keyboard,
   Lightbulb,
   Lock,
+  PencilLine,
   RefreshCw,
   ScanSearch,
   Star,
@@ -24,21 +27,31 @@ import {
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, problemsFor } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
+import { baseIndent, codeLines, gradeCode, lineKey, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { friendlyDue } from '../lib/date';
 import { acceptedCategories, patternChoices } from '../lib/drills';
 import { XP } from '../lib/game';
+import { gapSource, gapsSummary, type GapSource, type GapsGrade } from '../lib/gaps';
+import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
-import { parseSolution } from '../lib/parseSolution';
+import { parseSolution, type Chunk, type ParsedSolution } from '../lib/parseSolution';
 import { sfx } from '../lib/sound';
 import { getProgress, learnProblem, useProgress } from '../lib/store';
-import { ActionBar, Choices, CodeView, CodeWindow, ProblemPrompt, type CheckStatus } from '../components/interact';
-import { ComplexityDrill, KeyLineDrill, OrderDrill } from '../components/Drills';
+import { ActionBar, Choices, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
+import { GapsWindow, useGaps, type CodeGapsHandle } from '../components/CodeGaps';
+import { ComplexityDrill } from '../components/Drills';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, CategoryIcon, IconTile } from '../components/icons';
 import { Badge, Completion, DifficultyChip, freeMirrorUrl, leetcodeUrl } from '../components/ui';
 
-const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'complexity', 'pitfalls', 'order', 'keyline'] as const;
+// The guided lesson for one problem (/p/:id/learn), ten steps: understand it, guess the pattern,
+// hints, brute force, the insight, the plan, then write the code part by part (look, cover,
+// write, check), the cost, the traps, and a final check that fills the gaps across the whole
+// solution. Finishing it adds the problem to the review deck.
+
+const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'complexity', 'pitfalls', 'gaps'] as const;
 type Step = (typeof STEPS)[number];
 
 const STEP_NAME: Record<Step, string> = {
@@ -48,18 +61,21 @@ const STEP_NAME: Record<Step, string> = {
   brute: 'The obvious way',
   insight: 'The key insight',
   plan: 'The plan',
-  code: 'Build the code',
+  code: 'Write the code',
   complexity: 'Check the cost',
   pitfalls: 'Avoid the traps',
-  order: 'Quick check',
-  keyline: 'Final check',
+  gaps: 'Final check',
 };
 
 /** Steps rendered by the shared drill components (they bring their own h2 question title). */
-const DRILL_STEPS: readonly Step[] = ['complexity', 'order', 'keyline'];
+const DRILL_STEPS: readonly Step[] = ['complexity'];
 
-/** Eyebrow shown above every step, e.g. "Step 3 of 11 · Think it through". */
+/** Eyebrow shown above every step, e.g. "Step 3 of 10 · Think it through". */
 const stepLabel = (s: Step) => `Step ${STEPS.indexOf(s) + 1} of ${STEPS.length} · ${STEP_NAME[s]}`;
+
+const isFinePointer = () => !!window.matchMedia?.('(pointer: fine)').matches;
+const reducedMotion = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const practiceLink = (p: Problem) => ({
   href: p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id),
@@ -80,6 +96,10 @@ function ProblemLesson({ p }: { p: Problem }) {
   const [i, setI] = useState(0);
   const [done, setDone] = useState(false);
   const [xp, setXp] = useState(0);
+  // How the learner did, for the progress bar and the completion screen.
+  const partCount = useMemo(() => bodyParts(parseSolution(p.solution)).length, [p]);
+  const [records, setRecords] = useState<PartRecord[]>(() => Array.from({ length: partCount }, () => ({ ...NO_RECORD })));
+  const [final, setFinal] = useState<GapsGrade | null>(null);
   const step = STEPS[i];
 
   const next = () => {
@@ -96,14 +116,17 @@ function ProblemLesson({ p }: { p: Problem }) {
     }
   };
   const close = () => nav(`/p/${p.id}`);
+  const record = (k: number, patch: Partial<PartRecord>) => setRecords((rs) => rs.map((r, j) => (j === k ? { ...r, ...patch } : r)));
 
-  if (done) return <Complete p={p} xp={xp} relearn={wasLearned} />;
+  if (done) return <Complete p={p} xp={xp} relearn={wasLearned} records={records} final={final} />;
 
   const reward = wasLearned ? Math.round(XP.problem[p.difficulty] / 4) : XP.problem[p.difficulty];
+  // Writing the code moves the bar part by part.
+  const within = step === 'code' && partCount ? records.filter((r) => r.checked).length / partCount : 0;
 
   return (
     <SessionShell
-      progress={i / STEPS.length}
+      progress={(i + within) / STEPS.length}
       onClose={close}
       title={p.title}
       right={
@@ -171,7 +194,7 @@ function ProblemLesson({ p }: { p: Problem }) {
           </TextStep>
         )}
         {step === 'plan' && <PlanStep p={p} onNext={next} />}
-        {step === 'code' && <CodeStep p={p} onNext={next} />}
+        {step === 'code' && <CodeStep p={p} records={records} onRecord={record} onNext={next} />}
         {DRILL_STEPS.includes(step) && <h1 className="sr-only">{`${p.title}: ${STEP_NAME[step]}`}</h1>}
         {step === 'complexity' && <ComplexityDrill problem={p} onDone={next} kicker={stepLabel('complexity')} />}
         {step === 'pitfalls' && (
@@ -207,8 +230,15 @@ function ProblemLesson({ p }: { p: Problem }) {
             </section>
           </TextStep>
         )}
-        {step === 'order' && <OrderDrill problem={p} onDone={next} kicker={stepLabel('order')} />}
-        {step === 'keyline' && <KeyLineDrill problem={p} onDone={next} kicker={stepLabel('keyline')} />}
+        {step === 'gaps' && (
+          <GapsStep
+            p={p}
+            onDone={(first) => {
+              setFinal(first);
+              next();
+            }}
+          />
+        )}
       </div>
     </SessionShell>
   );
@@ -469,70 +499,500 @@ function PlanStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   );
 }
 
-function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
+// ── Write the code: look, cover, write, check ───────────────────────────────
+
+/** How one part went. The first check decides `right`; later checks are practice. */
+interface PartRecord {
+  /** Checked at least once. */
+  checked: boolean;
+  /** Written right on the first check, without peeking before it. */
+  right: boolean;
+  /** Went back to the code from the editor ("Peek"). */
+  peeked: boolean;
+}
+const NO_RECORD: PartRecord = { checked: false, right: false, peeked: false };
+
+interface Part {
+  chunk: Chunk;
+  /** Index of the chunk in the parsed solution (its lines carry it as `chunk`). */
+  ci: number;
+  /** Signature lines the part opens with: given while writing, like the header. */
+  lead: string[];
+  /** The lines to write. Signature lines a part ends with are given with the next part. */
+  body: string[];
+}
+
+/**
+ * A class line, or a function or method signature at class level: the lines LeetCode's starter
+ * code gives (`class Solution:`, `def get(self, key: int) -> int:`) or that only name a helper.
+ * They are given, like the header; nested helpers (`def dfs(r, c):`) are part of the logic.
+ */
+const SIGNATURE = /^(class\s+\w+.*|def\s+\w+\(.*\).*|    def\s+\w+\(self\b.*\).*):\s*(#.*)?$/;
+
+/**
+ * The parts the learner writes: every chunk but the header. Signature lines at the start or end
+ * of a chunk (design problems put each method in its own part) are given, not typed.
+ */
+function bodyParts(parsed: ParsedSolution): Part[] {
+  return parsed.chunks.flatMap((chunk, ci) => {
+    if (chunk.header) return [];
+    const { lines } = chunk;
+    const given = (l: string) => l.trim() === '' || SIGNATURE.test(l);
+    let a = 0;
+    while (a < lines.length && given(lines[a])) a++;
+    let b = lines.length;
+    while (b > a && given(lines[b - 1])) b--;
+    // A part that is only signatures (none today) is written whole.
+    if (a === b) return [{ chunk, ci, lead: [], body: lines }];
+    return [{ chunk, ci, lead: lines.slice(0, a), body: lines.slice(a, b) }];
+  });
+}
+
+/** Markdown-free text, for comments in the file and screen-reader descriptions. */
+const plain = (s: string) => s.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1');
+
+/** Every line is there and in order; only the indentation of some is off. */
+const onlyIndentWrong = (g: Grade) => !g.perfect && g.wrongIndent > 0 && g.correct + g.wrongIndent === g.total && g.extra === 0;
+
+/** Scroll `el` into view once the action bar has settled (it grows with feedback and sets the scroll padding). */
+function reveal(el: Element | null | undefined, block: ScrollLogicalPosition) {
+  if (!el) return () => {};
+  let raf = requestAnimationFrame(() => {
+    raf = requestAnimationFrame(() => el.scrollIntoView({ block, behavior: reducedMotion() ? 'auto' : 'smooth' }));
+  });
+  return () => cancelAnimationFrame(raf);
+}
+
+/** Visible (not `display: none`, as the in-file cue is on wide screens). */
+const shown = (el: HTMLElement | null | undefined): el is HTMLElement => !!el && el.getClientRects().length > 0;
+
+const EDITOR_HELP = 'Tab inserts four spaces. To leave the editor, press Escape and then Tab. Press Control or Command plus Enter to check.';
+
+/**
+ * The solution, one part at a time. Look: the part's explanation and its code, highlighted under
+ * the parts before it (later parts stay hidden). Write: the part's code is covered; the
+ * explanation is the cue and the editor sits under the earlier code, at the part's indentation.
+ * Check: line by line. A miss offers "Fix and check again"; Continue is always there. The class /
+ * def header is given. Parts already written can be looked at again with Back.
+ */
+function CodeStep({
+  p,
+  records,
+  onRecord,
+  onNext,
+}: {
+  p: Problem;
+  records: PartRecord[];
+  onRecord: (k: number, patch: Partial<PartRecord>) => void;
+  onNext: () => void;
+}) {
   const parsed = parseSolution(p.solution);
-  const startAt = parsed.chunks[0]?.header ? 1 : 0;
-  const [c, setC] = useState(Math.min(startAt, parsed.chunks.length - 1));
-  const last = c >= parsed.chunks.length - 1;
-  const chunk = parsed.chunks[c];
-  const pieces = parsed.chunks.length - startAt;
-  const piece = c + 1 - startAt;
+  const parts = useMemo(() => bodyParts(parsed), [parsed]);
+  const [k, setK] = useState(0); // the part on screen
+  const [furthest, setFurthest] = useState(0); // the part being written; earlier ones are done
+  const [phase, setPhase] = useState<'look' | 'write'>('look');
+  const [drafts, setDrafts] = useState<string[]>(() => parts.map(() => ''));
+  const [grade, setGrade] = useState<Grade | null>(null);
+  const [tries, setTries] = useState(0); // checks of the current part
+  const rootRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const part = parts[k];
+  const rec = records[k] ?? NO_RECORD;
+  const reviewing = k < furthest;
+  const writing = phase === 'write';
+  const status: CheckStatus = writing && grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+
+  // Keep the part in view as it moves: the cue above it on phones (the card at the top is out of
+  // sight by then), the part's own lines on wide screens; after a check, the first line to fix
+  // (above the action bar, which has grown with the feedback) or the result.
+  const view = `${k}:${phase}:${grade ? tries : 0}`;
+  const lastView = useRef(view);
+  useEffect(() => {
+    if (lastView.current === view) return;
+    lastView.current = view;
+    const root = rootRef.current;
+    if (!root) return;
+    if (grade) {
+      const miss = root.querySelector('.typer-diff .diff:not(.ok)');
+      return reveal(miss ?? root.querySelector('.typer-diff'), miss ? 'center' : 'nearest');
+    }
+    const cue = root.querySelector<HTMLElement>('.plesson-cue');
+    if (shown(cue)) return reveal(cue, 'start');
+    return reveal(root.querySelector(writing ? '.typer-input' : '.plesson-part'), 'nearest');
+  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!part) {
+    // A solution that is all header (none today): show it and move on.
+    return (
+      <>
+        <StepHeader step="code" title="Read the solution" />
+        <TyperWindow filename="solution.py" meta={plural(parsed.lines.length, 'line')}>
+          <CodePane>
+            <GivenLines lines={parsed.lines.map((l) => l.text)} />
+          </CodePane>
+        </TyperWindow>
+        <ActionBar status="idle" onContinue={onNext} />
+      </>
+    );
+  }
+
+  const total = parts.length;
+  const last = k === total - 1;
+  const n = k + 1;
+  const before = parsed.lines.filter((l) => l.chunk < part.ci).map((l) => l.text);
+  const lines = part.chunk.lines;
+  const { lead, body } = part;
+  const count = codeLines(body).length;
+  // Typing starts at the least indented line to write (a part may end with a dedent), capped so a
+  // deeply nested part still fits a phone; grading is anchored there.
+  const indent = Math.min(baseIndent(body), 16);
+  const cueIndent = Math.min(baseIndent(lines), 16);
+  const text = drafts[k] ?? '';
+  const setText = (v: string) => setDrafts((d) => d.map((x, j) => (j === k ? v : x)));
+  const keyCount = part.chunk.keyLines.length;
+  const checkedCount = records.filter((r) => r.checked).length;
+  const rightCount = records.filter((r) => r.right).length;
+
+  const focusEditor = () => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  };
+  // The primary button, when the control that had focus goes away (Peek, Back, Next part).
+  const focusPrimary = () => rootRef.current?.parentElement?.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child')?.focus();
+
+  // Cover the code and write it. The editor mounts inside the click (flushSync), so a phone opens
+  // its keyboard.
+  const write = () => {
+    flushSync(() => {
+      setPhase('write');
+      setGrade(null);
+    });
+    focusEditor();
+  };
+  const peek = () => {
+    onRecord(k, { peeked: true });
+    flushSync(() => {
+      setPhase('look');
+      setGrade(null);
+    });
+    focusPrimary();
+  };
+  const check = () => {
+    if (!writing || grade || !text.trim()) return;
+    // The editor sits under the parts before it: typed column 0 is the editor's column.
+    const g = gradeCode(text, body, { anchor: indent });
+    setGrade(g);
+    setTries((t) => t + 1);
+    if (!rec.checked) onRecord(k, { checked: true, right: g.perfect && !rec.peeked });
+    sfx(g.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": back to the editor with the text kept.
+  const fix = () => {
+    flushSync(() => setGrade(null));
+    focusEditor();
+  };
+  const go = (to: number) => {
+    flushSync(() => {
+      setK(to);
+      setPhase('look');
+      setGrade(null);
+    });
+    focusPrimary();
+  };
+  const advance = () => {
+    setGrade(null);
+    setTries(0);
+    if (last) {
+      onNext();
+      return;
+    }
+    setFurthest((f) => Math.max(f, k + 1));
+    setK(k + 1);
+    setPhase('look');
+  };
+
+  // The part's explanation, written as a comment in the file above it. Phones and tablets only:
+  // on wide screens the card beside the code is the cue. The card is what screen readers read.
+  const cue = (
+    <div className="typer-line plesson-cue" aria-hidden="true">
+      <span className="typer-ln" />
+      <span className="plesson-cue-text" style={{ ['--indent' as string]: `${cueIndent}ch` }}>
+        <span className="plesson-cue-hash"># </span>
+        {plain(part.chunk.explain)}
+      </span>
+    </div>
+  );
+
+  const firstNew = before.length + 1; // the part's first line
+  // While writing: the cue, then the part's signature lines (given), then the editor.
+  const above = (
+    <>
+      {cue}
+      <GivenLines lines={lead} start={firstNew} />
+    </>
+  );
+  const windowProps = { filename: 'solution.py', meta: `Part ${n} of ${total}`, className: 'plesson-codewin' };
+
+  let fbTitle: string | undefined;
+  let fbBody = '';
+  if (grade) {
+    const indentOnly = onlyIndentWrong(grade);
+    if (tries === 1 && grade.perfect && rec.right) fbBody = 'Written right on the first try.';
+    else if (tries === 1 && grade.perfect) {
+      fbTitle = 'Right, after a peek';
+      fbBody = 'Only parts you write without peeking count toward your tally.';
+    } else if (grade.perfect) {
+      fbTitle = 'Right now';
+      fbBody = 'Your tally keeps the first try. The fix still counts as practice.';
+    } else {
+      fbTitle = indentOnly ? 'Right code, wrong indentation' : undefined;
+      fbBody =
+        tries === 1 ? 'Your first try sets the tally. Fix the marked lines, or move on.' : 'Still a few lines off. Fix them, or move on.';
+    }
+  }
+
   return (
     <>
-      <StepHeader step="code" title="Build the solution one part at a time" />
-      <div className="plesson-code">
-        <aside className="plesson-explain" aria-live="polite">
-          <div className="plesson-explain-head">
-            <span className="plesson-explain-count">
-              Part <span className="tabular">{Math.max(piece, 1)}</span> of <span className="tabular">{Math.max(pieces, 1)}</span>
-            </span>
-            {chunk.keyLines.length > 0 && (
-              <Badge tone="warning">
-                <Star /> {chunk.keyLines.length > 1 ? 'Key lines' : 'Key line'}
-              </Badge>
-            )}
+      <StepHeader
+        step="code"
+        title="Write the solution one part at a time"
+        sub="Read each part, then write it from memory. The code you already wrote stays above it."
+      />
+      <div ref={rootRef} className="plesson-code">
+        <aside className="plesson-explain" aria-label={`Part ${n} of ${total}`}>
+          {/* Announced when the part changes, not when the code is covered or checked */}
+          <div aria-live="polite">
+            <div className="plesson-explain-head">
+              <span className="plesson-explain-count">
+                Part <span className="tabular">{n}</span> of <span className="tabular">{total}</span>
+              </span>
+              {keyCount > 0 && (
+                <Badge tone="warning">
+                  <Star /> {keyCount > 1 ? 'Key lines' : 'Key line'}
+                </Badge>
+              )}
+            </div>
+            <div className="plesson-segs" aria-hidden="true">
+              {parts.map((_, j) => {
+                const r = records[j] ?? NO_RECORD;
+                const cls = j === k ? 'on' : r.checked ? (r.right ? 'right' : 'missed') : '';
+                return <span key={j} className={cls} />;
+              })}
+            </div>
+            <p className="plesson-explain-text" key={k}>
+              {inline(part.chunk.explain)}
+            </p>
           </div>
-          <div className="plesson-segs" aria-hidden="true">
-            {Array.from({ length: Math.max(pieces, 1) }, (_, k) => (
-              <span key={k} className={k < piece ? 'on' : ''} />
-            ))}
-          </div>
-          <p className="plesson-explain-text" key={c}>
-            {inline(chunk.explain)}
-          </p>
-          {chunk.keyLines.length > 0 && (
+          {!writing && keyCount > 0 && (
             <div className="plesson-keynote">
               <Star />
               <div>
-                {chunk.keyLines.length > 1 ? (
-                  <>
-                    <strong>These lines carry the idea.</strong> They are marked with a gold dot in the code, and you will be asked to recall them.
-                  </>
-                ) : (
-                  <>
-                    <strong>This line carries the idea.</strong> It is marked with a gold dot in the code, and you will be asked to recall it.
-                  </>
-                )}
+                <strong>{keyCount > 1 ? 'These lines carry the idea.' : 'This line carries the idea.'}</strong>{' '}
+                {keyCount > 1 ? 'They have a gold dot, and the final check asks for them.' : 'It has a gold dot, and the final check asks for it.'}
               </div>
             </div>
           )}
+          {writing && !grade && <p className="plesson-explain-cue">Write this part from memory. The code above it stays visible.</p>}
+          {checkedCount > 0 && (
+            <div className="plesson-tally">
+              <span>Right on the first try</span>
+              <span className="plesson-tally-value tabular">
+                <strong>{rightCount}</strong> of {plural(checkedCount, 'part')}
+              </span>
+            </div>
+          )}
         </aside>
-        <CodeWindow className="plesson-codewin" filename="solution.py">
-          <CodeView lines={parsed.lines} focusChunk={c} hideAfterChunk={c} showKeys />
-        </CodeWindow>
+
+        {writing ? (
+          <CodeTyper
+            {...windowProps}
+            value={text}
+            onChange={setText}
+            grade={grade}
+            label={`Code for part ${n} of ${total}`}
+            help={`Cue: ${plain(part.chunk.explain)} ${EDITOR_HELP}`}
+            given={before}
+            firstLine={firstNew + lead.length}
+            indent={indent}
+            minRows={Math.max(2, count + 1)}
+            placeholder={`Write the ${plural(count, 'line')} of this part`}
+            note={`${plural(count, 'line')} to write`}
+            textareaRef={taRef}
+          >
+            {above}
+          </CodeTyper>
+        ) : (
+          <TyperWindow {...windowProps} footer={<TyperFooter note={`${plural(count, 'line')} to write`} keys={reviewing ? false : 'Enter to write it'} />}>
+            <CodePane>
+              <GivenLines lines={before} />
+              {cue}
+              <div className="plesson-part">
+                {lines.map((l, j) => {
+                  const key = part.chunk.keyLines.includes(j);
+                  return (
+                    <CodeLine key={j} n={firstNew + j} className={`plesson-line ${key ? 'is-key' : ''}`}>
+                      {key && <span className="sr-only">Key line: </span>}
+                      {l === '' ? ' ' : highlightLine(l)}
+                    </CodeLine>
+                  );
+                })}
+              </div>
+            </CodePane>
+          </TyperWindow>
+        )}
       </div>
+
       <ActionBar
-        step={c}
-        status="idle"
-        onContinue={last ? onNext : () => setC(c + 1)}
-        continueLabel={last ? 'Continue' : 'Next part'}
+        step={`${k}:${phase}:${tries}`}
+        status={status}
+        onCheck={writing ? check : undefined}
+        canCheck={text.trim().length > 0}
+        onContinue={writing ? advance : reviewing ? () => go(k + 1) : write}
+        continueLabel={writing ? (last ? 'Continue' : 'Next part') : reviewing ? 'Next part' : 'Write it'}
+        primaryIcon={!writing && !reviewing ? <PencilLine aria-hidden="true" /> : undefined}
+        title={fbTitle}
+        feedback={
+          grade && (
+            <div className="plesson-fb">
+              <span className="plesson-fb-label">
+                Part {n} of {total}
+              </span>
+              <span>{fbBody}</span>
+            </div>
+          )
+        }
         secondary={
-          c > startAt ? (
-            <button type="button" className="btn btn-secondary btn-lg" onClick={() => setC(c - 1)}>
+          writing ? (
+            <button
+              type="button"
+              className="btn btn-quiet btn-sm plesson-peek-btn"
+              onClick={peek}
+              title="Show this part's code again. A part you peek at does not count as written right."
+            >
+              <Eye aria-hidden="true" />
+              Peek
+            </button>
+          ) : k > 0 ? (
+            <button type="button" className="btn btn-secondary btn-lg" onClick={() => go(k - 1)}>
               Back
             </button>
           ) : undefined
         }
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={fix} /> : undefined}
+      />
+    </>
+  );
+}
+
+// ── Final check: fill the gaps ──────────────────────────────────────────────
+
+/**
+ * Fewest gaps so every key line is one: the key lines, and any other line with the same code
+ * (the gap picker blanks those together, so one copy never stays on screen as the answer).
+ */
+function keyGapCount(src: GapSource): number {
+  const keys = new Set(src.keyLines.map((i) => lineKey(src.lines[i])).filter(Boolean));
+  const header = new Set(src.header);
+  return Math.max(1, src.lines.filter((l, i) => !header.has(i) && keys.has(lineKey(l))).length);
+}
+
+/**
+ * The whole solution with about 30% of its body lines blank, key lines always among them. The
+ * first check sets the score; a miss shows the answers inline and offers "Fix and check again";
+ * Continue is always there.
+ */
+function GapsStep({ p, onDone }: { p: Problem; onDone: (first: GapsGrade) => void }) {
+  const src = useMemo(() => gapSource(p.solution), [p]);
+  const ex = useGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min: keyGapCount(src) });
+  const [first, setFirst] = useState<GapsGrade | null>(null);
+  const [checks, setChecks] = useState(0);
+  // Phones wait for a tap, so the keyboard does not cover the code on arrival.
+  const [autoFocus] = useState(isFinePointer);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const gapsRef = useRef<CodeGapsHandle>(null);
+
+  const g = ex.grade;
+  const status: CheckStatus = ex.revealed ? (g.perfect ? 'correct' : 'wrong') : 'idle';
+
+  // Once checked, bring the first gap to fix (or the code) into view, above the action bar.
+  useEffect(() => {
+    if (!ex.revealed) return;
+    const pane = rootRef.current?.querySelector('.gaps');
+    return reveal(pane?.querySelector('.diff.del') ?? pane, g.perfect ? 'nearest' : 'center');
+  }, [ex.revealed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Enter on the last gap and Ctrl/⌘ + Enter both land here.
+  const check = () => {
+    if (ex.revealed) return;
+    const r = ex.check();
+    setChecks((c) => c + 1);
+    if (!first) setFirst(r);
+    sfx(r.perfect ? 'correct' : 'wrong');
+  };
+  // "Fix and check again": the gaps come back in this click (flushSync), so the first gap to fix
+  // takes focus inside the tap and a phone opens its keyboard.
+  const retry = () => {
+    const j = ex.gaps.findIndex((_, m) => !g.results[m]?.ok);
+    flushSync(ex.retry);
+    gapsRef.current?.focus(j >= 0 ? j : undefined);
+  };
+
+  const score = first ? `${first.correct} of ${first.total}` : '';
+  let fbTitle: string | undefined;
+  let fbBody = '';
+  if (ex.revealed && checks === 1) {
+    fbBody = g.perfect
+      ? `All ${plural(g.total, 'gap')} right on the first check.`
+      : 'Your first check sets the score. Fix the marked lines to practice, or finish the lesson.';
+  } else if (ex.revealed) {
+    fbTitle = g.perfect ? 'All gaps right now' : undefined;
+    fbBody = g.perfect ? `Your score stays at ${score} from the first check.` : `${gapsSummary(g)}. Your score stays at ${score} from the first check.`;
+  }
+
+  return (
+    <>
+      <StepHeader
+        step="gaps"
+        title="Fill the gaps"
+        sub="The whole solution, with the key lines and a few others missing. Type each missing line from memory."
+      />
+      <div ref={rootRef}>
+        <GapsWindow
+          lines={src.lines}
+          gaps={ex.gaps}
+          values={ex.values}
+          onChange={(v) => ex.setValues(v)}
+          revealed={ex.revealed}
+          locked={ex.locked}
+          onSubmit={check}
+          autoFocus={autoFocus}
+          ref={gapsRef}
+          filename="solution.py"
+          meta={plural(ex.gaps.length, 'gap')}
+          className="plesson-gapswin"
+        />
+      </div>
+      <ActionBar
+        status={status}
+        step={checks}
+        onCheck={check}
+        // Nothing typed yet: the button says what a check would do (nobody gets stuck on a blank).
+        checkLabel={ex.filled === 0 ? 'Show answers' : 'Check'}
+        onContinue={() => onDone(first ?? g)}
+        continueLabel="Finish lesson"
+        title={fbTitle}
+        feedback={
+          ex.revealed && (
+            <div className="plesson-fb">
+              <span className="plesson-fb-label">{checks === 1 ? 'First check' : `Check ${checks}`}</span>
+              <span>{fbBody}</span>
+            </div>
+          )
+        }
+        checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
       />
     </>
   );
@@ -540,14 +1000,32 @@ function CodeStep({ p, onNext }: { p: Problem; onNext: () => void }) {
 
 // ── Completion ──────────────────────────────────────────────────────────────
 
-function Complete({ p, xp, relearn }: { p: Problem; xp: number; relearn: boolean }) {
+function Complete({
+  p,
+  xp,
+  relearn,
+  records,
+  final,
+}: {
+  p: Problem;
+  xp: number;
+  relearn: boolean;
+  records: PartRecord[];
+  final: GapsGrade | null;
+}) {
   const progress = useProgress();
   const card = progress.problems[p.id]?.srs;
   const siblings = problemsFor(p.category);
   const nextInUnit = siblings.find((q) => !progress.problems[q.id]?.learnedAt && q.id !== p.id);
-  const learnedInUnit = siblings.filter((q) => progress.problems[q.id]?.learnedAt).length;
   const link = practiceLink(p);
   const due = card ? friendlyDue(card.due) : null;
+  const right = records.filter((r) => r.right).length;
+  const of = (a: number, b: number) => (
+    <>
+      {a}
+      <span className="plesson-done-of">/{b}</span>
+    </>
+  );
   return (
     <SessionShell progress={1} title={p.title}>
       <div className="plesson-done">
@@ -557,28 +1035,21 @@ function Complete({ p, xp, relearn }: { p: Problem; xp: number; relearn: boolean
           title={relearn ? 'Refreshed' : 'Problem learned'}
           subtitle={
             <>
-              <strong>{p.title}</strong> {relearn ? 'is fresh in your mind again.' : 'is now in your review deck.'}
+              <strong>{p.title}</strong> {relearn ? 'is fresh in your mind again' : 'is now in your review deck'}
+              {due ? (due === 'due now' ? ', and a review is due now.' : `, next review ${due}.`) : '.'}
             </>
           }
           stats={[
+            { label: 'Parts right', value: of(right, records.length) },
+            { label: 'Final check', value: final ? of(final.correct, final.total) : '—' },
             { label: 'XP earned', value: `+${xp}` },
-            { label: 'Next review', value: due ? due.charAt(0).toUpperCase() + due.slice(1) : '—' },
-            {
-              label: 'Unit progress',
-              value: (
-                <>
-                  {learnedInUnit}
-                  <span className="plesson-done-of">/{siblings.length}</span>
-                </>
-              ),
-            },
           ]}
         >
           <Link to={`/p/${p.id}/rebuild`} className="btn btn-primary btn-lg btn-block">
             <Keyboard />
             Code from memory
           </Link>
-          <p className="plesson-done-tip">Rebuild it now, while it is fresh, to make it stick.</p>
+          <p className="plesson-done-tip">Write it again now, while it is fresh, to make it stick.</p>
           {nextInUnit ? (
             <Link to={`/p/${nextInUnit.id}/learn`} className="btn btn-secondary btn-lg btn-block">
               <span className="truncate">Next: {nextInUnit.title}</span>

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Problem lesson — /p/:id/learn (11 guided steps + completion)
+   Problem lesson — /p/:id/learn (10 guided steps + completion)
    All classes are prefixed `plesson-`.
    ========================================================================== */
 
@@ -64,10 +64,8 @@
   gap: 8px;
 }
 
-/* Drills reused inside the lesson: give them the same header rhythm. */
-.plesson-step-complexity .q-title,
-.plesson-step-order .q-title,
-.plesson-step-keyline .q-title {
+/* The drill reused inside the lesson: give it the same header rhythm. */
+.plesson-step-complexity .q-title {
   margin-bottom: 20px;
 }
 
@@ -326,8 +324,15 @@ div.plesson-locked {
 .plesson-segs span.on {
   background: var(--brand);
 }
+/* Parts already written: right on the first try, or not (missed or peeked) */
+.plesson-segs span.right {
+  background: var(--success);
+}
+.plesson-segs span.missed {
+  background: color-mix(in srgb, var(--warning) 70%, var(--surface-active));
+}
 
-/* ── Code walkthrough ───────────────────────────────────────────────────── */
+/* ── Write the code: look, cover, write, check ───────────────────────────── */
 .plesson-code {
   display: flex;
   flex-direction: column;
@@ -370,6 +375,13 @@ div.plesson-locked {
   color: var(--text);
   animation: plesson-fade var(--dur-slow) var(--ease);
 }
+/* While writing: what to do, under the cue */
+.plesson-explain-cue {
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
 .plesson-keynote {
   display: flex;
   gap: 10px;
@@ -395,10 +407,128 @@ div.plesson-locked {
   color: var(--xp);
   fill: currentColor;
 }
+/* The running tally: parts written right on the first try */
+.plesson-tally {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.plesson-tally-value {
+  white-space: nowrap;
+  color: var(--text-tertiary);
+}
+.plesson-tally strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Phones and tablets: the part's explanation is the comment above its code in the file, so the
+   card keeps to where you are (and stays the text screen readers read). */
+@media (max-width: 1023px) {
+  .plesson-explain-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .plesson-segs {
+    margin-bottom: 0;
+  }
+  .plesson-explain-head {
+    margin-bottom: 12px;
+  }
+}
+
+/* Code rows come from the typing kit (.typer-line, .typer-ln, GivenLines). */
+/* Look: the part to learn, highlighted under the earlier code */
+.plesson-part {
+  animation: plesson-fade var(--dur-slow) var(--ease);
+  scroll-margin: 96px 0 24px;
+}
+.plesson-line {
+  background: var(--code-line-hl);
+  box-shadow: inset 2px 0 0 var(--brand-400);
+}
+/* A key line: a gold dot in the gutter, where the diff marks sit */
+.plesson-line.is-key .typer-ln::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 7px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--code-key);
+}
+/* The part's explanation as a comment above it (phones and tablets; the card is the cue beside
+   the code on wide screens). Unnumbered: it is a note, not a line of the solution. */
+.plesson-cue {
+  min-width: 0;
+  margin: 2px 0;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  white-space: normal;
+  background: color-mix(in srgb, var(--brand-500) 16%, transparent);
+  box-shadow: inset 2px 0 0 var(--brand-400);
+  scroll-margin: 88px 0 240px;
+}
+.plesson-cue-text {
+  --indent: 0ch;
+  display: block;
+  min-width: 0;
+  padding-left: calc(min(var(--indent), 8ch) + 2ch);
+  text-indent: -2ch;
+  color: var(--brand-200);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+.plesson-cue-hash {
+  color: var(--code-comment);
+  font-style: normal;
+}
+@media (max-width: 479px) {
+  .plesson-cue-text {
+    padding-left: calc(min(var(--indent), 4ch) + 2ch);
+  }
+}
+.plesson-code .typer-input {
+  scroll-margin: 96px 0 24px;
+}
+
+/* Action bar: the quiet Peek, and the label above the feedback */
+.plesson-peek-btn {
+  color: var(--text-secondary);
+}
+.plesson-fb {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.plesson-fb-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
 
 @media (min-width: 1024px) {
-  /* The walkthrough gets a wider canvas: code left, sticky notes right.
-     Header and action bar widen with it so all three keep one edge. */
+  /* Code left, the sticky cue card right. Header and action bar widen with it so all three
+     keep one edge. */
   .session:has(.plesson-code) .session-body,
   .session:has(.plesson-code) .session-head-inner {
     max-width: 1104px;
@@ -421,6 +551,9 @@ div.plesson-locked {
     position: sticky;
     top: 84px;
     padding: 20px;
+  }
+  .plesson-cue {
+    display: none;
   }
 }
 
