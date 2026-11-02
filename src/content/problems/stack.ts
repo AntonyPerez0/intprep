@@ -526,7 +526,7 @@ class Solution:
                 start = index  #!
             #@ Push this bar with the earliest start it can reach.
             stack.append((start, h))
-        #@ Bars still on the stack stretch all the way to the end of the histogram.
+        #@ Bars still on the stack stretch all the way to the end of the histogram. Then return the best area.
         for index, height in stack:
             best = max(best, height * (len(heights) - index))
         return best`,

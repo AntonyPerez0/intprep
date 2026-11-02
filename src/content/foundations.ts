@@ -19,7 +19,7 @@ export const FOUNDATIONS: Lesson[] = [
       {
         kind: 'text',
         title: 'Welcome to IntPrep',
-        body: `Coding interviews can feel like a test of genius. They aren't. The 150 classic problems are built from about **16 reusable patterns**, and once you know a pattern, the problems that use it start to look familiar.
+        body: `Coding interviews can feel like a test of genius. They aren't. The 150 classic problems are built from **18 reusable patterns**, and once you know a pattern, the problems that use it start to look familiar.
 
 This beginner track gives you just enough Python and computer-science basics to begin. No experience needed, and you will write real code in every lesson, starting now.`,
       },
@@ -1721,7 +1721,7 @@ class Solution:
       {
         kind: 'type',
         title: 'Call a helper method',
-        prompt: 'Make `countEvens` return how many numbers in `nums` are even. Start `count` at `0`, loop with `n`, and add `1` to `count` whenever the helper method `isEven` says `n` is even.',
+        prompt: 'Make `countEvens` return how many numbers in `nums` are even. Start `count` at `0`, loop with `n`, and add `1` to `count` whenever the helper method `isEven` says `n` is even. Inside a class, one method calls another through `self`, so the check is `self.isEven(n)`.',
         starter: py`
 class Solution:
     def isEven(self, n: int) -> bool:
@@ -1742,7 +1742,7 @@ class Solution:
                 count = count + 1
         return count`,
         ],
-        hint: 'Inside a class, call another method through `self` with a dot. A bare `isEven(n)` raises a `NameError`.',
+        hint: 'A bare `isEven(n)` raises a `NameError`: the method lives on the object, so it needs `self.` in front. The `if` goes inside the loop, and `return count` after it.',
         explain:
           'Methods live on the object, so one method calls another as `self.isEven(n)`. Each even number adds 1 to `count`, and `return count` runs once, after the loop.',
       },
@@ -1919,6 +1919,21 @@ print(steps)`,
 while size < n:
     steps += 1
     size *= 2
+print(steps)`,
+          py`
+while size < n:
+    steps += 1
+    size = size * 2
+print(steps)`,
+          py`
+while size < n:
+    steps = steps + 1
+    size *= 2
+print(steps)`,
+          py`
+while size < n:
+    steps = steps + 1
+    size = size * 2
 print(steps)`,
         ],
         hint: 'Two lines inside the loop: `size *= 2` and `steps += 1`. The `print` goes after the loop, not inside it.',
@@ -2624,7 +2639,7 @@ ann
       {
         kind: 'type',
         title: 'Serve a queue',
-        prompt: '`"cy"` joins the back of the line: `append` it to `q`. Then, while `q` is not empty, take the name at the front with `popleft()` and print it.',
+        prompt: '`"cy"` joins the back of the line: `append` it to `q`. Then loop while `q` is not empty and, in a single line, take the name at the front with `popleft()` and print it.',
         starter: py`
 from collections import deque
 
@@ -2750,7 +2765,7 @@ print(heapq.heappop(h))`,
       {
         kind: 'type',
         title: 'Pop the smallest, again and again',
-        prompt: 'Push every `x` in `nums` onto the heap `h` with `heapq.heappush`. Then, while `h` is not empty, pop the smallest with `heapq.heappop` and print it.',
+        prompt: 'Push every `x` in `nums` onto the heap `h` with `heapq.heappush`. Then loop while `h` is not empty and, in a single line, pop the smallest with `heapq.heappop` and print it.',
         starter: py`
 import heapq
 
@@ -3005,6 +3020,36 @@ print(first_repeat("abcbad"))`,
     seen = dict()
     for i, x in enumerate(nums):
         if target - x in seen:
+            return [seen[target - x], i]
+        else:
+            seen[x] = i
+    return []`,
+          py`
+    seen = {}
+    for i, x in enumerate(nums):
+        if (target - x) in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+    return []`,
+          py`
+    seen = {}
+    for i, x in enumerate(nums):
+        if (target - x) in seen:
+            return [seen[target - x], i]
+        else:
+            seen[x] = i
+    return []`,
+          py`
+    seen = dict()
+    for i, x in enumerate(nums):
+        if (target - x) in seen:
+            return [seen[target - x], i]
+        seen[x] = i
+    return []`,
+          py`
+    seen = dict()
+    for i, x in enumerate(nums):
+        if (target - x) in seen:
             return [seen[target - x], i]
         else:
             seen[x] = i

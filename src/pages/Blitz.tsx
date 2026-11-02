@@ -1205,14 +1205,14 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
         secondary={
           fixing ? (
             // The round already counted: a fix is optional, so it can be left for the next line.
-            <button type="button" className="btn btn-quiet btn-lg blitz-show" onClick={() => advance(answers.length)} aria-label="Skip to the next line">
+            <button type="button" className="btn btn-quiet btn-sm blitz-show" onClick={() => advance(answers.length)} aria-label="Skip to the next line">
               <SkipForward aria-hidden="true" />
               <span aria-hidden="true">Skip</span>
             </button>
           ) : (
             <button
               type="button"
-              className="btn btn-quiet btn-lg blitz-show"
+              className="btn btn-quiet btn-sm blitz-show"
               onClick={() => miss(value, true)}
               aria-label="Show answer (counts as a miss)"
             >

@@ -525,7 +525,7 @@ class Solution:
             board[r][c] = word[k]  #!
             return found
 
-        #@ The word could start at any cell.
+        #@ The word could start at any cell: return True as soon as one search succeeds, else False.
         for r in range(rows):
             for c in range(cols):
                 if dfs(r, c, 0):

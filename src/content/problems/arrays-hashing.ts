@@ -620,7 +620,7 @@ class Solution:
                 length = 1
                 while n + length in num_set:  #!
                     length += 1
-                #@ Keep the best run found so far.
+                #@ Keep the best run found so far, and return it once every start is checked.
                 longest = max(longest, length)
         return longest`,
       time: 'O(n)',

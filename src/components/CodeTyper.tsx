@@ -16,7 +16,9 @@ import '../styles/typer.css';
 import {
   Fragment,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type Ref,
@@ -283,7 +285,12 @@ export interface CodeEditorProps {
   /** Minimum visible rows; the editor grows with the text. Default 3. */
   minRows?: number;
   autoFocus?: boolean;
-  placeholder?: string;
+  /**
+   * Shown while empty, from the `indent` column. Several, longest first: the first that fits the
+   * visible width wins, and none shows when even the last does not (a placeholder cannot scroll,
+   * so a phone or a deep indent would cut it off mid-word).
+   */
+  placeholder?: string | readonly string[];
   disabled?: boolean;
   /** Show the Indent / Outdent / symbols bar on touch screens. Default true. */
   keyBar?: boolean;
@@ -295,6 +302,37 @@ export interface CodeEditorProps {
 
 const DEFAULT_HELP =
   'Tab inserts four spaces. To leave the editor, press Escape and then Tab. Press Control or Command plus Enter to check.';
+
+/**
+ * Which of `texts` (longest first) fits the empty textarea from its indent: its index, or
+ * `texts.length` for none. Measured with the placeholder's font, again on resize and once web
+ * fonts load.
+ */
+function usePlaceholderFit(taRef: RefObject<HTMLTextAreaElement | null>, texts: string[], indent: number): number {
+  const [fit, setFit] = useState(0);
+  const key = texts.join('\n');
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!ta || !texts.length) return;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const measure = () => {
+      if (!ta.isConnected) return;
+      const cs = getComputedStyle(ta);
+      const room = ta.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (ctx) ctx.font = `italic ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const width = (t: string) => (ctx ? ctx.measureText(t).width : t.length * parseFloat(cs.fontSize) * 0.6);
+      const k = texts.findIndex((t) => width(t) <= room + 0.5);
+      setFit(k < 0 ? texts.length : k);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(ta);
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => ro.disconnect();
+  }, [key, indent]); // eslint-disable-line react-hooks/exhaustive-deps
+  return fit;
+}
 
 /** Numbered textarea that reads as part of the file, with editor keys and a touch key bar. */
 export function CodeEditor({
@@ -324,6 +362,8 @@ export function CodeEditor({
   // The textarea is as wide as its longest line, so a long line scrolls the whole pane
   // (given lines included) instead of the textarea alone, and the code stays aligned.
   const cols = lines.reduce((m, l) => Math.max(m, l.replace(/\t/g, INDENT).length), 0);
+  const placeholders = placeholder === undefined ? [] : typeof placeholder === 'string' ? [placeholder] : [...placeholder];
+  const fit = usePlaceholderFit(taRef, placeholders, indent);
   return (
     <>
       <CodePane>
@@ -351,7 +391,7 @@ export function CodeEditor({
             autoComplete="off"
             translate="no"
             rows={rows}
-            placeholder={placeholder}
+            placeholder={placeholders[fit]}
             value={value}
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
@@ -403,8 +443,12 @@ export interface CodeDiffProps {
  */
 export function CodeDiff({ grade, indent = 0, given = [], start = 1, firstLine, children }: CodeDiffProps) {
   let n = firstLine ?? start + given.length;
-  const got = (s = '') => reindent(s, grade.baseGot, indent);
-  const exp = (s = '') => reindent(s, grade.baseExp, indent);
+  // Anchored (the editor sat under given code): typed lines are relative to the editor's column
+  // and expected lines absolute, so a line typed a level off shows a level off. Otherwise each
+  // side re-indents from its own base, so a snippet typed at any consistent depth lines up.
+  const anchored = grade.anchor !== undefined;
+  const got = (s = '') => reindent(s, anchored ? 0 : grade.baseGot, indent);
+  const exp = (s = '') => reindent(s, anchored ? grade.anchor! : grade.baseExp, indent);
   return (
     <CodePane>
       <GivenLines lines={given} start={start} />

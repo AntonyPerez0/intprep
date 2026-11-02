@@ -44,7 +44,7 @@ export const SCIENCE: SciencePrinciple[] = [
       "Reviews spread over days beat the same amount of practice crammed together. In a study of over 1,350 people, the best gap between reviews grew the longer the material had to be remembered.",
     source: "Cepeda et al. (2008), Psychological Science",
     howWeUseIt:
-      "Every problem you learn joins your review queue. An SM-2 style scheduler grades each review Again, Hard, Good or Easy from how you did, and waits longer after each success.",
+      "Every problem you learn joins your review queue. An SM-2 style scheduler grades each review Forgot, Fuzzy, Got it or Easy from how you did, and waits longer after each success.",
   },
   {
     id: "interleaving",

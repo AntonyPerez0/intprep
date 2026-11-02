@@ -1,5 +1,5 @@
 import '../styles/pages/review.css';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRight, Brain, CalendarCheck, CircleCheck, GraduationCap, Keyboard, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CATEGORY_BY_ID } from '../content/categories';
@@ -7,6 +7,7 @@ import { PROBLEM_BY_ID, PROBLEMS } from '../content/index';
 import type { CategoryId } from '../content/types';
 import { KEY_LINES_MIN, keyLinePool } from '../lib/blitzLines';
 import { confetti } from '../lib/confetti';
+import { holdToasts } from '../lib/events';
 import { daysBetween, parseDay, today } from '../lib/date';
 import { cardsForProblem, orderDeck, retryCard, SESSION_PROBLEMS, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
@@ -53,8 +54,22 @@ function buildDeck(mode: Mode): { ids: string[]; deck: DrillCardSpec[] } {
 interface Tally {
   correct: number;
   total: number;
+  /** Coding cards that were nearly right on the first check: they count as half right. */
+  near: number;
   self?: Grade;
   remaining: number;
+}
+
+/**
+ * A coding card missed by a little: at least 3 lines in 4 right on the first check, or one line
+ * wrong in two or more. It counts as half right toward the problem's grade, so a typo is not
+ * scheduled like a blank recall. A key line (one line) is all or nothing, and "Show answer" with
+ * nothing typed has no line right, so it stays a full miss.
+ */
+function nearMiss(r: DrillResult): boolean {
+  const l = r.lines;
+  if (r.correct || !r.coded || !l || l.total < 2) return false;
+  return l.correct / l.total >= 0.75 || l.total - l.correct === 1;
 }
 
 export function Review() {
@@ -81,7 +96,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
   const [tally, setTally] = useState<Record<string, Tally>>(() => {
     const t: Record<string, Tally> = {};
     for (const c of initialDeck) {
-      t[c.problemId] ??= { correct: 0, total: 0, remaining: 0 };
+      t[c.problemId] ??= { correct: 0, total: 0, near: 0, remaining: 0 };
       t[c.problemId].remaining += 1;
     }
     return t;
@@ -91,6 +106,14 @@ function ReviewSession({ mode }: { mode: Mode }) {
   const [code, setCode] = useState({ correct: 0, total: 0 });
   const [done, setDone] = useState(false);
   const [popKey, setPopKey] = useState(0);
+  // Every card is saved as it is answered (XP, streak, answers, and each problem's schedule once
+  // its cards are done), so closing early keeps the work. The rewards' toasts wait for the end
+  // (or the close), so none covers a card.
+  const release = useRef<() => void>(() => {});
+  useEffect(() => {
+    release.current = holdToasts();
+    return () => release.current();
+  }, []);
 
   const title = mode.kind === 'unit' ? `${CATEGORY_BY_ID[mode.cat].name} practice` : mode.kind === 'ahead' ? 'Practice ahead' : 'Daily review';
 
@@ -115,6 +138,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
       }
       const newXp = xp + gained;
       setXp(newXp);
+      awardXp(gained, 'review');
 
       let nextDeck = deck;
       let firstCorrect = correct;
@@ -123,14 +147,16 @@ function ReviewSession({ mode }: { mode: Mode }) {
         setCorrect(firstCorrect);
         const lines = r.lines;
         if (lines) setCode((c) => ({ correct: c.correct + lines.correct, total: c.total + lines.total }));
+        recordAnswers(1, r.correct ? 1 : 0, nextCombo);
         const t = { ...tally[card.problemId] };
         t.total += 1;
         t.remaining -= 1;
         if (r.correct) t.correct += 1;
+        else if (nearMiss(r)) t.near += 1;
         if (r.selfGrade) t.self = r.selfGrade;
         setTally((all) => ({ ...all, [card.problemId]: t }));
         if (t.remaining === 0) {
-          const g = gradeFrom(t.correct, t.total, t.self);
+          const g = gradeFrom(t.correct + t.near / 2, t.total, t.self);
           // Practice ahead and unit practice are optional: a miss on a problem that was not due
           // never resets its schedule (Daily review only holds due problems).
           reviewProblem(card.problemId, g, dueAtStart.has(card.problemId) ? {} : { lapse: false });
@@ -149,11 +175,10 @@ function ReviewSession({ mode }: { mode: Mode }) {
         window.scrollTo(0, 0);
       } else {
         const perfect = firstCorrect === firstTotal;
-        const earned = newXp + XP.sessionBonus;
-        setXp(earned);
-        recordAnswers(firstTotal, firstCorrect, Math.max(bestCombo, nextCombo));
+        setXp(newXp + XP.sessionBonus);
         finishSession(perfect);
-        awardXp(earned, 'review');
+        awardXp(XP.sessionBonus, 'review');
+        release.current();
         setDone(true);
         sfx('complete');
         confetti();

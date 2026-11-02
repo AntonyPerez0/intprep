@@ -63,6 +63,12 @@ export interface Grade {
   baseGot: number;
   /** Base indentation (columns) of the expected code; re-indent expected lines from here for display. */
   baseExp: number;
+  /**
+   * The editor's column when the grade was anchored (`GradeOptions.anchor`): typed column 0 sat
+   * there, and expected lines are absolute. A diff then shows both sides from it, so a line typed
+   * one level off is drawn one level off.
+   */
+  anchor?: number;
   /** The typed code lines that were graded (blank and comment-only lines removed). */
   typedLines: string[];
   /** The expected code lines that were graded (blank and comment-only lines removed). */
@@ -241,6 +247,7 @@ export function gradeCode(typed: string, expected: string | string[], opts: Grad
     score: total + extra ? correct / (total + extra) : 1,
     baseGot,
     baseExp,
+    anchor: opts.anchor,
     typedLines: t,
     expectedLines: e,
   };

@@ -310,7 +310,7 @@ class Solution:
         #@ A single house has no neighbors, so just take it. (Both slices below would be empty.)
         if len(nums) == 1:
             return nums[0]
-        #@ The ordinary House Robber for a straight row.
+        #@ The ordinary House Robber for a straight row, returning the best total.
         def rob_row(houses):
             prev, curr = 0, 0
             for money in houses:
@@ -437,7 +437,7 @@ class Solution:
         #@ Count the palindromes that share one center, growing outward.
         def expand(left, right):
             found = 0
-            #@ Every step where both ends match is one more palindrome.
+            #@ Every step where both ends match is one more palindrome. Return how many were found.
             while left >= 0 and right < len(s) and s[left] == s[right]:
                 found += 1  #!
                 left -= 1
@@ -628,7 +628,7 @@ class Solution:
             candidates = (x, cur_max * x, cur_min * x)  #!
             cur_max = max(candidates)  #!
             cur_min = min(candidates)  #!
-            #@ Record the best product seen at any ending position.
+            #@ Record the best product seen at any ending position, and return it at the end.
             best = max(best, cur_max)
         return best`,
       time: 'O(n)',

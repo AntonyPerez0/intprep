@@ -246,7 +246,7 @@ class Solution:
             if hours <= h:  #!
                 answer = k
                 r = k - 1
-            #@ Too slow: Koko must eat faster.
+            #@ Too slow: Koko must eat faster. When the range is empty, return the slowest speed that worked.
             else:
                 l = k + 1
         return answer`,
@@ -304,7 +304,7 @@ class Solution:
             if nums[m] <= last:  #!
                 answer = nums[m]
                 r = m - 1
-            #@ nums[m] is in the first, bigger run: the minimum must be to the right.
+            #@ nums[m] is in the first, bigger run: the minimum must be to the right. When the search ends, return the last candidate.
             else:
                 l = m + 1  #!
         return answer`,
@@ -440,7 +440,7 @@ class TimeMap:
             if pairs[m][0] <= timestamp:  #!
                 answer = pairs[m][1]
                 l = m + 1
-            #@ That pair is from the future: look left.
+            #@ That pair is from the future: look left. When the search ends, return the value saved last.
             else:
                 r = m - 1
         return answer`,
@@ -504,7 +504,7 @@ class Solution:
             a_right = A[i] if i < len(A) else float("inf")
             b_left = B[j - 1] if j > 0 else float("-inf")
             b_right = B[j] if j < len(B) else float("inf")
-            #@ Correct cut: every left number is <= every right number. The median sits at the cut.
+            #@ Correct cut: every left number is <= every right number. Return the median from the cut: the middle number for an odd count, else the average of the two middle ones.
             if a_left <= b_right and b_left <= a_right:  #!
                 if total % 2 == 1:
                     return float(max(a_left, b_left))

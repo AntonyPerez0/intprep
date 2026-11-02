@@ -190,7 +190,7 @@ class Solution:
         for r in range(rows):
             for c in range(cols):
                 if grid[r][c] == "1":
-                    #@ Count it once, then sink all of it.
+                    #@ Count it once, then sink all of it. Return the count after the scan.
                     count += 1  #!
                     dfs(r, c)  #!
         return count`,
@@ -320,7 +320,7 @@ class Solution:
             #@ Make the copy and record it BEFORE visiting neighbors.
             copy = Node(original.val)
             clones[original] = copy  #!
-            #@ Connect the copy to the copies of every neighbor.
+            #@ Connect the copy to the copies of every neighbor, then return the copy.
             for neighbor in original.neighbors:
                 copy.neighbors.append(dfs(neighbor))  #!
             return copy
@@ -546,7 +546,7 @@ class Solution:
             dfs(r, 0, pacific, heights[r][0])
             dfs(r, cols - 1, atlantic, heights[r][cols - 1])
 
-        #@ Cells reached from both oceans can drain into both.
+        #@ Cells reached from both oceans can drain into both: collect them and return the list.
         result = []
         for r in range(rows):
             for c in range(cols):
@@ -700,7 +700,7 @@ class Solution:
             state[course] = 2  #!
             return False
 
-        #@ The graph may have several separate pieces, so check from every course.
+        #@ The graph may have several separate pieces, so check from every course: any cycle returns False, else True.
         for course in range(numCourses):
             if has_cycle(course):
                 return False
@@ -901,7 +901,7 @@ class Solution:
         #@ Every node starts as the leader of its own group.
         parent = list(range(n))
 
-        #@ Follow parent links up to the leader, pointing nodes closer to it as we go.
+        #@ Follow parent links up to the leader, pointing nodes closer to it as we go, then return the leader.
         def find(x):
             while parent[x] != x:
                 parent[x] = parent[parent[x]]  #!
@@ -912,7 +912,7 @@ class Solution:
         components = n
         for a, b in edges:
             root_a, root_b = find(a), find(b)
-            #@ Different leaders: this edge merges two groups into one.
+            #@ Different leaders: this edge merges two groups into one. Return the count of groups left.
             if root_a != root_b:  #!
                 parent[root_a] = root_b
                 components -= 1  #!
@@ -972,7 +972,7 @@ class Solution:
         #@ Nodes are numbered 1 to n, and a tree plus one edge has n edges.
         parent = list(range(len(edges) + 1))
 
-        #@ Find the leader of the group x belongs to, compressing the path as we climb.
+        #@ Find the leader of the group x belongs to, compressing the path as we climb, and return it.
         def find(x):
             while parent[x] != x:
                 parent[x] = parent[parent[x]]

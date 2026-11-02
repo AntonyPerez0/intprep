@@ -174,7 +174,7 @@ class Solution:
                 l += 1
             #@ Now s[r] is unique in the window, so let it in.
             window.add(s[r])
-            #@ The window has no repeats: keep its length if it is the longest so far.
+            #@ The window has no repeats: keep its length if it is the longest so far. Return the best after the loop.
             best = max(best, r - l + 1)  #!
         return best`,
       time: 'O(n)',
@@ -234,7 +234,7 @@ class Solution:
             while (r - l + 1) - max_count > k:  #!
                 count[s[l]] -= 1
                 l += 1
-            #@ The window is fixable now, so keep the longest one.
+            #@ The window is fixable now, so keep the longest one, and return it after the loop.
             best = max(best, r - l + 1)
         return best`,
       time: 'O(n)',
@@ -425,7 +425,7 @@ class Solution:
             #@ If the front index has slid out of the window, remove it.
             if dq[0] <= r - k:  #!
                 dq.popleft()
-            #@ Once the first full window is formed, the front of the deque is its maximum.
+            #@ Once the first full window is formed, the front of the deque is its maximum. Return the maximums after the loop.
             if r >= k - 1:
                 result.append(nums[dq[0]])  #!
         return result`,

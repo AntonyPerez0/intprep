@@ -127,7 +127,7 @@ class Solution:
                 current = 0
             #@ Extend the current subarray with x.
             current += x
-            #@ Remember the best sum we have ever had.
+            #@ Remember the best sum we have ever had, and return it at the end.
             best = max(best, current)  #!
         return best`,
       time: 'O(n)',
@@ -242,7 +242,7 @@ class Solution:
             farthest = 0
             for i in range(l, r + 1):
                 farthest = max(farthest, i + nums[i])  #!
-            #@ The next window starts right after this one and ends at that farthest reach. Getting there cost one more jump.
+            #@ The next window starts right after this one and ends at that farthest reach. Getting there cost one more jump. Return the jumps once the end is in reach.
             l, r = r + 1, farthest  #!
             jumps += 1
         return jumps`,
@@ -501,7 +501,7 @@ class Solution:
         #@ Second pass: every letter we meet forces the part to reach at least its last appearance.
         for i, ch in enumerate(s):
             end = max(end, last[ch])  #!
-            #@ Reached the end: no letter in this part appears later, so cut here and start the next part.
+            #@ Reached the end: no letter in this part appears later, so cut here and start the next part. Return the sizes.
             if i == end:  #!
                 sizes.append(end - start + 1)
                 start = i + 1

@@ -531,7 +531,7 @@ class Solution:
             #@ Look at the four neighbors: down, up, right, left.
             for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nr, nc = r + dr, c + dc
-                #@ Step only to a neighbor inside the grid with a strictly bigger value, and extend that neighbor's best path by this cell.
+                #@ Step only to a neighbor inside the grid with a strictly bigger value, and extend that neighbor's best path by this cell. Return the best.
                 if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] > matrix[r][c]:  #!
                     best = max(best, 1 + longest(nr, nc))  #!
             return best
@@ -728,7 +728,7 @@ class Solution:
             #@ Try each k as the LAST balloon to burst in this gap. By then everything else in the gap is gone, so its neighbors are exactly l and r.
             for k in range(l + 1, r):
                 last = balloons[l] * balloons[k] * balloons[r]  #!
-                #@ Before k pops, the left gap (l, k) and the right gap (k, r) are solved separately, because k stands between them the whole time.
+                #@ Before k pops, the left gap (l, k) and the right gap (k, r) are solved separately, because k stands between them the whole time. Return the most coins over every k.
                 coins = max(coins, best(l, k) + last + best(k, r))  #!
             return coins
         #@ The whole row is the gap between the two padding 1s.

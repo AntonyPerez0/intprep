@@ -103,6 +103,9 @@ export interface LessonPart {
  */
 const SIGNATURE = /^(class\s+\w+.*|def\s+\w+\(.*\).*|    def\s+\w+\(self\b.*\).*):\s*(#.*)?$/;
 
+/** A line `lessonParts` gives rather than asks for (see SIGNATURE). */
+export const isSignatureLine = (line: string) => SIGNATURE.test(line);
+
 /**
  * The parts the learner writes in a guided lesson ("Write the code"): every chunk but the header.
  * Signature lines at the start or end of a chunk (design problems put each method in its own
@@ -121,6 +124,38 @@ export function lessonParts(parsed: ParsedSolution): LessonPart[] {
     if (a === b) return [{ chunk, ci, lead: [], body: lines }];
     return [{ chunk, ci, lead: lines.slice(0, a), body: lines.slice(a, b) }];
   });
+}
+
+/**
+ * The names a snippet defines that the learner cannot see in `given` (assignment and loop targets,
+ * nested functions and their parameters), in order of appearance. Typed code is compared line by
+ * line with the solution, so a screen that asks for code it does not show names them.
+ */
+export function definedNames(body: string[], given: string[]): string[] {
+  const out: string[] = [];
+  const givenText = given.join('\n');
+  const add = (raw: string) => {
+    const n = raw.replace(/[()*\s]/g, '');
+    if (!/^[A-Za-z_]\w*$/.test(n) || n === '_' || n === 'self' || /^__\w+__$/.test(n)) return;
+    if (new RegExp(`\\b${n}\\b`).test(givenText) || out.includes(n)) return;
+    out.push(n);
+  };
+  for (const raw of body) {
+    const code = stripComment(raw).trim();
+    const def = code.match(/^def\s+(\w+)\s*\(([^)]*)\)/);
+    if (def) {
+      add(def[1]);
+      def[2].split(',').forEach((a) => add(a.split(/[:=]/)[0]));
+      continue;
+    }
+    // Plain names only: `seen[x] = i` and `self.x = 1` define nothing new.
+    const assign = code.match(/^([\w\s,()]+?)\s*(?:\/\/|\*\*|>>|<<|[-+*/%|&^@])?=(?!=)/);
+    if (assign) assign[1].split(',').forEach(add);
+    for (const m of code.matchAll(/\bfor\s+([\w\s,()]+?)\s+in\b/g)) m[1].split(',').forEach(add);
+    const as = code.match(/\bas\s+(\w+)\s*:$/);
+    if (as) add(as[1]);
+  }
+  return out;
 }
 
 /**

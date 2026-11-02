@@ -3,7 +3,7 @@
 
 import { useSyncExternalStore } from 'react';
 import { addDays, daysBetween, today } from './date';
-import { toast } from './events';
+import { later, toast } from './events';
 import { ACHIEVEMENTS, GEMS, levelInfo, levelTitle } from './game';
 import { newCard, review, type Grade, type SrsCard } from './srs';
 import type { Difficulty } from '../content/types';
@@ -269,13 +269,13 @@ export function awardXp(amount: number, reason?: string) {
       d.goalDays.push(t);
       d.gems += GEMS.dailyGoal;
       toast({ icon: 'target', title: 'Daily goal complete!', body: `+${GEMS.dailyGoal} gems`, tone: 'success' });
-      sfx('goal');
+      later(() => sfx('goal'));
     }
 
     const after = levelInfo(d.xp).level;
     if (after > beforeLevel) {
       toast({ icon: 'star', title: `Level ${after}!`, body: `You are now a ${levelTitle(after)}.`, tone: 'success' });
-      sfx('level');
+      later(() => sfx('level'));
     }
   });
   void reason;

@@ -764,6 +764,20 @@
     font-size: var(--fs-sm);
   }
 }
+/* The narrowest phones (320px): tighter labels and cells, so "MULTIPLIER" clears the timer ring */
+@media (max-width: 359px) {
+  .blitz-hud {
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  .blitz-hud-label {
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+  .blitz-hud-center {
+    gap: 8px;
+  }
+}
 
 /* Phones: options are tapped with a thumb under time pressure, so they must not
    move between questions. The round fills the viewport and the options sit on
@@ -1041,6 +1055,10 @@
     min-height: 40px;
     padding: 9px 12px;
   }
+}
+/* Show answer / Skip: a quiet action flush with the content edge, as on the review cards */
+.blitz-show {
+  margin-left: -12px;
 }
 @media (max-width: 379px) {
   /* "Show answer" fits beside Check from 380px; below, the icon carries it (the name stays) */

@@ -433,8 +433,11 @@ export function LessonPlayer({ mode }: Props) {
           checkedSecondary={
             typeStatus === 'wrong' ? <CheckedAction onClick={revealAnswer} label="Show answer" short="Answer" icon={<Eye aria-hidden="true" />} /> : undefined
           }
+          // Hint first while it is unused; once it has been read (or when the slide has none),
+          // "Show answer" is there with nothing typed, so a beginner who cannot start is never
+          // stuck. It counts as a miss and the slide comes back once, as after a wrong check.
           secondary={
-            !revealed && ((slide.hint && !hint) || tries > 0) ? (
+            !revealed ? (
               <div className="lplayer-tools">
                 {slide.hint && !hint && (
                   <button type="button" className="btn btn-quiet btn-sm" onClick={showHint}>
@@ -442,7 +445,7 @@ export function LessonPlayer({ mode }: Props) {
                     <span className="lplayer-tool-label">Hint</span>
                   </button>
                 )}
-                {tries > 0 && (
+                {(tries > 0 || hint || !slide.hint) && (
                   <button type="button" className="btn btn-quiet btn-sm" onClick={revealAnswer}>
                     <Eye aria-hidden="true" />
                     <span className="lplayer-tool-label">Show answer</span>
@@ -829,6 +832,9 @@ function TemplateGapsStep({
         step={checks}
         status={status}
         onCheck={check}
+        // Check stays enabled so nobody is stuck; with nothing typed it says what it will do, as
+        // the guided lesson's Final check does.
+        checkLabel={ex.filled === 0 ? 'Show answers' : 'Check'}
         onContinue={onContinue}
         title={title}
         feedback={feedback}

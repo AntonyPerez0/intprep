@@ -472,7 +472,7 @@ class Solution:
         #@ If not, the match may start anywhere in the left OR the right subtree.
         return self.isSubtree(root.left, subRoot) or self.isSubtree(root.right, subRoot)  #!
 
-    #@ The Same Tree check from the previous problem, as a helper.
+    #@ The Same Tree check from the previous problem, as a helper. It returns True only if both children match too.
     def sameTree(self, a: Optional[TreeNode], b: Optional[TreeNode]) -> bool:
         if not a and not b:
             return True
@@ -606,7 +606,7 @@ class Solution:
                     queue.append(node.left)
                 if node.right:
                     queue.append(node.right)
-            #@ This level is complete; save it.
+            #@ This level is complete; save it. Return all the levels once the queue is empty.
             levels.append(level)
         return levels`,
       time: 'O(n)',
@@ -671,7 +671,7 @@ class Solution:
                 #@ The last node popped on this level is the one you see from the right.
                 if i == size - 1:  #!
                     view.append(node.val)
-                #@ Queue children left first, then right, so the rightmost comes out last.
+                #@ Queue children left first, then right, so the rightmost comes out last. Return the view once every level is done.
                 if node.left:
                     queue.append(node.left)
                 if node.right:

@@ -118,7 +118,10 @@ aligned under the given lines instead of scrolling inside the textarea. Keys: Ta
 spaces (with several lines selected, indents them all), Enter keeps the indent (and indents after `:`), Backspace in leading spaces removes a 4-space indent,
 Escape then Tab leaves the editor (announced through `aria-describedby`), Ctrl/⌘ + Enter is left to the
 `ActionBar`. Edits go through the browser's editing, so undo works. `children` render between the given lines and
-the typing area (e.g. Rebuild's instruction comment); add one to `firstLine` per extra row.
+the typing area (e.g. Rebuild's instruction comment); add one to `firstLine` per extra row. `placeholder` may be
+a list, longest first (`['Write the 3 lines for this part', 'Write 3 lines']`): the first that fits the empty
+textarea from its `indent` shows, and none when even the last does not, since a placeholder cannot scroll (the
+footer already says how many lines to write).
 
 **Touch key bar** — on coarse pointers only (phones, tablets: no Tab key), `CodeEditor` shows a row of keycaps
 under the code: Outdent and Indent (act on the caret's line, or every selected line) and `: ( ) [ ] = _`. Keys are
@@ -128,7 +131,9 @@ under the code: Outdent and Indent (act on the caret's line, or every selected l
 **Diff** — `<CodeDiff grade indent given start firstLine>` renders the rows in the gutter style of an editor:
 check (correct), minus (your line), plus (expected; no line number), and a sideways arrow on an amber row for wrong
 indentation, with the expected line right below. Typed lines re-indent from `grade.baseGot` and expected lines from
-`grade.baseExp` to the display `indent`, so everything lines up under the given code.
+`grade.baseExp` to the display `indent`, so everything lines up under the given code. An anchored grade
+(`grade.anchor`) draws typed lines from the editor's column and expected lines from their real column, so a line
+typed a level off shows a level off.
 
 **Window and status bar** — `<TyperWindow status>` is a `CodeWindow` with the typing frame (focus ring while
 typing, green or red border once checked). `<TyperFooter grade note keys>` is its footer: "Python · {note}" and the
@@ -225,21 +230,37 @@ so a miss never resets its schedule. Session sizes live in `SESSION_PROBLEMS` (`
 - **Fill the gaps** (`gaps`, `GapsDrill`): the whole solution in a `GapsWindow`, header given, 2 gaps (6 code
   lines or fewer) or 3, always a key line among them (`reviewGaps(p, seed)`; the seed moves with the problem's
   review count, so each session blanks other lines).
-- **Write a part** (`part`, `PartDrill`): one body chunk, key-line chunks of 2 to 6 lines first (`pickPart`). The
-  lines before it are given (only the last 8 when there are more than 10, with a "Show N earlier lines" fold row),
-  its explanation is a highlighted `# comment` row (the cue), nothing after it is shown, and the `CodeEditor` starts
-  at the chunk's base indentation, graded with `gradeCode(text, chunk, { anchor })`.
-- **Write the key line** (`keyline`): typed by default on every device; "Show options" stays as a helper, and a
-  line picked from (or typed after seeing) the options counts as recognition, not as code written.
+- **Fill the gaps**: a retry (seed `2r + 1`) never blanks the set of the card it retries, and a session (seed `2r`)
+  never repeats the last session's set (`2r − 2`), whenever the solution has other lines to blank; a key line stays.
+- **Write a part** (`part`, `PartDrill`): one part, split as the guided lesson splits it (`reviewParts` /
+  `lessonParts`): class-level signatures that open it (a design problem's `def push(self, val: int) -> None:`) are
+  given right under the cue, and only the body is written and graded. Parts whose body has a key line and 2 to 6
+  lines come first (`pickPart`). The lines before it are given (only the last 8 when there are more than 10, with a
+  "Show N earlier lines" fold row), its explanation is a highlighted `# comment` row (the cue), nothing after it is
+  shown, and the `CodeEditor` starts at the body's own column (not capped), graded with `gradeCode(text, body,
+  { anchor })`. The sub names what the part defines that is nowhere on screen ("Use the solution's names: need",
+  `definedNames`), since it is compared line by line. Content rule (checked by `npm run validate`): a part's
+  explanation mentions a closing `return` one level out, and a class-level `def` only ever opens a part.
+- **Write the key line** (`keyline`): typed by default on every device, never a line whose code also stands
+  elsewhere in the solution (`pickKeyLine`); touch screens get the symbol keys (`SymbolKeys`) under the input.
+  Beside Check: "Show answer" (a miss) and "Show options", a helper: a line picked from (or typed after seeing) the
+  options counts as recognition, not as code written. Phones show them as "Answer" and "Options", the narrowest as
+  icons (the full name stays the accessible one). With the options showing, the kicker reads "Choose the key line".
 
 Every coding card says what to do in its title ("Fill the gaps in Two Sum", "Write the next part of Two Sum",
 "Write the missing line of Two Sum"), keeps the problem statement in a collapsed disclosure, and shows the kit's
 keyboard hint in the window footer. "Show answer" (left of Check, before the first check) reveals the answer as a
-miss for a card the learner cannot recall. The first check decides the card; after a miss, "Fix and check again"
+miss for a card the learner cannot recall; the checked action then reads "Type it now" (nothing typed to fix), as
+in Key lines. The first check decides the card; after a miss, "Fix and check again"
 is the `checkedSecondary` and Continue stays the primary. XP: `XP.codeCorrect` (8) for code right on the first
 check, `XP.drillCorrect` (4) for recognition, half for practicing ahead and for retries, plus the combo bonus. The
 completion adds a "Lines written" stat (lines right on the first check, out of the lines asked); its four stats sit
-two by two below 480px.
+two by two below 480px. A coding card nearly right on the first check (3 lines in 4, or one line wrong in two or
+more) counts as half right toward `gradeFrom`, so two typos make a problem "Fuzzy", not "Forgot". Every card is
+saved as it is answered (XP and streak, answers, each problem's schedule once its three cards are done), so a
+close keeps the work; the reward toasts are held (`holdToasts`) and shown at the end or after the close, so none
+covers a card. A problem pulled into today by a Pattern Blitz miss is reviewed as early (`review()` counts only
+the days that passed), so a miss never pushes it further out than getting it right would.
 
 Input mode (`lib/input.ts`, `preferTyping`): 'auto' (the default) and 'type' both mean typing, phones included;
 'tap' is the explicit opt-in to pick lines from choices, and then the review's coding cards become key lines to
@@ -269,7 +290,9 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   Desktop may use two columns where it helps (e.g. code + explanation). Foundation lessons mix in "Your turn"
   slides (`kind: 'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the
   explanation; a miss offers "Try again" (the primary: keeps the text) and, left of it in the action bar, "Show
-  answer" (the answer, then Continue; the slide comes back once at the end of the lesson).
+  answer" (the answer, then Continue; the slide comes back once at the end of the lesson). Before a check, the idle
+  secondary is "Hint" while unused, then "Show answer" (right away on a slide with no hint), so a beginner who
+  cannot start is never stuck; it counts as a miss the same way.
 - **Guided problem lesson (`/p/:id/learn`)** — ten steps, "Step 7 of 10 · Write the code" in the eyebrow: read,
   guess (pattern choice), hints, brute force, insight, plan, **Write the code**, complexity (choice), traps, **Final
   check**. Write the code goes through every part of the solution except the class / def header (always given;
@@ -277,8 +300,8 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   nested helpers such as `def dfs(r, c):` are typed):
   **Look** (the part's explanation in a card, its code highlighted under the earlier parts, key lines with a gold
   dot in the gutter, later parts hidden; primary "Write it" with Enter, "Back" to the part before), then **Write**
-  (the part is covered: the earlier code stays as `given`, the editor starts at the part's indentation, capped at 16
-  columns, and grading is anchored there; quiet "Peek" goes back to Look and the part no longer counts as written
+  (the part is covered: the earlier code stays as `given`, the editor starts at the part's indentation (not capped:
+  the lines above a deep part are wider still, and the pane scrolls), and grading is anchored there; quiet "Peek" goes back to Look and the part no longer counts as written
   right), then **Check** (the diff; a miss puts "Fix and check again" left of "Next part", which is always there).
   The first check of a part decides the tally ("Right on the first try · 2 of 3 parts", and a colored segment per
   part). Look and Write share one typing window, so covering the code swaps rows in place. Wide screens: code left,
@@ -294,7 +317,8 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   in a moment), the template notes, then **"Your turn · Fill the gaps"**, then the other quizzes. That slide is
   "Fill in the template": a `GapsWindow` over the template with the template drill's first set of gaps
   (`gapSource`, about 30% of the lines, at least 2; each gap's hint is its line's comment). Check is always
-  enabled, so a learner who cannot recall a line is never stuck (blank gaps show "left blank" and the line);
+  enabled, so a learner who cannot recall a line is never stuck (blank gaps show "left blank" and the line), and
+  with nothing typed it reads "Show answers", as the guided lesson's Final check does;
   Enter in a gap still moves to the next empty one and checks only on the last once every gap has text, and
   Ctrl/⌘ + Enter checks. The first check counts toward "First try" (quiz XP). A miss says "Not quite — it will
   come back later" as a missed quiz does, puts "Fix and check again" (`CheckedAction`) left of Continue, and
@@ -306,8 +330,9 @@ pick (or the steps in order). Profile shows it as "Type code" / "Tap to choose".
   staying the accessible name), else "Practice the template" (`?mode=gaps`).
 - **Code from memory (`/p/:id/rebuild?mode=parts|gaps|scratch`)** — a three-option `.seg` switch under the title
   (full names with icons; names only below 460px; "Parts / Gaps / Scratch" below 380px, the full name staying the
-  accessible name): **Part by part** (one part at a time, cued by its comment; a miss offers "Fix and check again"
-  and the part's first check keeps its score), **Fill the gaps** (the problem, the
+  accessible name). The title wraps (the difficulty chip moves under it), so the whole name always shows.
+  **Part by part** (the guided lesson's parts, one at a time, cued by its comment, class-level signatures given; a
+  miss offers "Fix and check again" and the part's first check keeps its score), **Fill the gaps** (the problem, the
   given class / def header and the solution with about 30% of its lines blank, key lines first, in a `GapsWindow`;
   Enter moves to the next gap and checks on the last once every gap has text; "New gaps" while idle) and **From
   scratch** (the whole body in one blank editor under the given signature; the sub names the solution's own names,
@@ -391,8 +416,9 @@ Automated tests drive the UI through these hooks — keep them working:
   `data-problem`, the part card's `.drill-cue` and `.drill-fold`.
 - Text: landing CTA **"Get started"**; onboarding option containing **"I know some code"**, goal option containing
   **"Regular"**, buttons **"Continue"** and final **"Start learning"**; insight drill buttons **"Show answer"**
-  and **"Got it"** (the review's Fill the gaps and Write a part cards also have a **"Show answer"** button, left of
-  Check before the first check); completion titles containing **"Lesson complete"**, **"Problem learned"**,
+  and **"Got it"** (the review's Fill the gaps, Write a part and Write the key line cards also have a **"Show answer"** button,
+  left of Check before the first check; on phones the key line's reads "Answer", its accessible name staying
+  "Show answer"; after it, the checked action is **"Type it now"**); completion titles containing **"Lesson complete"**, **"Problem learned"**,
   **"Review complete"**, and its **"Lines written"** stat; repair button containing **"Repair"**.
 
 ## Working on a page

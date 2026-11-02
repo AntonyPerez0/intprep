@@ -45,7 +45,7 @@ import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { preferTyping } from '../lib/input';
 import { inline } from '../lib/markdown';
-import { normalizeCode, parseSolution, stripComment } from '../lib/parseSolution';
+import { definedNames, lessonParts, normalizeCode, parseSolution } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
@@ -353,7 +353,9 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const nav = useNavigate();
   const settings = useProgress().settings;
   const parsed = parseSolution(p.solution);
-  const body = parsed.chunks.map((c, i) => ({ c, i })).filter(({ c }) => !c.header);
+  // The guided lesson's parts: class-level signatures that open a part are given, as in the
+  // lesson and the review's Write a part, and only the body is written and graded.
+  const body = lessonParts(parsed);
   const header = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
   const [typing, setTyping] = useState(() => preferTyping(settings.typingMode));
   const [step, setStep] = useState(0); // index into body (the current part)
@@ -376,10 +378,11 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   // Phones wait for a tap, so the keyboard does not cover the problem (or the next part's cue).
   const [autoFocus] = useState(isFinePointer);
 
-  const totalLines = body.reduce((n, b) => n + b.c.lines.filter((l) => l.trim()).length, 0);
+  const totalLines = body.reduce((n, b) => n + b.body.filter((l) => l.trim()).length, 0);
   const cur = body[step];
-  const curLines = cur ? cur.c.lines.filter((l) => l.trim()) : [];
-  const doneLines = body.slice(0, step).flatMap((b) => b.c.lines);
+  const curLines = cur ? cur.body.filter((l) => l.trim()) : [];
+  const lead = cur ? cur.lead : [];
+  const doneLines = body.slice(0, step).flatMap((b) => b.chunk.lines);
 
   // Tap mode options for the current line.
   const tapLine = curLines[lineInChunk];
@@ -502,7 +505,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
 
   const checkTyped = () => {
     // The editor sits under the parts before it: typed column 0 is the editor's column.
-    const r = gradeCode(text, cur.c.lines, { anchor: indent });
+    const r = gradeCode(text, cur.body, { anchor: indent });
     setResult(r);
     setChecks((c) => c + 1);
     if (!first) setFirst(r);
@@ -554,10 +557,12 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
 
   // ── Editor model ──────────────────────────────────────────────────────────
   const given = [...header, ...doneLines];
-  // Typing starts at the part's least indented line (a part may end with a dedent), capped so a
-  // deeply nested part still fits; grading is anchored there (see checkTyped).
-  const indent = Math.min(baseIndent(curLines), 16);
-  const firstNew = given.length + 2; // after the instruction comment
+  // Typing starts at the least indented line to write (a part may end with a dedent); grading is
+  // anchored there (see checkTyped). The instruction sits at the part's own indentation, above
+  // the signature it opens with.
+  const indent = baseIndent(curLines);
+  const instrIndent = cur ? baseIndent(cur.chunk.lines) : indent;
+  const firstNew = given.length + 2 + lead.length; // after the instruction comment and the given signature
   const written = typing ? [] : tapDoneLines; // tap mode: lines placed so far in this part
   const tapOk = sel !== null && sameCode(sel, tapLine ?? '');
   const tapIndent = (tapLine ?? '').match(/^\s*/)?.[0] ?? '';
@@ -575,11 +580,17 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
   const instr = (
     <div ref={instrRef} className="typer-line instr">
       <span className="typer-ln">{given.length + 1}</span>
-      <span className="rebuild-instr" style={{ ['--indent' as string]: `${indent}ch` }}>
+      <span className="rebuild-instr" style={{ ['--indent' as string]: `${instrIndent}ch` }}>
         <span className="rebuild-hash"># </span>
-        {cur.c.explain}
+        {cur.chunk.explain}
       </span>
     </div>
+  );
+  const above = (
+    <>
+      {instr}
+      <GivenLines lines={lead} start={given.length + 2} />
+    </>
   );
 
   return (
@@ -623,7 +634,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
           {typing ? (
             result ? (
               <CodeDiff grade={result} given={given} firstLine={firstNew} indent={indent}>
-                {instr}
+                {above}
               </CodeDiff>
             ) : (
               <CodeEditor
@@ -636,16 +647,19 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
                 minRows={Math.max(3, curLines.length + 1)}
                 autoFocus={autoFocus}
                 textareaRef={taRef}
-                placeholder={`Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`}
+                placeholder={[
+                  `Write the ${curLines.length} line${curLines.length > 1 ? 's' : ''} for this part`,
+                  `Write ${curLines.length} line${curLines.length > 1 ? 's' : ''}`,
+                ]}
                 disabled={status !== 'idle'}
               >
-                {instr}
+                {above}
               </CodeEditor>
             )
           ) : (
             <CodePane>
               <GivenLines lines={given} />
-              {instr}
+              {above}
               {written.map((l, k) => (
                 <CodeLine key={k} n={firstNew + k} className="written">
                   {highlightLine(l)}
@@ -736,7 +750,7 @@ function PartsSession({ p, modes, onChecked, onRestart }: SessionProps) {
             ) : (
               <div className="rebuild-fb">
                 <span className="drill-fb-label">This part</span>
-                <span>{inline(cur.c.explain)}</span>
+                <span>{inline(cur.chunk.explain)}</span>
               </div>
             )
           }
@@ -1041,38 +1055,6 @@ function revealCaret(ta: HTMLTextAreaElement, pos: number) {
 interface ScratchDraft {
   text: string;
   outline: boolean;
-}
-
-/**
- * The names the solution defines (assignment and loop targets, nested functions and their
- * parameters), in order of appearance. From scratch is graded line by line against the studied
- * solution, so the screen names them.
- */
-function definedNames(body: string[], given: string[]): string[] {
-  const out: string[] = [];
-  const givenText = given.join('\n');
-  const add = (raw: string) => {
-    const n = raw.replace(/[()*\s]/g, '');
-    if (!/^[A-Za-z_]\w*$/.test(n) || n === '_' || n === 'self' || /^__\w+__$/.test(n)) return;
-    if (new RegExp(`\\b${n}\\b`).test(givenText) || out.includes(n)) return;
-    out.push(n);
-  };
-  for (const raw of body) {
-    const code = stripComment(raw).trim();
-    const def = code.match(/^def\s+(\w+)\s*\(([^)]*)\)/);
-    if (def) {
-      add(def[1]);
-      def[2].split(',').forEach((a) => add(a.split(/[:=]/)[0]));
-      continue;
-    }
-    // Plain names only: `seen[x] = i` and `self.x = 1` define nothing new.
-    const assign = code.match(/^([\w\s,()]+?)\s*(?:\/\/|\*\*|>>|<<|[-+*/%|&^@])?=(?!=)/);
-    if (assign) assign[1].split(',').forEach(add);
-    for (const m of code.matchAll(/\bfor\s+([\w\s,()]+?)\s+in\b/g)) m[1].split(',').forEach(add);
-    const as = code.match(/\bas\s+(\w+)\s*:$/);
-    if (as) add(as[1]);
-  }
-  return out;
 }
 
 function ScratchSession({ p, modes, onChecked, onRestart, draft }: SessionProps & { draft: RefObject<ScratchDraft> }) {

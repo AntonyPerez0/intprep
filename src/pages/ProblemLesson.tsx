@@ -608,10 +608,11 @@ function CodeStep({
   const lines = part.chunk.lines;
   const { lead, body } = part;
   const count = codeLines(body).length;
-  // Typing starts at the least indented line to write (a part may end with a dedent), capped so a
-  // deeply nested part still fits a phone; grading is anchored there.
-  const indent = Math.min(baseIndent(body), 16);
-  const cueIndent = Math.min(baseIndent(lines), 16);
+  // Typing starts at the least indented line to write (a part may end with a dedent), and grading
+  // is anchored there: typed at the caret, a line sits where it belongs under the code above. Not
+  // capped: the given lines above a deep part are wider still, and the pane scrolls.
+  const indent = baseIndent(body);
+  const cueIndent = baseIndent(lines);
   const text = drafts[k] ?? '';
   const setText = (v: string) => setDrafts((d) => d.map((x, j) => (j === k ? v : x)));
   const keyCount = part.chunk.keyLines.length;
@@ -782,7 +783,7 @@ function CodeStep({
             firstLine={firstNew + lead.length}
             indent={indent}
             minRows={Math.max(2, count + 1)}
-            placeholder={`Write the ${plural(count, 'line')} of this part`}
+            placeholder={[`Write the ${plural(count, 'line')} of this part`, `Write ${plural(count, 'line')}`]}
             note={`${plural(count, 'line')} to write`}
             textareaRef={taRef}
           >

@@ -50,20 +50,22 @@
 }
 .rebuild-title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
+/* The whole name always shows: a long one wraps, and the difficulty chip moves under it */
 .rebuild-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   min-width: 0;
+  min-height: 36px;
 }
 .rebuild-title .q-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .rebuild-prompt-toggle {
   flex: none;

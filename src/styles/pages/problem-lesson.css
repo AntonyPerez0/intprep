@@ -510,7 +510,9 @@ div.plesson-locked {
 }
 
 /* Action bar: the quiet Peek, and the label above the feedback */
+/* A quiet secondary action sits flush with the content edge, as on every other card */
 .plesson-peek-btn {
+  margin-left: -12px;
   color: var(--text-secondary);
 }
 .plesson-fb {

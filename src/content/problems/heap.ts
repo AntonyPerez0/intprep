@@ -451,10 +451,11 @@ class Twitter:
         #@ The feed was built newest first, as required.
         return feed
 
-    #@ follow and unfollow just edit the set. discard is safe even if they never followed.
+    #@ follow just adds the followee to the follower's set.
     def follow(self, followerId: int, followeeId: int) -> None:
         self.following[followerId].add(followeeId)
 
+    #@ unfollow removes them with discard, which is safe even if they never followed.
     def unfollow(self, followerId: int, followeeId: int) -> None:
         self.following[followerId].discard(followeeId)`,
       time: 'O(F + 10 log F) per feed',
@@ -517,7 +518,7 @@ class MedianFinder:
         if len(self.large) > len(self.small):
             heapq.heappush(self.small, -heapq.heappop(self.large))  #!
 
-    #@ findMedian: an odd count means the middle is the top of small. An even count averages the two tops.
+    #@ findMedian: an odd count returns the top of small. An even count returns the average of the two tops.
     def findMedian(self) -> float:
         if len(self.small) > len(self.large):
             return float(-self.small[0])

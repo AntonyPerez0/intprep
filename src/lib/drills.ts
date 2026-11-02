@@ -7,7 +7,7 @@ import { PROBLEMS } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { codeLines, lineKey } from './codegrade';
 import { gapCandidates, gapSource, lineWeight, pickGaps, type GapSource } from './gaps';
-import { normalizeCode, parseSolution, type Chunk } from './parseSolution';
+import { lessonParts, normalizeCode, parseSolution, type LessonPart } from './parseSolution';
 import { pick, sample, shuffle } from './random';
 import type { SrsCard } from './srs';
 
@@ -252,40 +252,78 @@ export interface ReviewGaps extends GapSource {
  * The few lines a review "Fill the gaps" card blanks: 2 for a short solution (6 code lines or
  * fewer), else 3, always including a key line. `seed` is the instance: 0 is the canonical set
  * (key lines first); each later seed steps away from the one before (see `pickGaps`), so a retry
- * or the next session practices other lines.
+ * or the next session practices other lines. Sessions use even seeds (`2 * round`) and a missed
+ * card's retry the odd one after it, so the instance before seed `s` is `s - 1` for a retry and
+ * `s - 2` for a session: the set never repeats that one when the solution has other lines to blank.
  */
 export function reviewGaps(p: Problem, seed = 0): ReviewGaps {
+  const memo = `${p.id}:${seed}`;
+  const hit = gapsMemo.get(memo);
+  if (hit) return hit;
   const src = gapSource(p.solution);
   const body = codeLines(src.lines.filter((_, i) => !src.header.includes(i))).length;
   const n = body <= 6 ? 2 : 3;
   let gaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min: n, max: n, seed });
-  const cands = new Set(gapCandidates(src.lines, src.header));
+  const candList = gapCandidates(src.lines, src.header);
+  const cands = new Set(candList);
   const keys = src.keyLines.filter((i) => cands.has(i));
+  // A line whose code is not on screen elsewhere (blanking it does not leave the answer in view).
+  const unique = (i: number) => !src.lines.some((l, j) => j !== i && lineKey(l) === lineKey(src.lines[i]));
+  const weight = (i: number) => lineWeight(src.lines[i]);
   if (keys.length && gaps.length && !gaps.some((i) => keys.includes(i))) {
     // Swap the lightest gap for a key line, preferring one whose code is not on screen elsewhere.
-    const unique = keys.filter((i) => !src.lines.some((l, j) => j !== i && lineKey(l) === lineKey(src.lines[i])));
-    const pool = unique.length ? unique : keys;
+    const pool = keys.filter(unique).length ? keys.filter(unique) : keys;
     const add = pool[seed % pool.length];
-    const drop = gaps.reduce((a, b) => (lineWeight(src.lines[b]) < lineWeight(src.lines[a]) ? b : a));
+    const drop = gaps.reduce((a, b) => (weight(b) < weight(a) ? b : a));
     gaps = [...gaps.filter((i) => i !== drop), add].sort((a, b) => a - b);
   }
-  return { ...src, gaps };
+  // The key-line swap can rebuild the set just practiced: the missed card (for a retry) or the
+  // last session. Then keep a key line, drop the lightest other gap, and blank the strongest line
+  // that was not a gap last time.
+  const prevSeed = seed % 2 ? seed - 1 : seed - 2;
+  if (prevSeed >= 0 && gaps.length && gaps.length < candList.length) {
+    const prev = reviewGaps(p, prevSeed).gaps;
+    if (prev.length === gaps.length && prev.every((x, k) => x === gaps[k])) {
+      const keep = gaps.find((i) => keys.includes(i)) ?? -1;
+      const others = gaps.filter((i) => i !== keep);
+      const fresh = candList.filter((i) => !prev.includes(i));
+      const pool = fresh.filter(unique).length ? fresh.filter(unique) : fresh;
+      if (others.length && pool.length) {
+        const drop = others.reduce((a, b) => (weight(b) < weight(a) ? b : a));
+        const add = pool.reduce((a, b) => (weight(b) > weight(a) ? b : a));
+        gaps = [...gaps.filter((i) => i !== drop), add].sort((a, b) => a - b);
+      }
+    }
+  }
+  const out = { ...src, gaps };
+  gapsMemo.set(memo, out);
+  return out;
 }
 
-/** How much a "Write a part" card wants a chunk: key lines first, then a part of 2 to 6 lines. */
-function partScore(c: Chunk): number {
-  const n = codeLines(c.lines).length;
-  return (c.keyLines.length ? 2 : 0) + (n >= 2 && n <= 6 ? 1 : 0);
+/** reviewGaps per problem and seed: each seed checks the one before it, so a chain is built once. */
+const gapsMemo = new Map<string, ReviewGaps>();
+
+/**
+ * The parts a "Write a part" card can ask for, by chunk index: the guided lesson's split
+ * (`lessonParts`), so class-level signatures that open a part are given, as in the lesson, and
+ * only the body is written and graded.
+ */
+export function reviewParts(p: Problem): Map<number, LessonPart> {
+  return new Map(lessonParts(parseSolution(p.solution)).map((lp) => [lp.ci, lp]));
+}
+
+/** How much a "Write a part" card wants a part: key lines first, then 2 to 6 lines to write. */
+function partScore(lp: LessonPart): number {
+  const n = codeLines(lp.body).length;
+  return (lp.chunk.keyLines.length ? 2 : 0) + (n >= 2 && n <= 6 ? 1 : 0);
 }
 
 /** The body chunks a "Write a part" card can ask for (indices into `parseSolution(p.solution).chunks`), best first. */
 export function partChunks(p: Problem): number[] {
-  const { chunks } = parseSolution(p.solution);
-  return chunks
-    .map((c, i) => ({ c, i }))
-    .filter(({ c }) => !c.header && codeLines(c.lines).length > 0)
-    .sort((a, b) => partScore(b.c) - partScore(a.c) || a.i - b.i)
-    .map(({ i }) => i);
+  return [...reviewParts(p).values()]
+    .filter((lp) => codeLines(lp.body).length > 0)
+    .sort((a, b) => partScore(b) - partScore(a) || a.ci - b.ci)
+    .map((lp) => lp.ci);
 }
 
 /**
@@ -293,20 +331,28 @@ export function partChunks(p: Problem): number[] {
  * (the session), never one in `avoid` (parts already asked) while another exists.
  */
 export function pickPart(p: Problem, seed = 0, avoid: readonly number[] = []): number {
-  const { chunks } = parseSolution(p.solution);
+  const parts = reviewParts(p);
   const all = partChunks(p);
   const free = all.filter((i) => !avoid.includes(i));
   const pool = free.length ? free : all;
-  const top = partScore(chunks[pool[0]]);
-  const tier = pool.filter((i) => partScore(chunks[i]) === top);
+  const top = partScore(parts.get(pool[0])!);
+  const tier = pool.filter((i) => partScore(parts.get(i)!) === top);
   return tier[seed % tier.length];
 }
 
-/** A key line for a "Write the key line" card (index into `parseSolution(p.solution).lines`), rotating by `seed`. */
+/**
+ * A key line for a "Write the key line" card (index into `parseSolution(p.solution).lines`), rotating by `seed`.
+ * The card shows the whole solution, so a key line whose code also stands elsewhere in it (the
+ * answer in plain view) is left out while another exists.
+ */
 export function pickKeyLine(p: Problem, seed = 0, avoid: readonly number[] = []): number | undefined {
   const all = keyLineIndices(p);
-  const free = all.filter((i) => !avoid.includes(i));
-  const pool = free.length ? free : all;
+  const lines = parseSolution(p.solution).lines;
+  const twin = (i: number) => lines.some((l, j) => j !== i && l.text.trim() !== '' && lineKey(l.text) === lineKey(lines[i].text));
+  const unique = all.filter((i) => !twin(i));
+  const base = unique.length ? unique : all;
+  const free = base.filter((i) => !avoid.includes(i));
+  const pool = free.length ? free : base.length ? base : all;
   return pool.length ? pool[seed % pool.length] : undefined;
 }
 

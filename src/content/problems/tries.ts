@@ -142,7 +142,7 @@ class Trie:
         #@ The path exists, but it is only a word if a word ended here.
         return node.is_end  #!
 
-    #@ startsWith: the same walk, but any surviving path is enough. No end flag needed.
+    #@ startsWith: the same walk, but any surviving path is enough, so return True at its end. No end flag needed.
     def startsWith(self, prefix: str) -> bool:
         node = self.root
         for ch in prefix:
@@ -223,14 +223,14 @@ class WordDictionary:
             #@ Every letter is matched. It only counts if a stored word ends right here.
             if i == len(word):
                 return node.is_end  #!
-            #@ A dot can be any letter: try every child, and succeed if any branch matches.
+            #@ A dot can be any letter: try every child, and return True if any branch matches, False if none does.
             ch = word[i]
             if ch == ".":
                 for child in node.children.values():
                     if dfs(i + 1, child):  #!
                         return True
                 return False
-            #@ A normal letter has exactly one path to follow.
+            #@ A normal letter has exactly one path: return False if it is missing, else the search from that child.
             if ch not in node.children:
                 return False
             return dfs(i + 1, node.children[ch])  #!
@@ -326,7 +326,7 @@ class Solution:
             if not node.children and node.word is None:
                 del parent.children[ch]
 
-        #@ Start a search from every cell.
+        #@ Start a search from every cell, then return the words found.
         for r in range(rows):
             for c in range(cols):
                 dfs(r, c, root)

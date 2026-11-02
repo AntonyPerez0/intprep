@@ -14,6 +14,37 @@
 .drill .actionbar .buttons > .btn-quiet:first-child {
   margin-left: -12px;
 }
+/* Two quiet actions side by side (the key line's Show answer + Show options) */
+.drill-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: -12px;
+}
+.drill-tool-short {
+  display: none;
+}
+/* Phones: short names ("Answer", "Options"), so both tools fit beside Check */
+@media (max-width: 479px) {
+  .drill-tools {
+    margin-left: -10px;
+  }
+  .drill-tools .btn {
+    padding-inline: 10px;
+  }
+  .drill-tool-long {
+    display: none;
+  }
+  .drill-tool-short {
+    display: inline;
+  }
+}
+/* The narrowest phones: icons only (the full name stays the accessible one) */
+@media (max-width: 379px) {
+  .drill-tool-short {
+    display: none;
+  }
+}
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .drill-head {
@@ -119,6 +150,12 @@
 .drill-line-input {
   height: 44px;
   font-size: 13px;
+}
+/* The symbol keys under the typed key line (touch screens only, like every code input's) */
+.drill-line-keys {
+  margin-top: 8px;
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-md);
 }
 
 /* Callout that explains the step around a key line */

@@ -26,14 +26,19 @@ export function newCard(): SrsCard {
   return { due: addDays(t, 1), interval: 1, ease: 2.5, reps: 0, lapses: 0, last: t };
 }
 
-/** Apply a review. Reviewing early (before due) grows the interval less. */
+/**
+ * Apply a review. Reviewing early grows the interval less: before the due day, or on a card pulled
+ * forward (a Pattern Blitz miss sets its due day to today) whose interval has not passed yet.
+ */
 export function review(card: SrsCard, grade: Grade): SrsCard {
   const t = today();
   const c = { ...card, last: t };
   const overdue = Math.max(0, daysBetween(card.due, t));
   const elapsed = Math.max(1, daysBetween(card.last, t));
-  // Early reviews only count for the time that actually passed.
-  const base = daysBetween(t, card.due) > 0 ? Math.min(card.interval, elapsed) : card.interval + overdue / 2;
+  // Early reviews only count for the time that actually passed. A card that is due because it
+  // was pulled in is early too: only `elapsed` days have tested the memory, not the interval.
+  const early = daysBetween(t, card.due) > 0 || elapsed < card.interval;
+  const base = early ? Math.min(card.interval, elapsed) : card.interval + overdue / 2;
 
   switch (grade) {
     case 'again':
@@ -87,12 +92,16 @@ export function crowns(card: SrsCard | undefined): number {
 
 export const CROWN_LABELS = ['New', 'Learned', 'Familiar', 'Solid', 'Strong', 'Mastered'];
 
-/** Turn drill performance into a grade (the learner can still see why). */
+/**
+ * Turn drill performance into a grade (the learner can still see why). `correct` may be
+ * fractional: a coding card that was nearly right counts as half right (see Review), so two
+ * near misses make a problem fuzzy, not forgotten.
+ */
 export function gradeFrom(correct: number, total: number, selfRating?: Grade): Grade {
   if (selfRating === 'again') return 'again';
   const misses = total - correct;
   if (misses >= 2 || (total > 0 && correct / total < 0.5)) return 'again';
-  if (misses === 1) return 'hard';
+  if (misses > 0) return 'hard';
   if (selfRating === 'hard') return 'hard';
   if (selfRating === 'easy') return 'easy';
   return 'good';

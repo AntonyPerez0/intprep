@@ -18,11 +18,13 @@ import path from 'node:path';
 import { CATEGORIES } from '../src/content/categories';
 import { CONTENT } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
-import { parseSolution } from '../src/lib/parseSolution';
-import { baseIndent, codeLines, gradeCode, lineKey, reindent } from '../src/lib/codegrade';
+import { isSignatureLine, lessonParts, parseSolution } from '../src/lib/parseSolution';
+import { baseIndent, codeLines, gradeCode, indentOf, lineKey, reindent } from '../src/lib/codegrade';
 import { gradeGaps } from '../src/lib/gaps';
 import { normalizeCode, stripComment } from '../src/lib/parseSolution';
 import type { CategoryId, QuizQuestion } from '../src/content/types';
+import { addDays, today } from '../src/lib/date';
+import { gradeFrom, review, type SrsCard } from '../src/lib/srs';
 
 const args = process.argv.slice(2);
 const wantAll = args.length === 0;
@@ -119,6 +121,18 @@ function checkCategory(cat: CategoryId) {
       if (c.lines.length === 0) err(w, `chunk ${i} ("${c.explain.slice(0, 30)}") has no code`);
       if (c.lines.length > 9) warn(w, `chunk ${i} is ${c.lines.length} lines — split it so learners can digest it`);
       checkMarkdown(w, c.explain);
+    });
+    // The parts a learner writes (guided lesson, review's Write a part, Code from memory) are
+    // asked for by their explanation alone in a review, with nothing after them shown.
+    lessonParts(parsed).forEach(({ chunk, body: part }) => {
+      const where = `"${chunk.explain.slice(0, 40)}"`;
+      // A class-level signature is given only where a part opens; inside a part it would be typed.
+      if (part.some(isSignatureLine)) err(w, `part ${where} has a class-level def inside it: start a new #@ chunk at it`);
+      // A closing return one level out is part of what to write: the explanation must say so.
+      const code = codeLines(part);
+      const last = code[code.length - 1] ?? '';
+      if (code.length > 1 && /^\s*return\b/.test(last) && indentOf(last) < indentOf(code[code.length - 2]) && !/\breturn/i.test(chunk.explain))
+        err(w, `part ${where} ends with a dedented \`${last.trim()}\` its explanation does not mention`);
     });
     if (/\t/.test(p.solution)) err(w, 'solution contains tabs — use 4 spaces');
     pyFiles.push({ label: w, code: parsed.code });
@@ -217,7 +231,32 @@ function checkTypingKit() {
   if (!gradeGaps(['return \u2018\u2019.join(out)'], ["return ''.join(out)"]).perfect) err(w, 'gradeGaps should accept curly quotes');
 }
 
+/**
+ * The scheduler's rules that a change could quietly break: a card pulled forward (a Pattern Blitz
+ * miss sets its due day to today) is reviewed as early, so a miss never pushes it out further than
+ * getting it right would have; a card that is simply due grows as usual; near misses are fuzzy.
+ */
+function checkScheduler() {
+  const w = 'scheduler';
+  const t = today();
+  const card = (interval: number, lastAgo: number): SrsCard => ({ due: t, interval, ease: 2.5, reps: 5, lapses: 0, last: addDays(t, -lastAgo) });
+  const pulled = card(53, 3);
+  const good = review(pulled, 'good').interval;
+  const hard = review(pulled, 'hard').interval;
+  if (good > 10) err(w, `a 53-day card reviewed 3 days ago and pulled in (good) should get about 8 days, got ${good}`);
+  if (hard > 53) err(w, `a pulled-in card graded hard should not grow past its interval, got ${hard}`);
+  const sameDay = review(card(23, 0), 'good').interval;
+  if (sameDay > 23) err(w, `a card reviewed again on the day it was reviewed should not grow, got ${sameDay}`);
+  const due = review(card(53, 53), 'good').interval;
+  if (due <= 53) err(w, `a card that is simply due (good) should grow past 53 days, got ${due}`);
+  if (gradeFrom(2, 3) !== 'hard') err(w, 'one miss in three should be hard');
+  if (gradeFrom(1 + 2 * 0.5, 3) !== 'hard') err(w, 'two near misses in three should be hard');
+  if (gradeFrom(1, 3) !== 'again') err(w, 'two misses in three should be again');
+  if (gradeFrom(3, 3) !== 'good') err(w, 'three right should be good');
+}
+
 for (const c of CATEGORIES) if (wantAll || args.includes(c.id)) checkCategory(c.id);
+checkScheduler();
 if (wantAll || args.includes('foundations')) checkFoundations();
 checkTypingKit();
 

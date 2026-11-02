@@ -71,8 +71,8 @@ const KEYS: { ch: string; name: string }[] = [
 /** Keep the input focused (and the phone keyboard open) when a key is pressed. */
 const keepFocus = (e: { preventDefault: () => void }) => e.preventDefault();
 
-/** Insert `text` at the caret through the browser's editing (so undo works), then commit. */
-function insertAtCaret(el: HTMLInputElement, text: string, commit: (value: string) => void) {
+/** Insert `text` at the caret of a one-line input through the browser's editing (so undo works), then commit. */
+export function insertAtCaret(el: HTMLInputElement, text: string, commit: (value: string) => void) {
   const s = el.selectionStart ?? el.value.length;
   const e = el.selectionEnd ?? s;
   const next = el.value.slice(0, s) + text + el.value.slice(e);
@@ -86,6 +86,32 @@ function insertAtCaret(el: HTMLInputElement, text: string, commit: (value: strin
   if (el.value !== next) el.value = next;
   el.setSelectionRange(s + text.length, s + text.length);
   commit(next);
+}
+
+/**
+ * The symbols row for a one-line code input (a gap, the review's typed key line): `: ( ) [ ] = _`,
+ * touch screens only (CSS). Keys never take focus, so the phone keyboard stays open; `onKey`
+ * types the character (see `insertAtCaret`).
+ */
+export function SymbolKeys({ onKey, disabled, className = '' }: { onKey: (ch: string) => void; disabled?: boolean; className?: string }) {
+  return (
+    <div className={`typer-keys gaps-keys ${className}`} role="group" aria-label="Code keys">
+      {KEYS.map((key) => (
+        <button
+          key={key.ch}
+          type="button"
+          className="typer-key typer-key-char"
+          aria-label={key.name}
+          disabled={disabled}
+          onPointerDown={keepFocus}
+          onMouseDown={keepFocus}
+          onClick={() => onKey(key.ch)}
+        >
+          {key.ch}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 // ── Editor ──────────────────────────────────────────────────────────────────
@@ -385,28 +411,16 @@ export function CodeGaps({
         </div>
       </CodePane>
       {keyBar && !revealed && editable.length > 0 && (
-        <div className="typer-keys gaps-keys" role="group" aria-label="Code keys">
-          {KEYS.map((key) => (
-            <button
-              key={key.ch}
-              type="button"
-              className="typer-key typer-key-char"
-              aria-label={key.name}
-              disabled={disabled}
-              onPointerDown={keepFocus}
-              onMouseDown={keepFocus}
-              onClick={() => {
-                const k = editable.includes(lastFocused.current) ? lastFocused.current : editable[0];
-                const el = inputs.current[k];
-                if (!el || el.disabled) return;
-                if (document.activeElement !== el) el.focus({ preventScroll: true });
-                insertAtCaret(el, key.ch, (v) => setValue(k, v));
-              }}
-            >
-              {key.ch}
-            </button>
-          ))}
-        </div>
+        <SymbolKeys
+          disabled={disabled}
+          onKey={(ch) => {
+            const k = editable.includes(lastFocused.current) ? lastFocused.current : editable[0];
+            const el = inputs.current[k];
+            if (!el || el.disabled) return;
+            if (document.activeElement !== el) el.focus({ preventScroll: true });
+            insertAtCaret(el, ch, (v) => setValue(k, v));
+          }}
+        />
       )}
     </>
   );
