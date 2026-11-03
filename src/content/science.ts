@@ -31,8 +31,8 @@ export const SCIENCE: SciencePrinciple[] = [
     title: "Pick first, then write it",
     icon: "pencil",
     finding:
-      "People remember what they produce themselves better than what they only read. In the classic experiments, words learners generated from a cue were remembered better than the same words read, and a later meta-analysis found the benefit across many studies.",
-    source: "Slamecka & Graf (1978), J. Experimental Psychology: Human Learning and Memory; Bertsch et al. (2007), Memory & Cognition",
+      "Guidance helps most while material is new, and should fade as skill grows. Putting a solution's scrambled lines in order taught students as much as writing the same code, in less time. And people remember what they produce better than what they only read.",
+    source: "Renkl & Atkinson (2003), Educational Psychologist; Ericson, Margulieux & Rick (2017), Koli Calling; Slamecka & Graf (1978), J. Experimental Psychology: Human Learning and Memory; Bertsch et al. (2007), Memory & Cognition",
     howWeUseIt:
       "New code starts as choices: you put a part's lines in order or pick each missing line. Once you know it, usually after its first review, you type it from memory, because producing code yourself is what makes it stick.",
   },

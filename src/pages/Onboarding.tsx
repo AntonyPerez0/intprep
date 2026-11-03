@@ -1,12 +1,13 @@
 import '../styles/pages/onboarding.css';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CodeXml, Flame, Keyboard, List, ListChecks, Repeat2, Rocket, Route, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, CodeXml, Flame, MapPin, Repeat2, Rocket, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
 import { CATEGORIES, FOUNDATIONS, PROBLEMS } from '../content/index';
 import { IconTile } from '../components/icons';
+import { CODE_PRACTICE_ICON } from '../components/InputSwitch';
 import { Logo, Ring } from '../components/ui';
 import { DAILY_GOALS, GEMS } from '../lib/game';
-import { CODE_PRACTICE, type InputMode } from '../lib/input';
+import { CODE_PRACTICE } from '../lib/input';
 import { finishOnboarding, useProgress, type Experience } from '../lib/store';
 import { sfx } from '../lib/sound';
 
@@ -17,8 +18,6 @@ const LEVELS: { id: Experience; icon: LucideIcon; title: string; blurb: string }
 ];
 
 const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
-/** The plan's "Code practice" row: the setting as Profile names it (picking is the ListChecks icon everywhere). */
-const CODE_PRACTICE_ICON: Record<InputMode, LucideIcon> = { auto: ListChecks, type: Keyboard, tap: List };
 const MAX_GOAL = DAILY_GOALS[DAILY_GOALS.length - 1].xp;
 const DEFAULT_GOAL = 50;
 
@@ -215,7 +214,7 @@ export function OnboardingPage() {
                   </h1>
                   <p className="ob-sub">Here's how IntPrep will work for you. You can change any of it later in your profile.</p>
                   <dl className="ob-plan">
-                    <PlanRow icon={Route} label="Starting point" value={level.title} detail={startingPoint(exp)} onChange={() => setStep(1)} changeLabel="Edit starting point" />
+                    <PlanRow icon={MapPin} label="Starting point" value={level.title} detail={startingPoint(exp)} onChange={() => setStep(1)} changeLabel="Edit starting point" />
                     <PlanRow
                       icon={Target}
                       label="Daily goal"
@@ -230,6 +229,7 @@ export function OnboardingPage() {
                       value="Spaced repetition"
                       detail="Problems come back just before you would forget them: spot the pattern, then recall the code."
                     />
+                    {/* The setting as Profile shows it: its icon, label and line. */}
                     <PlanRow icon={CODE_PRACTICE_ICON[practice.id]} label="Code practice" value={practice.label} detail={practice.sub} />
                     <PlanRow
                       icon={Flame}

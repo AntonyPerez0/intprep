@@ -49,7 +49,8 @@ function Citation({ source }: { source: string }) {
 }
 
 const countWords = (s: string) => s.split(/\s+/).filter(Boolean).length;
-const SOURCES = SCIENCE.reduce((n, s) => n + s.source.split(/;\s*/).length, 0);
+/** Distinct sources: a study cited by two principles (e.g. Renkl & Atkinson, 2003) counts once. */
+const SOURCES = new Set(SCIENCE.flatMap((s) => s.source.split(/;\s*/).map((c) => c.match(/^(.*?\(\d{4}\))/)?.[1] ?? c))).size;
 const READ_MIN = Math.max(1, Math.round(SCIENCE.reduce((n, s) => n + countWords(s.finding) + countWords(s.howWeUseIt) + countWords(s.title), 120) / 220));
 
 function scrollToId(id: string) {

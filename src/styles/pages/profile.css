@@ -1027,6 +1027,19 @@
 .seg button.on .profile-seg-sub {
   color: var(--text-secondary);
 }
+/* Code practice: every option's description in one cell, only the selected one shown, so the row
+   keeps its height and the cards never move when the choice changes */
+.profile-desc-stack {
+  display: grid;
+}
+.profile-desc-stack > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  text-wrap: pretty;
+}
+.profile-desc-stack > span.on {
+  visibility: visible;
+}
 /* A row whose control is a list (Code practice): the options sit under the label at every width */
 .profile-row.is-stacked {
   flex-direction: column;

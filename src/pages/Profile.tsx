@@ -11,14 +11,11 @@ import {
   Download,
   FlaskConical,
   Gem,
-  Keyboard,
-  List,
   Lock,
   Monitor,
   Moon,
   Pencil,
   RotateCcw,
-  Route,
   Snowflake,
   Star,
   Sun,
@@ -44,6 +41,7 @@ import {
   type Progress,
 } from '../lib/store';
 import { ICONS, IconTile } from '../components/icons';
+import { CODE_PRACTICE_ICON } from '../components/InputSwitch';
 import { Badge, Modal, ProgressBar, SectionHeader, StatCard, Toggle } from '../components/ui';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -596,8 +594,31 @@ const THEMES: { id: Progress['settings']['theme']; label: string; icon: LucideIc
   { id: 'dark', label: 'Dark', icon: Moon },
 ];
 
-/** "Code practice" (lib/input.ts): pick first, then type (recommended), always type, or always pick. */
-const CODE_PRACTICE_ICON: Record<InputMode, LucideIcon> = { auto: Route, type: Keyboard, tap: List };
+/**
+ * "Code practice" (lib/input.ts): pick first, then type (recommended), always type, or always pick.
+ * The row's description says what the selected option does, beyond its card's own line.
+ */
+const CODE_PRACTICE_DESC: Record<InputMode, string> = {
+  auto: 'New code starts as choices until you know it. To type sooner, use “Type instead”.',
+  type: 'You type all code, even code you have just met. Some exercises offer “Pick instead” if you get stuck.',
+  tap: 'Exercises with options are always picked. The rest, like From scratch, are typed.',
+};
+
+/**
+ * Every option's description sits in one grid cell and only the selected one shows, so the row keeps
+ * its height and the cards under it never move when the choice changes.
+ */
+function CodePracticeDesc({ value }: { value: InputMode }) {
+  return (
+    <span className="profile-desc-stack">
+      {CODE_PRACTICE.map(({ id }) => (
+        <span key={id} className={id === value ? 'on' : undefined} aria-hidden={id === value ? undefined : true}>
+          {CODE_PRACTICE_DESC[id]}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 function CodePractice({ value }: { value: InputMode }) {
   return (
@@ -774,7 +795,7 @@ export function Profile() {
                 ))}
               </div>
             </SettingRow>
-            <SettingRow id="code-practice" stacked label="Code practice" desc="New code starts as choices. Typing takes over once you know it.">
+            <SettingRow id="code-practice" stacked label="Code practice" desc={<CodePracticeDesc value={p.settings.typingMode} />}>
               <CodePractice value={p.settings.typingMode} />
             </SettingRow>
           </SettingsGroup>
