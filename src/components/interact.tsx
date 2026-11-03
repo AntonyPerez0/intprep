@@ -61,7 +61,10 @@ export function ActionBar({
   const primary = status === 'idle' ? (onCheck ?? onContinue) : onContinue;
   const primaryEnabled = status !== 'idle' || !onCheck || canCheck;
 
-  // Enter = primary action (unless typing in a textarea).
+  // Enter = primary action (unless typing in a textarea). Plain Enter on a button, link or
+  // disclosure is that control's own; Ctrl/⌘ + Enter is the primary action from anywhere (a placed
+  // line, a slot, Check itself), as every footer's "Ctrl/⌘ + Enter to check" says. Links keep it
+  // (open in a new tab).
   const ref = useRef(primary);
   ref.current = primary;
   const enabledRef = useRef(primaryEnabled);
@@ -72,9 +75,10 @@ export function ActionBar({
       // A dialog (e.g. "Switch mode?") owns the keyboard: Enter must not finish the attempt behind it.
       if (modalOpen()) return;
       const el = e.target as HTMLElement;
-      if (el.tagName === 'TEXTAREA' && !(e.metaKey || e.ctrlKey)) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (el.tagName === 'TEXTAREA' && !mod) return;
       const isOption = el.classList?.contains('choice') || el.classList?.contains('parsons-item');
-      if ((el.tagName === 'BUTTON' && !isOption) || el.tagName === 'A') return;
+      if (el.tagName === 'A' || (!mod && ((el.tagName === 'BUTTON' && !isOption) || el.tagName === 'SUMMARY'))) return;
       if (!enabledRef.current) return;
       e.preventDefault();
       ref.current();

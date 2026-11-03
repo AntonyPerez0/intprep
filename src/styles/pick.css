@@ -59,13 +59,30 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  /* A pick or hint wider than the slot (phones, deep indents) says so; the full line is the
-     slot's accessible name and shows in its options */
+  /* A pick wider than the slot (phones, deep indents) says so; the full line is the slot's
+     accessible name and shows in its options. A hint that does not fit wraps under the slot. */
   text-overflow: ellipsis;
 }
 .pick-slot-hint {
   color: var(--code-comment);
   font-style: italic;
+}
+/* A hint too long for its slot (phones, deep indents): the whole hint wraps under the slot as a
+   comment, aligned with the code (as a typed gap's caption does, gaps.css), and the slot shows
+   none. It stays once picked, so rows never change height under the learner's finger. */
+.pick-row.has-caption {
+  align-items: flex-start; /* the line number stays with the slot, not the caption */
+}
+/* A column, not a wrap: the row is as wide as the longest line, so the caption would fit beside the slot */
+.pick-row.has-caption .pick-slot-wrap {
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 4px;
+}
+/* As wide as the slot (the visible window), not the longest line: the rows are max-content */
+.pick-slot-wrap > .pick-slot-caption {
+  width: calc(100cqi - 52px - var(--indent, 0ch) - 12px);
+  min-width: 14ch;
 }
 .pick-slot-icon {
   flex: none;
@@ -343,6 +360,9 @@
   .pick-slot-icon {
     width: 15px;
     height: 15px;
+  }
+  .pick-row.has-caption .typer-ln {
+    padding-top: 11px; /* centered on the 44px slot */
   }
   .pick-panel .choice.pick-option {
     min-height: 44px;

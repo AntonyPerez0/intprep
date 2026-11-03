@@ -11,7 +11,6 @@ import {
   FileText,
   Gauge,
   Lightbulb,
-  List,
   ListChecks,
   ListOrdered,
   MessageSquareText,
@@ -33,6 +32,7 @@ import {
   DRILL_LABEL,
   drillLabel,
   gapChoices,
+  isGivenLine,
   keyLineDrill,
   patternChoices,
   pickPart,
@@ -43,6 +43,7 @@ import {
   type DrillKind,
 } from '../lib/drills';
 import { gapsSummary, type GapsGrade } from '../lib/gaps';
+import { highlightLine } from '../lib/highlight';
 import { preferTyping, type CodeInput } from '../lib/input';
 import { inline, Md } from '../lib/markdown';
 import { definedNames, parseSolution } from '../lib/parseSolution';
@@ -51,10 +52,10 @@ import { sfx } from '../lib/sound';
 import { getProgress, useProgress } from '../lib/store';
 import { ArrangeWindow, useArrange, type ArrangeHandle } from './Arrange';
 import { GapsWindow, insertAtCaret, PickGapsWindow, SymbolKeys, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from './CodeGaps';
-import { CheckedAction, CodeDiff, CodeEditor, GivenLines, TyperFooter, TyperWindow } from './CodeTyper';
+import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, GivenLines, TyperFooter, TyperWindow } from './CodeTyper';
 import { CategoryIcon } from './icons';
 import { ActionBar, Choices, CodeView, CodeWindow, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
-import { InputSwitch } from './InputSwitch';
+import { INPUT_ICON, InputSwitch } from './InputSwitch';
 import { DifficultyChip, Kbd } from './ui';
 
 export interface DrillResult {
@@ -682,6 +683,10 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   const inputRef = useRef<HTMLInputElement>(null);
   const pickRef = useRef<PickGapsHandle>(null);
   const lines = useMemo(() => parsed.lines.map((l) => l.text), [parsed]);
+  // A keyboard arrives on the options of a picked card, as it arrives in the typed card's input.
+  useEffect(() => {
+    if (autoFocus && !typing) pickRef.current?.focusOptions();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!drill) {
     return <OrderDrill problem={p} onDone={onDone} kicker={kicker} combo={combo} badge={badge} meta={meta} />;
   }
@@ -729,12 +734,21 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
       pickRef.current?.focusOptions();
     }
   };
+  // The switches swap the card inside the click (flushSync) and move focus into the new view, so
+  // the keyboard never drops to the page: "Show options" to the options (scrolled into view above
+  // the action bar), "Type instead" to the input (a phone opens its keyboard: the learner asked to type).
   const showOptions = () => {
-    setSawOptions(true);
-    setOpen(0);
-    setTyping(false);
+    flushSync(() => {
+      setSawOptions(true);
+      setOpen(0);
+      setTyping(false);
+    });
+    pickRef.current?.focusOptions();
   };
-  const typeInstead = () => setTyping(true);
+  const typeInstead = () => {
+    flushSync(() => setTyping(true));
+    inputRef.current?.focus();
+  };
   const finish = () => {
     const r = first ?? { ok, input: credit };
     const coded = r.input === 'type';
@@ -843,7 +857,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
             // narrowest only their icons; the full name stays the accessible one.
             <div className="drill-tools">
               {!first && <ToolButton icon={<Eye aria-hidden="true" />} label="Show answer" short="Answer" onClick={giveUp} className="drill-give-up" />}
-              <ToolButton icon={<List aria-hidden="true" />} label="Show options" short="Options" onClick={showOptions} />
+              <ToolButton icon={<INPUT_ICON.pick aria-hidden="true" />} label="Show options" short="Options" onClick={showOptions} />
             </div>
           ) : canType ? (
             <InputSwitch to="type" onClick={typeInstead} />
@@ -878,16 +892,19 @@ function useCardInput(input: CodeInput | undefined) {
   const opened: CodeInput = input ?? 'type';
   const [current, setCurrent] = useState<CodeInput>(opened);
   // "Type instead": offered on a card that opened as a pick card, in "Pick first, then type" only.
-  const typeInstead = opened === 'pick' && mode === 'auto' ? () => setCurrent('type') : undefined;
-  return { current, typeInstead };
+  // The typed card mounts inside the click (flushSync) and its first gap or editor takes focus
+  // there, so a phone opens its keyboard: the learner asked to type.
+  const typeInstead = opened === 'pick' && mode === 'auto' ? () => flushSync(() => setCurrent('type')) : undefined;
+  return { current, typeInstead, focusNow: current !== opened };
 }
 
 export function GapsDrill(props: DrillProps) {
-  const { current, typeInstead } = useCardInput(props.input);
-  return current === 'pick' ? <PickGapsCard {...props} onTypeInstead={typeInstead} /> : <TypeGapsCard {...props} />;
+  const { current, typeInstead, focusNow } = useCardInput(props.input);
+  return current === 'pick' ? <PickGapsCard {...props} onTypeInstead={typeInstead} /> : <TypeGapsCard {...props} focusNow={focusNow} />;
 }
 
-function TypeGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, comesBack }: DrillProps) {
+/** `focusNow`: the card replaced its pick twin at the learner's request ("Type instead"): focus it on any pointer. */
+function TypeGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, comesBack, focusNow }: DrillProps & { focusNow?: boolean }) {
   const src = useMemo(() => reviewGaps(p, seed), [p, seed]);
   // The set was picked for this card (2 or 3 lines, a key line among them, see `reviewGaps`):
   // pin it by keeping every other line visible.
@@ -896,7 +913,7 @@ function TypeGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
   const [first, setFirst] = useState<GapsGrade | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
   const [checks, setChecks] = useState(0);
-  const [autoFocus] = useState(isFinePointer);
+  const [autoFocus] = useState(() => isFinePointer() || !!focusNow);
   const rootRef = useRef<HTMLElement>(null);
   const gapsRef = useRef<CodeGapsHandle>(null);
   useRevealScroll(rootRef, ex.revealed, ex.grade.perfect, '.gaps .diff.del');
@@ -988,6 +1005,7 @@ function PickGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
   const rootRef = useRef<HTMLElement>(null);
   const pickRef = useRef<PickGapsHandle>(null);
   useRevealScroll(rootRef, ex.revealed, ex.grade.perfect, '.gaps .diff.del');
+  useArrivalFocus(() => pickRef.current?.focusOptions());
 
   const g = ex.grade;
   const n = ex.gaps.length;
@@ -1158,11 +1176,11 @@ function PartCue({ part }: { part: PartInfo }) {
 }
 
 export function PartDrill(props: DrillProps) {
-  const { current, typeInstead } = useCardInput(props.input);
-  return current === 'pick' ? <PickPartCard {...props} onTypeInstead={typeInstead} /> : <TypePartCard {...props} />;
+  const { current, typeInstead, focusNow } = useCardInput(props.input);
+  return current === 'pick' ? <PickPartCard {...props} onTypeInstead={typeInstead} /> : <TypePartCard {...props} focusNow={focusNow} />;
 }
 
-function TypePartCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, chunk, comesBack }: DrillProps) {
+function TypePartCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, chunk, comesBack, focusNow }: DrillProps & { focusNow?: boolean }) {
   const part = usePart(p, chunk, seed, 'type');
   const { before, lead, body: toWrite, n, indent, given, start, firstLine } = part;
   // Names the part defines that are nowhere on screen: the code is compared line by line with
@@ -1173,7 +1191,7 @@ function TypePartCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
   const [first, setFirst] = useState<CodeGrade | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
   const [checks, setChecks] = useState(0);
-  const [autoFocus] = useState(isFinePointer);
+  const [autoFocus] = useState(() => isFinePointer() || !!focusNow);
   const rootRef = useRef<HTMLElement>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   useRevealScroll(rootRef, !!grade, !!grade?.perfect, '.typer-diff .diff:not(.ok)');
@@ -1293,10 +1311,56 @@ function TypePartCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
   );
 }
 
+/**
+ * A one-line part's options, as "Pick the next line" shows them: changes to the line in the context
+ * of its solution, then lines from later parts with its shape (not on screen); never the code above
+ * it. `given`: the line is not worth a pick: bare structure (`else:`, `try:`, a `def` line…) or
+ * fewer than 3 options (2 is a coin toss).
+ */
+function oneLineChoice(p: Problem, ci: number, seed: number) {
+  const parsed = parseSolution(p.solution);
+  const lp = reviewParts(p).get(ci)!;
+  const line = lp.body.find((l) => !isIgnorable(l)) ?? '';
+  const before = parsed.chunks.slice(0, ci).flatMap((c) => c.lines);
+  const later = parsed.chunks.slice(ci + 1).flatMap((c) => c.lines);
+  const choice = gapChoices([line], [0], seed, 3, later, { context: parsed.lines.map((l) => l.text), visible: [...before, ...lp.lead] })[0];
+  return { line, choice, given: isGivenLine(line) || choice.options.length < 3 };
+}
+
+/**
+ * The part a picked part card asks: the deck's, unless it is one line with no real pick
+ * (`oneLineChoice(...).given`); then the problem's next best part that is a real pick (`pickPart`
+ * avoiding the ones tried). Only when none is does the card show the line as given.
+ */
+function pickablePart(p: Problem, first: number, seed: number): number {
+  const parts = reviewParts(p);
+  const tried: number[] = [];
+  let ci = first;
+  for (let k = 0; k < parts.size; k++) {
+    const lp = parts.get(ci);
+    if (!lp || codeLines(lp.body).length !== 1 || !oneLineChoice(p, ci, seed).given) return ci;
+    tried.push(ci);
+    const next = pickPart(p, seed, tried, 'pick');
+    if (tried.includes(next)) break;
+    ci = next;
+  }
+  return first;
+}
+
 /** "Arrange a part" (the part's lines in order, one paired distractor), or, for a one-line part, the line picked from options. */
 function PickPartCard(props: DrillProps & { onTypeInstead?: () => void }) {
-  const part = usePart(props.problem, props.chunk, props.seed ?? 0, 'pick');
-  return part.n > 1 ? <ArrangePartCard {...props} part={part} /> : <PickLinePartCard {...props} part={part} />;
+  const { problem: p, chunk, seed = 0 } = props;
+  const ci = useMemo(() => pickablePart(p, chunk ?? pickPart(p, seed, [], 'pick'), seed), [p, chunk, seed]);
+  const part = usePart(p, ci, seed, 'pick');
+  if (part.n > 1) return <ArrangePartCard {...props} part={part} />;
+  return oneLineChoice(p, ci, seed).given ? <GivenLinePartCard {...props} part={part} /> : <PickLinePartCard {...props} part={part} />;
+}
+
+/** Focus on arrival with a keyboard (fine pointer), as every pick screen does; phones wait for a tap. */
+function useArrivalFocus(focus: () => void) {
+  useEffect(() => {
+    if (isFinePointer()) focus();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 function ArrangePartCard({
@@ -1318,6 +1382,8 @@ function ArrangePartCard({
   const arrangeRef = useRef<ArrangeHandle>(null);
   const r = ex.result;
   useRevealScroll(rootRef, ex.revealed, r.perfect, '.arrange-diff .diff:not(.ok)');
+  // The first block in the bank (scrolled clear of the action bar by the page's scroll padding).
+  useArrivalFocus(() => arrangeRef.current?.focus());
   const status: CheckStatus = ex.revealed ? (r.perfect ? 'correct' : 'wrong') : 'idle';
   const odd = ex.blocks.some((b) => b.distractor);
 
@@ -1356,7 +1422,7 @@ function ArrangePartCard({
         title={`Put the next part of ${p.title} in order`}
         sub={
           first && !ex.revealed
-            ? 'Tap a line to send it back, then add the lines again in order.'
+            ? 'Select a line to send it back, then add the lines again in order.'
             : odd
               ? "Put this part's lines in order under the highlighted comment. One line does not belong."
               : "Put this part's lines in order under the highlighted comment."
@@ -1416,13 +1482,8 @@ function PickLinePartCard({
   onTypeInstead,
   part,
 }: DrillProps & { onTypeInstead?: () => void; part: PartInfo }) {
-  const lineText = useMemo(() => part.body.find((l) => !isIgnorable(l)) ?? '', [part.body]);
-  // Wrong options: changes to the line (in the context of its solution), then lines from later
-  // parts with its shape (not on screen); never the code above it.
-  const choices = useMemo(() => {
-    const later = part.parsed.chunks.slice(part.ci + 1).flatMap((c) => c.lines);
-    return gapChoices([lineText], [0], seed, 3, later, { context: part.parsed.lines.map((l) => l.text), visible: [...part.before, ...part.lead] });
-  }, [lineText, seed, part.parsed, part.ci]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { line: lineText, choice } = useMemo(() => oneLineChoice(p, part.ci, seed), [p, part.ci, seed]);
+  const choices = useMemo(() => [choice], [choice]);
   const [sel, setSel] = useState('');
   const [open, setOpen] = useState<number | null>(0);
   const [status, setStatus] = useState<CheckStatus>('idle');
@@ -1432,6 +1493,7 @@ function PickLinePartCard({
   const pickRef = useRef<PickGapsHandle>(null);
   const ok = sameCode(sel, lineText);
   useRevealScroll(rootRef, status !== 'idle', ok, '.gaps .diff.del');
+  useArrivalFocus(() => pickRef.current?.focusOptions());
   const check = () => {
     if (!sel) return;
     releaseFocus();
@@ -1501,6 +1563,40 @@ function PickLinePartCard({
         secondary={first === null && onTypeInstead ? <InputSwitch to="type" onClick={onTypeInstead} /> : undefined}
         checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
       />
+    </section>
+  );
+}
+
+/**
+ * A one-line part with no real pick (bare structure, or fewer than 3 options) when the problem has
+ * no other part to ask: the line is shown as given in its place, and the card only moves on. It
+ * asks nothing, so it scores nothing against the learner.
+ */
+function GivenLinePartCard({ problem: p, onDone, kicker, badge, meta, part }: DrillProps & { part: PartInfo }) {
+  const line = part.body.find((l) => !isIgnorable(l)) ?? '';
+  return (
+    <section className="drill drill-code" data-drill="part" data-problem={p.id} data-input="pick">
+      <DrillHead
+        kind="gaps"
+        input="pick"
+        kicker={kicker ?? 'The next line'}
+        badge={badge}
+        meta={meta}
+        title={`The next line of ${p.title}`}
+        sub="This part is one line with nothing real to choose between, so it is given. Read it, then continue."
+      />
+      <ProblemDisclosure p={p} />
+      <TyperWindow filename="solution.py" meta={`Part ${part.partNo} of ${part.parts}`} footer={<TyperFooter note="Given" keys={false} />}>
+        <PartFold part={part} />
+        <CodePane>
+          <GivenLines lines={part.given} start={part.start} />
+          <PartCue part={part} />
+          <CodeLine n={part.firstLine} className="given">
+            {highlightLine(line)}
+          </CodeLine>
+        </CodePane>
+      </TyperWindow>
+      <ActionBar status="idle" onContinue={() => onDone({ kind: 'part', correct: true, input: 'pick' })} />
     </section>
   );
 }

@@ -33,7 +33,7 @@ import {
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { gapChoices, type GapChoice } from '../lib/choices';
 import { baseIndent, codeLines, indentOf, lineKey } from '../lib/codegrade';
-import { gapsSummary, gradeGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
+import { gapSwaps, gapsSummary, gradeGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { stripComment } from '../lib/parseSolution';
 import { CodeLine, CodePane, TyperWindow } from './CodeTyper';
@@ -61,6 +61,33 @@ const GENERIC_PLACEHOLDER = ['Type the missing line', 'Type the line'];
 function trailingComment(line: string): string {
   const code = stripComment(line);
   return code.trim() === '' ? '' : line.slice(code.length).trim();
+}
+
+/**
+ * What a screen reader hears about a gap (typed or picked) beyond its name: the hint shown in it
+ * and the code it follows ("Hint: base case: the empty tree. After line 2: def dfs(node):"). In
+ * forms mode a reader jumps from gap to gap, so this is its only view of the code around it.
+ */
+function gapContext(shown: readonly string[], isGap: (line: number) => boolean, start: number, i: number, hint?: string): string {
+  let after = '';
+  for (let j = i - 1; j >= 0; j--) {
+    if (stripComment(shown[j]).trim() && !isGap(j)) {
+      after = `After line ${start + j}: ${shown[j].trim()}`;
+      break;
+    }
+  }
+  return [hint && `Hint: ${hint.replace(/^#\s*/, '')}.`, after].filter(Boolean).join(' ');
+}
+
+/** "indented 4 spaces" ('' at no indentation): how a screen reader hears a line's nesting. */
+export function indentWords(spaces: number): string {
+  return spaces > 0 ? `indented ${spaces} space${spaces === 1 ? '' : 's'}` : '';
+}
+
+/** Gaps that may trade places (neighboring order-free lines), keyed on content so callers need not memoize. */
+function useSwaps(lines: readonly string[], gaps: readonly number[]) {
+  const key = `${gaps.join(',')}|${lines.join('\n')}`;
+  return useMemo(() => gapSwaps(lines, gaps), [key]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // ── Touch key bar ───────────────────────────────────────────────────────────
@@ -194,7 +221,8 @@ export function CodeGaps({
   const shown = useMemo(() => lines.map(clean), [lines]);
   const gapAt = useMemo(() => new Map(gaps.map((line, k) => [line, k])), [gaps]);
   const expected = useMemo(() => gaps.map((i) => shown[i] ?? ''), [gaps, shown]);
-  const grade = useMemo(() => gradeGaps(values, expected), [values, expected]);
+  const swaps = useSwaps(lines, gaps);
+  const grade = useMemo(() => gradeGaps(values, expected, swaps), [values, expected, swaps]);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const lastFocused = useRef(0);
   const isLocked = (k: number) => !!locked?.[k];
@@ -305,14 +333,6 @@ export function CodeGaps({
     }
   };
 
-  // Screen readers in forms mode jump from input to input: say which code the gap follows.
-  const contextFor = (i: number) => {
-    for (let j = i - 1; j >= 0; j--) {
-      if (stripComment(shown[j]).trim() && !gapAt.has(j)) return `After line ${start + j}: ${shown[j].trim()}`;
-    }
-    return '';
-  };
-
   const missing = gaps.length;
 
   return (
@@ -366,7 +386,7 @@ export function CodeGaps({
             // Enter's label on a phone keyboard: "next" while another gap is still empty.
             const lastOpen = editable[editable.length - 1] === k && !editable.some((j) => j !== k && !(values[j] ?? '').trim());
             // The description replaces the placeholder for screen readers, so it carries the hint too.
-            const ctx = [hint && `Hint: ${hint.replace(/^#\s*/, '')}.`, contextFor(i)].filter(Boolean).join(' ');
+            const ctx = gapContext(shown, (j) => gapAt.has(j), start, i, hint);
             return (
               <div
                 key={i}
@@ -499,9 +519,10 @@ export interface GapsWindowProps extends CodeGapsProps {
 
 /** CodeGaps in a typing window with its status bar: the all-in-one, like <CodeTyper>. */
 export function GapsWindow({ status, filename, meta, right, note, keys, after, className, ...gaps }: GapsWindowProps) {
+  const swaps = useSwaps(gaps.lines, gaps.gaps);
   const grade = useMemo(
-    () => (gaps.revealed ? gradeGaps(gaps.values, gaps.gaps.map((i) => clean(gaps.lines[i] ?? ''))) : null),
-    [gaps.revealed, gaps.values, gaps.gaps, gaps.lines],
+    () => (gaps.revealed ? gradeGaps(gaps.values, gaps.gaps.map((i) => clean(gaps.lines[i] ?? '')), swaps) : null),
+    [gaps.revealed, gaps.values, gaps.gaps, gaps.lines, swaps],
   );
   const st: CheckStatus = status ?? (grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle');
   const left = gaps.gaps.filter((_, k) => !gaps.locked?.[k]).length;
@@ -571,7 +592,9 @@ export function useGaps(lines: string[], opts: Omit<PickGapsOptions, 'seed'> & {
   // A new set (new round, or new lines) starts empty.
   const cur = state.key === key ? state : empty();
   const expected = useMemo(() => gaps.map((i) => clean(lines[i] ?? '')), [gaps]); // eslint-disable-line react-hooks/exhaustive-deps
-  const grade = useMemo(() => gradeGaps(cur.values, expected), [cur.values, expected]);
+  // Two gaps on neighboring lines whose order does not matter are right typed either way round.
+  const swaps = useSwaps(lines, gaps);
+  const grade = useMemo(() => gradeGaps(cur.values, expected, swaps), [cur.values, expected, swaps]);
   return {
     gaps,
     values: cur.values,
@@ -596,7 +619,8 @@ export function useGaps(lines: string[], opts: Omit<PickGapsOptions, 'seed'> & {
 // window and rows, but each gap is a slot button and its options (the right line and plausible
 // wrong ones, `gapChoices`) open right under it, inside the code, like an editor's suggestions.
 // Picking fills the slot and opens the next empty one. Stable hooks: `button.pick-slot` (one per
-// open gap, named "Line N, pick a line"), `.choice` (the options of the open slot; keys 1–N).
+// open gap, named "Line N, pick a line" and described by its hint and the code it follows),
+// `.choice` (the options of the open slot; keys 1–N).
 
 /** A snippet's comparison key with its indentation: one line per code line, `column:lineKey`. */
 const blockKey = (s: string) =>
@@ -606,7 +630,7 @@ const blockKey = (s: string) =>
 
 /** What a screen reader hears before a line of a block option: "Line 2, indented 4 spaces: ". */
 const blockLineLabel = (k: number, lines: number, indent: number) => {
-  const at = indent ? `indented ${indent} space${indent === 1 ? '' : 's'}` : '';
+  const at = indentWords(indent);
   if (lines > 1) return `${k ? '. ' : ''}Line ${k + 1}${at ? `, ${at}` : ''}: `;
   return at ? `${at[0].toUpperCase()}${at.slice(1)}: ` : '';
 };
@@ -652,6 +676,8 @@ export interface CodeOptionsProps {
   block?: boolean;
   /** Escape: e.g. close the panel and go back to the slot. */
   onEscape?: () => void;
+  /** Id of what the option group is about (a slot's hint and the code it follows), for focus that lands straight on the options. */
+  describedBy?: string;
   id?: string;
   className?: string;
   ref?: Ref<CodeOptionsHandle>;
@@ -676,6 +702,7 @@ export function CodeOptions({
   inline,
   block = false,
   onEscape,
+  describedBy,
   id,
   className = '',
   ref,
@@ -733,7 +760,7 @@ export function CodeOptions({
           </span>
         )}
       </div>
-      <div className="pick-options" role="radiogroup" aria-label={name}>
+      <div className="pick-options" role="radiogroup" aria-label={name} aria-describedby={describedBy}>
         <div className="pick-options-list">
           {options.map((o, i) => {
             let cls = '';
@@ -872,17 +899,30 @@ export function PickGaps({
   const shown = useMemo(() => lines.map(clean), [lines]);
   const gapAt = useMemo(() => new Map(gaps.map((line, k) => [line, k])), [gaps]);
   const expected = useMemo(() => gaps.map((i) => shown[i] ?? ''), [gaps, shown]);
-  const grade = useMemo(() => gradeGaps(values, expected), [values, expected]);
+  const swaps = useSwaps(lines, gaps);
+  const grade = useMemo(() => gradeGaps(values, expected, swaps), [values, expected, swaps]);
   const slots = useRef<(HTMLButtonElement | null)[]>([]);
+  const slotTexts = useRef<(HTMLSpanElement | null)[]>([]);
   const optionsRef = useRef<CodeOptionsHandle>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const isLocked = (k: number) => !!locked?.[k];
   const open = revealed || disabled ? null : active;
 
+  // The open panel on screen, clear of the header and the action bar (the row's scroll-margin):
+  // whenever focus goes into the options, so it never lands on options hidden under the bar.
+  const showPanel = (smooth: boolean) => {
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    panelRef.current?.scrollIntoView({ block: 'nearest', behavior: smooth && !reduce ? 'smooth' : 'auto' });
+  };
+  const focusOptions = () => {
+    optionsRef.current?.focus();
+    showPanel(false);
+  };
+
   useImperativeHandle(ref, () => ({
     focus: (k?: number) => slots.current[k ?? open ?? gaps.findIndex((_, j) => !isLocked(j))]?.focus(),
-    focusOptions: () => optionsRef.current?.focus(),
+    focusOptions,
   }));
 
   // Focus follows the picking: a pick (or opening a slot) made from inside the window moves focus
@@ -898,21 +938,54 @@ export function PickGaps({
     else if (values.every((v) => v.trim()) && !revealed) primaryButton()?.focus({ preventScroll: true });
   }, [open, values, revealed]);
 
-  // A slot that opens (after the first) scrolls its options into view.
+  // A slot that opens (after the first) scrolls its options into view. The first one opens on
+  // arrival: a page that focuses it (a keyboard) scrolls it into view with `focusOptions`; a phone
+  // keeps the top of the page.
   useEffect(() => {
     if (open === null) return;
     if (!moved.current) {
       moved.current = true;
       return;
     }
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    panelRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
-  }, [open]);
+    showPanel(true);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hintFor = (k: number, line: string): string | undefined => {
     if (Array.isArray(hints)) return hints[k] ?? undefined;
     return hints ? trailingComment(line) || undefined : undefined;
   };
+
+  // A hint wider than its slot (a phone, a deep indent) would end in an ellipsis, and it is the
+  // cue for which option is right: it shows in full under the slot instead, as a typed gap's does.
+  // Measured against the slot's text box, whose width does not depend on what it shows.
+  const gapsKey = gaps.join(',');
+  const hintsKey = Array.isArray(hints) ? hints.join('\u0000') : String(hints);
+  const [tight, setTight] = useState<ReadonlySet<number>>(() => new Set());
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root || revealed) return;
+    const ctx = document.createElement('canvas').getContext('2d');
+    const measure = () => {
+      const next = new Set<number>();
+      slotTexts.current.forEach((el, k) => {
+        if (!el || !el.isConnected) return;
+        const hint = hintFor(k, shown[gaps[k]] ?? '');
+        if (!hint) return;
+        const cs = getComputedStyle(el);
+        if (ctx) ctx.font = `italic ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const width = ctx ? ctx.measureText(hint).width : hint.length * parseFloat(cs.fontSize) * 0.6;
+        if (width > el.clientWidth + 0.5) next.add(k);
+      });
+      setTight((cur) => (cur.size === next.size && [...next].every((k) => cur.has(k)) ? cur : next));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(root);
+    // Web fonts change the measure once they load.
+    document.fonts?.ready.then(measure).catch(() => {});
+    return () => ro.disconnect();
+  }, [gapsKey, revealed, hintsKey, locked?.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (k: number, option: string) => {
     if (disabled || revealed) return;
@@ -923,6 +996,7 @@ export function PickGaps({
     if (disabled || revealed) return;
     if (k !== null && k === open) {
       optionsRef.current?.focus();
+      showPanel(true);
       return;
     }
     follow.current = k !== null;
@@ -977,9 +1051,15 @@ export function PickGaps({
             const isOpen = open === k;
             const hint = hintFor(k, line);
             const choice = choices[k];
+            // The whole hint under the slot when it does not fit in it (the slot then shows none).
+            const caption = !!hint && tight.has(k);
+            // The slot's name replaces what it shows, so its description carries the hint and the
+            // code it follows, as a typed gap's does; the open options are described by it too.
+            const ctx = gapContext(shown, (j) => gapAt.has(j), start, i, hint);
+            const ctxId = ctx ? `${uid}-ctx-${k}` : undefined;
             return (
               <Fragment key={i}>
-                <div className={`typer-line pick-row ${picked ? 'is-filled' : 'is-empty'} ${isOpen ? 'is-open' : ''}`}>
+                <div className={`typer-line pick-row ${picked ? 'is-filled' : 'is-empty'} ${isOpen ? 'is-open' : ''} ${caption ? 'has-caption' : ''}`}>
                   <span className="typer-ln">{n}</span>
                   <span className="pick-slot-wrap" style={{ ['--indent' as string]: `${indentOf(line)}ch` }}>
                     <button
@@ -989,17 +1069,34 @@ export function PickGaps({
                       type="button"
                       className="pick-slot"
                       aria-label={picked ? `Line ${n}: ${picked}. Pick again` : `Line ${n}, pick a line`}
+                      aria-describedby={ctxId}
                       aria-expanded={isOpen}
                       aria-controls={isOpen ? panelId : undefined}
                       disabled={disabled}
                       translate="no"
                       onClick={() => activate(k)}
                     >
-                      <span className="pick-slot-text">
-                        {picked ? highlightLine(picked) : <span className="pick-slot-hint">{hint ?? 'Pick a line'}</span>}
+                      <span
+                        className="pick-slot-text"
+                        ref={(el) => {
+                          slotTexts.current[k] = el;
+                        }}
+                      >
+                        {picked ? highlightLine(picked) : caption ? null : <span className="pick-slot-hint">{hint ?? 'Pick a line'}</span>}
                       </span>
                       <ChevronsUpDown className="pick-slot-icon" strokeWidth={2} aria-hidden="true" />
                     </button>
+                    {caption && (
+                      <span className="gaps-hint pick-slot-caption" aria-hidden="true">
+                        {hint}
+                      </span>
+                    )}
+                    {/* Hidden: read as the description only, not twice in browse mode */}
+                    {ctx && (
+                      <span id={ctxId} hidden>
+                        {ctx}
+                      </span>
+                    )}
                   </span>
                 </div>
                 {isOpen && choice && (
@@ -1012,6 +1109,7 @@ export function PickGaps({
                       selected={values[k] || null}
                       label={`Line ${n}`}
                       prompt={prompt}
+                      describedBy={ctxId}
                       onPick={(o) => pick(k, o)}
                       onEscape={() => closeTo(k)}
                     />
@@ -1048,9 +1146,10 @@ const PICK_KEYS = 'Number keys to pick · Enter to check';
 
 /** PickGaps in the typing window with the gaps status bar: the twin of <GapsWindow>. */
 export function PickGapsWindow({ status, filename, meta, right, note, keys = PICK_KEYS, top, after, className, ...picks }: PickGapsWindowProps) {
+  const swaps = useSwaps(picks.lines, picks.gaps);
   const grade = useMemo(
-    () => (picks.revealed ? gradeGaps(picks.values, picks.gaps.map((i) => clean(picks.lines[i] ?? ''))) : null),
-    [picks.revealed, picks.values, picks.gaps, picks.lines],
+    () => (picks.revealed ? gradeGaps(picks.values, picks.gaps.map((i) => clean(picks.lines[i] ?? '')), swaps) : null),
+    [picks.revealed, picks.values, picks.gaps, picks.lines, swaps],
   );
   const st: CheckStatus = status ?? (grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle');
   const open = picks.gaps.map((_, k) => k).filter((k) => !picks.locked?.[k]);
@@ -1140,7 +1239,8 @@ export function usePickGaps(lines: string[], opts: PickGapsHookOptions = {}): Pi
   const [state, setState] = useState<Round>(empty);
   const cur = state.key === key ? state : empty();
   const expected = useMemo(() => gaps.map((i) => clean(lines[i] ?? '')), [gaps]); // eslint-disable-line react-hooks/exhaustive-deps
-  const grade = useMemo(() => gradeGaps(cur.values, expected), [cur.values, expected]);
+  const swaps = useSwaps(lines, gaps);
+  const grade = useMemo(() => gradeGaps(cur.values, expected, swaps), [cur.values, expected, swaps]);
   const filled = cur.values.filter((v) => v.trim()).length;
   return {
     gaps,

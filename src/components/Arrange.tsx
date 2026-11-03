@@ -7,7 +7,9 @@
 //   <ArrangeWindow>  Arrange + ArrangeFooter in a TyperWindow (the all-in-one)
 //   useArrange()     the state: blocks, placed order, check / retry
 // Stable hooks: `.parsons-slot` (the placed lines), `.parsons-bank .parsons-item` (bank blocks,
-// named "Add line: …"), `.arrange-line` (a placed line, named "Remove line N: …").
+// named "Add line: …"), `.arrange-line` (a placed line, named "Remove line N: …"). A block or line
+// that is indented is described by its indentation ("Indented 4 spaces"), which is fixed per block
+// and is how a sighted learner sees where it nests.
 // Documented in docs/DESIGN.md ("Pick first, then type").
 
 import '../styles/typer.css';
@@ -16,15 +18,28 @@ import { Fragment, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef,
 import { Plus, X } from 'lucide-react';
 import { arrangeBlocks, arrangeSummaryParts, gradeArrange, type ArrangeBlock, type ArrangeGrade, type ArrangeOptions, type ArrangeSet } from '../lib/arrange';
 import { highlightLine } from '../lib/highlight';
+import { indentWords } from './CodeGaps';
 import { CodeLine, CodePane, TyperWindow } from './CodeTyper';
 import type { CheckStatus } from './interact';
 
 export { arrangeBlocks, gradeArrange, arrangeSummary, type ArrangeBlock, type ArrangeGrade, type ArrangeSet } from '../lib/arrange';
 
-/** The page's primary action (the ActionBar's last button): where focus goes once the bank is empty. */
+/** The page's primary action (the ActionBar's last button): where focus goes once enough lines are placed. */
 const primaryButton = () => document.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child');
 
 const pad = (n: number) => ' '.repeat(Math.max(0, n));
+
+/** "3 of 5 lines placed", or "3 of 2 lines placed · 1 too many" once a line more than the solution has is placed. */
+export function placedNote(placed: number, total: number, sep = ' · '): string {
+  const note = `${placed} of ${total} line${total === 1 ? '' : 's'} placed`;
+  return placed > total ? `${note}${sep}${placed - total} too many` : note;
+}
+
+/** "Indented 4 spaces" ('' at none): a block's description. */
+const indentNote = (spaces: number) => {
+  const w = indentWords(spaces);
+  return w && `${w[0].toUpperCase()}${w.slice(1)}`;
+};
 
 export interface ArrangeHandle {
   /** Focus a placed line (by position), or the first bank block without an argument. */
@@ -95,17 +110,21 @@ export function Arrange({
   }));
 
   // Focus follows the learner's place in the lists, so keyboard users can keep going: after adding,
-  // the next block in the bank (or the primary action once it is empty); after removing, the next
-  // placed line (or the bank).
-  const follow = useRef<{ to: 'bank' | 'line'; at: number } | null>(null);
+  // the next block in the bank, or the primary action (Check) once as many lines are placed as the
+  // solution has (the block left is the one that does not belong; Shift+Tab goes back to the
+  // bank), as Pick the gaps does once every slot is picked; after removing, the next placed line
+  // (or the bank).
+  const follow = useRef<{ to: 'bank' | 'line' | 'primary'; at: number } | null>(null);
   useLayoutEffect(() => {
     const f = follow.current;
     if (!f) return;
     follow.current = null;
-    if (f.to === 'bank') {
+    if (f.to !== 'line') {
+      const btn = primaryButton();
+      if (f.to === 'primary' && btn && !btn.disabled) return btn.focus({ preventScroll: true });
       const n = bankBtns.current.filter(Boolean).length;
       const el = n ? bankBtns.current[Math.min(f.at, n - 1)] : null;
-      (el ?? primaryButton())?.focus({ preventScroll: !el });
+      (el ?? btn)?.focus({ preventScroll: !el });
     } else {
       const n = lineBtns.current.filter(Boolean).length;
       const el = n ? lineBtns.current[Math.min(f.at, n - 1)] : bankBtns.current[0];
@@ -114,18 +133,28 @@ export function Arrange({
   }, [placed]);
 
   const inside = () => !!rootRef.current?.contains(document.activeElement);
+  // What the live region says after a change: the line, then its indentation and how many are placed past the solution's.
+  const tail = (b: ArrangeBlock, count: number) => {
+    const ind = indentNote(b.indent);
+    const over = count - total;
+    return `${ind ? `. ${ind}` : ''}${over > 0 ? `. ${over} line${over === 1 ? '' : 's'} too many` : ''}`;
+  };
   const place = (b: ArrangeBlock, j: number) => {
     if (off) return;
-    if (inside()) follow.current = { to: 'bank', at: j };
-    setSaid(`Added as line ${firstLine + placed.length}: ${b.text.trim()}`);
+    const count = placed.length + 1;
+    if (inside()) follow.current = count >= total ? { to: 'primary', at: j } : { to: 'bank', at: j };
+    setSaid(`Added as line ${firstLine + placed.length}: ${b.text.trim()}${tail(b, count)}`);
     onPlace(b.id);
   };
   const remove = (b: ArrangeBlock, k: number) => {
     if (off) return;
     if (inside()) follow.current = { to: 'line', at: k };
-    setSaid(`Removed line ${firstLine + k}: ${b.text.trim()}`);
+    setSaid(`Removed line ${firstLine + k}: ${b.text.trim()}${tail(b, placed.length - 1)}`);
     onRemove(k);
   };
+  // One hidden description per indentation in use, shared by the blocks and lines at it.
+  const indents = [...new Set(blocks.map((b) => b.indent).filter((n) => n > 0))];
+  const describe = (b: ArrangeBlock) => (b.indent > 0 ? `${uid}-ind-${b.indent}` : undefined);
   // Enter and Space act on the focused block or line (the ActionBar would treat Enter as Check).
   const keys = (act: () => void) => (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (e.nativeEvent.isComposing || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -148,7 +177,7 @@ export function Arrange({
         {revealed && result ? (
           <ArrangeDiff result={result} placed={placedBlocks} indent={indent} firstLine={firstLine} />
         ) : (
-          <div className="parsons-slot arrange-slot" role="list" aria-label={`${label}: ${placed.length} of ${total} lines placed`}>
+          <div className="parsons-slot arrange-slot" role="list" aria-label={`${label}: ${placedNote(placed.length, total, ', ')}`}>
             {placedBlocks.map((b, k) => (
               <div role="listitem" key={b.id} className="arrange-li">
                 <button
@@ -158,6 +187,7 @@ export function Arrange({
                   type="button"
                   className="typer-line arrange-line"
                   aria-label={`Remove line ${firstLine + k}: ${b.text.trim()}`}
+                  aria-describedby={describe(b)}
                   disabled={off}
                   translate="no"
                   onClick={() => remove(b, k)}
@@ -202,6 +232,7 @@ export function Arrange({
                   type="button"
                   className="parsons-item arrange-item"
                   aria-label={`Add line: ${b.text.trim()}`}
+                  aria-describedby={describe(b)}
                   disabled={off}
                   translate="no"
                   onClick={() => place(b, j)}
@@ -220,6 +251,11 @@ export function Arrange({
       <span className="sr-only" role="status" aria-live="polite">
         {revealed ? '' : said}
       </span>
+      {indents.map((n) => (
+        <span key={n} id={`${uid}-ind-${n}`} hidden>
+          {indentNote(n)}
+        </span>
+      ))}
     </div>
   );
 }
@@ -330,7 +366,7 @@ export interface ArrangeWindowProps extends ArrangeProps {
   className?: string;
 }
 
-/** Arrange in the typing window with its status bar: the twin of <CodeTyper> for one part. */
+/** Arrange in the typing window with its status bar: the twin of <CodeTyper> for one part. The footer counts every placed line ("3 of 2 lines placed · 1 too many"). */
 export function ArrangeWindow({ status, filename, meta, right, note, keys, top, after, className = '', ...arrange }: ArrangeWindowProps) {
   const result = arrange.revealed ? arrange.result ?? null : null;
   const st: CheckStatus = status ?? (result ? (result.perfect ? 'correct' : 'wrong') : 'idle');
@@ -341,7 +377,7 @@ export function ArrangeWindow({ status, filename, meta, right, note, keys, top, 
       meta={meta}
       right={right}
       className={`arrange-window ${className}`}
-      footer={<ArrangeFooter result={result} keys={keys} note={note ?? `${Math.min(arrange.placed.length, arrange.total)} of ${arrange.total} lines placed`} />}
+      footer={<ArrangeFooter result={result} keys={keys} note={note ?? placedNote(arrange.placed.length, arrange.total)} />}
     >
       {top}
       <Arrange {...arrange} disabled={arrange.disabled ?? st !== 'idle'} />

@@ -101,7 +101,11 @@ export function LessonPlayer({ mode }: Props) {
   // slide's comeback into another exercise. "Type instead" (in 'auto') switches one visit.
   const [typingMode] = useState(() => getProgress().settings.typingMode);
   const [tplInput] = useState<CodeInput>(() => (mode === 'guide' ? templateInput(typingMode, getProgress().templates?.[cat ?? '']) : 'type'));
-  /** The queue position of a template slide switched to typing with "Type instead". */
+  /**
+   * The queue position of a slide switched to typing with "Type instead" (a guide's template slide,
+   * or a foundation's "Pick the right code"): its typed view takes focus inside the tap, on any
+   * pointer, so a phone opens its keyboard (the learner asked to type).
+   */
   const [typedAt, setTypedAt] = useState<number | null>(null);
 
   const lesson = useMemo(() => {
@@ -424,7 +428,12 @@ export function LessonPlayer({ mode }: Props) {
             retake={isRequeue}
             canType={typingMode === 'auto'}
             onChecked={pickChecked}
-            onTypeInstead={() => setTypedSlides((t) => ({ ...t, [idx]: true }))}
+            onTypeInstead={() =>
+              flushSync(() => {
+                setTypedSlides((t) => ({ ...t, [idx]: true }));
+                setTypedAt(pos);
+              })
+            }
             onContinue={advance}
           />
         </SessionShell>
@@ -488,7 +497,7 @@ export function LessonPlayer({ mode }: Props) {
             revealed={revealed}
             hint={hint}
             comesBack={!isRequeue}
-            autoFocus={finePointer}
+            autoFocus={finePointer || typedAt === pos}
             textareaRef={codeRef}
           />
         ) : (
