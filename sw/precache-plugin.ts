@@ -58,10 +58,21 @@ export function precacheServiceWorker(): Plugin {
         const assets = outputs.filter((o): o is Rollup.OutputAsset => o.type === 'asset');
         const entry = chunks.find((c) => c.isEntry);
         if (!entry) this.error('no entry chunk');
-        if (chunks.length > 1) {
-          // Old tabs keep running after an update, but the previous deploy's cache is deleted
-          // when the new worker takes over, so a lazy chunk an old tab asks for later is gone.
-          this.warn(`${chunks.length} JS chunks: old tabs can't load lazy chunks after an update; see ${TEMPLATE}`);
+        // Chunks the entry imports statically (the content chunk, see vite.config.ts) load with the
+        // page. Any other chunk is lazy: old tabs keep running after an update, but the previous
+        // deploy's cache is deleted when the new worker takes over, so a lazy chunk an old tab
+        // asks for later is gone.
+        const byName = new Map(chunks.map((c) => [c.fileName, c]));
+        const eager = new Set<string>();
+        const visit = (c: Rollup.OutputChunk | undefined) => {
+          if (!c || eager.has(c.fileName)) return;
+          eager.add(c.fileName);
+          c.imports.forEach((f) => visit(byName.get(f)));
+        };
+        visit(entry);
+        const lazy = chunks.filter((c) => !eager.has(c.fileName));
+        if (lazy.length) {
+          this.warn(`${lazy.length} lazy JS chunk(s): old tabs can't load them after an update; see ${TEMPLATE}`);
         }
         const fonts = PRECACHE_FONTS.map((name) => {
           const font = assets.find((a) => a.names.includes(name));

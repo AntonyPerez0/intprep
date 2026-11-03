@@ -9,8 +9,9 @@
 // - install downloads the whole app for this deploy (page, JS/CSS bundle, manifest, icons, Latin
 //   fonts), then takes over at once (skipWaiting + clients.claim).
 // - activate deletes the previous deploys' caches. Tabs that are already open keep working: the
-//   app is a single JS bundle, so an open tab has all of its code in memory and never asks for an
-//   old file again (the plugin warns if code splitting ever adds lazy chunks).
+//   page loads all of its JS at once (the entry and the content chunk it imports statically), so
+//   an open tab has all of its code in memory and never asks for an old file again (the plugin
+//   warns if code splitting ever adds lazy chunks).
 // - Opening the app is network-first, so a new deploy shows up at once. The precached page is used
 //   offline, on a server error, or if the network hasn't answered within 3 s.
 //   Navigations never write to the cache: the page only comes from this deploy's precache, so it
