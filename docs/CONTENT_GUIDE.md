@@ -38,8 +38,8 @@ Plain English with American spelling (practice, color, neighbor, optimize), shor
 
 ## Foundations: "Your turn" slides
 Beginners learn by writing code. Code lessons let them write it themselves with `kind: 'type'` slides (see
-`TypeSlide` in `src/content/types.ts`); the first exercise on a new idea is picked from choices before it is typed
-(**Pick options** below). Put one right after the slide that taught the idea: **6 or
+`TypeSlide` in `src/content/types.ts`); the first exercise on a new idea is picked from choices, and a later slide
+types it (**Pick options** below). Put one right after the slide that taught the idea: **6 or
 more per code lesson** (conceptual lessons such as Big-O or how to solve a problem still get a few), ramping from a
 single line to a few lines to a small program or function by the end. Keep **at most 2 quizzes** per code lesson,
 and use them for recognition only: predicting output, spotting a bug or gotcha, reading complexity. A slide whose
@@ -61,16 +61,27 @@ A learner should see what an idea's code looks like before typing it from memory
 is **"Pick the right code"** in the default setting ("Pick first, then type") and in "Always pick": the learner
 picks the answer from the shuffled options, sees why (the explanation, and the pick against the answer line by
 line), and can choose "Type instead". In "Always type" it stays a typed slide, so write every slide to work typed.
-- **When:** the *first* exercise on a new idea (the first `if`, the first loop, `.get`, the first recursive call).
-  About a third of a lesson's "Your turn" slides, and always **more typed than picked** (validate enforces it).
-  Every picked idea must be typed later in the same lesson or the next one. Leave the last slides of a lesson
-  (the small programs) typed, and a lesson with only one or two code slides can have none.
+- **When:** the *first* exercise on each new idea: new syntax or a new library call (the first `if`, the first
+  `while`, `.get`, `Counter`, a slice, the first recursive call, `assert`). A repeat of an idea the learner has
+  already picked or typed stays typed, even in a later lesson: do not weaken typing for code they know.
+- **Then type it:** every picked idea is typed again later in the same lesson or the next one. When no later
+  slide does, add a short typed "Your turn" that uses it (one slide can practice two picked ideas). The last
+  "Your turn" of a lesson (the small program) is always typed. Today 37 of the 80 "Your turn" slides are picked.
+- **`ideas`:** name the new ideas on the picked slide (`ideas: ['while']`) and the same names on the typed slides
+  that practice them again. `npm run validate` checks with them that a picked idea was not on an earlier slide and
+  is typed again in time; it cannot check that the code really uses the idea, or find an unlabeled typed slide
+  that should have been picked, so keep the labels honest.
 - **Distractors:** realistic beginner mistakes that are clearly wrong once you look: a missing colon, `=` for
   `==`, a body that is not indented (or one level too deep), an off-by-one `range`, `print` instead of `return`, a
-  missing `return`, the wrong method (`.add` on a list, `.push`), arguments in the wrong order, quotes around a
-  variable name, a step that does not shrink. One mistake per option, so the learner can name it. Never an
-  equivalent form the grader would accept (`range(0, 5)`), never something absurd, and never a construct the
-  lesson has not taught yet.
+  missing `return`, the wrong method (`append` on a set, `.push`), arguments in the wrong order, quotes around a
+  variable name, a step that does not shrink. Never an equivalent form the grader would accept (`range(0, 5)`),
+  never something absurd, and never a construct the lesson has not taught yet.
+- **Shape the set so the answer is not its center.** If each wrong option changes a different line, the answer
+  is the only option that agrees with all the others, and a guess of the most typical option wins. So either put
+  every mistake at the same place (`nums[:3]` among `nums[3:]`, `nums[:2]`, `nums[1:4]`), or use a 2×2: mistake A,
+  mistake B, and A plus B together (a missing colon, a body that is not indented, and both). With 2 wrong options,
+  the second can be the first plus one more mistake. Each single mistake should still be one the learner can
+  name.
 - **Format:** each option is complete code at its real column in the file, exactly like `answer` (a function body
   starts at 4 spaces); a wrong-indentation option is written at the wrong column. The player drops indentation
   that every option shares and keeps the rest, so the mistake shows. Options are shown as written, so write them
@@ -81,7 +92,10 @@ line), and can choose "Type instead". In "Always type" it stays a typed slide, s
 - `npm run validate` checks that each slide has 2–3 distinct options, that none equals the answer or an `accept`
   (normalized line by line, indentation included) or grades as correct against them, and, when the slide has an
   `output`, runs `starter` + each option with python3: an option may fail to compile or raise, but must not print
-  the expected output.
+  the expected output. It also checks that the answer is not the options' center (each option's token edit
+  distance to the others, summed: the answer may tie for the smallest total, not have it alone), that no sentence
+  of a picked slide's title or prompt starts with "Write", "Type" or "Pick", that a lesson's last "Your turn" has
+  no `pick`, and the `ideas` rules above.
 
 ## Every solution must be tested
 In your own scratch directory, build a harness: `from typing import *`, `import heapq, collections, math`,

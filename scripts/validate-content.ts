@@ -9,7 +9,8 @@
  * balance, and compiles every Python solution/template with python3. Foundations
  * snippets that declare an `output` (code slides, and "Your turn" starter + answer
  * and every accepted answer) are also run, and must print exactly that output; a
- * slide's wrong options (`pick`) are run too, and must not.
+ * slide's wrong options (`pick`) are run too, and must not. Picked slides follow
+ * "Pick first, then type" (checkPickedIdeas).
  * A few self-checks keep the typing kit's grading honest (e.g. curly quotes).
  */
 import { execFileSync } from 'node:child_process';
@@ -202,12 +203,45 @@ function checkFoundations() {
         err(sw, `unknown slide kind`);
       }
     });
-    // "Pick first, then type": picked slides introduce an idea, typed ones practice it, so a lesson
-    // keeps more typed than picked.
-    const types = l.slides.filter((s) => s.kind === 'type');
-    const picked = types.filter((s) => s.kind === 'type' && s.pick).length;
-    if (picked > 0 && picked >= types.length - picked)
-      err(w, `${picked} of ${types.length} "Your turn" slides have wrong options: keep more typed than picked`);
+    // "Pick first, then type": the lesson's last "Your turn" slide is typed.
+    const types = l.slides.filter((s): s is TypeSlide => s.kind === 'type');
+    const last = types[types.length - 1];
+    if (last?.pick) err(w, `the last "Your turn" slide ("${last.title ?? last.prompt.slice(0, 30)}") has wrong options: keep it typed`);
+  });
+  checkPickedIdeas();
+}
+
+/**
+ * "Pick first, then type" across the track (docs/CONTENT_GUIDE.md, "Pick options"): a slide with
+ * `pick` is the first exercise on each idea it names in `ideas`, and each of those ideas is typed
+ * again later, on a slide without `pick` in the same lesson or the next one that names it too.
+ * A typed slide's `ideas` must each be introduced by an earlier picked slide (a misspelled link fails).
+ * Limits: the ideas are the author's labels. This cannot tell whether a slide's code really uses
+ * an idea, whether a typed slide without `ideas` is the first exercise on something new (that
+ * one should be picked), or whether the typed slide practices the idea well.
+ */
+function checkPickedIdeas() {
+  const slides = FOUNDATIONS.flatMap((l, li) =>
+    l.slides.flatMap((s, i) => (s.kind === 'type' ? [{ s, li, where: `foundations/${l.id}/slide[${i}]` }] : [])),
+  );
+  const firstOn = new Map<string, { where: string; picked: boolean }>();
+  slides.forEach(({ s, li, where }, k) => {
+    const ideas = s.ideas ?? [];
+    if (ideas.some((d) => !d.trim())) err(where, 'an "ideas" entry is empty');
+    if (new Set(ideas).size !== ideas.length) err(where, '"ideas" repeats an idea');
+    if (s.pick) {
+      if (!ideas.length) err(where, 'a slide with "pick" names the new ideas it introduces in "ideas"');
+      for (const idea of ideas) {
+        const seen = firstOn.get(idea);
+        if (seen) err(where, `"${idea}" is already practiced at ${seen.where}: only the first exercise on an idea is picked`);
+        const typedLater = slides.some((t, j) => j > k && !t.s.pick && t.li - li <= 1 && t.s.ideas?.includes(idea));
+        if (!typedLater) err(where, `picked idea "${idea}" is never typed again: name it in "ideas" on a later typed slide in this lesson or the next`);
+      }
+    } else {
+      for (const idea of ideas)
+        if (!firstOn.get(idea)?.picked) err(where, `"${idea}" is in "ideas", but no earlier picked slide introduces it`);
+    }
+    for (const idea of ideas) if (!firstOn.has(idea)) firstOn.set(idea, { where, picked: !!s.pick });
   });
 }
 
@@ -221,11 +255,14 @@ const blockKey = (code: string) =>
  * A "Your turn" slide's wrong options (`pick`, "Pick the right code"): 2–3 distinct snippets, each
  * written at its real column in the file like `answer`, none the answer or an accepted answer
  * (normalized line by line, indentation included) and none graded right against them; with an
- * `output`, none may print it (the python3 run below).
+ * `output`, none may print it (the python3 run below). The answer must not be the options' center.
  */
 function checkPick(sw: string, s: TypeSlide) {
   const pick = s.pick ?? [];
   if (pick.length < 2 || pick.length > 3) err(sw, `"pick" needs 2–3 wrong options, has ${pick.length}`);
+  // Picked or typed, the slide describes the task, not how to answer it.
+  for (const [field, text] of [['title', s.title ?? ''], ['prompt', s.prompt]] as const)
+    if (/(^|[.:;!?]\s+)(Write|Type|Pick)\b/.test(text)) err(sw, `the ${field} starts a sentence with "Write", "Type" or "Pick": describe the task, so it reads well picked or typed`);
   if (pick.some((p) => !p.trim())) err(sw, 'a "pick" option is empty');
   if (new Set(pick.map(blockKey)).size !== pick.length) err(sw, '"pick" repeats an option after normalizing');
   const answers = [s.answer, ...(s.accept ?? [])];
@@ -241,6 +278,31 @@ function checkPick(sw: string, s: TypeSlide) {
     if (Math.abs(baseIndent(p) - col) > 4) err(pw, `starts at column ${baseIndent(p)}, more than a level from the answer's ${col}`);
     if (s.output !== undefined) pyFiles.push({ label: pw, code: s.starter ? `${s.starter}\n${p}` : p, output: s.output, wrong: true });
   });
+  // The answer must not be the one option the others are variations of: with each wrong option one
+  // mistake away at a different place, the answer is the only one that agrees with the others
+  // everywhere, and a guess of the most typical option wins. Each option's distance to the others,
+  // summed, is a token edit distance (an indentation level counts as one token); the answer may tie
+  // for the smallest total, but not have it alone.
+  if (pick.length >= 2) {
+    const toks = [s.answer, ...pick].map(codeTokens);
+    const total = toks.map((t, i) => toks.reduce((sum, u, j) => (i === j ? sum : sum + editDistance(t, u)), 0));
+    if (total[0] < Math.min(...total.slice(1)))
+      err(sw, `"pick": the answer is the center of its options (token distance to the others: answer ${total[0]}, wrong options ${total.slice(1).join(', ')}); put every mistake at the same place, or make one option two of the others' mistakes together`);
+  }
+}
+
+const TOKEN = /[A-Za-z_]\w*|\d[\d_]*(?:\.\d+)?|"(?:[^"\\]|\\.)*"?|'(?:[^'\\]|\\.)*'?|\*\*=?|\/\/=?|[=!<>]=|[-+*/%]=|->|\S/g;
+/** A snippet as tokens: each code line's indentation (one token), then its words, numbers, strings and symbols. */
+const codeTokens = (code: string) => codeLines(code).flatMap((l) => [`indent:${indentOf(l)}`, ...(stripComment(l).match(TOKEN) ?? [])]);
+/** Levenshtein distance between two token lists. */
+function editDistance(a: string[], b: string[]) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
 }
 
 /**

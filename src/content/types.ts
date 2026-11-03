@@ -167,6 +167,13 @@ export interface TypeSlide {
    * accepts. Give them to the first exercise on a new idea; see docs/CONTENT_GUIDE.md.
    */
   pick?: string[];
+  /**
+   * Short names of ideas (e.g. `'while'`, `'.get'`), linking a picked slide to where it is typed. On
+   * a slide with `pick`: the new ideas it introduces (required). On a typed slide: the picked ideas
+   * it types again. Only `npm run validate` reads it ("Pick first, then type": a picked idea is new
+   * there, and a later typed slide in the same lesson or the next one names it).
+   */
+  ideas?: string[];
 }
 
 export type Slide =
