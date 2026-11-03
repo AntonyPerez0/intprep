@@ -331,6 +331,10 @@ div.plesson-locked {
 .plesson-segs span.missed {
   background: color-mix(in srgb, var(--warning) 70%, var(--surface-active));
 }
+/* A part shown as given (nothing to build): passed, not counted */
+.plesson-segs span.given {
+  background: color-mix(in srgb, var(--text-tertiary) 45%, var(--surface-active));
+}
 
 /* ── Write the code: look, cover, write, check ───────────────────────────── */
 .plesson-code {

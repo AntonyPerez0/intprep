@@ -13,7 +13,6 @@ import {
   Gauge,
   Hourglass,
   Info,
-  Keyboard,
   Lightbulb,
   ListOrdered,
   Lock,
@@ -31,9 +30,11 @@ import { friendlyDue } from '../lib/date';
 import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { parseSolution, type ParsedSolution } from '../lib/parseSolution';
+import { problemInput } from '../lib/input';
 import { CROWN_LABELS, crowns, isDue } from '../lib/srs';
 import { useProgress } from '../lib/store';
 import { ProblemPrompt } from '../components/interact';
+import { INPUT_ICON } from '../components/InputSwitch';
 import { CategoryIcon } from '../components/icons';
 import { Badge, Crowns, DifficultyChip, freeMirrorUrl, leetcodeUrl, ProgressBar } from '../components/ui';
 
@@ -63,9 +64,11 @@ export function ProblemDetail() {
       {learned ? 'Replay lesson' : 'Start guided lesson'}
     </Link>
   );
+  // Code from memory picks the code while it is new (`problemInput`): the icon says which it will be.
+  const MemIcon = INPUT_ICON[problemInput(progress.settings.typingMode, pp)];
   const rebuildBtn = (
     <Link to={`/p/${p.id}/rebuild`} className={`btn ${learned ? 'btn-primary' : 'btn-secondary'}`}>
-      <Keyboard aria-hidden="true" />
+      <MemIcon aria-hidden="true" />
       Code from memory
     </Link>
   );

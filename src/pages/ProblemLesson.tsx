@@ -14,7 +14,6 @@ import {
   FileText,
   Gauge,
   Hammer,
-  Keyboard,
   Lightbulb,
   ListChecks,
   Lock,
@@ -30,11 +29,11 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, problemsFor } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { arrangeBlocks, gradeArrange, type ArrangeGrade } from '../lib/arrange';
-import { gapChoices } from '../lib/choices';
+import { gapChoices, isGivenLine, type GapChoice } from '../lib/choices';
 import { baseIndent, codeLines, gradeCode, isIgnorable, lineKey, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { friendlyDue } from '../lib/date';
-import { acceptedCategories, patternChoices } from '../lib/drills';
+import { acceptedCategories, arrangeable, patternChoices } from '../lib/drills';
 import { XP } from '../lib/game';
 import { gapSource, gapsSummary, type GapSource, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
@@ -48,10 +47,11 @@ import { ArrangeWindow, type ArrangeHandle } from '../components/Arrange';
 import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
 import { GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { ComplexityDrill } from '../components/Drills';
-import { InputSwitch } from '../components/InputSwitch';
+import { INPUT_ICON, InputSwitch } from '../components/InputSwitch';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, CategoryIcon, IconTile } from '../components/icons';
 import { Badge, Completion, DifficultyChip, freeMirrorUrl, leetcodeUrl } from '../components/ui';
+import type { RebuildState } from './Rebuild';
 
 // The guided lesson for one problem (/p/:id/learn), ten steps: understand it, guess the pattern,
 // hints, brute force, the insight, the plan, then the code part by part (look, cover, build or
@@ -61,7 +61,9 @@ import { Badge, Completion, DifficultyChip, freeMirrorUrl, leetcodeUrl } from '.
 // "Pick first, then type" (docs/DESIGN.md): the lesson decides its input once, when it opens
 // (`problemInput`). A problem whose code is new is picked: each part is built from choices (its
 // lines put in order, or its one line picked from options) and the final check picks the gaps.
-// Otherwise it is typed. "Type instead" (in "Pick first, then type" only) types the rest.
+// A part with nothing worth picking (structure such as a `def` line, or too few real options) is
+// shown as given and not counted. Otherwise it is typed. "Type instead" (in "Pick first, then
+// type" only) types the rest.
 
 const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'complexity', 'pitfalls', 'gaps'] as const;
 type Step = (typeof STEPS)[number];
@@ -141,8 +143,8 @@ function ProblemLesson({ p }: { p: Problem }) {
   if (done) return <Complete p={p} xp={xp} relearn={wasLearned} records={records} final={final} input={input} />;
 
   const reward = wasLearned ? Math.round(XP.problem[p.difficulty] / 4) : XP.problem[p.difficulty];
-  // Writing the code moves the bar part by part.
-  const within = step === 'code' && partCount ? records.filter((r) => r.checked).length / partCount : 0;
+  // Writing the code moves the bar part by part (a part shown as given counts once passed).
+  const within = step === 'code' && partCount ? records.filter((r) => r.checked || r.given).length / partCount : 0;
 
   return (
     <SessionShell
@@ -533,6 +535,8 @@ interface PartRecord {
   peeked: boolean;
   /** How the first check was made: built from choices, or written. */
   input?: CodeInput;
+  /** Shown as given (nothing to build): never checked, and left out of the tally. */
+  given?: boolean;
 }
 const NO_RECORD: PartRecord = { checked: false, right: false, peeked: false };
 
@@ -559,9 +563,10 @@ const EDITOR_HELP = 'Tab inserts four spaces. To leave the editor, press Escape 
 /**
  * How a part is practiced: written in the editor ('type'), or built from choices: its lines put in
  * order ('arrange': a code-line Parsons problem with one line that does not belong), or, for a part
- * of one line, that line picked from options ('line').
+ * of one line (or of two with no line that does not belong, `arrangeable`), each line picked from
+ * options ('line'). A part with no line worth picking is shown as given ('given': see `pickLines`).
  */
-type PartKind = 'type' | 'arrange' | 'line';
+type PartKind = 'type' | 'arrange' | 'line' | 'given';
 
 /** One check of a part: the typed diff, the arranged lines, or (neither) the line picked. */
 interface PartCheck {
@@ -575,7 +580,33 @@ const WORK: Record<PartKind, { label: string; icon: ReactNode; note: string; key
   type: { label: 'Write it', icon: <PencilLine aria-hidden="true" />, note: 'to write', keys: 'Enter to write it' },
   arrange: { label: 'Arrange it', icon: <ArrowDownUp aria-hidden="true" />, note: 'to arrange', keys: 'Enter to arrange it' },
   line: { label: 'Pick it', icon: <ListChecks aria-hidden="true" />, note: 'to pick', keys: 'Enter to pick it' },
+  given: { label: 'Next part', icon: null, note: 'given', keys: 'Enter for the next part' },
 };
+
+/**
+ * A picked line needs at least this many options (the answer and two wrong ones). A line with
+ * fewer, or bare structure (`isGivenLine`: `else:`, a `def` line, half of a statement), is shown
+ * as given. Code from memory and the review's one-line part use the same rule.
+ */
+const MIN_PICK_OPTIONS = 3;
+
+/**
+ * The lines of a part to pick one by one (indices into `body`) and their options: every code line
+ * but those shown as given (see MIN_PICK_OPTIONS). Options: changes to the line in the solution's
+ * context, then lines of later parts with its shape (not on screen), never the code above
+ * (`visible`) or a line it can trade places with. A line dropped as given is on screen, which can
+ * change the others' options, so the rest are asked again until every one has enough.
+ */
+function pickLines(body: string[], later: string[], context: string[], visible: string[]): { gaps: number[]; options: GapChoice[] } {
+  let gaps = body.flatMap((l, j) => (isIgnorable(l) || isGivenLine(l) ? [] : [j]));
+  for (;;) {
+    if (!gaps.length) return { gaps, options: [] };
+    const options = gapChoices(body, gaps, 0, 3, later, { context, visible });
+    const keep = gaps.filter((_, m) => options[m].options.length >= MIN_PICK_OPTIONS);
+    if (keep.length === gaps.length) return { gaps, options };
+    gaps = keep;
+  }
+}
 
 /**
  * The solution, one part at a time. Look: the part's explanation and its code, highlighted under
@@ -609,11 +640,11 @@ function CodeStep({
   const [furthest, setFurthest] = useState(0); // the part being worked on; earlier ones are done
   const [phase, setPhase] = useState<'look' | 'write'>('look');
   const [drafts, setDrafts] = useState<string[]>(() => parts.map(() => ''));
-  // Built from choices: each part's placed lines (block ids, in order), or its one line picked.
-  // Kept per part, like the drafts, so a Peek or a Back never loses them.
+  // Built from choices: each part's placed lines (block ids, in order), or its lines picked (one
+  // per gap). Kept per part, like the drafts, so a Peek or a Back never loses them.
   const [placed, setPlaced] = useState<string[][]>(() => parts.map(() => []));
-  const [picks, setPicks] = useState<string[]>(() => parts.map(() => ''));
-  const [open, setOpen] = useState<number | null>(0); // a one-line part's options are showing
+  const [picks, setPicks] = useState<string[][]>(() => parts.map(() => []));
+  const [open, setOpen] = useState<number | null>(0); // the gap whose options are showing (picked line by line)
   const [result, setResult] = useState<PartCheck | null>(null);
   const [tries, setTries] = useState(0); // checks of the current part
   const rootRef = useRef<HTMLDivElement>(null);
@@ -628,26 +659,26 @@ function CodeStep({
   const status: CheckStatus = writing && result ? (result.perfect ? 'correct' : 'wrong') : 'idle';
   const grade = result?.grade ?? null;
   const count = part ? codeLines(part.body).length : 0;
-  const kind: PartKind = input === 'type' || count === 0 ? 'type' : count === 1 ? 'line' : 'arrange';
 
   // The part as choices: its blocks (seeded, so the bank is the same after a Peek or a reload) and,
-  // for a one-line part, the options: small changes to the line first, then lines of later parts
-  // (not on screen yet).
+  // for a part of one line, or of two whose bank would have no line that does not belong
+  // (`arrangeable`: just the two lines the wrong way round), the lines to pick one by one and their
+  // options (`pickLines`).
   const choice = useMemo(() => {
     if (!part) return null;
     const { body, lead, chunk, ci } = part;
     const keyLines = chunk.keyLines.map((j) => j - lead.length).filter((j) => j >= 0 && j < body.length);
-    const at = Math.max(0, body.findIndex((l) => !isIgnorable(l)));
-    const line = body[at] ?? '';
     const later = parsed.chunks.slice(ci + 1).flatMap((c) => c.lines);
     const all = parsed.lines.map((l) => l.text);
+    const n = codeLines(body).length;
+    const lineWise = n === 1 || (n === 2 && !arrangeable(p, part));
     return {
       set: arrangeBlocks(body, 0, { keyLines, avoid: all }),
-      at,
-      line,
-      options: gapChoices([line], [0], 0, 3, later, { context: all, visible: [...parsed.chunks.slice(0, ci).flatMap((c) => c.lines), ...lead] }),
+      lineWise,
+      ...(lineWise ? pickLines(body, later, all, [...parsed.chunks.slice(0, ci).flatMap((c) => c.lines), ...lead]) : { gaps: [], options: [] }),
     };
-  }, [part, parsed]);
+  }, [part, parsed]); // eslint-disable-line react-hooks/exhaustive-deps
+  const kind: PartKind = input === 'type' || count === 0 ? 'type' : !choice?.lineWise ? 'arrange' : choice.gaps.length ? 'line' : 'given';
 
   // Keep the part in view as it moves: the cue above it on phones (the card at the top is out of
   // sight by then), the part's own lines on wide screens (or, while building it, the lines to
@@ -710,8 +741,10 @@ function CodeStep({
   const blockById = new Map(set.blocks.map((b) => [b.id, b]));
   const placedBlocks = order.flatMap((id) => blockById.get(id) ?? []);
   const odd = set.blocks.some((b) => b.distractor);
-  const sel = picks[k] ?? '';
-  const canCheck = kind === 'type' ? text.trim().length > 0 : kind === 'arrange' ? set.expected.length > 0 && order.length >= set.expected.length : !!sel;
+  // Picked line by line: one value per gap ('' while empty).
+  const sels = choice.gaps.map((_, m) => picks[k]?.[m] ?? '');
+  const canCheck =
+    kind === 'type' ? text.trim().length > 0 : kind === 'arrange' ? set.expected.length > 0 && order.length >= set.expected.length : sels.every(Boolean);
 
   const focusEditor = () => {
     const ta = taRef.current;
@@ -759,14 +792,15 @@ function CodeStep({
     } else if (kind === 'arrange') {
       const a = gradeArrange(placedBlocks, set.expected, set.swappable);
       r = { perfect: a.perfect, arrange: a };
-    } else r = { perfect: lineKey(sel) === lineKey(choice.line) };
+    } else r = { perfect: choice.options.every((o, m) => lineKey(sels[m]) === lineKey(o.answer)) };
     setResult(r);
     setTries((t) => t + 1);
     if (!rec.checked) onRecord(k, { checked: true, right: r.perfect && !rec.peeked, input: kind === 'type' ? 'type' : 'pick' });
     sfx(r.perfect ? 'correct' : 'wrong');
   };
   // "Fix and check again": back to the exercise with the work kept: the text (the caret at its
-  // end), the order (the first line that is off focused), or the pick (its options open).
+  // end), the order (the first line that is off focused), or the picks (the first wrong one's
+  // options open).
   const fix = () => {
     if (kind === 'type') {
       flushSync(() => setResult(null));
@@ -776,9 +810,10 @@ function CodeStep({
       flushSync(() => setResult(null));
       arrangeRef.current?.focus(off >= 0 ? off : undefined);
     } else {
+      const off = choice.options.findIndex((o, m) => lineKey(sels[m]) !== lineKey(o.answer));
       flushSync(() => {
         setResult(null);
-        setOpen(0);
+        setOpen(Math.max(0, off));
       });
       pickRef.current?.focusOptions();
     }
@@ -815,10 +850,18 @@ function CodeStep({
     sfx('tap');
   };
   const unplace = (at: number) => setPlaced((all) => all.map((o, j) => (j === k ? o.filter((_, m) => m !== at) : o)));
-  const pickLine = (option: string) => {
-    setPicks((all) => all.map((x, j) => (j === k ? option : x)));
-    setOpen(null);
+  // A pick fills its gap and opens the next empty one, if any.
+  const pickLine = (m: number, option: string) => {
+    const now = sels.map((v, i) => (i === m ? option : v));
+    setPicks((all) => all.map((x, j) => (j === k ? now : x)));
+    const next = now.findIndex((v, i) => i > m && !v);
+    setOpen(next >= 0 ? next : null);
     sfx('tap');
+  };
+  // A part shown as given: nothing to build, so on to the next one (it is not counted).
+  const skip = () => {
+    if (!rec.given) onRecord(k, { given: true });
+    advance();
   };
 
   // The part's explanation, written as a comment in the file above it. Phones and tablets only:
@@ -872,8 +915,12 @@ function CodeStep({
         : 'Write this part from memory. The code above it stays visible.'
       : kind === 'line'
         ? fixing
-          ? 'Pick another line, then check again.'
-          : "Pick this part's line from the options."
+          ? choice.gaps.length > 1
+            ? 'Pick again where it was off, then check again.'
+            : 'Pick another line, then check again.'
+          : choice.gaps.length > 1
+            ? "Pick this part's lines from the options."
+            : "Pick this part's line from the options."
         : fixing
           ? 'Tap a line to send it back, then add the lines again in order.'
           : odd
@@ -921,7 +968,7 @@ function CodeStep({
             <div className="plesson-segs" aria-hidden="true">
               {parts.map((_, j) => {
                 const r = records[j] ?? NO_RECORD;
-                const cls = j === k ? 'on' : r.checked ? (r.right ? 'right' : 'missed') : '';
+                const cls = j === k ? 'on' : r.checked ? (r.right ? 'right' : 'missed') : r.given ? 'given' : '';
                 return <span key={j} className={cls} />;
               })}
             </div>
@@ -939,6 +986,7 @@ function CodeStep({
             </div>
           )}
           {writing && !result && <p className="plesson-explain-cue">{doNow}</p>}
+          {!writing && kind === 'given' && <p className="plesson-explain-cue">Nothing to build in this part. Read it, then go on.</p>}
           {checkedCount > 0 && (
             <div className="plesson-tally">
               <span>Right on the first try</span>
@@ -952,7 +1000,7 @@ function CodeStep({
         {!writing ? (
           <TyperWindow
             {...windowProps}
-            footer={<TyperFooter note={`${plural(count, 'line')} ${work.note}`} keys={reviewing ? false : work.keys} />}
+            footer={<TyperFooter note={`${plural(kind === 'line' ? choice.gaps.length : count, 'line')} ${work.note}`} keys={reviewing ? false : work.keys} />}
           >
             <CodePane>
               <GivenLines lines={before} />
@@ -1013,17 +1061,25 @@ function CodeStep({
           <PickGapsWindow
             {...windowProps}
             ref={pickRef}
-            lines={[choice.line]}
-            gaps={[0]}
+            // The part's lines: those to pick are slots, any others shown as given.
+            lines={body}
+            gaps={choice.gaps}
             choices={choice.options}
-            values={[sel]}
+            values={sels}
             active={open}
             onActivate={setOpen}
-            onPick={(_, option) => pickLine(option)}
+            onPick={pickLine}
             revealed={!!result}
-            start={firstBody + choice.at}
-            label={`Line ${firstBody + choice.at} to pick, part ${n} of ${total}`}
-            note={sel ? 'Ready to check' : '1 line to pick'}
+            start={firstBody}
+            label={
+              choice.gaps.length === 1
+                ? `Line ${firstBody + choice.gaps[0]} to pick, part ${n} of ${total}`
+                : `${plural(choice.gaps.length, 'line')} to pick, part ${n} of ${total}`
+            }
+            note={(() => {
+              const left = sels.filter((v) => !v).length;
+              return left ? `${plural(left, 'line')} to pick` : 'Ready to check';
+            })()}
             before={
               <>
                 <GivenLines lines={before} />
@@ -1039,9 +1095,10 @@ function CodeStep({
         status={status}
         onCheck={writing ? check : undefined}
         canCheck={canCheck}
-        onContinue={writing ? advance : reviewing ? () => go(k + 1) : write}
-        continueLabel={writing ? (last ? 'Continue' : 'Next part') : reviewing ? 'Next part' : work.label}
-        primaryIcon={!writing && !reviewing ? work.icon : undefined}
+        // A part shown as given has nothing to build: its Look moves on (it is not counted).
+        onContinue={writing ? advance : reviewing ? () => go(k + 1) : kind === 'given' ? skip : write}
+        continueLabel={writing || kind === 'given' ? (last ? 'Continue' : 'Next part') : reviewing ? 'Next part' : work.label}
+        primaryIcon={!writing && !reviewing && kind !== 'given' ? work.icon : undefined}
         title={fbTitle}
         feedback={
           result && (
@@ -1313,13 +1370,23 @@ function Complete({
 }) {
   const progress = useProgress();
   const card = progress.problems[p.id]?.srs;
+  // Code from memory picks the code while it is new (`problemInput`); after "Type instead" here, it
+  // opens typed this once (`RebuildState`), so the learner keeps typing. The icon and tip say which.
+  const setting = progress.settings.typingMode;
+  const memNext = problemInput(setting, progress.problems[p.id]);
+  const carry = setting === 'auto' && input === 'type' && memNext === 'pick';
+  const memInput: CodeInput = carry ? 'type' : memNext;
+  const MemIcon = INPUT_ICON[memInput];
+  const memState: RebuildState | undefined = carry ? { input: 'type' } : undefined;
   const siblings = problemsFor(p.category);
   const nextInUnit = siblings.find((q) => !progress.problems[q.id]?.learnedAt && q.id !== p.id);
   const link = practiceLink(p);
   const due = card ? friendlyDue(card.due) : null;
   const right = records.filter((r) => r.right).length;
-  // The parts were built from choices, written, or (after "Type instead" partway) both.
-  const inputs = new Set(records.map((r) => r.input ?? input));
+  // The parts were built from choices, written, or (after "Type instead" partway) both. Parts shown
+  // as given are not counted.
+  const counted = records.filter((r) => !r.given);
+  const inputs = new Set(counted.map((r) => r.input ?? input));
   const partsLabel = inputs.size > 1 ? 'Parts right' : inputs.has('pick') ? 'Parts built' : 'Parts written';
   const of = (a: number, b: number) => (
     <>
@@ -1341,17 +1408,17 @@ function Complete({
             </>
           }
           stats={[
-            { label: partsLabel, value: of(right, records.length) },
+            { label: partsLabel, value: of(right, counted.length) },
             { label: 'Final check', value: final ? of(final.correct, final.total) : '—' },
             { label: 'XP earned', value: `+${xp}` },
           ]}
         >
-          <Link to={`/p/${p.id}/rebuild`} className="btn btn-primary btn-lg btn-block">
-            <Keyboard />
+          <Link to={`/p/${p.id}/rebuild`} state={memState} className="btn btn-primary btn-lg btn-block">
+            <MemIcon aria-hidden="true" />
             Code from memory
           </Link>
           <p className="plesson-done-tip">
-            {inputs.has('pick') ? 'Practice it again now, while it is fresh, to make it stick.' : 'Write it again now, while it is fresh, to make it stick.'}
+            {memInput === 'pick' ? 'Practice it again now, while it is fresh, to make it stick.' : 'Write it again now, while it is fresh, to make it stick.'}
           </p>
           {nextInUnit ? (
             <Link to={`/p/${nextInUnit.id}/learn`} className="btn btn-secondary btn-lg btn-block">
