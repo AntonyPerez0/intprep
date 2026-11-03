@@ -4,7 +4,7 @@
 // A wrong option is a small change to the right line: an operator, a bound, a pointer, a method, a
 // literal (`<` for `<=`, `left` for `right`, `heappush` for `heappop`, an off-by-one), or another
 // variable of the same snippet where the line reads one. So the choice is about the idea, not about
-// spotting a stranger. The rules (see `mutateLine` and `lineChoices`):
+// spotting a stranger. The rules (see `lineChanges` and `lineChoices`):
 // - Never the answer in disguise: options are compared by meaning (`canonKey`: `a > b` is `b < a`,
 //   `x + 0` is `x`, `a, b = x, y` is `b, a = y, x`), an `if` never becomes a `while`, two names are
 //   never swapped over equal values, `<=` never stands in for `<` on an `elif` after `==` on the same
@@ -26,10 +26,11 @@
 // src/lib/drills.ts.
 
 import { DISTRACTOR_DENY } from '../content/distractorDeny';
+import { TEMPLATE_DENY } from '../content/templateDeny';
 import { lineKey } from './codegrade';
 import { splitTop, swapRuns, topLevelAssign } from './order';
 import { stripComment } from './parseSolution';
-import { hashString, seededRandom, shuffle, shuffleWith } from './random';
+import { hashString, seededRandom, shuffleWith } from './random';
 
 // ── Tokens ──────────────────────────────────────────────────────────────────
 
@@ -211,7 +212,37 @@ const NO_OPS = [
   // Arithmetic on a string other than `+` (`str(n) - "#"`).
   /["']\s*(?:-|\/\/?)\s|\s(?:-|\/\/?)\s*[rbfuRBFU]{0,2}["']/g,
 ];
-const noOps = (s: string) => NO_OPS.reduce((n, re) => n + (s.match(re)?.length ?? 0), 0);
+const noOps = (s: string) => NO_OPS.reduce((n, re) => n + (s.match(re)?.length ?? 0), 0) + (pointless(s) ? 1 : 0);
+
+/**
+ * Lines that cannot be a mistake anyone makes: a target twice in one assignment or loop
+ * (`self.small, self.small = …`, `root.right, root.right = …`), a whole line that sets each target
+ * to itself (`dp[i][j] = dp[i][j]`, `prev, curr = prev, curr`), and a remainder that never changes
+ * (`n % 1`, `n % 2 == 2`: an `if False:` in disguise).
+ */
+function pointless(s: string): boolean {
+  const k = keyOf(codeOnly(s));
+  const f = k.match(/^for (.+?) in /);
+  if (f) {
+    const t = splitTop(f[1]).map((x) => x.trim());
+    if (new Set(t).size < t.length) return true;
+  }
+  const eq = topLevelAssign(k);
+  if (eq.at >= 0 && eq.op === '=' && !/^for /.test(k)) {
+    const lhs = splitTop(k.slice(0, eq.at)).map((t) => t.trim());
+    const rhs = splitTop(k.slice(eq.at + 1)).map((t) => t.trim());
+    if (new Set(lhs).size < lhs.length) return true;
+    if (lhs.length === rhs.length && lhs.every((t, i) => t === rhs[i])) return true;
+  }
+  if (eq.at >= 0 && (eq.op === '&=' || eq.op === '|=') && k.slice(0, eq.at).trim() === k.slice(eq.at + 2).trim()) return true;
+  if (/%1(?![\w.])|&0(?![\w.])/.test(k)) return true;
+  for (const m of k.matchAll(/%(\d+)(==|!=)(-?\d+)(?![\w.])|(?<![\w.\])])(-?\d+)(==|!=)[\w.]+(?:\[[^\]]*\])*%(\d+)(?![\w.(\[])/g)) {
+    const d = Number(m[1] ?? m[6]);
+    const v = Number(m[3] ?? m[4]);
+    if (d > 0 && (v >= d || v < 0)) return true;
+  }
+  return false;
+}
 
 /** Lines that are structure, not an idea: shown as given, never asked as a pick. */
 const GIVEN = /^(@|import\s|from\s+\S+\s+import\s|(async\s+)?def\s|class\s|nonlocal\s|global\s|while True:$|pass$|else:$|try:$|finally:$|except\b.*:$|"""|'''|[)\]}]+[,:]?$)/;
@@ -223,6 +254,18 @@ const GIVEN = /^(@|import\s|from\s+\S+\s+import\s|(async\s+)?def\s|class\s|nonlo
 export function isGivenLine(line: string): boolean {
   const code = codeOnly(line).trim();
   return GIVEN.test(code) || !balanced(code);
+}
+
+/** A pick needs the answer and at least two wrong options: one option is a free point, two a coin toss. */
+export const MIN_PICK_OPTIONS = 3;
+
+/**
+ * Whether a line and its options make a real pick: not bare structure (`isGivenLine`) and at least
+ * `MIN_PICK_OPTIONS` options. Every pick screen asks only these; a line that is not one is shown as
+ * given, or another line is asked in its place.
+ */
+export function isRealPick(line: string, options: readonly string[]): boolean {
+  return !isGivenLine(line) && options.length >= MIN_PICK_OPTIONS;
 }
 
 /** A line as an option shows it: the code at its own indentation, without a trailing comment or `#!` marker. */
@@ -390,6 +433,11 @@ function lineTargets(code: string): string[] {
   for (const m of s.matchAll(/([A-Za-z_]\w*)\s*:=/g)) out.push(m[1]);
   for (const m of s.matchAll(/\bas\s+([A-Za-z_]\w*)/g)) out.push(m[1]);
   return out;
+}
+
+/** Names bound by every `for` in a line, a comprehension's included (`i` of `deque(i for i in range(n))`). */
+function loopNames(code: string): string[] {
+  return [...code.matchAll(/\bfor\s+([A-Za-z_][\w\s,()]*?)\s+in\b/g)].flatMap((m) => (m[1].match(/[A-Za-z_]\w*/g) ?? []).filter((n) => !KEYWORD.has(n)));
 }
 
 const ctxCache = new Map<string, Ctx>();
@@ -600,10 +648,13 @@ function canonOf(line: string, neq: readonly (readonly [string, string])[]): str
       k = `${pairs.map((p) => p[0]).join(',')}=${pairs.map((p) => p[1]).join(',')}`;
     }
   }
-  // One comparison in a condition or a return.
-  const m = k.match(/^(if |elif |while |return |assert )(.*?)(:?)$/);
+  // A parity test either way round: `n % 2` (and `n & 1`) is only ever 0 or 1, so `!= 0` is `== 1`.
+  const PARITY = /(%2|&1)$/;
+  k = k.replace(/(%2|&1)!=([01])(?![\w.])/g, (_, p: string, d: string) => `${p}==${1 - Number(d)}`);
+  // One comparison in a condition or a return (`lineKey` drops the space before a bracket: `if(a)>b:`).
+  const m = k.match(/^(if|elif|while|return|assert)(?: |(?=[^\w\s]))(.*?)(:?)$/);
   if (m) {
-    const [, head, expr, colon] = m;
+    const [, word, expr, colon] = m;
     const cmps = topLevelCompares(expr);
     if (cmps.length === 1 && !/\b(and|or|lambda)\b|\bif\b.*\belse\b/.test(expr)) {
       let { op } = cmps[0];
@@ -613,8 +664,13 @@ function canonOf(line: string, neq: readonly (readonly [string, string])[]): str
       if (unequal && op === '<=') op = '<';
       if (unequal && op === '>=') op = '>';
       if (op === '>' || op === '>=') [a, b, op] = [b, a, op === '>' ? '<' : '<='];
+      if (op === '!=' && ((PARITY.test(a) && /^[01]$/.test(b)) || (PARITY.test(b) && /^[01]$/.test(a)))) {
+        op = '==';
+        if (/^[01]$/.test(b)) b = String(1 - Number(b));
+        else a = String(1 - Number(a));
+      }
       if ((op === '==' || op === '!=' || op === ' is ' || op === ' is not ') && a > b) [a, b] = [b, a];
-      k = `${head}${a}${op}${b}${colon}`;
+      k = `${word} ${a}${op}${b}${colon}`;
     }
   }
   return k;
@@ -657,10 +713,121 @@ export function contextKey(lines: readonly string[]): string {
 }
 
 const DENY = new Map<string, Map<string, Set<string>>>();
-/** The options denied for an answer line in its own solution (`src/content/distractorDeny.ts`). */
+/** The options denied for an answer line in its own solution (`src/content/distractorDeny.ts`) or template (`TEMPLATE_DENY`). */
 function denied(ctx: Ctx, answerKey: string): Set<string> | undefined {
-  if (!DENY.size) for (const [sol, lines] of Object.entries(DISTRACTOR_DENY)) DENY.set(sol, new Map(Object.entries(lines).map(([k, v]) => [k, new Set(v)])));
+  if (!DENY.size) for (const [sol, lines] of Object.entries({ ...DISTRACTOR_DENY, ...TEMPLATE_DENY })) DENY.set(sol, new Map(Object.entries(lines).map(([k, v]) => [k, new Set(v)])));
   return DENY.get(ctx.denyKey)?.get(answerKey);
+}
+
+const FOR_PAIR = /^(\s*for\s+)([A-Za-z_]\w*)(\s*,\s*)([A-Za-z_]\w*)(\s+in\s+)(.+?)(\s*:\s*)$/;
+
+/** The body of the block a line opens (the lines indented under it), as indices. */
+function blockOf(lines: readonly string[], at: number): number[] {
+  const ind = indentStr(lines[at]).length;
+  const out: number[] = [];
+  for (let j = at + 1; j < lines.length; j++) {
+    if (!lines[j].trim()) continue;
+    if (indentStr(lines[j]).length <= ind) break;
+    out.push(j);
+  }
+  return out;
+}
+
+/** The number pairs of a literal like `((1, 0), (-1, 0), (0, 1), (0, -1))`, or null when it is anything else. */
+function numberPairs(lit: string): [number, number][] | null {
+  const t = lit.trim();
+  const pairs = [...t.matchAll(/\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)/g)].map((m) => [Number(m[1]), Number(m[2])] as [number, number]);
+  return pairs.length >= 2 && !t.replace(/\(\s*-?\d+\s*,\s*-?\d+\s*\)/g, '').replace(/[\s,()[\]]/g, '') ? pairs : null;
+}
+
+/** `line` with names renamed at once (`map`: name -> replacement), and a sign flipped where a name's replacement starts with `-`. */
+function renamed(line: string, map: ReadonlyMap<string, string>): string {
+  const toks = tokenize(line);
+  const out = [...toks];
+  toks.forEach((t, i) => {
+    const to = map.get(t);
+    if (to === undefined || toks[i - 1] === '.') return;
+    if (!to.startsWith('-')) return void (out[i] = to);
+    let p = i - 1;
+    while (p >= 0 && !toks[p].trim()) p--;
+    if (toks[p] === '+' || toks[p] === '-') {
+      out[p] = toks[p] === '+' ? '-' : '+';
+      out[i] = to.slice(1);
+    } else out[i] = to;
+  });
+  return out.join('');
+}
+
+/**
+ * Lines that mean the answer because of a symmetry in its loop (as `canonKey`s): the two names of
+ * `for a, b in edges:` the other way round when the body does the same with both
+ * (`graph[a].append(b)` and `graph[b].append(a)`), and for a loop over a set of number pairs that
+ * stays the same when they trade places or change sign (`((1, 0), (-1, 0), (0, 1), (0, -1))`), the
+ * names swapped or negated in the loop or its body (`dfs(r - dr, c + dc)`).
+ */
+function symmetricTwins(a: Answer): Set<string> {
+  if (a.twins) return a.twins;
+  const out = new Set<string>();
+  a.twins = out;
+  const { ctx } = a;
+  if (a.at < 0) return out;
+  // The answer's own line, then each block around it, nearest first.
+  let ind = indentStr(ctx.lines[a.at]).length;
+  for (let j = a.at; j >= 0; j--) {
+    const l = ctx.lines[j];
+    if (!l.trim()) continue;
+    if (j < a.at) {
+      if (indentStr(l).length >= ind) continue;
+      ind = indentStr(l).length;
+    }
+    const m = l.match(FOR_PAIR);
+    if (m && m[2] !== m[4]) {
+      const [x, y] = [m[2], m[4]];
+      const body = blockOf(ctx.lines, j);
+      if (j !== a.at && !body.includes(a.at)) break;
+      const swapped = `${m[1]}${y}${m[3]}${x}${m[5]}${m[6]}${m[7]}`;
+      // The iterable: a literal, or a name set to one.
+      let lit = m[6];
+      const b = ctx.firstBind.get(lit.trim());
+      if (b !== undefined) lit = ctx.lines[b].slice(topLevelAssign(ctx.lines[b]).at + 1);
+      const pairs = numberPairs(lit);
+      if (pairs) {
+        const set = new Set(pairs.map((p) => p.join(',')));
+        for (const swap of [false, true])
+          for (const sx of [1, -1])
+            for (const sy of [1, -1]) {
+              if (!swap && sx === 1 && sy === 1) continue;
+              const ok = pairs.every(([p, q]) => set.has(`${sx * (swap ? q : p) || 0},${sy * (swap ? p : q) || 0}`));
+              if (!ok) continue;
+              if (j === a.at && swap && sx === 1 && sy === 1) out.add(canonKey(swapped, a.neq));
+              if (j !== a.at) {
+                const map = new Map([
+                  [x, `${sx < 0 ? '-' : ''}${swap ? y : x}`],
+                  [y, `${sy < 0 ? '-' : ''}${swap ? x : y}`],
+                ]);
+                out.add(canonKey(renamed(a.code, map), a.neq));
+              }
+            }
+      } else if (j === a.at) {
+        // `for a, b in edges:` whose body reads the same with the two names traded.
+        const keys = body.map((k) => ctx.keys[k]).sort();
+        const map = new Map([
+          [x, y],
+          [y, x],
+        ]);
+        const back = body.map((k) => keyOf(renamed(ctx.lines[k], map))).sort();
+        if (keys.length && keys.every((k, i) => k === back[i])) out.add(canonKey(swapped, a.neq));
+      }
+      break;
+    }
+    if (j < a.at && !ind) break;
+  }
+  return out;
+}
+
+/** The meanings (`canonKey`) of the options denied for an answer, so no twin of one is offered. */
+function deniedCanons(a: Answer): Set<string> {
+  return (a.deniedCanons ??= new Set([...(denied(a.ctx, a.key) ?? [])].map((d) => canonKey(d, a.neq))));
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
@@ -668,6 +835,10 @@ function denied(ctx: Ctx, answerKey: string): Set<string> | undefined {
 interface Answer {
   /** `definedBefore` answers, remembered. */
   seen: Map<string, boolean>;
+  /** `deniedCanons`, made on demand. */
+  deniedCanons?: Set<string>;
+  /** `symmetricTwins`, made on demand. */
+  twins?: Set<string>;
   /** The line's names, words and dots (see `sameWords`), made on demand. */
   words?: string;
   code: string;
@@ -708,7 +879,7 @@ function answerInfo(code: string, ctx: Ctx, at?: number): Answer {
     for (let j = from; j < idx; j++) if (ctx.lineIdents[j]?.has(n)) return true;
     return false;
   };
-  const introduced = new Set(targets.filter((n) => isFor || idx < 0 || !usedEarlier(n)));
+  const introduced = new Set([...targets.filter((n) => isFor || idx < 0 || !usedEarlier(n)), ...loopNames(code)]);
   return {
     code,
     indent: indentStr(code),
@@ -747,13 +918,32 @@ function definedAt(name: string, a: Answer): boolean {
   return lines.some((b) => b < a.at && chain.has(ctx.fnOf[b] ?? -1) && ctx.secOf[b] === ctx.secOf[a.at]);
 }
 
+/**
+ * Whether `name` exists anywhere in the answer's function or one around it (or at the top): a
+ * fallback line may use what is set later, but never a nested function's own names (`node` of a
+ * helper, offered at the level that defines the helper).
+ */
+function inScope(name: string, a: Answer): boolean {
+  const { ctx } = a;
+  if (BUILTINS.has(name) || KEYWORD.has(name)) return true;
+  if (!ctx.names.has(name)) return false;
+  const lines = ctx.binds.get(name);
+  if (!lines || a.at < 0) return true;
+  const chain = new Set<number>();
+  for (let f = ctx.fnOf[a.at] ?? -1; f >= 0; f = ctx.parentFn.get(f) ?? -1) chain.add(f);
+  chain.add(-1);
+  return lines.some((b) => chain.has(ctx.fnOf[b] ?? -1) && ctx.secOf[b] === ctx.secOf[a.at]);
+}
+
 /** A wrong option the rules allow (see the top of this file). `deny` false skips the deny list (for the check script). */
 function allowed(s: string, a: Answer, deny = true, fallback = false): boolean {
   if (!s.startsWith(a.indent) || !s.trim()) return false;
   const k = keyOf(s);
   if (!k || k === a.key || NONSENSE.test(s) || noOps(s) > a.noOps) return false;
-  if (deny && denied(a.ctx, a.key)?.has(k)) return false;
-  if (canonKey(s, a.neq) === a.canon) return false;
+  const canon = canonKey(s, a.neq);
+  if (canon === a.canon || symmetricTwins(a).has(canon)) return false;
+  // Denied by its code, or by its meaning: a twin of a denied option runs the same way.
+  if (deny && (denied(a.ctx, a.key)?.has(k) || deniedCanons(a).has(canon))) return false;
   const { ctx } = a;
   if (!ctx.known) return true;
   // `pop(0)` on a deque, set or dict; `[x + 1]` on a dict, or with a string index.
@@ -773,13 +963,13 @@ function allowed(s: string, a: Answer, deny = true, fallback = false): boolean {
     const had = a.idents.get(n) ?? 0;
     // A fallback line may use what the snippet sets later (it is the line that comes later); a change
     // to the answer only what exists before it.
-    if (!had && !sets.has(n) && !(fallback ? ctx.names.has(n) || BUILTINS.has(n) || KEYWORD.has(n) : definedBefore(n, a))) return false;
+    if (!had && !sets.has(n) && !(fallback ? inScope(n, a) : definedBefore(n, a))) return false;
     // A name the line binds first is not there to read yet (`m = (m + r) // 2`).
     if (!fallback && count > had && a.introduced.has(n)) return false;
   }
   // A name the line introduces (a loop variable, a new variable) is never renamed: only reordered.
   if (a.introduced.size && !fallback) {
-    const t = new Set(lineTargets(s));
+    const t = new Set([...lineTargets(s), ...loopNames(s)]);
     for (const n of a.introduced) if (!t.has(n)) return false;
   }
   for (const p of sc.pairs) {
@@ -1447,7 +1637,7 @@ function structured(pool: Pool, usable: (c: Cand) => boolean, n: number, rnd: ()
     }
     // 2x2s: two sites in a seeded order, the first two changes at each, until a few are found
     // (only when no line of plain alternatives at one site is there: those are cheaper to make).
-    if (sets.some((x) => x.cost === 0)) return pickSet(sets, rnd);
+    if (sets.some((x) => x.cost === 0)) return pickSet(sets, rnd, a);
     const pairs: [Cand[], Cand[]][] = [];
     for (let p = 0; p < groups.length; p++) for (let q = p + 1; q < groups.length; q++) pairs.push([groups[p], groups[q]]);
     let found = 0;
@@ -1464,15 +1654,43 @@ function structured(pool: Pool, usable: (c: Cand) => boolean, n: number, rnd: ()
           }
         }
     }
-    return n === 3 && sets.length ? pickSet(sets, rnd) : null;
+    return n === 3 && sets.length ? pickSet(sets, rnd, a) : null;
   }
 }
 
-/** One of the cheapest sets (or one step dearer), seeded. */
-function pickSet(sets: { set: Cand[]; cost: number }[], rnd: () => number): { set: Cand[]; cost: number } {
+/** One of the cheapest sets (or one step dearer), seeded; one where the answer's length gives nothing away when there is one. */
+function pickSet(sets: { set: Cand[]; cost: number }[], rnd: () => number, a: Answer): { set: Cand[]; cost: number } {
   const min = Math.min(...sets.map((s) => s.cost));
-  const best = sets.filter((s) => s.cost <= min + 1);
+  // One step dearer is fine; two only for a set whose lengths give nothing away.
+  let best = fairLength(sets.filter((s) => s.cost <= min + 1), (s) => s.set, a);
+  if (!fair(best[0].set, a)) {
+    const more = fairLength(sets.filter((s) => s.cost <= min + 2), (s) => s.set, a);
+    if (fair(more[0].set, a)) best = more;
+  }
   return { set: best[Math.floor(rnd() * best.length)].set, cost: min };
+}
+
+/** The answer is neither the only shortest option nor the only longest. */
+function fair(set: readonly Cand[], a: Answer): boolean {
+  const n = charLength(a.code);
+  const lens = set.map((c) => charLength(c.text));
+  return !lens.every((l) => l > n) && !lens.every((l) => l < n);
+}
+
+const charLength = (s: string) => s.replace(/\s+/g, '').length;
+
+/**
+ * The sets where the answer is neither the only shortest option nor the only longest (most wrong
+ * options add a token, so "pick the shortest" would beat chance), else those where it is not the
+ * only shortest, else all.
+ */
+function fairLength<T>(sets: T[], of: (t: T) => readonly Cand[], a: Answer): T[] {
+  const n = charLength(a.code);
+  const shortest = (t: T) => of(t).every((c) => charLength(c.text) > n);
+  const even = sets.filter((t) => fair(of(t), a));
+  if (even.length) return even;
+  const notShort = sets.filter((t) => !shortest(t));
+  return notShort.length ? notShort : sets;
 }
 
 /** Any set where the answer is not the center: changes first, then second-order ones and fallback lines; else the closest. */
@@ -1510,7 +1728,11 @@ function search(pool: Pool, first: Cand[], fallbacks: () => Cand[], n: number, r
         if (n === 2) consider([i, j]);
         else for (let k = j + 1; k <= m; k++) consider([i, j, k]);
       }
-    best = best.filter((b) => b.cost < min + 0.5);
+    best = fairLength(
+      best.filter((b) => b.cost < min + 0.5),
+      (b) => b.idx.map((i) => cands[i - 1]),
+      a,
+    );
     if (best.length) return best[Math.floor(rnd() * best.length)].idx.map((i) => cands[i - 1]);
   }
   return cands.slice(0, n);
@@ -1579,23 +1801,12 @@ export interface ChoiceOptions {
 }
 
 /**
- * Plausible wrong versions of a line (see the top of this file): one token swapped (operators,
- * bounds, pointers, methods, literals), an off-by-one, the operands of a comparison or of a plain
- * assignment swapped, another variable where the line reads one. Keeps the indentation. Mutates
- * the whole line as given: strip a trailing comment first (`lineChoices` does) so a swap inside
- * the comment does not count. With `opts.context`, only names the snippet defines before the
- * line and methods its values have.
- */
-export function mutateLine(line: string, opts: ChoiceOptions = {}): string[] {
-  const ctx = buildCtx(opts.context ?? [line], !!opts.context);
-  const pool = poolFor(line, ctx, opts.context ? opts.at : 0, true);
-  pool.synth();
-  return pool.first.map((c) => c.text);
-}
-
-/**
- * `mutateLine` in two groups: changes to the line itself (operators, bounds, literals…), then other
- * names and values (left out with `other` false, which is faster).
+ * Plausible wrong versions of a line (see the top of this file), in two groups: changes to the line
+ * itself (one token swapped: operators, bounds, pointers, methods, literals; an off-by-one; the
+ * operands of a comparison or a plain assignment swapped; common idiom mistakes), then other names
+ * and values where the line reads one (left out with `other` false, which is faster). Keeps the
+ * indentation; with `opts.context`, only names the snippet defines before the line and methods
+ * its values have. Arrange a part's distractor is one of these.
  */
 export function lineChanges(line: string, opts: ChoiceOptions = {}, other = true): { own: string[]; other: string[] } {
   const ctx = buildCtx(opts.context ?? [line], !!opts.context);
@@ -1720,8 +1931,3 @@ const runsMemo = new Map<string, number[][]>();
 
 /** The grader's `lineKey` of a line's code, remembered (for callers that compare many lines). */
 export const optionKey = (line: string) => keyOf(codeOnly(line));
-
-/** `lineChoices` for one line, with the answer mixed in at random (not seeded): a quick multiple-choice question. */
-export function lineOptions(answer: string, otherLines: readonly string[] = [], n = 3): string[] {
-  return shuffle([codeOnly(answer), ...lineChoices(answer, otherLines, n)]);
-}

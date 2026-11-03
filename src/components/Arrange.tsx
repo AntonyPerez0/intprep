@@ -423,7 +423,7 @@ export function useArrange(lines: readonly string[], opts: ArrangeOptions & { se
   const cur = state.key === key ? state : { key, placed: [] as string[], revealed: false };
   const byId = useMemo(() => new Map(set.blocks.map((b) => [b.id, b])), [set]);
   const result = useMemo(
-    () => gradeArrange(cur.placed.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])), set.expected, set.swappable),
+    () => gradeArrange(cur.placed.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])), set.expected),
     [cur.placed, byId, set],
   );
   const total = set.expected.length;

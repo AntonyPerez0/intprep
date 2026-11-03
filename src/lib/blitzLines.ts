@@ -12,7 +12,7 @@
 //   is another), and a key line comes back only once every other one has had its turn.
 
 import type { Problem } from '../content/types';
-import { gapChoices, type GapChoice } from './choices';
+import { gapChoices, isRealPick, type GapChoice } from './choices';
 import { indentOf, lineKey } from './codegrade';
 import { today } from './date';
 import { gapCandidates } from './gaps';
@@ -109,6 +109,21 @@ export function keyLineChoices(p: Problem, k: number, view: KeyLineView, seed: n
 }
 
 /**
+ * Whether a picked round can ask key line `k`: a real pick (`isRealPick`: at least three options).
+ * The number of options does not depend on the seed. A picked round never asks another line.
+ */
+export function keyLinePickable(p: Problem, k: number): boolean {
+  const memo = `${p.id}:${k}`;
+  let v = pickableMemo.get(memo);
+  if (v === undefined) {
+    const view = keyLineView(p, k);
+    pickableMemo.set(memo, (v = isRealPick(view.answer, keyLineChoices(p, k, view, 0).options)));
+  }
+  return v;
+}
+const pickableMemo = new Map<string, boolean>();
+
+/**
  * The key lines of a problem that make a fair blank: a whole statement (not part of one that spans
  * several lines), not the header, and not a line whose exact code stays visible in its window.
  */
@@ -168,9 +183,24 @@ export function nextKeyLine(
   pool: readonly KeyLineEntry[],
   used: ReadonlySet<string>,
   last: KeyLineRef | null,
-  { bonus = () => 0, rnd = Math.random }: { bonus?: (id: string) => number; rnd?: () => number } = {},
+  { bonus = () => 0, rnd = Math.random, ok }: { bonus?: (id: string) => number; rnd?: () => number; ok?: (ref: KeyLineRef) => boolean } = {},
 ): { ref: KeyLineRef; reset: boolean } | null {
   if (!pool.length) return null;
+  // `ok` turns lines down (a picked round's line with too few options): drawn again without them,
+  // and when no line is left, as if `ok` said yes to all.
+  if (ok) {
+    const out = new Set<string>();
+    const kept: KeyLineEntry[] = pool.map((e) => ({ ...e }));
+    for (let guard = 0; guard < 400; guard++) {
+      const live = kept.filter((e) => e.lines.length);
+      if (!live.length) break;
+      const n = nextKeyLine(live, used, last, { bonus, rnd });
+      if (!n || ok(n.ref)) return n;
+      out.add(refKey(n.ref));
+      for (const e of kept) if (e.p.id === n.ref.id) e.lines = e.lines.filter((l) => l !== n.ref.line);
+    }
+    return nextKeyLine(pool, used, last, { bonus, rnd });
+  }
   const open = (skip: ReadonlySet<string>) =>
     pool
       .map((e) => ({ e, lines: e.lines.filter((l) => !skip.has(refKey({ id: e.p.id, line: l }))) }))

@@ -39,11 +39,12 @@ Plain English with American spelling (practice, color, neighbor, optimize), shor
 ## Foundations: "Your turn" slides
 Beginners learn by writing code. Code lessons let them write it themselves with `kind: 'type'` slides (see
 `TypeSlide` in `src/content/types.ts`); the first exercise on a new idea is picked from choices, and a later slide
-types it (**Pick options** below). Put one right after the slide that taught the idea: **6 or
-more per code lesson** (conceptual lessons such as Big-O or how to solve a problem still get a few), ramping from a
-single line to a few lines to a small program or function by the end. Keep **at most 2 quizzes** per code lesson,
-and use them for recognition only: predicting output, spotting a bug or gotcha, reading complexity. A slide whose
-answer the learner reveals comes back at the end of the lesson, so make each one worth writing twice.
+types it (**Pick options** below). Put one right after the slide that taught the idea: **6 or more per core Python
+lesson** (Python basics, control flow, lists and strings, dicts and sets, functions and classes; the other lessons,
+such as Big-O, recursion or how to solve a problem, get a few), ramping from a single line to a few lines to a small
+program or function by the end. Keep **at most 2 quizzes** per core Python lesson (3 in the others), and use them
+for recognition only: predicting output, spotting a bug or gotcha, reading complexity. A slide whose answer the
+learner reveals comes back at the end of the lesson, so make each one worth writing twice.
 - **Answerable from the lesson so far**, and unambiguous: name every variable, function and loop variable the
   answer uses (`Use i as the loop variable`), because the learner's code is compared with the answer line by line.
 - `starter`: read-only lines shown above the editor (a `def` line, a variable to use). Write `answer` at its real
@@ -66,7 +67,7 @@ line), and can choose "Type instead". In "Always type" it stays a typed slide, s
   already picked or typed stays typed, even in a later lesson: do not weaken typing for code they know.
 - **Then type it:** every picked idea is typed again later in the same lesson or the next one. When no later
   slide does, add a short typed "Your turn" that uses it (one slide can practice two picked ideas). The last
-  "Your turn" of a lesson (the small program) is always typed. Today 37 of the 80 "Your turn" slides are picked.
+  "Your turn" of a lesson (the small program) is always typed. Today 39 of the 82 "Your turn" slides are picked.
 - **`ideas`:** name the new ideas on the picked slide (`ideas: ['while']`) and the same names on the typed slides
   that practice them again. `npm run validate` checks with them that a picked idea was not on an earlier slide and
   is typed again in time; it cannot check that the code really uses the idea, or find an unlabeled typed slide
@@ -114,5 +115,8 @@ After adding a problem or changing a solution, also run `python3 scripts/check-d
 needs python3). The pick screens make wrong options from each line of a solution; this script runs every one of
 them in its place, on the problem's examples and random inputs, and writes the ones that still give the right
 answer (code that works, so it must never be marked wrong) to `src/content/distractorDeny.ts`, with the parts
-that get no Arrange distractor. `npm run validate` fails when that list of parts is out of date, but it cannot
-find new working options by itself, so run the script whenever a solution changes.
+that get no Arrange distractor. `npm run validate` fails when that list of parts is out of date or when a
+solution changed since the list was made (its entries no longer match), but it cannot find new working options
+by itself, so run the script whenever a solution changes. Pattern templates are not run: their working options
+are listed by hand in `src/content/templateDeny.ts`, and `npm run validate` fails when a template changed since
+(recheck its options, then update the key it prints).

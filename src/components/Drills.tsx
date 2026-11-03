@@ -31,9 +31,9 @@ import {
   complexityChoices,
   DRILL_LABEL,
   drillLabel,
-  gapChoices,
-  isGivenLine,
+  isRealPick,
   keyLineDrill,
+  oneLinePick,
   patternChoices,
   pickPart,
   reviewGaps,
@@ -43,7 +43,6 @@ import {
   type DrillKind,
 } from '../lib/drills';
 import { gapsSummary, type GapsGrade } from '../lib/gaps';
-import { highlightLine } from '../lib/highlight';
 import { preferTyping, type CodeInput } from '../lib/input';
 import { inline, Md } from '../lib/markdown';
 import { definedNames, parseSolution } from '../lib/parseSolution';
@@ -51,8 +50,8 @@ import { preview, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
 import { getProgress, useProgress } from '../lib/store';
 import { ArrangeWindow, useArrange, type ArrangeHandle } from './Arrange';
-import { GapsWindow, insertAtCaret, PickGapsWindow, SymbolKeys, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from './CodeGaps';
-import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, GivenLines, TyperFooter, TyperWindow } from './CodeTyper';
+import { GapsWindow, insertAtCaret, lineAbove, PickGapsWindow, SymbolKeys, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from './CodeGaps';
+import { CheckedAction, CodeDiff, CodeEditor, GivenLines, TyperFooter, TyperWindow } from './CodeTyper';
 import { CategoryIcon } from './icons';
 import { ActionBar, Choices, CodeView, CodeWindow, CorrectOrder, OrderSteps, ProblemPrompt, type CheckStatus } from './interact';
 import { INPUT_ICON, InputSwitch } from './InputSwitch';
@@ -669,7 +668,10 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   // Typed, or picked ("Pick the key line"). On a typed card "Show options" is a helper: a line
   // picked from the options, or typed after seeing them, counts as picked, not as code written.
   // A card that opens on the options (input 'pick') offers "Type instead" in 'auto' only.
-  const opened: CodeInput = input ?? (preferTyping(settings.typingMode) ? 'type' : 'pick');
+  // A line with fewer than three options is no real pick (`isRealPick`; the deck never deals one
+  // picked): it is typed, with no "Show options".
+  const pickable = !!drill && isRealPick(drill.answer, drill.options);
+  const opened: CodeInput = pickable ? (input ?? (preferTyping(settings.typingMode) ? 'type' : 'pick')) : 'type';
   const [typing, setTyping] = useState(opened === 'type');
   const [sawOptions, setSawOptions] = useState(false);
   const [sel, setSel] = useState<string | null>(null);
@@ -857,7 +859,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
             // narrowest only their icons; the full name stays the accessible one.
             <div className="drill-tools">
               {!first && <ToolButton icon={<Eye aria-hidden="true" />} label="Show answer" short="Answer" onClick={giveUp} className="drill-give-up" />}
-              <ToolButton icon={<INPUT_ICON.pick aria-hidden="true" />} label="Show options" short="Options" onClick={showOptions} />
+              {pickable && <ToolButton icon={<INPUT_ICON.pick aria-hidden="true" />} label="Show options" short="Options" onClick={showOptions} />}
             </div>
           ) : canType ? (
             <InputSwitch to="type" onClick={typeInstead} />
@@ -999,7 +1001,7 @@ function TypeGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
 /** "Pick the gaps": the same window and gaps as Fill the gaps, each gap picked from its options. */
 function PickGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed = 0, comesBack, onTypeInstead }: DrillProps & { onTypeInstead?: () => void }) {
   const src = useMemo(() => reviewGaps(p, seed), [p, seed]);
-  const ex = usePickGaps(src.lines, { gaps: src.gaps, seed });
+  const ex = usePickGaps(src.lines, { gaps: src.gaps, seed, exclude: src.header, keyLines: src.keyLines });
   const [first, setFirst] = useState<GapsGrade | null>(null);
   const [checks, setChecks] = useState(0);
   const rootRef = useRef<HTMLElement>(null);
@@ -1312,48 +1314,16 @@ function TypePartCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
 }
 
 /**
- * A one-line part's options, as "Pick the next line" shows them: changes to the line in the context
- * of its solution, then lines from later parts with its shape (not on screen); never the code above
- * it. `given`: the line is not worth a pick: bare structure (`else:`, `try:`, a `def` line…) or
- * fewer than 3 options (2 is a coin toss).
+ * "Arrange a part" (the part's lines in order, one paired distractor), or, for a one-line part, the
+ * line picked from options. The deck deals only parts that make a real pick (`pickPart`,
+ * `partPickable`); a part that does not (never dealt today) asks the problem's gaps instead.
  */
-function oneLineChoice(p: Problem, ci: number, seed: number) {
-  const parsed = parseSolution(p.solution);
-  const lp = reviewParts(p).get(ci)!;
-  const line = lp.body.find((l) => !isIgnorable(l)) ?? '';
-  const before = parsed.chunks.slice(0, ci).flatMap((c) => c.lines);
-  const later = parsed.chunks.slice(ci + 1).flatMap((c) => c.lines);
-  const choice = gapChoices([line], [0], seed, 3, later, { context: parsed.lines.map((l) => l.text), visible: [...before, ...lp.lead] })[0];
-  return { line, choice, given: isGivenLine(line) || choice.options.length < 3 };
-}
-
-/**
- * The part a picked part card asks: the deck's, unless it is one line with no real pick
- * (`oneLineChoice(...).given`); then the problem's next best part that is a real pick (`pickPart`
- * avoiding the ones tried). Only when none is does the card show the line as given.
- */
-function pickablePart(p: Problem, first: number, seed: number): number {
-  const parts = reviewParts(p);
-  const tried: number[] = [];
-  let ci = first;
-  for (let k = 0; k < parts.size; k++) {
-    const lp = parts.get(ci);
-    if (!lp || codeLines(lp.body).length !== 1 || !oneLineChoice(p, ci, seed).given) return ci;
-    tried.push(ci);
-    const next = pickPart(p, seed, tried, 'pick');
-    if (tried.includes(next)) break;
-    ci = next;
-  }
-  return first;
-}
-
-/** "Arrange a part" (the part's lines in order, one paired distractor), or, for a one-line part, the line picked from options. */
 function PickPartCard(props: DrillProps & { onTypeInstead?: () => void }) {
   const { problem: p, chunk, seed = 0 } = props;
-  const ci = useMemo(() => pickablePart(p, chunk ?? pickPart(p, seed, [], 'pick'), seed), [p, chunk, seed]);
+  const ci = useMemo(() => chunk ?? pickPart(p, seed, [], 'pick'), [p, chunk, seed]);
   const part = usePart(p, ci, seed, 'pick');
   if (part.n > 1) return <ArrangePartCard {...props} part={part} />;
-  return oneLineChoice(p, ci, seed).given ? <GivenLinePartCard {...props} part={part} /> : <PickLinePartCard {...props} part={part} />;
+  return oneLinePick(p, ci, seed).given ? <PickGapsCard {...props} /> : <PickLinePartCard {...props} part={part} />;
 }
 
 /** Focus on arrival with a keyboard (fine pointer), as every pick screen does; phones wait for a tap. */
@@ -1401,13 +1371,14 @@ function ArrangePartCard({
     flushSync(ex.retry);
     arrangeRef.current?.focus(k >= 0 ? k : undefined);
   };
-  // A placed distractor counts as one more wrong line, as the score does.
+  // Graded like the typed twin (`outOf`): the distractor placed instead of its line is that line
+  // wrong; placed as well as it, one line too many.
   const finish = () =>
     onDone({
       kind: 'part',
       correct: !!first?.perfect,
       input: 'pick',
-      picked: first ? { correct: first.correct, total: first.total + (first.usedDistractor ? 1 : 0) } : undefined,
+      picked: first ? { correct: first.correct, total: first.outOf } : undefined,
     });
   const fb = ex.revealed ? codeFeedback({ checks, perfect: r.perfect, gaveUp: false, summary: arrangeSummary(r), comesBack, unit: 'lines' }) : null;
 
@@ -1482,7 +1453,7 @@ function PickLinePartCard({
   onTypeInstead,
   part,
 }: DrillProps & { onTypeInstead?: () => void; part: PartInfo }) {
-  const { line: lineText, choice } = useMemo(() => oneLineChoice(p, part.ci, seed), [p, part.ci, seed]);
+  const { line: lineText, choice } = useMemo(() => oneLinePick(p, part.ci, seed), [p, part.ci, seed]);
   const choices = useMemo(() => [choice], [choice]);
   const [sel, setSel] = useState('');
   const [open, setOpen] = useState<number | null>(0);
@@ -1541,6 +1512,7 @@ function PickLinePartCard({
         hints={false}
         start={part.firstLine}
         label={`Line ${part.firstLine} to pick`}
+        around={{ cue: part.part.explain, above: lineAbove([...part.before, '', ...part.lead], 1) }}
         filename="solution.py"
         meta={`Part ${part.partNo} of ${part.parts}`}
         note={sel ? 'Ready to check' : '1 line to pick'}
@@ -1567,39 +1539,6 @@ function PickLinePartCard({
   );
 }
 
-/**
- * A one-line part with no real pick (bare structure, or fewer than 3 options) when the problem has
- * no other part to ask: the line is shown as given in its place, and the card only moves on. It
- * asks nothing, so it scores nothing against the learner.
- */
-function GivenLinePartCard({ problem: p, onDone, kicker, badge, meta, part }: DrillProps & { part: PartInfo }) {
-  const line = part.body.find((l) => !isIgnorable(l)) ?? '';
-  return (
-    <section className="drill drill-code" data-drill="part" data-problem={p.id} data-input="pick">
-      <DrillHead
-        kind="gaps"
-        input="pick"
-        kicker={kicker ?? 'The next line'}
-        badge={badge}
-        meta={meta}
-        title={`The next line of ${p.title}`}
-        sub="This part is one line with nothing real to choose between, so it is given. Read it, then continue."
-      />
-      <ProblemDisclosure p={p} />
-      <TyperWindow filename="solution.py" meta={`Part ${part.partNo} of ${part.parts}`} footer={<TyperFooter note="Given" keys={false} />}>
-        <PartFold part={part} />
-        <CodePane>
-          <GivenLines lines={part.given} start={part.start} />
-          <PartCue part={part} />
-          <CodeLine n={part.firstLine} className="given">
-            {highlightLine(line)}
-          </CodeLine>
-        </CodePane>
-      </TyperWindow>
-      <ActionBar status="idle" onContinue={() => onDone({ kind: 'part', correct: true, input: 'pick' })} />
-    </section>
-  );
-}
 
 // ── 8. Complexity ───────────────────────────────────────────────────────────
 

@@ -91,9 +91,16 @@ function exprEffects(expr: string, out: Effects): boolean {
     const p = path(t);
     if (KEYWORDS.has(p)) continue;
     if (toks[k - 1] === '.') {
-      // An attribute of a subscript or a call (`nums[i].val`): its base is read already; a method
-      // called on it could change anything but a pure one.
-      if (toks[k + 1] === '(' && !PURE_METHODS.has(p.split('.')[0])) return false;
+      // An attribute of a subscript or a call (`nums[i].val`): its base is read already. A method
+      // called on it could change anything but a pure one, or a known mutating one on a subscript
+      // (`rows[r].add(x)` changes `rows`).
+      const method = p.split('.')[0];
+      if (toks[k + 1] === '(' && !PURE_METHODS.has(method)) {
+        const base = subscriptBase(toks, k - 2);
+        if (!base || !MUTATING_METHODS.has(method)) return false;
+        out.reads.push(base);
+        out.writes.push(base);
+      }
       continue;
     }
     // A keyword argument's name (`key=…` inside a call).
@@ -121,6 +128,20 @@ function exprEffects(expr: string, out: Effects): boolean {
     out.reads.push(p);
   }
   return true;
+}
+
+/** The name a subscript ends on at `toks[end]` (`rows` of `rows[r]`, `grid` of `grid[r][c]`), or null. */
+function subscriptBase(toks: readonly string[], end: number): string | null {
+  let k = end;
+  while (toks[k] === ']') {
+    let depth = 0;
+    for (; k >= 0; k--) {
+      if (toks[k] === ']') depth++;
+      else if (toks[k] === '[' && --depth === 0) break;
+    }
+    k--;
+  }
+  return k < end && k >= 0 && /^[A-Za-z_]/.test(toks[k]) && toks[k - 1] !== '.' ? path(toks[k]) : null;
 }
 
 /** The names a target writes (`a[i]` writes `a`, `self.x` writes `self.x`) and reads (its indices). */
@@ -198,6 +219,17 @@ function independent(a: Effects, b: Effects): boolean {
 }
 
 const indentOf = (s: string) => (s.match(/^\s*/)?.[0] ?? '').replace(/\t/g, '    ').length;
+
+/**
+ * Whether two lines next to each other can trade places: simple statements at the same indentation
+ * (so in the same block) where neither writes what the other reads or writes.
+ */
+export function canSwap(a: string, b: string): boolean {
+  if (indentOf(a) !== indentOf(b)) return false;
+  const fa = effects(a);
+  const fb = fa && effects(b);
+  return !!fa && !!fb && independent(fa, fb);
+}
 
 /**
  * Runs of neighboring lines that can come in any order (indices into `lines`, each run 2+ long and

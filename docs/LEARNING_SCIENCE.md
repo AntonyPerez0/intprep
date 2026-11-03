@@ -62,7 +62,7 @@ page, or the original blog post). Full references are at the end.
 | IntPrep feature | Main principles (section numbers) |
 |---|---|
 | Beginner foundations track (Python, Big-O, recursion, problem-solving framework) | Beginners need guidance (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
-| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on each new idea, 37 of 80, starts as "Pick the right code" from look-alike snippets, and a later exercise in the same lesson or the next types it; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
+| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on each new idea, 39 of 82, starts as "Pick the right code" from look-alike snippets, and a later exercise in the same lesson or the next types it; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
 | Pattern unit intro (analogy, recognition cues, template, the template's missing lines picked from choices while it is new, else typed, quiz) | Schemas and templates (9), worked examples (4), faded guidance (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
 | Guided lesson: predict the pattern first | Pretesting (6), calibration (11) |
 | Guided lesson: progressive hints | Faded guidance (4), productive struggle (6), expertise reversal (4) |
@@ -244,20 +244,21 @@ and its gaps (Ericson et al., 2022).
 Ericson, Margulieux & Rick (2017); Ericson, Foley & Rick (2018); Ericson et al. (2022).
 
 **How IntPrep uses it.**
-- **Code-line Parsons problems** are how new code is built: while a problem's code is new, the guided lesson
-  builds each part by putting its lines in order, and the review's "Arrange a part" card does the same. Each
-  has **one distractor** (when the part has two or more lines of code): a copy of one of its lines, a key line
-  when there is one, with one small change (an off-by-one bound, a flipped comparison, a wrong pointer move),
-  placed next to the line it imitates, and never a line of the solution. Lines keep their indentation. Lines
-  whose order does not matter (`left += 1` next to `right -= 1`) are right in either order, so only real order
-  mistakes count. A two-line part that has no fair distractor is not asked as a Parsons problem: the lesson
-  picks its lines one by one instead, and the review asks another part. Distractors lowered learning efficiency
-  for young novice programmers (Harms, Chen & Kelleher, 2016), so each exercise has only one.
+- **Code-line Parsons problems** are how new code is built: while a problem's code is new, the guided lesson builds
+  each part by putting its lines in order, and the review's "Arrange a part" card does the same. Each has **one
+  distractor** (when the part has two or more lines of code): a copy of one of its lines, a key line when there is
+  one, with one small change (an off-by-one bound, a flipped comparison, a wrong pointer move), placed next to the
+  line it imitates, and never a line of the solution. Lines keep their indentation. Lines whose order does not
+  matter (`left += 1` next to `right -= 1`) are right in either order, so only real order mistakes count, and the
+  distractor placed instead of its line counts as that one line wrong, as typing it would. A two-line part that has
+  no fair distractor is not asked as a Parsons problem: the lesson picks its lines one by one instead, and the
+  review asks another part. Distractors lowered learning efficiency for young novice programmers (Harms, Chen &
+  Kelleher, 2016), so each exercise has only one.
 - The order-the-steps card (plain-English steps, not code) stays in reviews as one of the recognition cards.
 - "Always pick" (Profile, Code practice) picks every coding exercise that has a pick version, for learners who
   cannot type comfortably; it still sits between recognition and full recall. The rest stay typed: From scratch
   in Code from memory, From memory in Template practice, and Foundations "Your turn" slides without authored
-  options (43 of 80).
+  options (43 of 82).
 - Not built yet: **adaptive Parsons** (if the learner makes two wrong moves, make it easier by merging two
   blocks or removing the distractor; Ericson, Foley & Rick, 2018).
 
@@ -434,7 +435,9 @@ Karpicke & Roediger, 2007).
 - **End-of-session recap:** list the misses with the correct answers again. This adds the benefit of delayed,
   spaced re-exposure without slowing the drill.
 - Multiple-choice distractors should be **plausible neighbors** (similar patterns, off-by-one complexities, a
-  one-token slip in a line of code), never joke options, and never code that works like the answer.
+  one-token slip in a line of code), never joke options, and never code that works like the answer. A pick
+  needs at least two wrong options: with one it is a free point, so a line with fewer real alternatives is shown
+  as given or another line is asked.
 - Keep praise about the work ("You spotted the window shrink condition") rather than the person ("You're a genius").
 
 ## 13. Teaching absolute beginners to program
@@ -742,7 +745,7 @@ design and the exact rules are in [`docs/DESIGN.md`](DESIGN.md), "Pick first, th
 | Parsons problems (Parsons & Haden, 2006; Ericson, Margulieux & Rick, 2017) | Putting scrambled lines in order is an established exercise; with distractor lines, students learned about as much as from writing the same code, in less time (5) | "Arrange a part" in the guided lesson and in reviews: the part's lines shuffled, plus one distractor placed next to the line it imitates (one only: Harms, Chen & Kelleher, 2016) that is never a line of the solution; lines whose order does not matter are right in any order |
 | Desirable difficulties (Bjork & Bjork, 2011) | A difficulty helps only if the learner can respond to it successfully (7) | We treat typing code you have seen only once as too hard for many beginners, so picking keeps the first attempts winnable; typing comes after a clean right review on a later day, or a typed run of 80% or more |
 | Recall beats recognition (Rowland, 2014; Kang et al., 2007) and the generation effect (Slamecka & Graf, 1978; Bertsch et al., 2007) | Producing an answer helps memory more than recognizing it (1, 6) | Picking is a first rung, not the goal: typing takes over as soon as the learner has shown they know the code, and later reviews are typed unless a lapse sends the code back to picking |
-| Plausible distractors (Little et al., 2012) | Competitive wrong options make learners think about why they are wrong (12) | Wrong options are copies of the right line with one small change (an off-by-one bound, a flipped comparison, a swapped pointer, a common idiom mistake) or another variable of the same solution, set as three alternatives at one place or a 2x2 (two changes and both together), so the answer is never simply the most typical option. Other lines of the same solution with its shape, not on screen, only top up. Never code that works like the answer (each option is compared by meaning, and run in place against the examples and random inputs), never joke options |
+| Plausible distractors (Little et al., 2012) | Competitive wrong options make learners think about why they are wrong (12) | Wrong options are copies of the right line with one small change (an off-by-one bound, a flipped comparison, a swapped pointer, a common idiom mistake) or another variable of the same solution, set as three alternatives at one place or a 2x2 (two changes and both together), so the answer is never simply the most typical option. Other lines of the same solution with its shape, not on screen, only top up. Never code that works like the answer (each option is compared by meaning, run in place against the examples and random inputs, and the pattern templates' options checked by hand), never joke options (no line that does nothing, no condition that is always true or false). A line with fewer than two real wrong options is never asked as a pick |
 
 **The numbers, and why these values.** They are design choices that follow the research above, not values
 taken from a study.

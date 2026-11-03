@@ -31,9 +31,9 @@ import {
   type Ref,
 } from 'react';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
-import { gapChoices, type GapChoice } from '../lib/choices';
+import { type GapChoice } from '../lib/choices';
 import { baseIndent, codeLines, indentOf, lineKey } from '../lib/codegrade';
-import { gapSwaps, gapsSummary, gradeGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
+import { gapSwaps, gapsSummary, gradeGaps, pickableGaps, pickGaps, type GapsGrade, type PickGapsOptions } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { stripComment } from '../lib/parseSolution';
 import { CodeLine, CodePane, TyperWindow } from './CodeTyper';
@@ -68,7 +68,7 @@ function trailingComment(line: string): string {
  * and the code it follows ("Hint: base case: the empty tree. After line 2: def dfs(node):"). In
  * forms mode a reader jumps from gap to gap, so this is its only view of the code around it.
  */
-function gapContext(shown: readonly string[], isGap: (line: number) => boolean, start: number, i: number, hint?: string): string {
+function gapContext(shown: readonly string[], isGap: (line: number) => boolean, start: number, i: number, hint?: string, around: GapAround = {}): string {
   let after = '';
   for (let j = i - 1; j >= 0; j--) {
     if (stripComment(shown[j]).trim() && !isGap(j)) {
@@ -76,7 +76,31 @@ function gapContext(shown: readonly string[], isGap: (line: number) => boolean, 
       break;
     }
   }
-  return [hint && `Hint: ${hint.replace(/^#\s*/, '')}.`, after].filter(Boolean).join(' ');
+  if (!after && around.above?.text.trim()) after = `After line ${around.above.n}: ${around.above.text.trim()}`;
+  const cue = around.cue
+    ?.trim()
+    .replace(/^#\s*/, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/[.:]$/, '');
+  return [cue && `Cue: ${cue}.`, hint && `Hint: ${hint.replace(/^#\s*/, '')}.`, after].filter(Boolean).join(' ');
+}
+
+/**
+ * What is on screen around a snippet that is only part of the code shown (a part picked line by
+ * line under the code above it): the cue it answers and the code line right above it.
+ */
+export interface GapAround {
+  /** The part's cue (its comment in the file). */
+  cue?: string;
+  /** The last code line above the snippet, and its line number. */
+  above?: { n: number; text: string };
+}
+
+/** The last code line of `lines` (numbered from `start`) as `GapAround.above`. */
+export function lineAbove(lines: readonly string[], start = 1): GapAround['above'] {
+  for (let j = lines.length - 1; j >= 0; j--) if (stripComment(lines[j]).trim()) return { n: start + j, text: lines[j] };
+  return undefined;
 }
 
 /** "indented 4 spaces" ('' at no indentation): how a screen reader hears a line's nesting. */
@@ -867,6 +891,11 @@ export interface PickGapsProps {
   before?: ReactNode;
   /** Accessible name of the code area. Default "Code with N lines to pick". */
   label?: string;
+  /**
+   * For a screen reader, when `lines` is only part of the code on screen (a part picked line by
+   * line): the cue and the line above, read with each slot and its options, as a typed gap reads them.
+   */
+  around?: GapAround;
   ref?: Ref<PickGapsHandle>;
 }
 
@@ -893,6 +922,7 @@ export function PickGaps({
   start = 1,
   before,
   label,
+  around,
   ref,
 }: PickGapsProps) {
   const uid = useId();
@@ -1055,7 +1085,7 @@ export function PickGaps({
             const caption = !!hint && tight.has(k);
             // The slot's name replaces what it shows, so its description carries the hint and the
             // code it follows, as a typed gap's does; the open options are described by it too.
-            const ctx = gapContext(shown, (j) => gapAt.has(j), start, i, hint);
+            const ctx = gapContext(shown, (j) => gapAt.has(j), start, i, hint, around);
             const ctxId = ctx ? `${uid}-ctx-${k}` : undefined;
             return (
               <Fragment key={i}>
@@ -1220,19 +1250,20 @@ export interface PickGapsHookOptions extends Omit<PickGapsOptions, 'seed'> {
 /**
  * The state of a Pick the gaps exercise over `lines`: the twin of `useGaps`, with the same
  * rounds. Options are `gapChoices(lines, gaps, seed)`, stable for a round, so a retry or a reload
- * shows the same ones. The first slot opens on arrival.
+ * shows the same ones; every gap is a real pick (`pickableGaps`: a line with fewer than three options
+ * gives way to another line, or stays on screen). The first slot opens on arrival.
  */
 export function usePickGaps(lines: string[], opts: PickGapsHookOptions = {}): PickGapsState {
   const { round: startRound = 0, keyLines, exclude, ratio, min, max, gaps: fixed, seed } = opts;
   const [round, setRound] = useState(startRound);
   const linesKey = lines.join('\n');
   const optsKey = JSON.stringify([keyLines, exclude, ratio, min, max, fixed]);
-  const gaps = useMemo(
-    () => fixed ?? pickGaps(lines, { keyLines, exclude, ratio, min, max, seed: round }),
-    [linesKey, round, optsKey], // eslint-disable-line react-hooks/exhaustive-deps
-  );
   const optSeed = seed ?? round;
-  const choices = useMemo(() => gapChoices(lines, gaps, optSeed), [linesKey, gaps, optSeed]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Every gap a real pick (`pickableGaps`): a line with too few options gives way to another.
+  const { gaps, choices } = useMemo(
+    () => pickableGaps(lines, fixed ?? pickGaps(lines, { keyLines, exclude, ratio, min, max, seed: round }), optSeed, { exclude, keyLines }),
+    [linesKey, round, optsKey, optSeed], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   type Round = { key: string; values: string[]; revealed: boolean; locked: boolean[]; active: number | null };
   const key = `${round}|${optSeed}|${gaps.join(',')}|${linesKey}`;
   const empty = (): Round => ({ key, values: gaps.map(() => ''), revealed: false, locked: gaps.map(() => false), active: gaps.length ? 0 : null });

@@ -43,6 +43,7 @@ import type { CategoryId, Problem } from '../content/types';
 import {
   KEY_LINES_MIN,
   keyLineChoices,
+  keyLinePickable,
   keyLinePool,
   keyLineView,
   nextKeyLine,
@@ -937,7 +938,12 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   const used = useRef(new Set<string>());
   const missed = useRef(new Set<string>());
   const pick = (last: KeyLineRef | null): LineRound => {
-    const n = nextKeyLine(pool, used.current, last, { bonus: (id) => (missed.current.has(id) ? 1 : 0) });
+    // A line that would be picked must be a real pick (three options or more).
+    const ok = (ref: KeyLineRef) => {
+      const pr = getProgress();
+      return problemInput(pr.settings.typingMode, pr.problems[ref.id]) !== 'pick' || keyLinePickable(PROBLEM_BY_ID[ref.id], ref.line);
+    };
+    const n = nextKeyLine(pool, used.current, last, { bonus: (id) => (missed.current.has(id) ? 1 : 0), ok });
     if (!n) throw new Error('Key lines needs learned problems');
     if (n.reset) used.current.clear();
     used.current.add(refKey(n.ref));

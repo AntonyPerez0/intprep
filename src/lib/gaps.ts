@@ -17,6 +17,7 @@
 //
 // Pure: no React, no DOM. The editor lives in src/components/CodeGaps.tsx.
 
+import { gapChoices, isRealPick, type GapChoice } from './choices';
 import { lineKey } from './codegrade';
 import { swapRuns } from './order';
 import { normalizeCode, parseSolution, stripComment } from './parseSolution';
@@ -305,6 +306,69 @@ export function pickGaps(lines: string[], opts: PickGapsOptions = {}): number[] 
     }
   }
   return set;
+}
+
+// ── Picked gaps ─────────────────────────────────────────────────────────────
+
+export interface PickableGaps {
+  /** The gaps to ask, sorted (indices into `lines`). */
+  gaps: number[];
+  /** Their options (`gapChoices`), in the order of `gaps`. */
+  choices: GapChoice[];
+}
+
+/**
+ * The gaps of a Pick the gaps set, each a real pick (`isRealPick`: not bare structure, and at least
+ * three options). A gap that is not one (`while True:`, a line with one or two real alternatives) is
+ * swapped for another line that can be blanked and is one (key lines first, then the lines with the
+ * most logic; never a line whose code stays on screen elsewhere), else left on screen as given while
+ * another gap remains. Deterministic per lines, gaps and seed, like `gapChoices`.
+ */
+export function pickableGaps(lines: string[], gaps: readonly number[], seed = 0, { exclude = [], keyLines = [] }: { exclude?: number[]; keyLines?: number[] } = {}): PickableGaps {
+  let cur = [...gaps].sort((a, b) => a - b);
+  let choices = gapChoices(lines, cur, seed);
+  const real = (k: number) => isRealPick(lines[cur[k]] ?? '', choices[k]?.options ?? []);
+  if (cur.every((_, k) => real(k))) return { gaps: cur, choices };
+  const keys = new Set(keyLines);
+  const count = new Map<string, number>();
+  for (const l of lines) if (codeOf(l)) count.set(lineKey(codeOf(l)), (count.get(lineKey(codeOf(l))) ?? 0) + 1);
+  const spares = gapCandidates(lines, exclude)
+    .filter((i) => (count.get(lineKey(codeOf(lines[i]))) ?? 0) === 1)
+    .sort((a, b) => Number(keys.has(b) || KEY_MARK.test(lines[b])) - Number(keys.has(a) || KEY_MARK.test(lines[a])) || lineWeight(lines[b]) - lineWeight(lines[a]) || a - b);
+  const tried = new Set(cur);
+  for (let guard = 0; guard <= spares.length; guard++) {
+    const off = cur.filter((_, k) => !real(k));
+    if (!off.length) break;
+    const add: number[] = [];
+    for (let n = 0; n < off.length; n++) {
+      const next = spares.find((i) => !tried.has(i));
+      if (next === undefined) break;
+      tried.add(next);
+      add.push(next);
+    }
+    if (!add.length) break;
+    // Swap as many as there are spares; the rest stay for the next pass.
+    const drop = new Set(off.slice(0, add.length));
+    cur = [...cur.filter((g) => !drop.has(g)), ...add].sort((a, b) => a - b);
+    choices = gapChoices(lines, cur, seed);
+  }
+  // No spare left for some: show those as given, while a real pick remains.
+  if (cur.some((_, k) => real(k))) {
+    const keep = cur.filter((_, k) => real(k));
+    if (keep.length < cur.length) {
+      cur = keep;
+      choices = gapChoices(lines, cur, seed);
+      // Dropping a gap can take a fallback option from another one: settle once more.
+      const left = cur.filter((_, k) => real(k));
+      if (left.length && left.length < cur.length) {
+        cur = left;
+        choices = gapChoices(lines, cur, seed);
+      }
+    }
+    return { gaps: cur, choices };
+  }
+  const original = [...gaps].sort((a, b) => a - b);
+  return { gaps: original, choices: gapChoices(lines, original, seed) };
 }
 
 // ── Sources ─────────────────────────────────────────────────────────────────

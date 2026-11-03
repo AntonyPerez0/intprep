@@ -42,7 +42,7 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID } from '../content/index';
 import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
-import { gapChoices, isGivenLine, sameCode, type GapChoice } from '../lib/drills';
+import { gapChoices, isGivenLine, isRealPick, sameCode, type GapChoice } from '../lib/drills';
 import { XP } from '../lib/game';
 import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
@@ -55,7 +55,7 @@ import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
 import { ActionBar, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
-import { GapsWindow, PickGaps, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
+import { GapsWindow, lineAbove, PickGaps, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { INPUT_ICON, InputSwitch } from '../components/InputSwitch';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
@@ -82,20 +82,14 @@ const isMode = (m: string | null): m is Mode => m === 'parts' || m === 'gaps' ||
 const READY = 0.8;
 
 /**
- * A picked line needs at least this many options (the answer and two wrong ones). A line with
- * fewer, or bare structure (`isGivenLine`: `else:`, a `def` line, half of a statement), is shown
- * as given: not asked, not scored. The guided lesson and the review's one-line part do the same.
- */
-const MIN_PICK_OPTIONS = 3;
-
-/**
  * The default mode, one rung above what the learner has shown they can do: From scratch once
  * their fill-the-gaps best is strong (or they have written it from scratch before), Fill the gaps
  * once part by part is strong, else Part by part. Typed bests only: picked runs never climb it.
  * Picking (`input` 'pick') climbs Part by part, then Fill the gaps, and stops there, since From
  * scratch is always typed. Typed proof (`hasTypedProof`: a typed Fill the gaps or From scratch run
  * of 80%+ since the last lapse) keeps the typed rung: in 'auto', `problemInput` types the visit
- * then, and the check here holds the ladder to it too. Always pick stays on the picked ladder.
+ * then (so `input` is never 'pick' with typed proof today); the check here is a guard that holds
+ * the ladder to it should that change. Always pick stays on the picked ladder.
  */
 function ladderMode(pp: ProblemProgress | undefined, input: CodeInput = 'type', setting?: InputMode): Mode {
   const typed: Mode = (pp?.gapsBest ?? 0) >= READY || pp?.scratchBest !== undefined ? 'scratch' : (pp?.rebuildBest ?? 0) >= READY ? 'gaps' : 'parts';
@@ -219,7 +213,12 @@ function Rebuild({ p }: { p: Problem }) {
     onChecked: () => setCheckedIn(session),
     onRestart: restart,
     input,
-    onInput: setInput,
+    // "Type instead" swaps the view inside the tap (flushSync) and focuses the typed one, so a
+    // phone opens its keyboard: the learner asked to type.
+    onInput: (next) => {
+      flushSync(() => setInput(next));
+      if (next === 'type') document.querySelector<HTMLElement>('.session-body textarea.code-input:not(:disabled), .session-body input.gaps-input:not(:disabled)')?.focus();
+    },
     canTypeInstead: typingMode !== 'tap',
   };
 
@@ -454,7 +453,8 @@ function PartsSession({ p, modes, onChecked, onRestart, input, onInput, canTypeI
   const lead = cur ? cur.lead : [];
   const doneLines = body.slice(0, step).flatMap((b) => b.chunk.lines);
 
-  // Picking: each line of the part, asked (its options) or given (null; see MIN_PICK_OPTIONS). The
+  // Picking: each line of the part, asked (its options) or given (null: no real pick, `isRealPick`:
+  // bare structure such as `else:`, or fewer than three options; not asked, not scored). The
   // options: the line and up to three plausible wrong ones (changes to the line in the solution's
   // context first, then lines of its shape that are not on screen yet: the rest of this part and
   // the parts after), never a line it can trade places with (`swapRuns`: either order is right).
@@ -471,7 +471,7 @@ function PartsSession({ p, modes, onChecked, onRestart, input, onInput, canTypeI
       const later = [...curLines.slice(j + 1), ...after].filter((l) => !partners.includes(l));
       const shown = [...header, ...doneLines, ...lead, ...curLines.slice(0, j)];
       const c = gapChoices(lines, lines.map((_, k) => k), seed + step * 101 + j, 3, later, { context, visible: shown })[0];
-      return c.options.length >= MIN_PICK_OPTIONS ? c : null;
+      return isRealPick(line, c.options) ? c : null;
     });
   }, [step, typing]); // eslint-disable-line react-hooks/exhaustive-deps
   /** The first line from `from` on that is asked; curLines.length when none is. */
@@ -851,6 +851,7 @@ function PartsSession({ p, modes, onChecked, onRestart, input, onInput, canTypeI
                   prompt="Pick the next line"
                   start={lineNo}
                   label={`Part ${step + 1}, line ${lineNo} to pick`}
+                  around={{ cue: cur.chunk.explain, above: lineAbove([...given, '', ...lead, ...written], 1) }}
                   before={
                     <>
                       <GivenLines lines={given} />

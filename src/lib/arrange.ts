@@ -12,7 +12,7 @@
 
 import { gradeCode, indentOf, type Grade } from './codegrade';
 import { canonKey, codeOnly, lineChanges, optionKey } from './choices';
-import { swapRuns } from './order';
+import { canSwap, swapRuns } from './order';
 import { hashString, seededRandom, shuffleWith } from './random';
 
 export interface ArrangeBlock {
@@ -99,7 +99,7 @@ export function arrangeBlocks(lines: readonly string[], seed = 0, opts: ArrangeO
   }
 
   // Shuffle the real lines, never into an order that is already right.
-  const solved = (bs: ArrangeBlock[]) => bs.length > 1 && settle(bs, expected, swappable).every((b, k) => b.text === expected[k]);
+  const solved = (bs: ArrangeBlock[]) => bs.length > 1 && settle(bs, expected).every((b, k) => b.text === expected[k]);
   let bank = shuffleWith(real, rnd);
   for (let t = 0; t < 8 && solved(bank); t++) bank = shuffleWith(real, rnd);
   if (solved(bank)) bank = [...bank.slice(1), bank[0]];
@@ -122,62 +122,86 @@ export interface ArrangeGrade {
   total: number;
   /** The distractor was placed. */
   usedDistractor: boolean;
+  /**
+   * Lines the learner was graded on: the solution's, plus one when the distractor was placed as an
+   * extra line (its pair placed too). The distractor placed instead of its pair is one wrong line,
+   * as typing that line would be.
+   */
+  outOf: number;
   /** Solution lines still in the bank. */
   missing: number;
   /** Every solution line in order, nothing else. */
   perfect: boolean;
-  /** 0–1: correct / (total + 1 if the distractor was placed). */
+  /** 0–1: correct / outOf. */
   score: number;
 }
 
 /**
- * The placed blocks with each run of lines whose order does not matter put back in the solution's
- * order, where the placed run holds exactly those lines (in any order, next to each other).
+ * The placed blocks with lines whose order does not matter put back in the solution's order: two
+ * neighbors that can trade places (`canSwap`) and stand the other way round from the solution are
+ * swapped, until none is. An order that only differs from the solution by such swaps becomes the
+ * solution's (any order where every two lines that depend on each other keep their order), and
+ * any other order keeps the learner's mistakes where they made them.
  */
-function settle(placed: readonly ArrangeBlock[], expected: readonly string[], swappable: readonly (readonly number[])[]): ArrangeBlock[] {
+function settle(placed: readonly ArrangeBlock[], expected: readonly string[]): ArrangeBlock[] {
+  // Each real block's place in the solution (equal lines take the next free place, in order).
+  const used = new Set<number>();
+  const rank = new Map<ArrangeBlock, number>();
+  for (const b of placed) {
+    if (b.distractor) continue;
+    const k = expected.findIndex((t, j) => !used.has(j) && t === b.text);
+    if (k >= 0) {
+      used.add(k);
+      rank.set(b, k);
+    }
+  }
   const out = [...placed];
-  for (const run of swappable) {
-    const want = run.map((j) => expected[j]);
-    const sorted = [...want].sort().join('\n');
-    for (let w = 0; w + want.length <= out.length; w++) {
-      const win = out.slice(w, w + want.length);
-      if (win.some((b) => b.distractor) || [...win.map((b) => b.text)].sort().join('\n') !== sorted) continue;
-      const left = [...win];
-      const fixed = want.map((t) => left.splice(left.findIndex((b) => b.text === t), 1)[0]);
-      out.splice(w, want.length, ...fixed);
-      break;
+  for (let moved = true; moved; ) {
+    moved = false;
+    for (let i = 0; i + 1 < out.length; i++) {
+      const [a, b] = [out[i], out[i + 1]];
+      const ra = rank.get(a);
+      const rb = rank.get(b);
+      if (ra === undefined || rb === undefined || ra < rb || !canSwap(a.text, b.text)) continue;
+      out[i] = b;
+      out[i + 1] = a;
+      moved = true;
     }
   }
   return out;
 }
 
 /**
- * Grade a placed order. Runs of lines whose order does not matter (`swappable`, from
- * `arrangeBlocks`) count as right in any order; then lines are aligned with the kit's
+ * Grade a placed order. Lines whose order does not matter count as right in either order (`settle`:
+ * neighbors that can trade places, `canSwap`); then lines are aligned with the kit's
  * longest-common-subsequence diff (`gradeCode`, anchored at column 0), so a line out of place marks
  * only that line, and lines that are equal after `lineKey` are interchangeable.
  */
-export function gradeArrange(placed: readonly ArrangeBlock[], expected: readonly string[], swappable: readonly (readonly number[])[] = []): ArrangeGrade {
-  const order = swappable.length ? settle(placed, expected, swappable) : [...placed];
+export function gradeArrange(placed: readonly ArrangeBlock[], expected: readonly string[]): ArrangeGrade {
+  const order = settle(placed, expected);
   const graded = gradeCode(order.map((b) => b.text).join('\n'), [...expected], { anchor: 0 });
   // A run placed in another right order shows the learner's lines where they put them.
   const grade = { ...graded, rows: graded.rows.map((r) => (r.kind === 'ok' && r.gotIndex !== undefined && order[r.gotIndex] !== placed[r.gotIndex] ? { ...r, got: placed[r.gotIndex].text } : r)) };
   const okAt = new Set(graded.rows.flatMap((r) => (r.kind === 'ok' && r.gotIndex !== undefined ? [r.gotIndex] : [])));
   const okBlocks = new Set(order.filter((_, k) => okAt.has(k)));
   const results = placed.map((block) => ({ block, ok: okBlocks.has(block) }));
-  const usedDistractor = placed.some((b) => b.distractor);
+  const distractor = placed.find((b) => b.distractor);
+  const usedDistractor = !!distractor;
   const realPlaced = placed.filter((b) => !b.distractor).length;
   const total = expected.length;
   const correct = grade.correct;
+  // Placed instead of its pair, the distractor is that line done wrong; next to it, a line too many.
+  const outOf = total + (distractor && placed.some((b) => b.id === distractor.pair) ? 1 : 0);
   return {
     grade,
     results,
     correct,
     total,
     usedDistractor,
+    outOf,
     missing: Math.max(0, total - realPlaced),
     perfect: correct === total && placed.length === total && !usedDistractor,
-    score: total ? correct / (total + (usedDistractor ? 1 : 0)) : 1,
+    score: outOf ? correct / outOf : 1,
   };
 }
 

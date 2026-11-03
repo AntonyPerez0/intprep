@@ -1,15 +1,16 @@
 // How code practice takes input: "Pick it, then type it".
 //
-// New code is picked from choices (the missing line from four, the gaps from options, a part's
-// lines put in order); once the learner has shown they know it, typing takes over. Faded guidance:
-// support while the code is new, recall once it is known (docs/LEARNING_SCIENCE.md;
+// New code is picked from choices (the missing line from three or four, the gaps from options, a
+// part's lines put in order); once the learner has shown they know it, typing takes over. Faded
+// guidance: support while the code is new, recall once it is known (docs/LEARNING_SCIENCE.md;
 // docs/DESIGN.md, "Pick first, then type").
 //
 // The stored setting (`Progress['settings']['typingMode']`, "Code practice" in Profile) keeps the
 // values older saves hold:
 // - 'auto' (the default): "Pick first, then type". New code is picked; typing takes over once known.
 // - 'type': "Always type" (every exercise typed, new code included).
-// - 'tap':  "Always pick" (every exercise picked from choices).
+// - 'tap':  "Always pick" (every exercise with a pick version is picked; From scratch, template
+//           From memory and Foundations slides without options stay typed).
 
 import { dayKey } from './date';
 import type { Progress, ProblemProgress, TemplateProgress } from './store';
@@ -78,8 +79,9 @@ export function isNewCode(pp?: CodeProgress | null): boolean {
   const { reps } = pp.srs;
   if (reps < PICK_UNTIL_REPS) return true;
   if (reps > PICK_UNTIL_REPS) return false;
-  // The grade of the review that moved the card; older cards keep none, so the last grade given.
-  const fuzzy = (pp.srs.grade ?? pp.lastGrade) === 'hard';
+  // The grade of the review that moved the card (older saves get the last grade given, once, on
+  // load: see `hydrate` in store.ts).
+  const fuzzy = pp.srs.grade === 'hard';
   return fuzzy || pp.srs.last <= dayKey(new Date(pp.learnedAt));
 }
 

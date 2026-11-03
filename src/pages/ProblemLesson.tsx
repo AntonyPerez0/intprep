@@ -29,7 +29,7 @@ import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, problemsFor } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { arrangeBlocks, gradeArrange, type ArrangeGrade } from '../lib/arrange';
-import { gapChoices, isGivenLine, type GapChoice } from '../lib/choices';
+import { gapChoices, isGivenLine, isRealPick, type GapChoice } from '../lib/choices';
 import { baseIndent, codeLines, gradeCode, isIgnorable, lineKey, type Grade } from '../lib/codegrade';
 import { confetti } from '../lib/confetti';
 import { friendlyDue } from '../lib/date';
@@ -45,7 +45,7 @@ import { getProgress, learnProblem, useProgress } from '../lib/store';
 import { ActionBar, Choices, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { ArrangeWindow, type ArrangeHandle } from '../components/Arrange';
 import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
-import { GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
+import { GapsWindow, lineAbove, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { ComplexityDrill } from '../components/Drills';
 import { INPUT_ICON, InputSwitch } from '../components/InputSwitch';
 import { SessionShell } from '../components/Shell';
@@ -584,25 +584,20 @@ const WORK: Record<PartKind, { label: string; icon: ReactNode; note: string; key
 };
 
 /**
- * A picked line needs at least this many options (the answer and two wrong ones). A line with
- * fewer, or bare structure (`isGivenLine`: `else:`, a `def` line, half of a statement), is shown
- * as given. Code from memory and the review's one-line part use the same rule.
- */
-const MIN_PICK_OPTIONS = 3;
-
-/**
  * The lines of a part to pick one by one (indices into `body`) and their options: every code line
- * but those shown as given (see MIN_PICK_OPTIONS). Options: changes to the line in the solution's
- * context, then lines of later parts with its shape (not on screen), never the code above
- * (`visible`) or a line it can trade places with. A line dropped as given is on screen, which can
- * change the others' options, so the rest are asked again until every one has enough.
+ * but those shown as given (no real pick, `isRealPick`: bare structure such as `else:`, or fewer
+ * than three options; Code from memory and the review use the same rule). Options: changes to the
+ * line in the solution's context, then lines of later parts with its shape (not on screen), never
+ * the code above (`visible`) or a line it can trade places with. A line dropped as given is on
+ * screen, which can change the others' options, so the rest are asked again until every one has
+ * enough.
  */
 function pickLines(body: string[], later: string[], context: string[], visible: string[]): { gaps: number[]; options: GapChoice[] } {
   let gaps = body.flatMap((l, j) => (isIgnorable(l) || isGivenLine(l) ? [] : [j]));
   for (;;) {
     if (!gaps.length) return { gaps, options: [] };
     const options = gapChoices(body, gaps, 0, 3, later, { context, visible });
-    const keep = gaps.filter((_, m) => options[m].options.length >= MIN_PICK_OPTIONS);
+    const keep = gaps.filter((g, m) => isRealPick(body[g], options[m].options));
     if (keep.length === gaps.length) return { gaps, options };
     gaps = keep;
   }
@@ -756,7 +751,8 @@ function CodeStep({
   const focusPrimary = () => rootRef.current?.parentElement?.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child')?.focus();
   // Into the exercise, inside the click that shows it (so a phone opens its keyboard for the
   // editor): the editor, the first line to place (or Check, once every line is placed), or the
-  // options. Without scrolling: the step brings the part into view itself.
+  // options. The options scroll into view with `focusOptions` (nearest, clear of the action bar);
+  // otherwise the step brings the part into view itself.
   const focusWork = () => {
     if (kind === 'type') return focusEditor();
     if (kind === 'line') return pickRef.current?.focusOptions();
@@ -790,7 +786,7 @@ function CodeStep({
       const g = gradeCode(text, body, { anchor: indent });
       r = { perfect: g.perfect, grade: g };
     } else if (kind === 'arrange') {
-      const a = gradeArrange(placedBlocks, set.expected, set.swappable);
+      const a = gradeArrange(placedBlocks, set.expected);
       r = { perfect: a.perfect, arrange: a };
     } else r = { perfect: choice.options.every((o, m) => lineKey(sels[m]) === lineKey(o.answer)) };
     setResult(r);
@@ -922,7 +918,7 @@ function CodeStep({
             ? "Pick this part's lines from the options."
             : "Pick this part's line from the options."
         : fixing
-          ? 'Tap a line to send it back, then add the lines again in order.'
+          ? 'Select a line to send it back, then add the lines again in order.'
           : odd
             ? "Put this part's lines in order. One line does not belong."
             : "Put this part's lines in order.";
@@ -1071,6 +1067,7 @@ function CodeStep({
             onPick={pickLine}
             revealed={!!result}
             start={firstBody}
+            around={{ cue: plain(part.chunk.explain), above: lineAbove([...before, ...lead], 1) }}
             label={
               choice.gaps.length === 1
                 ? `Line ${firstBody + choice.gaps[0]} to pick, part ${n} of ${total}`

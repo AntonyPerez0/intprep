@@ -26,5 +26,12 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        // The teaching content (problems, lessons, templates, the distractor deny lists) is its own
+        // chunk: it changes on a different rhythm from the code, and both download in parallel.
+        manualChunks: (id) => (id.includes('/src/content/') ? 'content' : undefined),
+      },
+    },
   },
 });

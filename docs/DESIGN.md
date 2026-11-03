@@ -160,9 +160,10 @@ come back later" (lessons).
 **Phones** — no autofocus on coarse pointers: an editor or gap focuses on mount only with `(pointer: fine)`, so
 the keyboard never covers the task on arrival; it opens when the learner taps the code, and "Fix and check again"
 focuses inside the tap (`flushSync`). So does "Type instead" (review cards, the typed key line, Foundations' Pick
-the right code, the guided lesson, the pattern intro, Template practice, Key lines): the typed view mounts inside
-the tap and its first gap or editor takes focus, because the learner asked to type. Code from memory's "Type
-instead" does not yet: there, on a phone, a tap on the code opens the keyboard.
+the right code, the guided lesson, the pattern intro, Template practice, Key lines, Code from memory): the typed
+view mounts inside the tap and its first gap or editor takes focus, because the learner asked to type. A pick
+screen that arrives on a phone keeps the top of the page (the first slot's options open under it, unfocused):
+the keyboard-free arrival is the same rule, and a tap on a slot or option starts picking.
 
 **Font size and iOS** — every code input (editor, gaps, typed key line) uses the 12.5–13px code size. iOS Safari
 zooms the page when an input under 16px gets focus, so `main.tsx` adds `maximum-scale=1` to the viewport meta at
@@ -276,7 +277,8 @@ ahead and for retries, plus the combo bonus. The completion adds a "Lines writte
 first check, out of the typed lines asked; picked cards do not count); its four stats sit two by two below 480px.
 A coding card nearly right on the first check (3 in 4, or one wrong in two or more) counts as half right toward
 `gradeFrom`, so two slips make a problem "Fuzzy", not "Forgot": typed, by its lines (`DrillResult.lines`); picked,
-by its picks (`DrillResult.picked`: the gaps picked, or a part's lines with a placed distractor counted as one
+by its picks (`DrillResult.picked`: the gaps picked, or a part's lines out of `ArrangeGrade.outOf`: a distractor
+placed instead of its line is that line wrong, as the same line typed would be; placed next to it, one line
 more). A key line (one line) is all or nothing. The subtitle says what moved on the schedule: only problems that
 were due when the session started ("These problems now move further out on your schedule." / "Missed problems
 come back sooner, so they stick."; some due: "The ones that were due…"; none due, as when practicing ahead:
@@ -310,7 +312,7 @@ Route for Pick first, then type; Keyboard for Always type; ListChecks for Always
 |---|---|---|
 | `auto` (default) | **Pick first, then type** (Recommended) | New code is picked; typing takes over once it is known |
 | `type` | **Always type** | Every exercise typed (old saves holding 'type' land here) |
-| `tap` | **Always pick** | Every exercise with a pick version is picked, no "Type instead". The rest stay typed: Code from memory's From scratch, Template practice's From memory, and Foundations "Your turn" slides without authored options (43 of 80) |
+| `tap` | **Always pick** | Every exercise with a pick version is picked, no "Type instead". The rest stay typed: Code from memory's From scratch, Template practice's From memory, and Foundations "Your turn" slides without authored options (43 of 82) |
 
 The description follows the selected option (`CODE_PRACTICE_DESC` in `pages/Profile.tsx`): auto "New code starts
 as choices until you know it. To type sooner, use “Type instead”."; type "You type all code, even code you have
@@ -323,8 +325,9 @@ cards never move when the choice changes. (`CODE_PRACTICE` in `lib/input.ts` hol
 - `type CodeInput = 'pick' | 'type'`.
 - `PICK_UNTIL_REPS = 1`. `isNewCode(pp)` is true while any of these holds: not learned yet or no review card
   (the guided lesson); `pp.srs.reps < PICK_UNTIL_REPS` (the first review, or the review after a lapse); reps is
-  exactly 1 and that review was Fuzzy (`srs.grade`, the grade of the review that moved the card; older cards
-  fall back to `lastGrade`); or reps is exactly 1 and that review was on the day the problem was learned. So
+  exactly 1 and that review was Fuzzy (`srs.grade`, the grade of the review that moved the card; an older save
+  without it takes its `lastGrade` once, on load, in `hydrate`); or reps is exactly 1 and that review was on the
+  day the problem was learned. So
   the guided lesson and the first review are picked; a clean right review on a later day (or a second right
   review) hands the code over to typing, and a Fuzzy or same-day first review keeps it picked one more review.
   Practice that is not due never moves the card, so it cannot flip the result.
@@ -339,7 +342,9 @@ cards never move when the choice changes. (`CODE_PRACTICE` in `lib/input.ts` hol
 - `TEMPLATE_READY = 0.8`. `isNewTemplate(t)`: no From memory try, no `t.pickReady` (a Pick the gaps round in
   Template practice of 80% or more; the pattern intro's pick never sets it, since it comes seconds after the
   template was on screen), and `t.gapsBest` under 0.8. `templateInput(mode, t?) → CodeInput` likewise. The
-  template ladder: Pick the gaps → Fill the gaps → From memory.
+  template ladder: Pick the gaps → Fill the gaps → From memory. An older save's `pickBest` (made before
+  `pickReady` existed, from the intro or Template practice alike) does not count: such a template opens on Pick
+  the gaps again until a Template practice round sets `pickReady`.
 - `preferTyping(mode)` is deprecated (still true for 'auto') and stays only for screens not yet on the ladder.
 
 **Stages and the review's coding cards** — `codeStage(card)` (`lib/drills.ts`): `new` (no card, or reps under
@@ -357,15 +362,18 @@ input, parts)`:
 keeps it (`retryCard`). In 'auto' the input follows `isNewCode`, not the stage: `new` is picked (unless typed
 proof types it: Write the key line + Fill the gaps), and so is a later stage while the code is still new, usually
 `fill` after a Fuzzy or same-day first review (Pick the key line + Pick the gaps). 'tap' picks every stage; 'type'
-types every stage.
+types every stage. Picked, the parts count is the parts that are a real pick (`partChunks(p, 'pick')`); a problem
+with no key line that is a real pick gets a part (or the gaps) in its place, and one with no part to pick gets the
+gaps (never two gaps cards). `npm run validate` rebuilds every picked set the screens deal and fails on one with
+fewer than 3 options.
 
 **The twins** — every typed exercise has a pick twin; `drillLabel(kind, input)` / `PICK_LABEL` name them:
 
 | Typed | Picked | How |
 |---|---|---|
-| Write the key line | **Pick the key line** | the missing line from up to 4: the answer + up to 3 wrong lines (`keyLineDrill`: changes to the line in its solution's context; never a line of the solution, which is on screen; as a last resort, key lines of the pattern's other problems with its shape that use only this solution's names) |
-| Fill the gaps | **Pick the gaps** | each gap gets the answer + up to 3 wrong lines (`gapChoices`; fewer only when the line has few real alternatives) |
-| Write a part | **Arrange a part** | a code-line Parsons problem (`arrangeBlocks`, graded with `gradeArrange`: order-free neighbors are right either way); a one-line part is picked from options ("Pick the next line"). A one-line part that is bare structure (`isGivenLine`) or has fewer than 3 options is not asked: the card asks the problem's next best part that is a real pick (`pickablePart` in `Drills.tsx`), and only if none exists shows the line as given ("The next line of …", Continue only). The guided lesson picks a part of one line, or of two with no distractor, line by line (see Guided lesson below) |
+| Write the key line | **Pick the key line** | the missing line from 3 or 4: the answer + 2 or 3 wrong lines (`keyLineDrill`: changes to the line in its solution's context; not another line of the solution, which is on screen, except a change to this line that matches one (`left` / `right`); as a last resort, key lines of the pattern's other problems with its shape that use only this solution's names). Picked, only a key line that is a real pick (`keyLinePickable`: 3 options or more) is dealt (`pickKeyLine(p, seed, avoid, 'pick')`); a problem with none gets a part or the gaps instead. A typed card offers "Show options" only for such a line |
+| Fill the gaps | **Pick the gaps** | each gap gets the answer + 2 or 3 wrong lines (`gapChoices`), every gap a real pick (`pickableGaps`: a line with fewer options gives way to another line, or stays on screen) |
+| Write a part | **Arrange a part** | a code-line Parsons problem (`arrangeBlocks`, graded with `gradeArrange`: lines whose order does not matter are right in either order); a one-line part is picked from options ("Pick the next line", `oneLinePick`). A one-line part that is bare structure (`isGivenLine`) or has fewer than 3 options is never dealt picked (`partPickable`: `pickPart(..., 'pick')`, `partChunks(p, 'pick')`, so the deck's two part cards and a missed part's retry each ask a different real part, and "Type instead" opens that same part); a problem with no part to pick gets the gaps instead. The guided lesson picks a part of one line, or of two with no distractor, line by line (see Guided lesson below) |
 | Foundations "Your turn" with authored wrong options | **Pick the right code** | `<CodeOptions>` |
 
 Pick screens offer a quiet **"Type instead"** (`<InputSwitch to="type">`, 'auto' only, before the first check)
@@ -398,38 +406,49 @@ alone), so picking never climbs the typed ladder.
 **Shared APIs**
 
 - `lib/choices.ts` (re-exported from `lib/drills.ts` and `components/CodeGaps.tsx`), pure. A wrong option is a
-  plausible mistake, never the answer in disguise, never nonsense, and never the "center" of its set:
-  `mutateLine(line, { context?, at? })` gives first-order changes: a token swapped (operators, bounds, pointers,
-  methods, literals), an off-by-one, operands swapped, a `not` dropped or added, idiom mistakes (a sort dropped
-  or reversed, a copy not made, peek instead of pop, an index loop instead of a value loop, a max-heap's minus
-  dropped, a pair's items swapped), then another variable of the same kind where the line reads one, or another
-  start value. With `context` (the whole solution or template, `at` the line's index in it), only names bound
-  before the line in its function or template section, methods the value has and the right argument counts are
-  used. Never a no-op (`+ 0`, `* 1`, `[-0]`, a unary `+`), a change inside a string, a renamed loop variable or
-  new name, an `if` turned into a `while`, two names swapped over equal values, nonsense such as `left < left`,
-  `x[x]` or `while False`, or a `def` / `class` / structure line; a hex literal is one token (`0x7FFFFFFF` never
-  becomes `1x7FFFFFFF`).
-  `lineChanges(line, opts, other?)` is the same in two groups (changes to the line itself, then other names and
-  values). `isGivenLine(line)`: bare structure (`else:`, `try:`, `pass`, decorators, `def` / `class` lines, lone
-  brackets, half of a multi-line statement) that gets no options. `canonKey(line, neq?)`: the line's meaning
-  (`a > b` is `b < a`, `x + 0` is `x`, `range(0, n)` is `range(n)`, `return None` is `return`, the pairs of
-  `a, b = x, y` sorted, `min` / `max` / `*` operands sorted), so no option means the same as the answer or as
-  another option. `codeOnly(line)` (an option as shown: code at its indentation, no trailing comment);
-  `lineChoices(answer, otherLines, n = 3, rnd = Math.random, { context, at, visible })` → up to `n` wrong lines
-  chosen so the answer is not the center (three alternatives at one site, else a 2x2: two changes and both
-  together, else a seeded search for a set where it is not; `answerIsCenter`, `optionTokens`, `tokenDistance`),
-  never on the deny list (`src/content/distractorDeny.ts`, per solution `contextKey`, written by
+  plausible mistake, never the answer in disguise, never nonsense, and rarely the "center" of its set (the option
+  closest to all the others: about 3% of sets today; `npm run validate` keeps it under 35%):
+  `lineChanges(line, { context?, at? }, other?)` gives first-order changes: a token swapped (operators, bounds,
+  pointers, methods, literals), an off-by-one, operands swapped, a `not` dropped or added, idiom mistakes (a sort
+  dropped or reversed, a copy not made, peek instead of pop, an index loop instead of a value loop, a max-heap's
+  minus dropped, a pair's items swapped), then (unless `other` is false) another variable of the same kind where
+  the line reads one, or another start value. With `context` (the whole solution or template, `at` the line's
+  index in it), only names bound before the line in its function or template section, methods the value has and
+  the right argument counts are used. Never a no-op (`+ 0`, `* 1`, `[-0]`, a unary `+`, `x &= x`, a line that
+  sets each target to itself such as `dp[i][j] = dp[i][j]` or `a, b = a, b`), a target twice (`a.x, a.x = …`),
+  a remainder that never changes (`n % 1`, `n % 2 == 2`), a change inside a string, a renamed loop or
+  comprehension variable or new name, an `if` turned into a `while`, two names swapped over equal values,
+  nonsense such as `left < left`, `x[x]` or `while False`, or a `def` / `class` / structure line; a hex literal
+  is one token (`0x7FFFFFFF` never becomes `1x7FFFFFFF`).
+  `isGivenLine(line)`: bare structure (`else:`, `try:`, `pass`, `while True:`, decorators, `def` / `class` lines,
+  lone brackets, half of a multi-line statement) that gets no options. `MIN_PICK_OPTIONS = 3` and
+  `isRealPick(line, options)`: a pick needs the answer and two wrong options and a line that is not bare
+  structure; every pick screen asks only real picks (one option is a free point, two a coin toss): see
+  `pickableGaps`, `keyLinePickable`, `partPickable` and Key lines below. `canonKey(line, neq?)`: the line's meaning
+  (`a > b` is `b < a`, also after `if (` / `return (`; `x + 0` is `x`, `range(0, n)` is `range(n)`, `return None`
+  is `return`, `n % 2 != 0` is `n % 2 == 1`, the pairs of `a, b = x, y` sorted, `min` / `max` / `*` operands
+  sorted), so no option means the same as the answer or as another option; a loop's symmetry counts too
+  (`for a, b in edges:` with a body that adds both directions, a loop over `((1, 0), (-1, 0), (0, 1), (0, -1))`
+  where the names may trade places or change sign). `codeOnly(line)` (an option as shown: code at its
+  indentation, no trailing comment); `lineChoices(answer, otherLines, n = 3, rnd = Math.random, { context, at,
+  visible })` → up to `n` wrong lines chosen so the answer is not the center (three alternatives at one site,
+  else a 2x2: two changes and both together, else a seeded search for a set where it is not; `answerIsCenter`,
+  `optionTokens`, `tokenDistance`), preferring a set where the answer is neither the only shortest nor the only
+  longest option (validate keeps "pick the shortest" under 31%), never on a deny list and never meaning the same
+  as a denied option (`src/content/distractorDeny.ts`, per solution `contextKey`, written by
   `scripts/check-distractors.py`, which runs every candidate, `choiceCandidates`, in place on the examples and
-  random inputs), with fallbacks from `otherLines` only of the answer's shape (in a template, from its own
-  section), never `visible`; `gapChoices(lines, gaps, seed = 0, n = 3, extra = [], { context, at, visible })` →
-  `{ answer, options }[]` per gap, deterministic per seed and content (a retry or reload shows the same options),
-  fallback lines that are not on screen (the other gaps' lines, `extra`), never a line that can trade places
-  with the gap's (`swapRuns`), so two such gaps cannot be crossed; a gap gets fewer than `n` wrong lines only
-  when its line has few real alternatives. `optionKey`, and `lineOptions(answer, otherLines)` for a quick
-  unseeded list.
+  random inputs; `src/content/templateDeny.ts`, by hand, for the pattern templates), with fallbacks from
+  `otherLines` only of the answer's shape and only with names in scope at the answer (never a nested function's
+  own names; in a template, from its own section), never `visible`; `gapChoices(lines, gaps, seed = 0, n = 3,
+  extra = [], { context, at, visible })` → `{ answer, options }[]` per gap, deterministic per seed and content (a
+  retry or reload shows the same options), fallback lines that are not on screen (the other gaps' lines,
+  `extra`), never a line that can trade places with the gap's (`swapRuns`), so two such gaps cannot be crossed; a
+  gap gets fewer than `n` wrong lines only when its line has few real alternatives. `optionKey`.
 - `lib/order.ts`, pure: `swapRuns(lines)` → runs of neighboring simple statements at one indentation whose order
-  does not matter (neither writes what the other reads or writes; conservative: a call that could do anything, or
-  two writes to one container, never moves), used by Arrange, the gaps grader (`gapSwaps`) and `gapChoices`.
+  does not matter (neither writes what the other reads or writes; a known mutating method on a subscript,
+  `rows[r].add(x)`, writes its container; conservative: a call that could do anything, or two writes to one
+  container, never moves), used by the gaps grader (`gapSwaps`) and `gapChoices`; `canSwap(a, b)`: two such
+  neighbors, used by Arrange.
 - `lib/arrange.ts`, pure: `arrangeBlocks(lines, seed = 0, { keyLines, distractor, avoid })` → `{ blocks, expected,
   base, swappable }`: the part's code lines (comments dropped) as `ArrangeBlock`s `{ id ('b0'…, 'x'), text
   (relative indentation), indent, distractor, pair }`, shuffled per seed and content, never in an order that is
@@ -437,11 +456,17 @@ alone), so picking never climbs the typed ladder.
   key line first, else to the longest line, the line's own changes before other names, never any line of `avoid`
   (the whole solution), so "Not in the solution" is true. A two-line part can end up with no distractor
   (`arrangeable` in `lib/drills.ts`: the review never deals one, the guided lesson picks it line by line).
-  `swappable` holds the runs of order-free neighbors (`swapRuns`). `gradeArrange(placed, expected, swappable = [])`
-  → `{ grade (the kit's `Grade`, LCS diff: a line out of place marks only itself; equal lines are
-  interchangeable, and so is any order of a swappable run, the diff showing the learner's order), results (per
-  position ok), correct, total, usedDistractor, missing, perfect, score = correct / (total + 1 if the distractor
-  was placed) }`. `arrangeSummary(g)`: "3 of 5 lines in place · 1 not in the solution".
+  `swappable` holds the runs of order-free neighbors (`swapRuns`). `gradeArrange(placed, expected)` → `{ grade
+  (the kit's `Grade`, LCS diff: a line out of place marks only itself; equal lines are interchangeable, and so is
+  any order reached from the solution's by swapping neighbors that can trade places, `canSwap`: every two lines
+  that depend on each other keep their order; the diff shows the learner's order), results (per position ok),
+  correct, total, usedDistractor, outOf (total, plus 1 when the distractor was placed next to its pair: placed
+  instead of it, it is that line done wrong, as typing it would be), missing, perfect, score = correct / outOf }`.
+  `arrangeSummary(g)`: "3 of 5 lines in place · 1 not in the solution".
+- `lib/gaps.ts`: `pickableGaps(lines, gaps, seed, { exclude, keyLines })` → `{ gaps, choices }`: a Pick the gaps
+  set where every gap is a real pick (`isRealPick`); a gap that is not (`while True:`, a line with one or two real
+  alternatives) gives way to another line that can be blanked (key lines first, then the most logic; never one
+  whose code stays on screen elsewhere), else stays on screen as given. `usePickGaps` uses it on every screen.
 - **Pick the gaps** (`components/CodeGaps.tsx`): `usePickGaps(lines, { gaps?, keyLines, exclude, ratio, min, max,
   round, seed })` → `{ gaps, choices, values, active, setActive, pick, revealed, grade, filled, complete, locked,
   round, check, retry, fresh }` (the twin of `useGaps`; pass `gaps` to pin a set, e.g. `reviewGaps(p, seed).gaps`;
@@ -455,7 +480,9 @@ alone), so picking never climbs the typed ladder.
   trailing comment, else "Pick a line"; a pick wider than the slot ends in an ellipsis, and a hint that does not
   fit (measured as Fill the gaps measures its placeholders) shows in full under the slot as a caption
   (`.pick-row.has-caption`, `.pick-slot-caption`), the slot then showing none. Each slot is described
-  (`aria-describedby`) by "Hint: … After line N: …", as a typed gap is, and so are its open options. The open
+  (`aria-describedby`) by "Hint: … After line N: …", as a typed gap is, and so are its open options; a part
+  picked line by line passes `around` (`{ cue, above }`, `lineAbove(lines, start)`), so its slot reads "Cue: …
+  After line N: …" like the typed part's editor. The open
   slot's options appear **inline right under it** (`<CodeOptions inline>`, sticky to the window's visible width, so
   they never scroll sideways with the code), labeled "Line 7 · Pick the
   missing line"; picking fills the slot and opens the next empty one; a filled slot reopens with its pick
@@ -509,7 +536,7 @@ typing window's frame, rows and status bar; 44px targets on touch; nothing scrol
 problem whose code is known (`isNewCode` false) types, 'type' always types and 'tap' always picks. Picked, the
 code step is **"Build the code"** ("Build the solution one part at a time"): each part's Look offers **"Arrange
 it"** (an `ArrangeWindow` over the part's body, `arrangeBlocks(body, 0, { keyLines, avoid: solution })` graded
-with `gradeArrange(placed, expected, swappable)`, under the earlier code, the cue and the given signature) or, for
+with `gradeArrange(placed, expected)`, under the earlier code, the cue and the given signature) or, for
 a part of one code line or of two with no distractor (`arrangeable`), **"Pick it"** (a `PickGapsWindow` over the
 part with one slot per line to pick, `pickLines`: options from `gapChoices` in the solution's context, later
 parts' lines of the line's shape as fallbacks, never the code above; a line that is bare structure or has fewer
@@ -527,7 +554,7 @@ right" (both). The completion's "Code from memory" shows ListChecks and the tip 
 will pick (`problemInput`), Keyboard and "Write it again now…" when it will type; after "Type instead" in 'auto'
 it passes router state (`RebuildState` `{ input: 'type' }`), so that one visit opens typed (ignored in Always
 pick). Lesson XP is unchanged (the problem's reward at the end; nothing per part). After "Fix and check
-again" the part card says how to fix it ("Tap a line to send it back, then add the lines again in order."). Hook:
+again" the part card says how to fix it ("Select a line to send it back, then add the lines again in order."). Hook:
 `.plesson[data-input]` (`pick` / `type`). Below 380px, with "Type instead" beside it, Peek shows its icon only (named
 for screen readers), so "Type instead" keeps its words.
 
@@ -568,7 +595,7 @@ for screen readers), so "Type instead" keeps its words.
   then Continue; the slide comes back once at the end of the lesson). Before a check, the idle secondary is "Hint"
   while unused, then "Show answer" (right away on a slide with no hint), so a beginner who cannot start is never
   stuck; it counts as a miss the same way. **Pick the right code** (`PickSlideStep`): a "Your turn" slide with
-  authored wrong options (`pick`, the first exercise on each new idea: 37 of the 80; a later typed slide in the same
+  authored wrong options (`pick`, the first exercise on each new idea: 39 of the 82; a later typed slide in the same
   lesson or the next types the idea again, and a lesson's last "Your turn" is typed) is picked first in "Pick first,
   then type" and "Always pick", typed in "Always type". The other 43 are typed in every setting. Same eyebrow ("Your
   turn · 2 of 8", ListChecks icon), title and task; the typing window holds the starter as `given` and a dashed slot
@@ -661,11 +688,11 @@ for screen readers), so "Type instead" keeps its words.
   to write from memory). A typed Fill the gaps or From scratch run of 80% or more is typed proof (`typedAt`): in
   'auto' the code counts as known from then on, until a lapse, so later visits type. **Picking** ("Pick first, then
   type"): `problemInput` decides per visit. While the code is new, Part by part picks each next line (a `PickGaps`
-  slot under the cue, in the file, "Pick the next line", up to four options from `gapChoices`: changes to the line
+  slot under the cue, in the file, "Pick the next line", 3 or 4 options from `gapChoices`: changes to the line
   in the solution's context, then lines not on screen yet, of its shape, as fallbacks; the line is asked together
   with its order-free partners (`swapRuns`), so none is offered as a wrong option; pick, then Check; a miss offers
   "Fix and check again", the line's first check counts). A line that is bare structure (`isGivenLine`) or has fewer
-  than 3 options is shown as given (not asked, not scored), and a part with nothing to pick shows its lines as given
+  than 3 options (`isRealPick`) is shown as given (not asked, not scored), and a part with nothing to pick shows its lines as given
   under its comment, with Continue and no Check ("Nothing to pick in this part"; "Type instead" still offered). The
   progress bar counts each line once (finished parts, then the lines above the one being picked) and reaches 100%
   only on the completion. Fill the gaps is **Pick the gaps** (`usePickGaps` + `PickGapsWindow`, the same round's
@@ -709,7 +736,7 @@ for screen readers), so "Type instead" keeps its words.
   typed) or without one (Zen), then
   results. The lobby opens with the game choice, native radio cards (one per row, arrow
   keys move between them): **Spot the pattern** (read a problem, pick its pattern from four: recognition, keys
-  1–4) and **Key lines** (the key line of a learned solution: recall; typed, or picked from up to four while its
+  1–4) and **Key lines** (the key line of a learned solution: recall; typed, or picked from 3 or 4 while its
   problem is new, see Picked rounds below). The last choice is remembered
   (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
   card is a quiet dashed one with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
@@ -742,7 +769,8 @@ for screen readers), so "Type instead" keeps its words.
   **Picked rounds** ("Pick first, then type"): each round's input is `problemInput` for its problem
   (`.blitz-lines[data-input]`), so in auto a problem still new is picked and a known one typed (Always pick:
   every round; Always type: none). A picked round keeps the window and slot (`PickGaps`, one gap, the line's
-  options from `keyLineChoices`, up to four, a new seed each time the line comes up) and, as in Spot the pattern,
+  options from `keyLineChoices`, 3 or 4, a new seed each time the line comes up; a line that would be picked is
+  drawn only if it is a real pick, `keyLinePickable`, through `nextKeyLine`'s `ok`) and, as in Spot the pattern,
   **a pick is the answer**: a number key, a tap or Enter on a focused option check at once (kicker "Pick the
   missing line", the primary reads "Pick a line" and stays off, the strip says "Your pick is checked right
   away."). Same points, combo and clock as typed; a picked line right earns `XP.blitzCodePickPerCorrect` (3;

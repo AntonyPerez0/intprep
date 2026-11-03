@@ -169,6 +169,13 @@ function hydrate(raw: unknown): Progress {
   const settings = { ...base.settings, ...(r.settings ?? {}) };
   // "Code practice": 'auto' (Pick first, then type), 'type' (Always type) or 'tap' (Always pick).
   if (!['auto', 'type', 'tap'].includes(settings.typingMode)) settings.typingMode = 'auto';
+  // Saves from before cards kept the grade of the review that moved them: take the last grade
+  // given, once, so practice that does not move the card (which still sets `lastGrade`) can never
+  // flip it between picking and typing (`isNewCode`).
+  const problems: Record<string, ProblemProgress> = { ...(r.problems ?? {}) };
+  for (const [id, pp] of Object.entries(problems)) {
+    if (pp?.srs && pp.srs.reps >= 1 && !pp.srs.grade && pp.lastGrade) problems[id] = { ...pp, srs: { ...pp.srs, grade: pp.lastGrade } };
+  }
   return {
     ...base,
     ...r,
@@ -178,7 +185,7 @@ function hydrate(raw: unknown): Progress {
     xpByDay: r.xpByDay ?? {},
     goalDays: r.goalDays ?? [],
     lessonsDone: r.lessonsDone ?? {},
-    problems: r.problems ?? {},
+    problems,
     achievements: r.achievements ?? {},
   };
 }

@@ -587,6 +587,41 @@ print("hot")`,
       },
       {
         kind: 'type',
+        title: 'Two branches',
+        prompt: '`age` holds an age. Print `adult` when `age` is at least `18`, and `minor` otherwise, with `if` and `else`.',
+        starter: 'age = 15',
+        answer: py`
+if age >= 18:
+    print("adult")
+else:
+    print("minor")`,
+        accept: [
+          py`
+if 18 <= age:
+    print("adult")
+else:
+    print("minor")`,
+        ],
+        pick: [
+          py`
+if age >= 18:
+    print("adult")
+else age < 18:
+    print("minor")`,
+          py`
+if age >= 18:
+    print("adult")
+else if age < 18:
+    print("minor")`,
+        ],
+        ideas: ['else'],
+        hint: '`else` takes no condition: it runs whenever the `if` test is false. End it with a colon and line it up with the `if`.',
+        explain:
+          '15 is not at least 18, so Python skips the `if` block and runs the `else` block. `else` never takes a condition: it catches every case the `if` did not. Python has no `else if` either; that one is spelled `elif`.',
+        output: 'minor',
+      },
+      {
+        kind: 'type',
         title: 'Add an else',
         prompt: 'Print `pass` when `score` is at least `50`, and `fail` otherwise. Use `if` and `else`.',
         starter: 'score = 42',
@@ -602,7 +637,7 @@ if 50 <= score:
 else:
     print("fail")`,
         ],
-        ideas: ['if'],
+        ideas: ['if', 'else'],
         hint: '*At least 50* means `>= 50`. `else:` lines up with the `if` and has no condition; Backspace removes the indent.',
         explain:
           '42 is not at least 50, so Python skips the `if` block and runs the `else` block. Exactly one of the two branches always runs.',
@@ -840,23 +875,18 @@ for n in range(1, 10):
           py`
 for n in range(1, 10):
     if n == 4:
-        continue
-    print(n)`,
-          py`
-for n in range(1, 10):
-    if n == 4:
         break
         print(n)`,
           py`
 for n in range(1, 10):
+    print(n)
     if n == 4:
-        continue
-        print(n)`,
+        break`,
         ],
         ideas: ['break'],
         hint: 'Check for 4 *before* printing. The `print` lines up with the `if`, not with `break`.',
         explain:
-          'The loop prints 1, 2 and 3. When `n` is 4, `break` leaves the loop at once, so nothing from 4 to 9 is printed. `continue` would only skip 4 and go on to 5. The `print` lines up with the `if`: inside it, after `break`, it could never run.',
+          'The loop prints 1, 2 and 3. When `n` is 4, `break` leaves the loop at once, so nothing from 4 to 9 is printed. The check comes before the `print`, or 4 would be printed first. The `print` lines up with the `if`: inside it, after `break`, it could never run. `continue` would only skip 4 and go on to 5.',
         output: py`
 1
 2
@@ -2316,6 +2346,31 @@ class Solution:
       },
       {
         kind: 'type',
+        title: 'One method calls another',
+        prompt: 'Inside a class, one method calls another through `self`. Make `greet` return `"Hi "` joined to what the `name` method returns.',
+        starter: py`
+class Greeter:
+    def name(self):
+        return "Ada"
+
+    def greet(self):`,
+        answer: py`
+        return "Hi " + self.name()`,
+        pick: [
+          py`
+        return "Hi " + name()`,
+          py`
+        return "Hi " + self.name`,
+          py`
+        return "Hi " + name`,
+        ],
+        ideas: ['self.method()'],
+        hint: 'The method lives on the object: `self.` in front of its name, and `()` to call it.',
+        explain:
+          '`self.name()` finds the `name` method on this object and calls it, so `greet` returns `"Hi Ada"`. Without `self.`, Python looks for a plain function called `name` and stops with a `NameError`. Without the parentheses, `self.name` is the method itself, not the text it returns.',
+      },
+      {
+        kind: 'type',
         title: 'Call a helper method',
         prompt: 'Make `countEvens` return how many numbers in `nums` are even. Start `count` at `0`, loop with `n`, and add `1` to `count` whenever the helper method `isEven` says `n` is even. Inside a class, one method calls another through `self`, so the check is `self.isEven(n)`.',
         starter: py`
@@ -2338,7 +2393,7 @@ class Solution:
                 count = count + 1
         return count`,
         ],
-        ideas: ['call a function'],
+        ideas: ['call a function', 'self.method()'],
         hint: 'A bare `isEven(n)` raises a `NameError`: the method lives on the object, so it needs `self.` in front. The `if` goes inside the loop, and `return count` after it.',
         explain:
           'Methods live on the object, so one method calls another as `self.isEven(n)`. Each even number adds 1 to `count`, and `return count` runs once, after the loop.',

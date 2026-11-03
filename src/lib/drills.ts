@@ -11,7 +11,7 @@ import { codeLines, lineKey } from './codegrade';
 import { gapCandidates, gapSource, lineWeight, pickGaps, type GapSource } from './gaps';
 import { lessonParts, normalizeCode, parseSolution, type LessonPart } from './parseSolution';
 import { arrangeBlocks } from './arrange';
-import { codeOnly, lineChoices } from './choices';
+import { codeOnly, gapChoices, isRealPick, lineChoices, type GapChoice } from './choices';
 import { PICK_UNTIL_REPS, type CodeInput } from './input';
 import { pick, sample, shuffle, shuffleWith } from './random';
 import type { SrsCard } from './srs';
@@ -135,7 +135,7 @@ export function complexityChoices(p: Problem, which: 'time' | 'space'): { option
 // Distractors (mutations of the right line) live in ./choices, shared with Pick the gaps and
 // Arrange a part; re-exported here for older imports.
 
-export { codeOnly, gapChoices, isGivenLine, lineChoices, lineOptions, mutateLine, type GapChoice } from './choices';
+export { codeOnly, gapChoices, isGivenLine, isRealPick, lineChoices, MIN_PICK_OPTIONS, type GapChoice } from './choices';
 
 export interface KeyLineDrill {
   /** Index into parsed.lines of the blanked line. */
@@ -173,6 +173,21 @@ export function keyLineDrill(p: Problem, avoid?: number, at?: number, rnd: () =>
   const wrong = lineChoices(answer, patternKeyLines(p), 3, rnd, { context: all, at: i, visible: all });
   return { lineIndex: i, answer, option, options: shuffleWith([option, ...wrong], rnd) };
 }
+
+/**
+ * Whether Pick the key line can ask key line `i`: a real pick (`isRealPick`: at least three options).
+ * The number of options does not depend on their order, so one build answers for every card.
+ */
+export function keyLinePickable(p: Problem, i: number): boolean {
+  const memo = `${p.id}:${i}`;
+  let v = keyPickMemo.get(memo);
+  if (v === undefined) {
+    const d = keyLineDrill(p, undefined, i, () => 0);
+    keyPickMemo.set(memo, (v = !!d && d.lineIndex === i && isRealPick(d.answer, d.options)));
+  }
+  return v;
+}
+const keyPickMemo = new Map<string, boolean>();
 
 /** Key lines of the other problems of a problem's pattern (fallback options for Pick the key line). */
 function patternKeyLines(p: Problem): string[] {
@@ -263,11 +278,41 @@ export function reviewParts(p: Problem): Map<number, LessonPart> {
  * How much a "Write a part" card wants a part: key lines first, then 2 to 6 lines to write. Picked
  * ("Arrange a part"), a part of more than 8 lines steps back: a long bank of shuffled lines is a
  * puzzle, not practice; so does a part of two lines with no distractor (`arrangeable`): its bank
- * is just the two lines the wrong way round.
+ * is just the two lines the wrong way round. A one-line part that is no real pick (`partPickable`)
+ * is never dealt picked while another part is.
  */
 function partScore(p: Problem, lp: LessonPart, input: CodeInput = 'type'): number {
   return baseScore(lp, input) - (input === 'pick' && !arrangeable(p, lp) ? 3 : 0);
 }
+
+/**
+ * A one-line part's options, as "Pick the next line" shows them: changes to the line in the context
+ * of its solution, then lines from later parts with its shape (not on screen); never the code above
+ * it. `given`: the line is no real pick (`isRealPick`: bare structure such as `else:` or a `def`
+ * line, or fewer than three options), so it is not asked as one.
+ */
+export function oneLinePick(p: Problem, ci: number, seed = 0): { line: string; choice: GapChoice; given: boolean } {
+  const parsed = parseSolution(p.solution);
+  const lp = reviewParts(p).get(ci)!;
+  const line = lp.body.find((l) => codeOnly(l).trim() !== '') ?? '';
+  const before = parsed.chunks.slice(0, ci).flatMap((c) => c.lines);
+  const later = parsed.chunks.slice(ci + 1).flatMap((c) => c.lines);
+  const choice = gapChoices([line], [0], seed, 3, later, { context: parsed.lines.map((l) => l.text), visible: [...before, ...lp.lead] })[0];
+  return { line, choice, given: !isRealPick(line, choice.options) };
+}
+
+/**
+ * Whether a part can be asked picked: Arrange a part (two lines or more), or a one-line part that
+ * is a real pick (`oneLinePick`). The number of options does not depend on the seed.
+ */
+export function partPickable(p: Problem, lp: LessonPart): boolean {
+  if (codeLines(lp.body).length !== 1) return true;
+  const memo = `${p.id}:${lp.ci}`;
+  let v = partPickMemo.get(memo);
+  if (v === undefined) partPickMemo.set(memo, (v = !oneLinePick(p, lp.ci).given));
+  return v;
+}
+const partPickMemo = new Map<string, boolean>();
 
 /** `partScore` without the distractor check (which builds options, so it is left for last). */
 function baseScore(lp: LessonPart, input: CodeInput): number {
@@ -292,10 +337,10 @@ export function arrangeableNow(p: Problem, lp: LessonPart): boolean {
   return n !== 2 || arrangeBlocks(lp.body, 0, { keyLines, avoid: parseSolution(p.solution).lines.map((l) => l.text) }).blocks.some((b) => b.distractor);
 }
 
-/** The body chunks a "Write a part" card can ask for (indices into `parseSolution(p.solution).chunks`), best first. */
+/** The body chunks a "Write a part" card can ask for (indices into `parseSolution(p.solution).chunks`), best first; picked, only `partPickable` ones. */
 export function partChunks(p: Problem, input: CodeInput = 'type'): number[] {
   return [...reviewParts(p).values()]
-    .filter((lp) => codeLines(lp.body).length > 0)
+    .filter((lp) => codeLines(lp.body).length > 0 && (input !== 'pick' || partPickable(p, lp)))
     .sort((a, b) => partScore(p, b, input) - partScore(p, a, input) || a.ci - b.ci)
     .map((lp) => lp.ci);
 }
@@ -303,13 +348,15 @@ export function partChunks(p: Problem, input: CodeInput = 'type'): number[] {
 /**
  * The chunk for a "Write a part" (or "Arrange a part") card: from the best tier (see `partScore`),
  * rotating by `seed` (the session), never one in `avoid` (parts already asked) while another exists.
+ * Picked, never a one-line part that is no real pick (`partPickable`) while the problem has another.
  */
 export function pickPart(p: Problem, seed = 0, avoid: readonly number[] = [], input: CodeInput = 'type'): number {
   const parts = reviewParts(p);
+  const usable = [...parts.values()].filter((lp) => codeLines(lp.body).length > 0);
+  const pickable = input === 'pick' ? usable.filter((lp) => partPickable(p, lp)) : usable;
   // Best first by the cheap score; the distractor check (picked only) runs on as few parts as it
   // takes to know the best tier, which is the same tier `partScore` over every part would give.
-  const all = [...parts.values()]
-    .filter((lp) => codeLines(lp.body).length > 0)
+  const all = (pickable.length ? pickable : usable)
     .sort((a, b) => baseScore(b, input) - baseScore(a, input) || a.ci - b.ci)
     .map((lp) => lp.ci);
   const free = all.filter((i) => !avoid.includes(i));
@@ -330,10 +377,11 @@ export function pickPart(p: Problem, seed = 0, avoid: readonly number[] = [], in
 /**
  * A key line for a "Write the key line" card (index into `parseSolution(p.solution).lines`), rotating by `seed`.
  * The card shows the whole solution, so a key line whose code also stands elsewhere in it (the
- * answer in plain view) is left out while another exists.
+ * answer in plain view) is left out while another exists. Picked, only a real pick
+ * (`keyLinePickable`); undefined when the problem has none.
  */
-export function pickKeyLine(p: Problem, seed = 0, avoid: readonly number[] = []): number | undefined {
-  const all = keyLineIndices(p);
+export function pickKeyLine(p: Problem, seed = 0, avoid: readonly number[] = [], input: CodeInput = 'type'): number | undefined {
+  const all = keyLineIndices(p).filter((i) => input !== 'pick' || keyLinePickable(p, i));
   const lines = parseSolution(p.solution).lines;
   const twin = (i: number) => lines.some((l, j) => j !== i && l.text.trim() !== '' && lineKey(l.text) === lineKey(lines[i].text));
   const unique = all.filter((i) => !twin(i));
@@ -417,16 +465,22 @@ export interface DeckOptions {
  */
 export function cardsForProblem(p: Problem, { srs, round = 0, input = 'type' }: DeckOptions = {}): DrillCardSpec[] {
   const lead: DrillKind = Math.random() < 0.7 ? 'pattern' : pick(RECOGNITION_OTHER);
-  let coding = codingKinds(codeStage(srs), input, partChunks(p).length);
-  // A solution without a key line to blank: a part instead (or the gaps).
-  if (coding.includes('keyline') && !keyLineIndices(p).length) coding = coding.map((k) => (k === 'keyline' ? (coding.includes('part') ? 'gaps' : 'part') : k));
+  let coding = codingKinds(codeStage(srs), input, partChunks(p, input).length);
+  // A solution without a key line to blank (picked: without one that is a real pick): a part
+  // instead (or the gaps). Picked, a problem without a part to pick asks the gaps instead.
+  const hasKeyLine = input === 'pick' ? pickKeyLine(p, 0, [], 'pick') !== undefined : keyLineIndices(p).length > 0;
+  if (coding.includes('keyline') && !hasKeyLine) coding = coding.map((k) => (k === 'keyline' ? (coding.includes('part') ? 'gaps' : 'part') : k));
+  if (input === 'pick' && coding.includes('part') && !partChunks(p, 'pick').length) {
+    coding = coding.map((k) => (k === 'part' ? (coding.includes('keyline') || !hasKeyLine ? 'gaps' : 'keyline') : k));
+  }
+  coding = coding.filter((k, j) => k !== 'gaps' || coding.indexOf('gaps') === j);
   const out: DrillCardSpec[] = [{ kind: lead, problemId: p.id, uid: `${p.id}:${lead}:0`, lead: true }];
   coding.forEach((kind, k) => {
     const spec: DrillCardSpec = { kind, problemId: p.id, uid: `${p.id}:${kind}:${k + 1}`, input };
     if (kind === 'gaps') spec.seed = 2 * round;
     if (kind === 'keyline') {
       spec.seed = round;
-      spec.line = pickKeyLine(p, round, out.flatMap((c) => (c.line !== undefined ? [c.line] : [])));
+      spec.line = pickKeyLine(p, round, out.flatMap((c) => (c.line !== undefined ? [c.line] : [])), input);
     }
     if (kind === 'part') {
       spec.seed = round;
@@ -487,7 +541,7 @@ export function retryCard(p: Problem, card: DrillCardSpec, deck: readonly DrillC
   if (card.kind === 'gaps') next.seed = seed;
   if (card.kind === 'keyline' && card.line !== undefined) {
     next.seed = seed;
-    next.line = pickKeyLine(p, seed, [card.line]);
+    next.line = pickKeyLine(p, seed, [card.line], card.input) ?? card.line;
   }
   if (card.kind === 'part' && card.chunk !== undefined) {
     const asked = deck.flatMap((c) => (c.problemId === p.id && c.kind === 'part' && c.chunk !== undefined ? [c.chunk] : []));
