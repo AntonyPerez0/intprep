@@ -640,11 +640,12 @@ function CodeStep({
     const at = Math.max(0, body.findIndex((l) => !isIgnorable(l)));
     const line = body[at] ?? '';
     const later = parsed.chunks.slice(ci + 1).flatMap((c) => c.lines);
+    const all = parsed.lines.map((l) => l.text);
     return {
-      set: arrangeBlocks(body, 0, { keyLines }),
+      set: arrangeBlocks(body, 0, { keyLines, avoid: all }),
       at,
       line,
-      options: gapChoices([line], [0], 0, 3, later.length ? later : parsed.lines.map((l) => l.text)),
+      options: gapChoices([line], [0], 0, 3, later, { context: all, visible: [...parsed.chunks.slice(0, ci).flatMap((c) => c.lines), ...lead] }),
     };
   }, [part, parsed]);
 
@@ -756,7 +757,7 @@ function CodeStep({
       const g = gradeCode(text, body, { anchor: indent });
       r = { perfect: g.perfect, grade: g };
     } else if (kind === 'arrange') {
-      const a = gradeArrange(placedBlocks, set.expected);
+      const a = gradeArrange(placedBlocks, set.expected, set.swappable);
       r = { perfect: a.perfect, arrange: a };
     } else r = { perfect: lineKey(sel) === lineKey(choice.line) };
     setResult(r);

@@ -360,10 +360,142 @@ function checkScheduler() {
   if (gradeFrom(3, 3) !== 'good') err(w, 'three right should be good');
 }
 
+// ── Choices: the options of picked code ────────────────────────────────────
+// Every option set the app shows for picked code, rebuilt here with fixed seeds the way each screen
+// builds it (Pick the key line and Pick the gaps in the review, the guided lesson's one-line parts
+// and final gaps, Code from memory's gaps and part by part, Key lines, Template practice and the
+// pattern guide's Your turn), plus the guided lesson's Arrange distractors. A wrong option must
+// never mean the same as the answer (or be on the deny list from scripts/check-distractors.py),
+// two wrong options must never mean the same, an Arrange distractor is never a line of the
+// solution, and the answer must not be guessable as the "center" of its options: it may be the
+// option closest to all the others (summed token edit distance) in at most 35% of the sets.
+import { answerIsCenter, canonKey, contextKey, gapChoices, isGivenLine } from '../src/lib/choices';
+import { arrangeBlocks } from '../src/lib/arrange';
+import { arrangeableNow, keyLineDrill, keyLineIndices, reviewGaps } from '../src/lib/drills';
+import { blitzKeyLines, keyLineChoices, keyLineView } from '../src/lib/blitzLines';
+import { gapSource, pickGaps } from '../src/lib/gaps';
+import { guideFor, PROBLEMS } from '../src/content/index';
+import { DISTRACTOR_DENY, NO_DISTRACTOR_PARTS } from '../src/content/distractorDeny';
+import { seededRandom } from '../src/lib/random';
+
+const CENTER_MAX = 0.35;
+
+function checkChoices() {
+  const w = 'choices';
+  const by = new Map<string, { sets: number; center: number; options: number; short: number }>();
+  const bad = new Set<string>();
+  let denied: Readonly<Record<string, readonly string[]>> = {};
+  const report = (where: string, msg: string) => {
+    if (bad.size < 40 && !bad.has(`${where}: ${msg}`)) err(`${w}/${where}`, msg);
+    bad.add(`${where}: ${msg}`);
+  };
+  const look = (screen: string, where: string, answer: string, options: readonly string[]) => {
+    const st = by.get(screen) ?? { sets: 0, center: 0, options: 0, short: 0 };
+    by.set(screen, st);
+    st.sets++;
+    st.options += options.length;
+    if (options.length < 4 && !isGivenLine(answer)) st.short++;
+    const wrong = options.filter((o) => o !== answer);
+    if (wrong.length === options.length) report(where, `the answer ${JSON.stringify(answer.trim())} is not among its options`);
+    const key = canonKey(answer);
+    const seen = new Set<string>();
+    for (const o of wrong) {
+      const k = canonKey(o);
+      if (k === key) report(where, `${JSON.stringify(o.trim())} means the same as the answer ${JSON.stringify(answer.trim())}`);
+      if (denied[lineKey(answer)]?.includes(lineKey(o))) report(where, `${JSON.stringify(o.trim())} runs like the answer (deny list) but is offered`);
+      if (seen.has(k)) report(where, `two wrong options mean the same: ${JSON.stringify(o.trim())}`);
+      seen.add(k);
+    }
+    if (answerIsCenter([answer, ...wrong])) st.center++;
+  };
+  for (const p of PROBLEMS) {
+    const parsed = parseSolution(p.solution);
+    const all = parsed.lines.map((l) => l.text);
+    denied = DISTRACTOR_DENY[contextKey(all)] ?? {};
+    for (const i of keyLineIndices(p)) {
+      const d = keyLineDrill(p, undefined, i, seededRandom(i + 1))!;
+      look('review: Pick the key line', `${p.id}:${i + 1}`, d.option, d.options);
+    }
+    for (const seed of [0, 2]) {
+      const src = reviewGaps(p, seed);
+      gapChoices(src.lines, src.gaps, seed).forEach((c, k) => look('review: Pick the gaps', `${p.id}:${src.gaps[k] + 1}`, c.answer, c.options));
+    }
+    const parts = lessonParts(parsed);
+    parts.forEach((lp) => {
+      const code = codeLines(lp.body);
+      const keyLines = lp.chunk.keyLines.map((j) => j - lp.lead.length).filter((j) => j >= 0 && j < lp.body.length);
+      if (code.length > 1) {
+        const set = arrangeBlocks(lp.body, 0, { keyLines, avoid: all });
+        const x = set.blocks.find((b) => b.distractor);
+        if (x && all.some((l) => l.trim() && lineKey(l) === lineKey(x.text))) report(`${p.id}/part ${lp.ci}`, `the Arrange distractor ${JSON.stringify(x.text.trim())} is a line of the solution`);
+        if (x && canonKey(x.text) === canonKey(set.expected.find((_, k) => `b${k}` === x.pair) ?? '')) report(`${p.id}/part ${lp.ci}`, `the Arrange distractor ${JSON.stringify(x.text.trim())} means the same as its line`);
+        return;
+      }
+      const line = lp.body.find((l) => stripComment(l).trim()) ?? '';
+      if (!line) return;
+      const later = parsed.chunks.slice(lp.ci + 1).flatMap((c) => c.lines);
+      const c = gapChoices([line], [0], 0, 3, later, { context: all, visible: [...parsed.chunks.slice(0, lp.ci).flatMap((x) => x.lines), ...lp.lead] })[0];
+      look('lesson: one-line part', `${p.id}/part ${lp.ci}`, c.answer, c.options);
+    });
+    const src = gapSource(p.solution);
+    const keys = new Set(src.keyLines.map((i) => lineKey(src.lines[i])).filter(Boolean));
+    const header = new Set(src.header);
+    const min = Math.max(1, src.lines.filter((l, i) => !header.has(i) && keys.has(lineKey(l))).length);
+    const lessonGaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min });
+    gapChoices(src.lines, lessonGaps, 0).forEach((c, k) => look('lesson: Pick the gaps', `${p.id}:${lessonGaps[k] + 1}`, c.answer, c.options));
+    for (const round of [0, 1]) {
+      const gaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, seed: round });
+      gapChoices(src.lines, gaps, round).forEach((c, k) => look('Code from memory: Pick the gaps', `${p.id}:${gaps[k] + 1}`, c.answer, c.options));
+    }
+    const header2 = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
+    parts.forEach((cur, step) => {
+      const lines = cur.body.filter((l) => l.trim());
+      lines.forEach((tapLine, k) => {
+        const later = [...lines.slice(k + 1), ...parts.slice(step + 1).flatMap((b) => b.body)];
+        const shown = [...header2, ...parts.slice(0, step).flatMap((b) => b.chunk.lines), ...cur.lead, ...lines.slice(0, k)];
+        const c = gapChoices([tapLine], [0], 7 + step * 101 + k, 3, later, { context: all, visible: shown })[0];
+        if (!isGivenLine(tapLine)) look('Code from memory: part by part', `${p.id}/part ${cur.ci}`, c.answer, c.options);
+      });
+    });
+    for (const k of blitzKeyLines(p)) {
+      const c = keyLineChoices(p, k, keyLineView(p, k), 7919 * (k + 1));
+      look('Key lines', `${p.id}:${k + 1}`, c.answer, c.options);
+    }
+  }
+  denied = {};
+  for (const c of CATEGORIES) {
+    const g = guideFor(c.id);
+    if (!g) continue;
+    const src = gapSource(g.template);
+    for (const round of [0, 1, 2, 3]) {
+      const gaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, seed: round });
+      gapChoices(src.lines, gaps, round).forEach((x, k) => look('Template practice: Pick the gaps', `template ${c.id}:${gaps[k] + 1}`, x.answer, x.options));
+    }
+    const gaps = pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min: 2 });
+    gapChoices(src.lines, gaps, 0).forEach((x, k) => look('pattern guide: Your turn', `template ${c.id}:${gaps[k] + 1}`, x.answer, x.options));
+  }
+  // The precomputed list of two-line parts without a distractor is current.
+  const noDistractor = PROBLEMS.flatMap((p) => lessonParts(parseSolution(p.solution)).flatMap((lp) => (arrangeableNow(p, lp) ? [] : [`${p.id}:${lp.ci}`])));
+  if (JSON.stringify(noDistractor) !== JSON.stringify(NO_DISTRACTOR_PARTS))
+    err(w, `src/content/distractorDeny.ts is out of date (parts without an Arrange distractor: ${noDistractor.join(', ') || 'none'}): run python3 scripts/check-distractors.py`);
+  let sets = 0;
+  let center = 0;
+  for (const [screen, st] of by) {
+    sets += st.sets;
+    center += st.center;
+    console.log(
+      `✓ ${screen}: ${st.sets} option sets, ${(st.options / st.sets).toFixed(2)} options on average (${st.short} under 4), answer is the center in ${((100 * st.center) / st.sets).toFixed(1)}%`,
+    );
+  }
+  if (center > CENTER_MAX * sets) err(w, `the answer is the center of its options in ${((100 * center) / sets).toFixed(1)}% of ${sets} sets (at most ${100 * CENTER_MAX}%): build wrong options at one site or as a 2x2 (src/lib/choices.ts)`);
+  if (bad.size > 40) err(w, `…and ${bad.size - 40} more`);
+}
+
 for (const c of CATEGORIES) if (wantAll || args.includes(c.id)) checkCategory(c.id);
 checkScheduler();
 if (wantAll || args.includes('foundations')) checkFoundations();
 checkTypingKit();
+if (wantAll || args.includes('choices')) checkChoices();
 
 // Compile every Python snippet in one python3 process; run the ones that declare an output and
 // compare what they print (exactly, apart from print's final newline).

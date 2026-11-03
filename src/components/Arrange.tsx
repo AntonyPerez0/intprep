@@ -380,14 +380,14 @@ export interface ArrangeState {
  * `seed` is the instance (a session's round, a retry): the same seed always gives the same bank.
  */
 export function useArrange(lines: readonly string[], opts: ArrangeOptions & { seed?: number } = {}): ArrangeState {
-  const { seed = 0, keyLines, distractor } = opts;
-  const key = `${seed}|${JSON.stringify([keyLines, distractor])}|${lines.join('\n')}`;
-  const set = useMemo(() => arrangeBlocks(lines, seed, { keyLines, distractor }), [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { seed = 0, keyLines, distractor, avoid } = opts;
+  const key = `${seed}|${JSON.stringify([keyLines, distractor])}|${lines.join('\n')}|${avoid?.join('\n') ?? ''}`;
+  const set = useMemo(() => arrangeBlocks(lines, seed, { keyLines, distractor, avoid }), [key]); // eslint-disable-line react-hooks/exhaustive-deps
   const [state, setState] = useState({ key, placed: [] as string[], revealed: false });
   const cur = state.key === key ? state : { key, placed: [] as string[], revealed: false };
   const byId = useMemo(() => new Map(set.blocks.map((b) => [b.id, b])), [set]);
   const result = useMemo(
-    () => gradeArrange(cur.placed.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])), set.expected),
+    () => gradeArrange(cur.placed.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])), set.expected, set.swappable),
     [cur.placed, byId, set],
   );
   const total = set.expected.length;

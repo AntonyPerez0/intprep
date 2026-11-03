@@ -1311,7 +1311,7 @@ function ArrangePartCard({
   onTypeInstead,
   part,
 }: DrillProps & { onTypeInstead?: () => void; part: PartInfo }) {
-  const ex = useArrange(part.body, { seed, keyLines: part.keyLines });
+  const ex = useArrange(part.body, { seed, keyLines: part.keyLines, avoid: part.parsed.lines.map((l) => l.text) });
   const [first, setFirst] = useState<ArrangeGrade | null>(null);
   const [checks, setChecks] = useState(0);
   const rootRef = useRef<HTMLElement>(null);
@@ -1417,11 +1417,12 @@ function PickLinePartCard({
   part,
 }: DrillProps & { onTypeInstead?: () => void; part: PartInfo }) {
   const lineText = useMemo(() => part.body.find((l) => !isIgnorable(l)) ?? '', [part.body]);
-  // Wrong options: mutations of the line, then lines from later parts (not on screen), else any line.
+  // Wrong options: changes to the line (in the context of its solution), then lines from later
+  // parts with its shape (not on screen); never the code above it.
   const choices = useMemo(() => {
     const later = part.parsed.chunks.slice(part.ci + 1).flatMap((c) => c.lines);
-    return gapChoices([lineText], [0], seed, 3, later.length ? later : part.parsed.lines.map((l) => l.text));
-  }, [lineText, seed, part.parsed, part.ci]);
+    return gapChoices([lineText], [0], seed, 3, later, { context: part.parsed.lines.map((l) => l.text), visible: [...part.before, ...part.lead] });
+  }, [lineText, seed, part.parsed, part.ci]); // eslint-disable-line react-hooks/exhaustive-deps
   const [sel, setSel] = useState('');
   const [open, setOpen] = useState<number | null>(0);
   const [status, setStatus] = useState<CheckStatus>('idle');

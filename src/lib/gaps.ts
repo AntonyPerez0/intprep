@@ -18,6 +18,7 @@
 // Pure: no React, no DOM. The editor lives in src/components/CodeGaps.tsx.
 
 import { lineKey } from './codegrade';
+import { swapRuns } from './order';
 import { normalizeCode, parseSolution, stripComment } from './parseSolution';
 
 export interface PickGapsOptions {
@@ -363,18 +364,37 @@ export interface GapsGrade {
 }
 
 /**
+ * Gaps that can trade places (indices into `gaps`, groups of 2+): gaps on neighboring lines whose
+ * order does not matter (`left += 1` / `right -= 1`; see `swapRuns` in order.ts). Pass it to
+ * `gradeGaps`, so the two lines typed or picked the other way round count as right.
+ */
+export function gapSwaps(lines: readonly string[], gaps: readonly number[]): number[][] {
+  return swapRuns(lines).flatMap((run) => {
+    const k = gaps.flatMap((g, j) => (run.includes(g) ? [j] : []));
+    return k.length >= 2 ? [k] : [];
+  });
+}
+
+/**
  * Grade typed gaps against the lines they replace, one to one. Lines compare with the typing
  * kit's `lineKey`: whitespace (and so indentation), quote style, trailing comments and trailing
  * commas do not matter.
  * @param values        What the learner typed, one entry per gap (missing entries count as empty).
  * @param expectedLines The blanked lines, in the same order (`gaps.map((i) => lines[i])`).
+ * @param swaps         Gaps that can trade places (`gapSwaps`): within a group, the expected lines
+ *                      in any order are right.
  */
-export function gradeGaps(values: readonly string[], expectedLines: readonly string[]): GapsGrade {
+export function gradeGaps(values: readonly string[], expectedLines: readonly string[], swaps: readonly (readonly number[])[] = []): GapsGrade {
   const results = expectedLines.map((exp, k): GapResult => {
     const got = values[k] ?? '';
     const empty = got.trim() === '';
     return { got, exp, empty, ok: lineKey(got) === lineKey(exp) && (!empty || codeOf(exp) === '') };
   });
+  for (const group of swaps) {
+    const want = group.map((k) => lineKey(expectedLines[k] ?? '')).sort().join('\n');
+    const got = group.map((k) => lineKey(values[k] ?? '')).sort().join('\n');
+    if (want === got && group.every((k) => (values[k] ?? '').trim() !== '')) for (const k of group) results[k].ok = true;
+  }
   const correct = results.filter((r) => r.ok).length;
   const total = results.length;
   return { results, correct, total, perfect: correct === total, score: total ? correct / total : 1 };

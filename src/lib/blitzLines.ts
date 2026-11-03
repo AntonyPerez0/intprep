@@ -95,16 +95,17 @@ export function keyLineView(p: Problem, k: number, { before = BEFORE, after = AF
 
 /**
  * The options of a picked round: the key line (code only, as the window shows it) and three
- * plausible wrong lines, mutations of it first (`gapChoices`), then lines of the solution that are
- * not on screen. Deterministic per `seed`, so "Fix and check again" shows the same options; pass a
- * new seed each time the line comes up, so the right option moves.
+ * plausible wrong lines, changes to it first (`gapChoices`, in the context of the whole solution),
+ * then lines of the solution with its shape that are not on screen. Deterministic per `seed`, so
+ * "Fix and check again" shows the same options; pass a new seed each time the line comes up, so
+ * the right option moves.
  */
 export function keyLineChoices(p: Problem, k: number, view: KeyLineView, seed: number): GapChoice {
   const all = parseSolution(p.solution).lines.map((l) => l.text);
   const from = view.start - 1;
   const shown = new Set([...view.head.map((h) => h.n - 1), ...view.lines.map((_, i) => from + i)]);
   const hidden = all.filter((l, i) => i !== k && !shown.has(i) && l.trim() !== '');
-  return gapChoices(view.lines, [view.gap], seed, 3, hidden)[0];
+  return gapChoices(view.lines, [view.gap], seed, 3, hidden, { context: all, at: k, visible: view.head.map((h) => h.text) })[0];
 }
 
 /**

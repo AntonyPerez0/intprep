@@ -426,7 +426,8 @@ function PartsSession({ p, modes, onChecked, onRestart, input, onInput, canTypeI
   const tapChoice = useMemo(() => {
     if (!tapLine) return null;
     const later = [...curLines.slice(lineInChunk + 1), ...body.slice(step + 1).flatMap((b) => b.body)];
-    return gapChoices([tapLine], [0], seed + step * 101 + lineInChunk, 3, later)[0];
+    const shown = [...header, ...doneLines, ...lead, ...curLines.slice(0, lineInChunk)];
+    return gapChoices([tapLine], [0], seed + step * 101 + lineInChunk, 3, later, { context: parsed.lines.map((l) => l.text), visible: shown })[0];
   }, [tapLine, step, lineInChunk]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the current part in view as the file grows: the line being picked, else the part's cue.

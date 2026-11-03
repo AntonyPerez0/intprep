@@ -4,14 +4,16 @@
 // Also builds the review deck itself.
 
 import { CATEGORIES } from '../content/categories';
+import { NO_DISTRACTOR_PARTS } from '../content/distractorDeny';
 import { PROBLEMS } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { codeLines, lineKey } from './codegrade';
 import { gapCandidates, gapSource, lineWeight, pickGaps, type GapSource } from './gaps';
 import { lessonParts, normalizeCode, parseSolution, type LessonPart } from './parseSolution';
+import { arrangeBlocks } from './arrange';
 import { codeOnly, lineChoices } from './choices';
 import { PICK_UNTIL_REPS, type CodeInput } from './input';
-import { pick, sample, shuffle } from './random';
+import { pick, sample, shuffle, shuffleWith } from './random';
 import type { SrsCard } from './srs';
 
 export type DrillKind = 'pattern' | 'technique' | 'insight' | 'order' | 'keyline' | 'complexity' | 'gaps' | 'part';
@@ -133,7 +135,7 @@ export function complexityChoices(p: Problem, which: 'time' | 'space'): { option
 // Distractors (mutations of the right line) live in ./choices, shared with Pick the gaps and
 // Arrange a part; re-exported here for older imports.
 
-export { codeOnly, gapChoices, lineChoices, lineOptions, mutateLine, type GapChoice } from './choices';
+export { codeOnly, gapChoices, isGivenLine, lineChoices, lineOptions, mutateLine, type GapChoice } from './choices';
 
 export interface KeyLineDrill {
   /** Index into parsed.lines of the blanked line. */
@@ -152,21 +154,35 @@ export function keyLineIndices(p: Problem): number[] {
 }
 
 /**
- * A key line to blank, with three plausible wrong options (`lineChoices`: mutations first, then
- * other lines of the solution). `at` asks for a specific line (an index from `keyLineIndices`);
- * otherwise a random key line, other than `avoid` when there is one.
+ * A key line to blank, with three plausible wrong options (`lineChoices`: changes to the line, in
+ * the context of its solution). The card shows the whole solution, so no line of it stands in as a
+ * wrong option; when the line has too few changes, key lines of the same pattern's other problems
+ * with its shape fill in (only ones that use names this solution defines). `at` asks for a specific
+ * line (an index from `keyLineIndices`); otherwise a random key line, other than `avoid` when there
+ * is one. `rnd` orders the options (default `Math.random`; seeded in checks).
  */
-export function keyLineDrill(p: Problem, avoid?: number, at?: number): KeyLineDrill | null {
+export function keyLineDrill(p: Problem, avoid?: number, at?: number, rnd: () => number = Math.random): KeyLineDrill | null {
   const parsed = parseSolution(p.solution);
   const keys = parsed.lines.map((l, i) => ({ l, i })).filter(({ l }) => l.key && !l.header);
   if (!keys.length) return null;
   const choices = keys.length > 1 && avoid !== undefined ? keys.filter((k) => k.i !== avoid) : keys;
-  const { l, i } = keys.find((k) => k.i === at) ?? pick(choices);
+  const { l, i } = keys.find((k) => k.i === at) ?? choices[Math.floor(rnd() * choices.length)];
   const answer = l.text;
-  const others = parsed.lines.flatMap((x, j) => (j !== i && !x.header ? [x.text] : []));
+  const all = parsed.lines.map((x) => x.text);
   const option = codeOnly(answer);
-  return { lineIndex: i, answer, option, options: shuffle([option, ...lineChoices(answer, others, 3)]) };
+  const wrong = lineChoices(answer, patternKeyLines(p), 3, rnd, { context: all, at: i, visible: all });
+  return { lineIndex: i, answer, option, options: shuffleWith([option, ...wrong], rnd) };
 }
+
+/** Key lines of the other problems of a problem's pattern (fallback options for Pick the key line). */
+function patternKeyLines(p: Problem): string[] {
+  const hit = patternLinesMemo.get(p.id);
+  if (hit) return hit;
+  const out = PROBLEMS.filter((q) => q.category === p.category && q.id !== p.id).flatMap((q) => parseSolution(q.solution).lines.flatMap((l) => (l.key && !l.header ? [l.text] : [])));
+  patternLinesMemo.set(p.id, out);
+  return out;
+}
+const patternLinesMemo = new Map<string, string[]>();
 
 /** Lines are "the same" if they only differ in whitespace/quotes/trailing commas. */
 export const sameCode = (a: string, b: string) => normalizeCode(a) === normalizeCode(b);
@@ -246,18 +262,41 @@ export function reviewParts(p: Problem): Map<number, LessonPart> {
 /**
  * How much a "Write a part" card wants a part: key lines first, then 2 to 6 lines to write. Picked
  * ("Arrange a part"), a part of more than 8 lines steps back: a long bank of shuffled lines is a
- * puzzle, not practice.
+ * puzzle, not practice; so does a part of two lines with no distractor (`arrangeable`): its bank
+ * is just the two lines the wrong way round.
  */
-function partScore(lp: LessonPart, input: CodeInput = 'type'): number {
+function partScore(p: Problem, lp: LessonPart, input: CodeInput = 'type'): number {
+  return baseScore(lp, input) - (input === 'pick' && !arrangeable(p, lp) ? 3 : 0);
+}
+
+/** `partScore` without the distractor check (which builds options, so it is left for last). */
+function baseScore(lp: LessonPart, input: CodeInput): number {
   const n = codeLines(lp.body).length;
   return (lp.chunk.keyLines.length ? 2 : 0) + (n >= 2 && n <= 6 ? 1 : 0) - (input === 'pick' && n > 8 ? 3 : 0);
+}
+
+/**
+ * Whether a part makes a real Arrange: one line (picked from options instead), three or more, or
+ * two with a distractor.
+ */
+export function arrangeable(p: Problem, lp: LessonPart): boolean {
+  // Precomputed with the deny list (scripts/check-distractors.py; `npm run validate` checks it is current).
+  return !noDistractor.has(`${p.id}:${lp.ci}`);
+}
+const noDistractor = new Set(NO_DISTRACTOR_PARTS);
+
+/** `arrangeable` worked out (builds the part's distractor): for the script that precomputes it, and validate. */
+export function arrangeableNow(p: Problem, lp: LessonPart): boolean {
+  const n = codeLines(lp.body).length;
+  const keyLines = lp.chunk.keyLines.map((k) => k - lp.lead.length).filter((k) => k >= 0 && k < lp.body.length);
+  return n !== 2 || arrangeBlocks(lp.body, 0, { keyLines, avoid: parseSolution(p.solution).lines.map((l) => l.text) }).blocks.some((b) => b.distractor);
 }
 
 /** The body chunks a "Write a part" card can ask for (indices into `parseSolution(p.solution).chunks`), best first. */
 export function partChunks(p: Problem, input: CodeInput = 'type'): number[] {
   return [...reviewParts(p).values()]
     .filter((lp) => codeLines(lp.body).length > 0)
-    .sort((a, b) => partScore(b, input) - partScore(a, input) || a.ci - b.ci)
+    .sort((a, b) => partScore(p, b, input) - partScore(p, a, input) || a.ci - b.ci)
     .map((lp) => lp.ci);
 }
 
@@ -267,11 +306,24 @@ export function partChunks(p: Problem, input: CodeInput = 'type'): number[] {
  */
 export function pickPart(p: Problem, seed = 0, avoid: readonly number[] = [], input: CodeInput = 'type'): number {
   const parts = reviewParts(p);
-  const all = partChunks(p, input);
+  // Best first by the cheap score; the distractor check (picked only) runs on as few parts as it
+  // takes to know the best tier, which is the same tier `partScore` over every part would give.
+  const all = [...parts.values()]
+    .filter((lp) => codeLines(lp.body).length > 0)
+    .sort((a, b) => baseScore(b, input) - baseScore(a, input) || a.ci - b.ci)
+    .map((lp) => lp.ci);
   const free = all.filter((i) => !avoid.includes(i));
   const pool = free.length ? free : all;
-  const top = partScore(parts.get(pool[0])!, input);
-  const tier = pool.filter((i) => partScore(parts.get(i)!, input) === top);
+  const score = new Map<number, number>();
+  let best = -Infinity;
+  for (const i of pool) {
+    const base = baseScore(parts.get(i)!, input);
+    if (base < best) break;
+    const s = input === 'pick' ? partScore(p, parts.get(i)!, input) : base;
+    score.set(i, s);
+    best = Math.max(best, s);
+  }
+  const tier = pool.filter((i) => score.get(i) === best).sort((a, b) => a - b);
   return tier[seed % tier.length];
 }
 
