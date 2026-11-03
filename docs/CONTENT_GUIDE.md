@@ -115,8 +115,11 @@ After adding a problem or changing a solution, also run `python3 scripts/check-d
 needs python3). The pick screens make wrong options from each line of a solution; this script runs every one of
 them in its place, on the problem's examples and random inputs, and writes the ones that still give the right
 answer (code that works, so it must never be marked wrong) to `src/content/distractorDeny.ts`, with the parts
-that get no Arrange distractor. `npm run validate` fails when that list of parts is out of date or when a
-solution changed since the list was made (its entries no longer match), but it cannot find new working options
-by itself, so run the script whenever a solution changes. Pattern templates are not run: their working options
+that get no Arrange distractor. When none of the examples reaches a line (an empty input, a case with no
+answer), every option of it "works" there and is denied: add a valid input that reaches it to `EXTRA_INPUTS` in
+the script (within the problem's constraints; the original solution is run on it like on an example).
+`npm run validate` fails when that list of parts is out of date or when a solution changed since the list was
+made (its entries no longer match), but it cannot find new working options by itself, so run the script
+whenever a solution changes. Pattern templates are not run: their working options
 are listed by hand in `src/content/templateDeny.ts`, and `npm run validate` fails when a template changed since
 (recheck its options, then update the key it prints).

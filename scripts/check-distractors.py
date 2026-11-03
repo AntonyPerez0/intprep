@@ -27,7 +27,10 @@ changed, a second string that is a shuffle of the first, a target that is a sum 
 narrow generator can make an option "survive" that a rarer input would catch: that only removes an
 option, and when unsure we deny. For problems whose answer may come "in any order", outputs are
 compared with every list sorted. Survivors are kept per solution (`contextKey`), so a line that
-works one way in one problem keeps its options everywhere else.
+works one way in one problem keeps its options everywhere else. A line whose code is in its solution
+more than once (`return True` in two places) gets its own entry, `lineKey@index`: what runs the same
+in one place can be wrong in the other. A screen that knows which of the two it asks uses that
+entry; one that does not, all of them.
 """
 import ast
 import bisect
@@ -529,6 +532,7 @@ def write_deny(deny, names, parts):
             '// Wrong options that turned out to run exactly like the answer in its solution, per solution: its\n'
             '// `contextKey` (a hash of its code) -> the answer line\'s `lineKey` -> the `lineKey`s of the options\n'
             '// never to offer for it (Pick the key line, Pick the gaps, Arrange a part\'s distractor, Key lines).\n'
+            '// A line whose code is in its solution more than once has an entry per line: `lineKey@index`.\n'
             '\n'
             '/** Parts of two code lines that get no Arrange distractor (`problemId:chunk`): the review does not deal them as Arrange a part. */\n'
             f'export const NO_DISTRACTOR_PARTS: readonly string[] = [{", ".join(json.dumps(p) for p in parts)}];\n'
@@ -540,6 +544,24 @@ def write_deny(deny, names, parts):
 
 
 PROBLEM_TIMEOUT = 300
+
+# Valid inputs (within each problem's constraints) that reach code its examples and random inputs
+# never do, so an option that is wrong there is not taken for one that works. Each says what it
+# reaches; the original solution is run on it like on an example.
+EXTRA_INPUTS = {
+    # `return []` for an empty string (the problem's own pitfall: `[""]` is wrong).
+    'letter-combinations-of-a-phone-number': ['digits = ""'],
+    # The final `return 0`: endWord is in the list but cannot be reached.
+    'word-ladder': ['beginWord = "hit", endWord = "cog", wordList = ["hot", "cog"]'],
+    # One node and no edges: a tree, which `seen = set()` misses.
+    'graph-valid-tree': ['n = 1, edges = []'],
+    # Candidates not in order: `break` for `continue` skips the 2 and the 3 after the 8.
+    'combination-sum': ['candidates = [8, 2, 3], target = 5'],
+    # A triplet to skip before one that is needed: `break` for `continue` never sees [1, 7, 5].
+    'merge-triplets-to-form-target-triplet': ['triplets = [[2, 5, 3], [1, 8, 4], [1, 7, 5]], target = [2, 7, 5]'],
+    # A "z": a count of 25 letters has no place for it.
+    'group-anagrams': ['strs = ["zoo", "ozo", "az"]'],
+}
 
 
 def run_isolated(problems):
@@ -596,12 +618,16 @@ def main():
     only = set(args)
     raw = subprocess.run(['npx', 'tsx', os.path.join('scripts', 'check-distractors.ts')], cwd=ROOT, check=True, capture_output=True).stdout
     problems = [p for p in json.loads(raw) if not only or p['id'] in only]
+    for p in problems:
+        p['examples'] = list(p['examples']) + [dict(input=x, output='') for x in EXTRA_INPUTS.get(p['id'], [])]
     total = sum(len(l['wrong']) for p in problems for l in p['lines'])
     print(f'{len(problems)} problems, {total} options to run', flush=True)
     t0 = time.time()
     results = run_isolated(problems)
     deny, skipped, stats, found = collections.defaultdict(lambda: collections.defaultdict(set)), {}, collections.Counter(), []
     key_of = {p['id']: p['key'] for p in problems}
+    # Answers whose code is on more than one line of their solution: denied per line.
+    twins = {p['id']: {k for k, n in collections.Counter(l['key'] for l in p['lines']).items() if n > 1} for p in problems}
     names = {p['key']: p['id'] for p in problems}
     for pid, survivors, st, why in results:
         if why:
@@ -609,7 +635,7 @@ def main():
             continue
         stats.update({k: v for k, v in st.items() if k != 'inputs'})
         for s in survivors:
-            deny[key_of[pid]][s['key']].add(s['wrongKey'])
+            deny[key_of[pid]][s['key'] + (f"@{s['line']}" if s['key'] in twins[pid] else '')].add(s['wrongKey'])
             found.append((pid, s))
     print(f'ran in {time.time() - t0:.0f}s: {dict(stats)}')
     print(f'{len(found)} options run exactly like the answer, in {len({p for p, _ in found})} problems')

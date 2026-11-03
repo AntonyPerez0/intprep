@@ -4,6 +4,7 @@
 // Wrong options that turned out to run exactly like the answer in its solution, per solution: its
 // `contextKey` (a hash of its code) -> the answer line's `lineKey` -> the `lineKey`s of the options
 // never to offer for it (Pick the key line, Pick the gaps, Arrange a part's distractor, Key lines).
+// A line whose code is in its solution more than once has an entry per line: `lineKey@index`.
 
 /** Parts of two code lines that get no Arrange distractor (`problemId:chunk`): the review does not deal them as Arrange a part. */
 export const NO_DISTRACTOR_PARTS: readonly string[] = ["add-two-numbers:5", "invert-binary-tree:3", "serialize-and-deserialize-binary-tree:4", "letter-combinations-of-a-phone-number:2", "best-time-to-buy-and-sell-stock-with-cooldown:1", "target-sum:1", "interleaving-string:2", "longest-increasing-path-in-a-matrix:2", "burst-balloons:2", "regular-expression-matching:1", "sum-of-two-integers:1"];
@@ -14,7 +15,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for i in range(len(nums)-2):": ["for i in range(len(nums)):", "for i in range(len(nums)-1):"],
     "if i>0 and nums[i]==nums[i-1]:": ["if i<0 or nums[i]==nums[i-1]:", "if i>=0 and nums[i]==nums[i-1]:", "if i>=1 and nums[i]==nums[i-1]:"],
     "if total>0:": ["if total>=1:"],
-    "left+=1": ["left+=2", "right-=1"],
+    "left+=1@18": ["left+=2", "right-=1"],
     "total=nums[i]+nums[left]+nums[right]": ["total=nums[i]+nums[right]+nums[left]", "total=nums[left]+nums[i]+nums[right]", "total=nums[right]+nums[left]+nums[i]"],
     "while left<right and nums[left]==nums[left-1]:": ["while left<=right and nums[left]==nums[left-1]:"],
   },
@@ -25,8 +26,10 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // alien-dictionary
   "sxmj0l": {
-    "return False": ["return None", "return\"\""],
-    "return True": ["return False", "return None", "return\"\"", "return\"\".join(reversed(order))"],
+    "if ch in done:": ["if ch in order:"],
+    "return False@16": ["return None", "return\"\""],
+    "return False@24": ["return None", "return\"\""],
+    "return True@20": ["return False", "return None", "return\"\"", "return\"\".join(reversed(order))"],
   },
   // balanced-binary-tree
   "11auco": {
@@ -73,6 +76,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "at4jou": {
     "for _ in range(k+1):": ["for _ in range(1,k+2):"],
     "if prices[u]+cost<new_prices[v]:": ["if new_prices[u]+cost<prices[dst]:", "if new_prices[u]+cost<prices[v]:", "if prices[src]+cost<=new_prices[v]:", "if prices[src]+cost<new_prices[dst]:", "if prices[src]+cost<new_prices[v]:", "if prices[u]+cost<=new_prices[dst]:", "if prices[u]+cost<=new_prices[v]:", "if prices[u]+cost<new_prices[dst]:"],
+    "prices=[float(\"inf\")]*n": ["prices=[float(\"inf\")]*(n+1)"],
     "return-1 if prices[dst]==float(\"inf\")else prices[dst]": ["return-1 if new_prices[dst]==float(\"inf\")else new_prices[dst]", "return-1 if new_prices[dst]==float(\"inf\")else prices[dst]", "return-1 if prices[dst]==float(\"inf\")else new_prices[dst]"],
   },
   // climbing-stairs
@@ -92,13 +96,11 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // combination-sum
   "1pdwy37": {
-    "continue": ["break", "return"],
-    "if candidates[i]>remaining:": ["if candidates[start]>remaining:"],
-    "return": ["return False", "return True", "return path", "return remaining", "return res", "return start"],
+    "return": ["pass", "return False", "return True", "return path", "return remaining", "return res", "return start"],
   },
   // combination-sum-ii
   "1c34ayw": {
-    "break": ["continue", "return"],
+    "break": ["continue", "pass", "return"],
     "if candidates[i]>remaining:": ["if candidates[i]>target:", "if candidates[start]>remaining:", "if candidates[start]>target:", "if i>start and candidates[i]==candidates[i-1]:", "if remaining==0:"],
     "return": ["return False", "return True", "return path", "return remaining", "return res", "return start"],
   },
@@ -119,16 +121,20 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // course-schedule
   "1kxuktq": {
     "if state[course]==2:": ["if needs[course]==1:", "if needs[course]==2:", "if needs[course]==3:", "if state[course]==1:", "if state[course]==3:"],
-    "return False": ["return None"],
+    "return False@10": ["return None"],
+    "return False@16": ["return None"],
+    "state=[0]*numCourses": ["state=[0]*(numCourses+1)"],
     "state[course]=2": ["state[course]=3"],
   },
   // course-schedule-ii
   "msdj9b": {
     "if indegree[nxt]==0:": ["if indegree[nxt]!=1:"],
+    "indegree=[0]*numCourses": ["indegree=[0]*(numCourses+1)"],
   },
   // decode-ways
   "vzxxeq": {
     "dp=[0]*(len(s)+1)": ["dp=[0]*(len(s)+2)"],
+    "dp[i]+=dp[i-1]": ["dp[i]=dp[i-1]"],
     "for i in range(1,len(s)+1):": ["for i in range(0,len(s)+1):"],
     "if i>=2 and 10<=int(s[i-2:i])<=26:": ["if i>1 and 10<=int(s[i-2:i])<=26:"],
     "if s[i-1]!=\"0\":": ["if s[i-2+1]!=\"0\":"],
@@ -155,7 +161,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // evaluate-reverse-polish-notation
   "1ivch33": {
     "elif token==\"-\":": ["elif a==\"-\":", "elif b==\"-\":"],
-    "stack.append(a-b)": ["stack.append(a*b)", "stack.append(a+b)", "stack.append(b-a)", "stack.append(int(a/b))", "stack.insert(0,b-a)"],
+    "stack.append(a-b)": ["stack.append(a*b)", "stack.append(a*token)", "stack.append(a+b)", "stack.append(b-a)", "stack.append(int(a/b))", "stack.append(token*b)", "stack.insert(0,b-a)"],
     "stack.append(int(a/b))": ["stack.insert(0,int(a/b))"],
   },
   // find-minimum-in-rotated-sorted-array
@@ -170,28 +176,28 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "1p5bbyy": {
     "for i in range(len(gas)):": ["for i in range(len(gas)-1):"],
     "tank+=gas[i]-cost[i]": ["tank-=cost[i]-gas[i]"],
-    "tank=0": ["tank=start"],
+    "tank=0@5": ["tank=start"],
   },
   // generate-parentheses
   "1len3jr": {
     "if open_count<n:": ["if open_count<=n:"],
     "res.append(\"\".join(stack))": ["res.insert(0,\"\".join(stack))"],
-    "return": ["return False", "return True", "return close_count", "return open_count", "return res"],
+    "return": ["pass", "return False", "return True", "return close_count", "return open_count", "return res"],
   },
   // graph-valid-tree
   "1v0thee": {
-    "for a,b in edges:": ["for b,a in edges:"],
     "if len(edges)!=n-1:": ["if len(edges)-1!=n-2:"],
     "node=stack.pop()": ["node=stack.pop(0)"],
     "stack.append(nb)": ["stack.insert(0,nb)"],
   },
   // group-anagrams
   "3lnh8k": {
-    "count=[0]*26": ["count=[1]*26"],
-    "count[ord(ch)-ord(\"a\")]+=1": ["count[ord(ch)-ord(\"a\")+1]+=1", "count[ord(ch)-ord(\"a\")+1]+=2", "count[ord(ch)-ord(\"a\")+1]-=1", "count[ord(ch)-ord(\"a\")+2]+=1", "count[ord(ch)-ord(\"a\")-1]+=1", "count[ord(ch)-ord(\"a\")]+=2", "count[ord(ch)-ord(\"a\")]-=1", "count[ord(ch)-ord(\"a\")]-=2"],
+    "count=[0]*26": ["count=[0]*27", "count=[1]*26", "count=[1]*27"],
+    "count[ord(ch)-ord(\"a\")]+=1": ["count[ord(ch)-ord(\"a\")-1]+=1", "count[ord(ch)-ord(\"a\")]+=2", "count[ord(ch)-ord(\"a\")]-=1", "count[ord(ch)-ord(\"a\")]-=2"],
   },
   // hand-of-straights
   "mcd98w": {
+    "continue": ["pass"],
     "count[card]-=need": ["count[card]-=groupSize"],
     "for start in sorted(count):": ["for start in count:"],
     "if len(hand)%groupSize!=0:": ["if len(hand)%groupSize==1:", "if len(hand)-1%groupSize==0:", "if len(hand)//groupSize==0:"],
@@ -240,11 +246,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // k-closest-points-to-origin
   "1mdh6m0": {
     "for x,y in points:": ["for y,x in points:"],
-    "return[[x,y]for _,x,y in heap]": ["return[[dist,y]for _,dist,y in heap]", "return[[k,y]for _,k,y in heap]", "return[[x,dist]for _,x,dist in heap]", "return[[x,k]for _,x,k in heap]"],
   },
   // koko-eating-bananas
   "sz4owc": {
-    "hours=sum(math.ceil(p/k)for p in piles)": ["hours=sum(math.ceil(answer/k)for answer in piles)", "hours=sum(math.ceil(h/k)for h in piles)", "hours=sum(math.ceil(l/k)for l in piles)", "hours=sum(math.ceil(r/k)for r in piles)"],
     "k=(l+r)//2": ["k=(answer+r)//2", "k=(l+answer)//2"],
     "r=k-1": ["r=answer-1"],
     "while l<=r:": ["while l<answer:"],
@@ -263,9 +267,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // letter-combinations-of-a-phone-number
   "1jfc8r": {
-    "if not digits:": ["if digits is None:"],
     "return": ["return False", "return True", "return i", "return path", "return res", "return[]"],
-    "return[]": ["return", "return res"],
   },
   // longest-common-subsequence
   "1sc7tpi": {
@@ -275,13 +277,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // longest-consecutive-sequence
   "1d5db7p": {
+    "if n-1 not in num_set:": ["if n in num_set:", "if n-1 not in nums:"],
     "length=1": ["length=0"],
+    "while n+length in num_set:": ["while n+length in nums:"],
   },
   // longest-increasing-path-in-a-matrix
   "1rie3w": {
-    "for dr,dc in((1,0),(-1,0),(0,1),(0,-1)):": ["for dc,dr in((1,0),(-1,0),(0,1),(0,-1)):"],
     "if 0<=nr<rows and 0<=nc<cols and matrix[nr][nc]>matrix[r][c]:": ["if 0<=nr<rows and 0<=nc<cols and matrix[nr][nc]<matrix[r][c]:"],
-    "nr,nc=r+dr,c+dc": ["nc,nr=c+dr,r+dc", "nr,nc=r+dr,c-dc", "nr,nc=r-dc,c+dr", "nr,nc=r-dr,c+dc", "nr,nc=r-dr,c-dc"],
     "rows,cols=len(matrix),len(matrix[0])": ["rows,cols=len(matrix),len(matrix[-1])"],
   },
   // longest-increasing-subsequence
@@ -325,17 +327,16 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // maximum-subarray
   "1iln1qy": {
     "best=nums[0]": ["best=float(\"-inf\")", "best=nums[-1]"],
-    "current=0": ["current=-1", "current=float(\"-inf\")"],
+    "current=0@3": ["current=-1", "current=float(\"-inf\")"],
     "if current<0:": ["if current<1:", "if current<=0:"],
   },
   // median-of-two-sorted-arrays
   "cop8yf": {
     "a_left=A[i-1]if i>0 else float(\"-inf\")": ["a_left=A[i-1]if i>=1 else float(\"-inf\")", "a_left=A[i-2+1]if i>0 else float(\"-inf\")"],
     "a_right=A[i]if i<len(A)else float(\"inf\")": ["a_right=A[i]if i<=len(A)-1 else float(\"inf\")", "a_right=A[i]if l<len(A)else float(\"inf\")"],
-    "b_left=B[j-1]if j>0 else float(\"-inf\")": ["b_left=B[j-1]if half>0 else float(\"-inf\")", "b_left=B[j-1]if half>0 else float(\"inf\")", "b_left=B[j-1]if half>=0 else float(\"-inf\")", "b_left=B[j-1]if i>=0 else float(\"-inf\")", "b_left=B[j-1]if j>0 else float(\"inf\")", "b_left=B[j-1]if j>=0 else float(\"-inf\")", "b_left=B[j-1]if j>=0 else float(\"inf\")", "b_left=B[j-1]if j>=1 else float(\"-inf\")", "b_left=B[j-1]if l>=0 else float(\"-inf\")", "b_left=B[j-1]if r>=0 else float(\"-inf\")", "b_left=B[j-2+1]if j>0 else float(\"-inf\")"],
+    "b_left=B[j-1]if j>0 else float(\"-inf\")": ["b_left=B[j-1]", "b_left=B[j-1]if half>0 else float(\"-inf\")", "b_left=B[j-1]if half>0 else float(\"inf\")", "b_left=B[j-1]if half>=0 else float(\"-inf\")", "b_left=B[j-1]if i>=0 else float(\"-inf\")", "b_left=B[j-1]if j>0 else float(\"inf\")", "b_left=B[j-1]if j>=0 else float(\"-inf\")", "b_left=B[j-1]if j>=0 else float(\"inf\")", "b_left=B[j-1]if j>=1 else float(\"-inf\")", "b_left=B[j-1]if l>=0 else float(\"-inf\")", "b_left=B[j-1]if r>=0 else float(\"-inf\")", "b_left=B[j-2+1]if j>0 else float(\"-inf\")"],
     "b_right=B[j]if j<len(B)else float(\"inf\")": ["b_right=B[j]if j<=len(B)-1 else float(\"inf\")"],
     "if len(A)>len(B):": ["if len(A)>len(nums2):", "if len(nums1)>len(B):", "if len(nums1)>len(nums2):"],
-    "if total%2==1:": ["if total%2!=0:"],
     "l=i+1": ["r=r+1"],
     "r=i-1": ["l=l-1", "r=i"],
     "total=len(A)+len(B)": ["total=len(B)+len(A)", "total=len(nums1)+len(nums2)", "total=len(nums2)+len(nums1)"],
@@ -348,6 +349,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // meeting-rooms-ii
   "17dph11": {
+    "heapq.heappop(ends)": ["ends.pop(0)"],
     "intervals.sort(key=lambda iv:iv[0])": ["intervals.sort(key=lambda iv:iv[-2])"],
   },
   // merge-intervals
@@ -364,11 +366,11 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // merge-triplets-to-form-target-triplet
   "wvu6cg": {
-    "continue": ["break"],
-    "if t[0]>target[0]or t[1]>target[1]or t[2]>target[2]:": ["if t[0]>target[0]or t[1]>target[1]or t[1]>=target[2]:", "if t[0]>target[0]or t[1]>target[1]or t[1]>target[1]:", "if t[0]>target[0]or t[1]>target[1]or t[1]>target[2]:"],
+    "if t[0]>target[0]or t[1]>target[1]or t[2]>target[2]:": ["if t[0]>target[0]or t[1]>target[1]or t[1]>target[1]:"],
   },
   // merge-two-sorted-lists
   "m3noi3": {
+    "dummy=ListNode()": ["dummy=ListNode"],
     "tail.next=list1": ["tail.next=list1 or list2"],
   },
   // min-cost-climbing-stairs
@@ -379,11 +381,10 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "188zjtm": {
     "dist=abs(xi-points[j][0])+abs(yi-points[j][1])": ["dist=abs(xi-points[j][-2])+abs(yi-points[j][1])", "dist=abs(xi-points[j][0])+abs(yi-points[j][-1])"],
     "for j in range(n):": ["for j in range(1,n):"],
-    "if j not in in_tree:": ["if i in in_tree:", "if n not in in_tree:"],
+    "if j not in in_tree:": ["if i in in_tree:", "if i not in heap:", "if i not in points:", "if j not in heap:", "if j not in points:", "if n not in heap:", "if n not in in_tree:", "if n not in points:", "if total not in heap:", "if total not in points:", "if xi not in heap:", "if xi not in points:", "if yi not in heap:", "if yi not in points:"],
   },
   // minimum-interval-to-include-each-query
   "19kasz8": {
-    "return[answers[q]for q in queries]": ["return[answers[i]for i in queries]", "return[answers[left]for left in queries]", "return[answers[right]for right in queries]"],
     "while heap and heap[0][1]<q:": ["while heap and heap[0][-1]<q:"],
     "while i<len(intervals)and intervals[i][0]<=q:": ["while i<=len(intervals)-1 and intervals[i][0]<=q:"],
   },
@@ -401,16 +402,14 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // multiply-strings
   "1w8ea87": {
     "if num1==\"0\"or num2==\"0\":": ["if num1==\"0\"and num2!=\"0\":", "if num2==\"0\"or num1==\"0\":"],
-    "return\"\".join(str(d)for d in result[start:])": ["return\"\".join(str(i)for i in result[start:])", "return\"\".join(str(j)for j in result[start:])", "return\"\".join(str(product)for product in result[start:])", "return\"\".join(str(total)for total in result[start:])"],
   },
   // n-queens
   "bq6mw4": {
-    "res.append([\"\".join(row)for row in board])": ["res.append([\"\".join(n)for n in board])", "res.append([\"\".join(r)for r in board])"],
-    "return": ["return False", "return True", "return r", "return res"],
+    "return": ["pass", "return False", "return True", "return r", "return res"],
   },
   // network-delay-time
   "p9nurx": {
-    "if nxt not in arrival:": ["if node in arrival:"],
+    "if nxt not in arrival:": ["if node in arrival:", "if node not in heap:", "if nxt not in heap:", "if time not in heap:", "if u not in heap:", "if v not in heap:"],
   },
   // non-overlapping-intervals
   "gtzaxh": {
@@ -420,13 +419,14 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // number-of-connected-components-in-an-undirected-graph
   "epobg9": {
     "for a,b in edges:": ["for b,a in edges:"],
-    "parent[root_a]=root_b": ["parent[root_a]=b"],
+    "parent[root_a]=root_b": ["parent[root_a]=b", "parent[root_b]=root_a"],
     "parent[x]=parent[parent[x]]": ["components=n", "parent[root_a]=root_b", "x=parent[x]"],
     "root_a,root_b=find(a),find(b)": ["root_b,root_a=find(a),find(b)"],
     "while parent[x]!=x:": ["if parent[x]!=n:", "if parent[x]!=x:"],
   },
   // number-of-islands
   "15k2ahp": {
+    "dfs(r-1,c)": ["dfs(r-1,c+1)"],
     "return": ["return False", "return True", "return cols", "return count", "return grid"],
     "rows,cols=len(grid),len(grid[0])": ["rows,cols=len(grid),len(grid[-1])"],
   },
@@ -436,13 +436,14 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "dfs(rows-1,c,atlantic,heights[rows-1][c])": ["dfs(rows-1,c,atlantic,heights[rows-2+1][c])"],
     "for nr,nc in((r+1,c),(r-1,c),(r,c+1),(r,c-1)):": ["for nr,nc in((r+1,c),(r-1,c),(r,c-1),(r,c+1)):", "for nr,nc in((r-1,c),(r+1,c),(r,c+1),(r,c-1)):"],
     "if(r,c)in pacific and(r,c)in atlantic:": ["if(r,c)in atlantic and(r,c)in pacific:"],
-    "return": ["return False", "return True", "return pacific", "return prev_height", "return seen"],
+    "return@6": ["return False", "return True", "return pacific", "return prev_height", "return seen"],
+    "return@8": ["return False", "return True", "return pacific", "return prev_height", "return seen"],
     "rows,cols=len(heights),len(heights[0])": ["rows,cols=len(heights),len(heights[-1])"],
   },
   // palindrome-partitioning
   "111xjy0": {
     "for end in range(start,len(s)):": ["for end in range(start,len(s)+1):"],
-    "return": ["return False", "return True", "return path", "return res", "return start"],
+    "return": ["pass", "return False", "return True", "return path", "return res", "return start"],
   },
   // palindromic-substrings
   "1ktiqpv": {
@@ -451,7 +452,6 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // partition-equal-subset-sum
   "uqrhtu": {
-    "if total%2==1:": ["if total%2!=0:"],
     "reachable|={s+x for s in reachable if s+x<=target}": ["reachable|={s+x for s in reachable if s+total>=target}", "reachable|={s+x for s in reachable if s+total>target}", "reachable|={s+x for s in reachable if s+x<=total}", "reachable|={s+x for s in reachable if s+x<total}", "reachable|={s+x for s in reachable if s-total<=target}", "reachable|={s+x for s in reachable if s-x<=target}", "reachable|={s+x for s in reachable if s-x<=total}", "reachable|={s+x for s in reachable if s-x<target}", "reachable|={s+x for s in reachable if total+x>=target}", "reachable|={s+x for s in reachable if total+x>target}"],
     "target=total//2": ["target=total/2"],
   },
@@ -475,13 +475,12 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if len(path)==len(nums):": ["if len(path)==len(used):"],
     "path.append(nums[i])": ["path.append(nums[i-1])"],
     "res.append(path[:])": ["res.append(nums[:])", "res.insert(0,nums[:])", "res.insert(0,path[:])"],
-    "return": ["return False", "return True", "return path", "return res", "return used"],
+    "return": ["pass", "return False", "return True", "return path", "return res", "return used"],
     "used=[False]*len(nums)": ["used=[None]*len(nums)"],
     "used[i]=False": ["used[i]=None"],
   },
   // powx-n
   "1109wqg": {
-    "if n%2==1:": ["if n%2!=0:"],
     "if n<0:": ["if n<1:", "if n<=0:"],
     "while n>0:": ["while n>=1:"],
   },
@@ -492,7 +491,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // redundant-connection
   "17wzzjs": {
     "parent=list(range(len(edges)+1))": ["parent=list(range(len(edges)+2))"],
-    "parent[root_a]=root_b": ["parent[root_a]=b"],
+    "parent[root_a]=root_b": ["parent[root_a]=b", "parent[root_b]=root_a"],
     "parent[x]=parent[parent[x]]": ["parent[root_a]=root_b", "x=parent[x]"],
     "root_a,root_b=find(a),find(b)": ["root_b,root_a=find(a),find(b)"],
   },
@@ -535,7 +534,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // same-tree
   "1g8t0rq": {
     "if not p and not q:": ["if not q and not p:"],
-    "return self.isSameTree(p.left,q.left)and self.isSameTree(p.right,q.right)": ["return self.isSameTree(q.left,p.left)and self.isSameTree(p.right,q.right)"],
+    "return self.isSameTree(p.left,q.left)and self.isSameTree(p.right,q.right)": ["return self.isSameTree(p.left,q.left)and self.isSameTree(q.right,p.right)", "return self.isSameTree(q.left,p.left)and self.isSameTree(p.right,q.right)", "return self.isSameTree(q.left,p.left)and self.isSameTree(q.right,p.right)"],
   },
   // search-a-2d-matrix
   "b2spzn": {
@@ -546,16 +545,17 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "141h22b": {
     "if nums[l]<=target<nums[m]:": ["if nums[l]<=target<=nums[m]:"],
     "if nums[m]<target<=nums[r]:": ["if nums[m]<=target<=nums[r]:"],
-    "r=m-1": ["r=l", "r=l+1", "r=m"],
+    "r=m-1@16": ["r=l+1", "r=m"],
+    "r=m-1@9": ["r=l", "r=l+1"],
   },
   // set-matrix-zeroes
   "oyxuhy": {
-    "first_col_zero=any(matrix[r][0]==0 for r in range(rows))": ["first_col_zero=any(matrix[c][0]==0 for c in range(rows))", "first_col_zero=any(matrix[cols][0]==0 for cols in range(rows))", "first_col_zero=any(matrix[first_row_zero][0]==0 for first_row_zero in range(rows))", "first_col_zero=any(matrix[r-1][0]==0 for r in range(rows))"],
-    "first_row_zero=any(matrix[0][c]==0 for c in range(cols))": ["first_row_zero=any(matrix[0][c-1]==0 for c in range(cols))", "first_row_zero=any(matrix[0][rows]==0 for rows in range(cols))"],
-    "for c in range(1,cols):": ["for c in range(cols):"],
-    "for r in range(1,rows):": ["for r in range(rows):"],
-    "matrix[0][c]=0": ["matrix[0][c-1]=0"],
-    "matrix[r][0]=0": ["matrix[r-1][0]=0"],
+    "first_col_zero=any(matrix[r][0]==0 for r in range(rows))": ["first_col_zero=any(matrix[r-1][0]==0 for r in range(rows))"],
+    "first_row_zero=any(matrix[0][c]==0 for c in range(cols))": ["first_row_zero=any(matrix[0][c-1]==0 for c in range(cols))"],
+    "for c in range(1,cols):@6": ["for c in range(cols):"],
+    "for r in range(1,rows):@5": ["for r in range(rows):"],
+    "matrix[0][c]=0@16": ["matrix[0][c-1]=0"],
+    "matrix[r][0]=0@19": ["matrix[r-1][0]=0"],
     "rows,cols=len(matrix),len(matrix[0])": ["rows,cols=len(matrix),len(matrix[-1])"],
   },
   // sliding-window-maximum
@@ -593,11 +593,12 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if not root:": ["if root is None:"],
     "if not subRoot:": ["if self.sameTree(root,subRoot):", "if subRoot is None:"],
     "if self.sameTree(root,subRoot):": ["if self.sameTree(subRoot,root):"],
-    "return False": ["return None"],
-    "return self.sameTree(a.left,b.left)and self.sameTree(a.right,b.right)": ["return self.sameTree(b.left,a.left)and self.sameTree(a.right,b.right)"],
+    "return False@13": ["return None"],
+    "return self.sameTree(a.left,b.left)and self.sameTree(a.right,b.right)": ["return self.sameTree(a.left,b.left)and self.sameTree(b.right,a.right)", "return self.sameTree(b.left,a.left)and self.sameTree(a.right,b.right)", "return self.sameTree(b.left,a.left)and self.sameTree(b.right,a.right)"],
   },
   // sum-of-two-integers
   "15jlqet": {
+    "MAX_INT=0x7fffffff": ["MAX_INT=0x80000000"],
     "return a if a<=MAX_INT else~(a^MASK)": ["return a if a<MAX_INT else~(a^MASK)"],
   },
   // surrounded-regions
@@ -609,15 +610,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // swim-in-rising-water
   "2ohgub": {
-    "for dr,dc in((1,0),(-1,0),(0,1),(0,-1)):": ["for dc,dr in((1,0),(-1,0),(0,1),(0,-1)):", "for dc,dr in((1,0),(-1,0),(0,1),(0,-2)):", "for dc,dr in((1,0),(-1,0),(0,1),(1,-1)):", "for dc,dr in((1,0),(-1,1),(0,1),(0,-1)):", "for dc,dr in((1,0),(-2,0),(0,1),(0,-1)):", "for dr,dc in((1,0),(-1,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-1)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-2,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,1),(0,1),(0,-1)):"],
+    "for dr,dc in((1,0),(-1,0),(0,1),(0,-1)):": ["for dr,dc in((1,0),(-1,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-1)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-2,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,1),(0,1),(0,-1)):"],
     "if r==n-1 and c==n-1:": ["if c==n-1 and r==n-1:"],
-    "nr,nc=r+dr,c+dc": ["nc,nr=c+dr,r+dc", "nr,nc=r+dr,c-dc", "nr,nc=r-dc,c+dr", "nr,nc=r-dr,c+dc", "nr,nc=r-dr,c-dc"],
     "visited.add((nr,nc))": ["visited.add((nr,c))", "visited.add((r,c))", "visited.add((r,nc))"],
     "while heap:": ["while grid:"],
   },
   // task-scheduler
   "1uy0y6h": {
-    "heap=[-c for c in counts.values()]": ["heap=[-n for n in counts.values()]"],
     "heapq.heappush(heap,cooldown.popleft()[0])": ["heapq.heappush(heap,cooldown.popleft()[-2])"],
     "if cooldown and cooldown[0][1]==time:": ["if cooldown and cooldown[0][-1]==time:"],
     "time=cooldown[0][1]": ["counts=collections.Counter(tasks)", "time=cooldown[0][-1]"],
@@ -642,6 +641,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // unique-paths
   "wcy8pr": {
     "return row[n-1]": ["return row[n-2+1]"],
+    "row=[1]*n": ["row=[1]*(n+1)"],
   },
   // valid-anagram
   "1n2ihgz": {
@@ -667,17 +667,16 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // word-break
   "dlydc7": {
-    "break": ["continue"],
+    "break": ["continue", "pass"],
     "dp=[False]*(len(s)+1)": ["dp=[False]*(len(s)+2)"],
     "for i in range(1,len(s)+1):": ["for i in range(0,len(s)+1):", "for i in range(2,len(s)+1):"],
   },
   // word-ladder
   "1qflprp": {
-    "for i in range(len(word)):": ["for i in range(len(word)+1):", "for i in range(len(wordList)):", "for i in range(len(wordList)-1):"],
-    "if nxt not in visited:": ["if endWord not in visited:", "if i not in visited:", "if length not in visited:"],
-    "queue.append((nxt,length+1))": ["queue.append((nxt,i+2))", "queue.appendleft((nxt,length+1))"],
-    "return 0": ["return 1", "return length", "return-1"],
-    "visited.add(nxt)": ["queue.append((nxt,length+1))", "visited.add(beginWord)", "visited.add(i)", "visited.add(length)", "visited.discard(beginWord)", "visited.discard(endWord)", "visited.discard(i)", "visited.discard(length)", "visited.discard(nxt)"],
+    "for i in range(len(word)):@14": ["for i in range(len(word)+1):", "for i in range(len(wordList)):", "for i in range(len(wordList)-1):"],
+    "for i in range(len(word)):@6": ["for i in range(len(word)+1):", "for i in range(len(wordList)):", "for i in range(len(wordList)-1):"],
+    "queue.append((nxt,length+1))": ["queue.appendleft((nxt,length+1))"],
+    "visited={beginWord}": ["visited=set()", "visited=set(beginWord)"],
     "word,length=queue.popleft()": ["word,length=queue.pop()"],
   },
   // word-search
@@ -685,7 +684,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for c in range(cols):": ["for c in range(rows):"],
     "for r in range(rows):": ["for r in range(cols):"],
     "if r<0 or c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:": ["if r<1 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:", "if r<=0 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:", "if r>=0 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:"],
-    "return False": ["return None"],
+    "return False@7": ["return None"],
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
   // word-search-ii

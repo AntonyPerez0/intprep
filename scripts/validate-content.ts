@@ -395,7 +395,16 @@ function checkChoices() {
     bad.add(`${where}: ${msg}`);
   };
   const size = (s: string) => s.replace(/\s+/g, '').length;
-  const look = (screen: string, where: string, answer: string, options: readonly string[]) => {
+  // `at`: the answer's line in its solution, for the deny list's own entry of a line whose code is
+  // there twice (`lineKey@index`); without it, every such entry counts.
+  const deniedFor = (answer: string, at?: number): readonly string[] | undefined => {
+    const key = lineKey(answer);
+    if (denied[key]) return denied[key];
+    if (at !== undefined) return denied[`${key}@${at}`];
+    const all = Object.entries(denied).filter(([k]) => k.startsWith(`${key}@`) && /^\d+$/.test(k.slice(key.length + 1)));
+    return all.length ? all.flatMap(([, v]) => v) : undefined;
+  };
+  const look = (screen: string, where: string, answer: string, options: readonly string[], at?: number) => {
     const st = by.get(screen) ?? { sets: 0, center: 0, options: 0, short: 0, shortest: 0, chance: 0 };
     by.set(screen, st);
     st.sets++;
@@ -409,7 +418,7 @@ function checkChoices() {
     for (const o of wrong) {
       const k = canonKey(o);
       if (k === key) report(where, `${JSON.stringify(o.trim())} means the same as the answer ${JSON.stringify(answer.trim())}`);
-      if (denied[lineKey(answer)]?.some((d) => d === lineKey(o) || canonKey(d) === k)) report(where, `${JSON.stringify(o.trim())} runs like the answer (deny list) but is offered`);
+      if (deniedFor(answer, at)?.some((d) => d === lineKey(o) || canonKey(d) === k)) report(where, `${JSON.stringify(o.trim())} runs like the answer (deny list) but is offered`);
       if (seen.has(k)) report(where, `two wrong options mean the same: ${JSON.stringify(o.trim())}`);
       seen.add(k);
     }
@@ -430,6 +439,8 @@ function checkChoices() {
     const parsed = parseSolution(p.solution);
     const all = parsed.lines.map((l) => l.text);
     denied = DISTRACTOR_DENY[contextKey(all)] ?? {};
+    // A part's body line `j` as a line of the solution.
+    const lineAt = (lp: { ci: number; lead: readonly string[] }, j: number) => parsed.lines.findIndex((l) => l.chunk === lp.ci) + lp.lead.length + j;
     // Pick the key line: only key lines that are a real pick are dealt picked (`pickKeyLine`).
     for (const i of keyLineIndices(p)) {
       keyTotal++;
@@ -438,19 +449,19 @@ function checkChoices() {
         continue;
       }
       const d = keyLineDrill(p, undefined, i, seededRandom(i + 1))!;
-      look('review: Pick the key line', `${p.id}:${i + 1}`, d.option, d.options);
+      look('review: Pick the key line', `${p.id}:${i + 1}`, d.option, d.options, i);
     }
     const src = gapSource(p.solution);
     for (const seed of [0, 2]) {
       const g = reviewGaps(p, seed);
       const set = pickableGaps(g.lines, g.gaps, seed, { exclude: g.header, keyLines: g.keyLines });
-      set.choices.forEach((c, k) => look('review: Pick the gaps', `${p.id}:${set.gaps[k] + 1}`, c.answer, c.options));
+      set.choices.forEach((c, k) => look('review: Pick the gaps', `${p.id}:${set.gaps[k] + 1}`, c.answer, c.options, set.gaps[k]));
     }
     // The review's one-line part (only parts that are a real pick are dealt picked: `pickPart`).
     for (const lp of reviewParts(p).values()) {
       if (codeLines(lp.body).length !== 1 || !partPickable(p, lp)) continue;
       const c = oneLinePick(p, lp.ci, 0).choice;
-      look('review: one-line part', `${p.id}/part ${lp.ci}`, c.answer, c.options);
+      look('review: one-line part', `${p.id}/part ${lp.ci}`, c.answer, c.options, lineAt(lp, lp.body.findIndex((l) => stripComment(l).trim())));
     }
     const parts = lessonParts(parsed);
     parts.forEach((lp) => {
@@ -468,16 +479,16 @@ function checkChoices() {
       const later = parsed.chunks.slice(lp.ci + 1).flatMap((c) => c.lines);
       const c = gapChoices([line], [0], 0, 3, later, { context: all, visible: [...parsed.chunks.slice(0, lp.ci).flatMap((x) => x.lines), ...lp.lead] })[0];
       // A line that is no real pick is shown as given (ProblemLesson's pickLines).
-      if (isRealPick(line, c.options)) look('lesson: one-line part', `${p.id}/part ${lp.ci}`, c.answer, c.options);
+      if (isRealPick(line, c.options)) look('lesson: one-line part', `${p.id}/part ${lp.ci}`, c.answer, c.options, lineAt(lp, lp.body.indexOf(line)));
     });
     const keys = new Set(src.keyLines.map((i) => lineKey(src.lines[i])).filter(Boolean));
     const header = new Set(src.header);
     const min = Math.max(1, src.lines.filter((l, i) => !header.has(i) && keys.has(lineKey(l))).length);
     const lessonGaps = pickableGaps(src.lines, pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, min }), 0, { exclude: src.header, keyLines: src.keyLines });
-    lessonGaps.choices.forEach((c, k) => look('lesson: Pick the gaps', `${p.id}:${lessonGaps.gaps[k] + 1}`, c.answer, c.options));
+    lessonGaps.choices.forEach((c, k) => look('lesson: Pick the gaps', `${p.id}:${lessonGaps.gaps[k] + 1}`, c.answer, c.options, lessonGaps.gaps[k]));
     for (const round of [0, 1]) {
       const set = pickableGaps(src.lines, pickGaps(src.lines, { keyLines: src.keyLines, exclude: src.header, seed: round }), round, { exclude: src.header, keyLines: src.keyLines });
-      set.choices.forEach((c, k) => look('Code from memory: Pick the gaps', `${p.id}:${set.gaps[k] + 1}`, c.answer, c.options));
+      set.choices.forEach((c, k) => look('Code from memory: Pick the gaps', `${p.id}:${set.gaps[k] + 1}`, c.answer, c.options, set.gaps[k]));
     }
     const header2 = parsed.chunks.filter((c) => c.header).flatMap((c) => c.lines);
     parts.forEach((cur, step) => {
@@ -489,14 +500,14 @@ function checkChoices() {
         const c = gapChoices([tapLine], [0], 7 + step * 101 + k, 3, later, { context: all, visible: shown })[0];
         partLines++;
         // Rebuild's PartsSession shows a line that is no real pick as given.
-        if (isRealPick(tapLine, c.options)) look('Code from memory: part by part', `${p.id}/part ${cur.ci}`, c.answer, c.options);
+        if (isRealPick(tapLine, c.options)) look('Code from memory: part by part', `${p.id}/part ${cur.ci}`, c.answer, c.options, lineAt(cur, cur.body.flatMap((l, j) => (l.trim() ? [j] : []))[k]));
         else partGiven++;
       });
     });
     for (const k of blitzKeyLines(p)) {
       if (!blitzPickable(p, k)) continue;
       const c = keyLineChoices(p, k, keyLineView(p, k), 7919 * (k + 1));
-      look('Key lines', `${p.id}:${k + 1}`, c.answer, c.options);
+      look('Key lines', `${p.id}:${k + 1}`, c.answer, c.options, k);
     }
   }
   // The deny lists still match: each key is a solution's (or template's) `contextKey`, and each
@@ -506,8 +517,13 @@ function checkChoices() {
     const id = solutionKeys.get(key);
     if (!id) report('deny list', `src/content/distractorDeny.ts has entries for a solution that no longer exists (key ${key}): run python3 scripts/check-distractors.py`);
     else {
-      const have = new Set(parseSolution(PROBLEM_BY_ID[id].solution).lines.map((l) => lineKey(stripComment(l.text))));
-      for (const a of Object.keys(lines)) if (!have.has(a)) report('deny list', `${id}: no line ${JSON.stringify(a)}: run python3 scripts/check-distractors.py`);
+      const sol = parseSolution(PROBLEM_BY_ID[id].solution).lines.map((l) => lineKey(stripComment(l.text)));
+      const have = new Set(sol);
+      for (const a of Object.keys(lines)) {
+        // `lineKey@index`: the line at that index has that code.
+        const at = a.match(/^(.*)@(\d+)$/);
+        if (at ? sol[Number(at[2])] !== at[1] : !have.has(a)) report('deny list', `${id}: no line ${JSON.stringify(a)}: run python3 scripts/check-distractors.py`);
+      }
     }
   }
   const templateKeys = new Map<string, string>();
@@ -553,6 +569,9 @@ function checkChoices() {
       `✓ ${screen}: ${st.sets} option sets, ${(st.options / st.sets).toFixed(2)} options on average (${st.short} with 3), answer is the center in ${((100 * st.center) / st.sets).toFixed(1)}%, the shortest in ${((100 * st.shortest) / st.sets).toFixed(1)}%`,
     );
   }
+  console.log(
+    `✓ all screens: ${sets} option sets, answer is the center in ${((100 * center) / sets).toFixed(1)}% (at most ${100 * CENTER_MAX}%), the shortest in ${((100 * shortest) / sets).toFixed(1)}% (at most ${100 * SHORTEST_MAX}%, chance ${((100 * chance) / sets).toFixed(1)}%)`,
+  );
   console.log(`✓ given, not picked: ${keyGiven} of ${keyTotal} key lines (typed only), ${partGiven} of ${partLines} lines of Code from memory's part by part`);
   if (center > CENTER_MAX * sets) err(w, `the answer is the center of its options in ${((100 * center) / sets).toFixed(1)}% of ${sets} sets (at most ${100 * CENTER_MAX}%): build wrong options at one site or as a 2x2 (src/lib/choices.ts)`);
   if (shortest > SHORTEST_MAX * sets)

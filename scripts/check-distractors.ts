@@ -1,8 +1,8 @@
 /*
  * Helper for scripts/check-distractors.py (run that, not this): prints, as JSON, every problem's
  * runnable code and examples, and for each line of its solution every wrong option the rules in
- * src/lib/choices.ts can offer for it (`choiceCandidates`: changes, second-order changes, 2x2
- * corners, and fallback lines with its shape), each with its `lineKey`.
+ * src/lib/choices.ts can offer for it (`choiceCandidates`: changes, the extra rules' too,
+ * second-order changes, 2x2 corners, and fallback lines with its shape), each with its `lineKey`.
  *
  *   npx tsx scripts/check-distractors.ts > candidates.json
  */

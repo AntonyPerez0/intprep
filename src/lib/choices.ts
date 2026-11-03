@@ -20,6 +20,9 @@
 // - Fallback lines (other real lines of the snippet, when a line has too few changes) have the
 //   answer's shape (the same kind of statement or block opener), are never on screen, and never
 //   two lines that can trade places (`order.ts`).
+// - A line still short of a full set gets the extra rules (`extraMutants`: more real mistakes built
+//   from the snippet's own names, functions and lines), and then a change of it may be one that is
+//   on screen (`self.stack.pop()` above `self.min_stack.pop()`).
 // Options are code only (no trailing comment), at the answer's indentation.
 //
 // Pure: no React, no DOM; its only content is the generated deny list. Re-exported from
@@ -195,6 +198,8 @@ const NONSENSE = new RegExp(
     String.raw`(?<![\w.])([A-Za-z_]\w*)\[\s*\3\s*\]`,
     // A condition that is always false, or an `if` that is always true.
     String.raw`^\s*(?:(?:if|elif|while)\s+(?:False|None|0)|(?:if|elif)\s+True)\s*:`,
+    // A statement that is only a value (`None`, `0`, `"N"`): it does nothing.
+    String.raw`^\s*(?:None|True|False|-?\d+(?:\.\d+)?|"[^"]*"|'[^']*')\s*$`,
   ].join('|'),
 );
 
@@ -713,10 +718,25 @@ export function contextKey(lines: readonly string[]): string {
 }
 
 const DENY = new Map<string, Map<string, Set<string>>>();
-/** The options denied for an answer line in its own solution (`src/content/distractorDeny.ts`) or template (`TEMPLATE_DENY`). */
-function denied(ctx: Ctx, answerKey: string): Set<string> | undefined {
+/**
+ * The options denied for an answer line in its own solution (`src/content/distractorDeny.ts`) or
+ * template (`TEMPLATE_DENY`). A line whose code is in the solution more than once has an entry per
+ * line (`lineKey@index`): its own when the answer's place is known (`sure`), else all of them.
+ */
+function denied(a: Answer): Set<string> | undefined {
+  if (a.denied === undefined) a.denied = deniedFor(a) ?? null;
+  return a.denied ?? undefined;
+}
+
+function deniedFor(a: Answer): Set<string> | undefined {
   if (!DENY.size) for (const [sol, lines] of Object.entries({ ...DISTRACTOR_DENY, ...TEMPLATE_DENY })) DENY.set(sol, new Map(Object.entries(lines).map(([k, v]) => [k, new Set(v)])));
-  return DENY.get(ctx.denyKey)?.get(answerKey);
+  const entries = DENY.get(a.ctx.denyKey);
+  if (!entries) return undefined;
+  const plain = entries.get(a.key);
+  if (plain) return plain;
+  if (a.sure) return entries.get(`${a.key}@${a.at}`);
+  const all = [...entries].filter(([k]) => k.startsWith(`${a.key}@`) && /^\d+$/.test(k.slice(a.key.length + 1)));
+  return all.length ? new Set(all.flatMap(([, v]) => [...v])) : undefined;
 }
 
 const FOR_PAIR = /^(\s*for\s+)([A-Za-z_]\w*)(\s*,\s*)([A-Za-z_]\w*)(\s+in\s+)(.+?)(\s*:\s*)$/;
@@ -827,7 +847,7 @@ function symmetricTwins(a: Answer): Set<string> {
 
 /** The meanings (`canonKey`) of the options denied for an answer, so no twin of one is offered. */
 function deniedCanons(a: Answer): Set<string> {
-  return (a.deniedCanons ??= new Set([...(denied(a.ctx, a.key) ?? [])].map((d) => canonKey(d, a.neq))));
+  return (a.deniedCanons ??= new Set([...(denied(a) ?? [])].map((d) => canonKey(d, a.neq))));
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
@@ -835,6 +855,8 @@ function deniedCanons(a: Answer): Set<string> {
 interface Answer {
   /** `definedBefore` answers, remembered. */
   seen: Map<string, boolean>;
+  /** `denied`, made on demand (null: none). */
+  denied?: Set<string> | null;
   /** `deniedCanons`, made on demand. */
   deniedCanons?: Set<string>;
   /** `symmetricTwins`, made on demand. */
@@ -854,12 +876,15 @@ interface Answer {
   introduced: Set<string>;
   noOps: number;
   at: number;
+  /** `at` is the answer's own line, from the caller (not found by its code, which may be on two lines). */
+  sure: boolean;
   ctx: Ctx;
 }
 
-function answerInfo(code: string, ctx: Ctx, at?: number): Answer {
+function answerInfo(code: string, ctx: Ctx, at?: number, sure = false): Answer {
   const key = keyOf(code);
-  const idx = at !== undefined && at >= 0 && ctx.keys[at] === key ? at : ctx.keys.indexOf(key);
+  const known = at !== undefined && at >= 0 && ctx.keys[at] === key;
+  const idx = known ? at : ctx.keys.indexOf(key);
   const neq = unequalAt(ctx.lines, idx);
   const sc = scan(code);
   const targets = lineTargets(code);
@@ -893,6 +918,7 @@ function answerInfo(code: string, ctx: Ctx, at?: number): Answer {
     introduced,
     noOps: noOps(code),
     at: idx,
+    sure: sure && known,
     ctx,
     seen: new Map(),
   };
@@ -935,15 +961,19 @@ function inScope(name: string, a: Answer): boolean {
   return lines.some((b) => chain.has(ctx.fnOf[b] ?? -1) && ctx.secOf[b] === ctx.secOf[a.at]);
 }
 
-/** A wrong option the rules allow (see the top of this file). `deny` false skips the deny list (for the check script). */
-function allowed(s: string, a: Answer, deny = true, fallback = false): boolean {
+/**
+ * A wrong option the rules allow (see the top of this file). `deny` false skips the deny list (for the
+ * check script). `extra`: an extra rule's option (`extraMutants`), whose methods may also be checked
+ * against the kind of an attribute (`node.children.keys()`: `children` is set to `{}`).
+ */
+function allowed(s: string, a: Answer, deny = true, fallback = false, extra = false): boolean {
   if (!s.startsWith(a.indent) || !s.trim()) return false;
   const k = keyOf(s);
   if (!k || k === a.key || NONSENSE.test(s) || noOps(s) > a.noOps) return false;
   const canon = canonKey(s, a.neq);
   if (canon === a.canon || symmetricTwins(a).has(canon)) return false;
   // Denied by its code, or by its meaning: a twin of a denied option runs the same way.
-  if (deny && (denied(a.ctx, a.key)?.has(k) || deniedCanons(a).has(canon))) return false;
+  if (deny && (denied(a)?.has(k) || deniedCanons(a).has(canon))) return false;
   const { ctx } = a;
   if (!ctx.known) return true;
   // `pop(0)` on a deque, set or dict; `[x + 1]` on a dict, or with a string index.
@@ -985,13 +1015,14 @@ function allowed(s: string, a: Answer, deny = true, fallback = false): boolean {
       if (!/^heap/.test(attr)) return false;
       continue;
     }
-    const kind = ctx.kinds.get(recv);
+    const kind = ctx.kinds.get(recv) ?? (extra ? snippetOf(ctx).attrKinds.get(recv) : undefined);
     if (kind) {
       if (!METHODS[kind].has(attr)) return false;
     } else if (!ctx.attrs.has(attr) || (DEQUE_ONLY.has(attr) && !ctx.hasDeque)) return false;
   }
   // `heappop` takes the heap only, `heappush` the heap and an item; `.reverse()` nothing…
-  if (arityErrors(s) > arityErrors(a.code)) return false;
+  const own = extra ? snippetOf(ctx).defs : undefined;
+  if (arityErrors(s, own) > arityErrors(a.code, own)) return false;
   // A loop turned into an `if` around a `break` or `continue` does not compile.
   if (/^\s*if\b/.test(s) && /^\s*while\b/.test(a.code) && a.at >= 0) {
     const ind = a.indent.length;
@@ -1012,11 +1043,12 @@ const ARITY: Record<string, [number, number]> = {
   extend: [1, 1], pop: [0, 1], insert: [2, 2], get: [1, 2],
 };
 
-/** Calls of `ARITY` functions and methods with the wrong number of arguments. */
-function arityErrors(s: string): number {
+/** Calls of `ARITY` functions and methods with the wrong number of arguments (`own`: the snippet's functions, whose `self.insert(node)` is no list method). */
+function arityErrors(s: string, own?: ReadonlyMap<string, unknown>): number {
   let n = 0;
   for (const m of s.matchAll(/(?:\.|\bheapq\.)?\b(heappush|heappop|reverse|popleft|keys|values|items|copy|clear|append|appendleft|add|remove|discard|extend|pop|insert|get)\(/g)) {
     if (!m[0].startsWith('.') && !/^heap/.test(m[1])) continue;
+    if (own?.has(m[1]) && /\bself$/.test(s.slice(0, m.index))) continue;
     const [lo, hi] = ARITY[m[1]];
     const args = callArgs(s, m.index! + m[0].length);
     if (args < lo || args > hi) n++;
@@ -1380,6 +1412,552 @@ function synthMutants(a: Answer): string[] {
   return out;
 }
 
+// ── Extra rules: for lines whose own changes, other names and fallback lines make no full set ──
+
+/** Attributes that step from node to node, by family (a tree's children, a linked list's links). */
+const STEP_FAMILIES: readonly (readonly string[])[] = [
+  ['left', 'right'],
+  ['next', 'prev', 'random'],
+];
+const STEP_FAMILY = new Map(STEP_FAMILIES.flatMap((f) => f.map((x) => [x, f] as const)));
+/** The node classes a solution may build (LeetCode's, and a trie's). */
+const NODE_CLASS = /^(ListNode|TreeNode|Node|TrieNode)$/;
+const CONTAINER = new Set<Kind>(['list', 'set', 'dict', 'deque', 'str']);
+/** Kinds of the empty containers a line may set up, and how each is written. */
+const MAKE: [Kind, string][] = [
+  ['list', '[]'],
+  ['set', 'set()'],
+  ['dict', '{}'],
+  ['deque', 'collections.deque()'],
+];
+/** 32-bit constants that are easy to mix up. */
+const HEX32 = ['0xFFFFFFFF', '0x7FFFFFFF', '0x80000000', '0x100000000'];
+
+/** What the extra rules need to know about a snippet beyond `Ctx`. */
+interface Snippet {
+  /** Functions it defines: name → each definition (its line, parameters without `self`, class line, parent function). */
+  defs: Map<string, { line: number; params: string[]; cls: number; parent: number }[]>;
+  /** Methods called on each receiver (`stack` → append, pop; `self.heap` → …). */
+  calls: Map<string, Set<string>>;
+  /** Receivers each attribute is read on (`children` → node, self.root), in order of first use. */
+  users: Map<string, string[]>;
+  /** Kinds of attributes set on `self` (`children` → dict), when every class agrees. */
+  attrKinds: Map<string, Kind>;
+  /** Each attribute set on `self` → the attributes set next to it in the same class (`val` → key). */
+  fields: Map<string, Set<string>>;
+  /** Names indexed somewhere (`x[…]`). */
+  indexed: Set<string>;
+}
+
+const snippetMemo = new WeakMap<Ctx, Snippet>();
+
+function snippetOf(ctx: Ctx): Snippet {
+  const hit = snippetMemo.get(ctx);
+  if (hit) return hit;
+  const defs: Snippet['defs'] = new Map();
+  const calls = new Map<string, Set<string>>();
+  const users = new Map<string, string[]>();
+  const indexed = new Set<string>();
+  ctx.lines.forEach((line, i) => {
+    const t = line.trim();
+    if (!t) return;
+    const d = t.match(/^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\((.*)\)/);
+    if (d) {
+      const params = splitTop(d[2])
+        .map((p) => p.trim().match(/^\**([A-Za-z_]\w*)/)?.[1] ?? '')
+        .filter((p) => p && p !== 'self');
+      defs.set(d[1], [...(defs.get(d[1]) ?? []), { line: i, params, cls: ctx.classOf[i], parent: ctx.parentFn.get(i) ?? -1 }]);
+      return;
+    }
+    const s = t.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
+    for (const m of s.matchAll(/(?<![\w.])((?:self\.)?[A-Za-z_]\w*)\.([A-Za-z_]\w*)(\s*\()?/g)) {
+      if (m[3]) calls.set(m[1], (calls.get(m[1]) ?? new Set()).add(m[2]));
+      else if (m[1] !== 'self') {
+        const u = users.get(m[2]) ?? [];
+        if (!u.includes(m[1])) users.set(m[2], [...u, m[1]]);
+      }
+    }
+    for (const m of s.matchAll(/(?<![\w.])((?:self\.)?[A-Za-z_]\w*)\[/g)) indexed.add(m[1]);
+  });
+  const attrKinds = new Map<string, Kind>();
+  const fields = new Map<string, Set<string>>();
+  const clash = new Set<string>();
+  for (const attrs of ctx.selfKinds.values()) {
+    for (const [k, v] of attrs) {
+      fields.set(k, new Set([...(fields.get(k) ?? []), ...[...attrs.keys()].filter((x) => x !== k)]));
+      if (!v) continue;
+      if (attrKinds.has(k) && attrKinds.get(k) !== v) clash.add(k);
+      else attrKinds.set(k, v);
+    }
+  }
+  clash.forEach((k) => attrKinds.delete(k));
+  const out = { defs, calls, users, attrKinds, fields, indexed };
+  snippetMemo.set(ctx, out);
+  return out;
+}
+
+/** The index just past the bracket that closes the one at `open` (strings skipped), or -1. */
+function closeOf(s: string, open: number): number {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = open; i < s.length; i++) {
+    const ch = s[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") quote = ch;
+    else if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch) && --depth === 0) return i + 1;
+  }
+  return -1;
+}
+
+/** Top-level ` if ` and ` else ` of a conditional expression (`a if c else b`), or null. */
+function ternary(e: string): { a: string; c: string; b: string } | null {
+  let depth = 0;
+  let quote: string | null = null;
+  let at = -1;
+  for (let i = 0; i < e.length; i++) {
+    const ch = e[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") quote = ch;
+    else if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) depth--;
+    else if (depth === 0 && e.startsWith(' if ', i) && at < 0) at = i;
+    else if (depth === 0 && e.startsWith(' else ', i) && at >= 0) return { a: e.slice(0, at).trim(), c: e.slice(at + 4, i).trim(), b: e.slice(i + 6).trim() };
+  }
+  return null;
+}
+
+/**
+ * More real mistakes for a line, used only when its own changes, other names and fallback lines
+ * leave it short of a full set (see `choose`). Each is built from what the snippet has at the
+ * line (its names, attributes, functions and other lines), so it adds no undefined name:
+ * - the negated test (`if n not in seen:` / `if n in seen:`, `is not` / `is`), the wrong container
+ *   in a membership test (`n in nums` for `n in seen`, `self.root.children` for `node.children`),
+ *   and a dict entry tested for a key (`if not self.store[key]:` for `if key not in self.store:`);
+ * - a node's sibling, child or parent where a line reads one (`root.left` / `root.right` / `root`,
+ *   `.next` / `.random` / `.next.next`, `if not root.left:`), another node in its place
+ *   (`list2.next` for `list1.next`);
+ * - the snippet's own functions: a sibling with the same parameters (`self.insert` / `self.remove`),
+ *   the call returned instead of run (`return self.invertTree(root.left)`, `return gain(root)` for
+ *   `return best`), an argument one off, dropped or swapped, a helper not called (`a` for `find(a)`);
+ * - other return values: the function's other returns, other functions' literal returns, an
+ *   empty value of another type (`None` / `[]` / `[[]]` / `""` / `0` / `-1` / `TreeNode()`), the key
+ *   for its value (`return head` for `return old_to_new[head]`), a field's sibling (`.key` / `.val`),
+ *   `is` or the sizes for `==` between containers, `.items()` for `.values()`;
+ * - set-ups: another empty container only where the code calls a method it lacks (`[]` for a
+ *   `collections.deque()` that is popped from the left), a deque not seeded (`deque()`, `deque(root)`),
+ *   a node class not called (`TrieNode`) or skipped (`None`, `list1` for a dummy), a copy not made
+ *   (`copy = original`), `{}` / `set(0)` for `{0}`, `set()` / `{nums}` for `set(nums)`, a size one off
+ *   (`[0] * 25`), a mapping turned around, a 32-bit constant mixed up, `0.0` for `1.0`;
+ * - a pop at the wrong end or a push for a pop (`stack.append(ch)`), a heap misused
+ *   (`self.heap.append(val)`, `self.heap = heapq.heapify(self.heap)`), `=` for `+=`, `/=` / `%=` /
+ *   `*=` for `//=`, `<<=` for `>>=`, a loop over a dict's values or over indices, a guard dropped,
+ *   turned around or with its branches swapped (`l1 = l1.next`), a string split or joined wrong.
+ */
+function extraMutants(a: Answer): string[] {
+  const { ctx } = a;
+  const code = a.code.trim();
+  if (!ctx.known || GIVEN.test(code) || a.at < 0) return [];
+  const sn = snippetOf(ctx);
+  const ind = a.indent;
+  const out: string[] = [];
+  const put = (s: string) => out.push(ind + s);
+  const eq = topLevelAssign(code);
+  const lhs = eq.at >= 0 ? code.slice(0, eq.at).trim() : '';
+  const rhs = eq.at >= 0 ? code.slice(eq.at + eq.op.length).trim() : '';
+  const plainSet = eq.at >= 0 && eq.op === '=';
+  const near = (v: string) => Math.abs((ctx.firstBind.get(v) ?? 0) - a.at);
+  // A sibling name first (`l2` for `l1`, `list2` for `list1`), then the nearest.
+  const stem = (v: string) => v.replace(/^self\./, '').replace(/\d+$/, '');
+  const like = (v: string, of: string) => (stem(v) === stem(of) && v !== of ? 0 : 1) * 1000 + near(v);
+  const before = (v: string) => definedBefore(v.replace(/^self\./, '').split('.')[0], a) || v.startsWith('self.');
+  const selfAttrs = ctx.selfKinds.get(ctx.classOf[a.at]) ?? new Map<string, Kind | undefined>();
+  const kindOf = (e: string): Kind | undefined => {
+    const t = e.trim();
+    if (/^self\.[A-Za-z_]\w*$/.test(t)) return selfAttrs.get(t.slice(5)) ?? sn.attrKinds.get(t.slice(5));
+    const m = t.match(/\.([A-Za-z_]\w*)$/);
+    if (m && /^[\w.]+$/.test(t)) return sn.attrKinds.get(m[1]);
+    return kindOfExpr(t, ctx.kinds);
+  };
+  // A name that is a node: its kind says so, or the snippet steps from it (`root.left`, `curr.next`).
+  const familyOf = (v: string): readonly string[] | undefined => {
+    for (const f of STEP_FAMILIES) if (f.some((x) => (sn.users.get(x) ?? []).includes(v))) return f.filter((x) => ctx.attrs.has(x));
+    return ctx.kinds.get(v) === 'node' ? STEP_FAMILIES.find((f) => f.some((x) => ctx.attrs.has(x)))?.filter((x) => ctx.attrs.has(x)) : undefined;
+  };
+  // Other names (or `self.` attributes of this class) of a kind, defined before the line, nearest first.
+  const others = (not: string, ok: (k: Kind | undefined, v: string) => boolean, max = 2): string[] => {
+    const vars = ctx.vars.filter((v) => v !== not && !ctx.loopVars.has(v) && definedBefore(v, a) && ok(ctx.kinds.get(v), v)).sort((x, y) => near(x) - near(y));
+    const attrs = [...selfAttrs].filter(([k, v]) => `self.${k}` !== not && ok(v, `self.${k}`)).map(([k]) => `self.${k}`);
+    return [...vars, ...attrs].slice(0, max);
+  };
+  // The functions a call may name here: methods of this class (as `self.f`), functions in scope (as `f`).
+  const fnHere = (name: string, viaSelf: boolean) =>
+    (sn.defs.get(name) ?? []).find((d) => (viaSelf ? d.cls >= 0 && d.cls === ctx.classOf[a.at] : d.cls === ctx.classOf[a.at] || d.parent >= 0 || d.cls < 0));
+  const fnOfLine = ctx.fnOf[a.at] ?? -1;
+  // Lines after this one in its own function: a call returned here would skip them.
+  const hasLater = ctx.lines.some((l, j) => j > a.at && l.trim() && (ctx.fnOf[j] ?? -1) === fnOfLine);
+
+  // 1. Tests: the other way round, the wrong container, a dict entry for a key.
+  const cond = code.match(/^(if|elif|while|return)\s+(.+?)(:?)$/);
+  if (cond && !/\b(and|or|lambda|for)\b/.test(cond[2])) {
+    const [, word, test, colon] = cond;
+    for (const [re, to] of [
+      [/\bnot in\b/, 'in'],
+      [/\bis not\b/, 'is'],
+    ] as const) {
+      if ((test.match(new RegExp(re.source, 'g')) ?? []).length === 1) put(`${word} ${test.replace(re, to)}${colon}`);
+    }
+    const cmps = topLevelCompares(test);
+    if (cmps.length === 1 && /^ (not )?in $/.test(cmps[0].op)) {
+      const left = test.slice(0, cmps[0].at).trim();
+      const right = test.slice(cmps[0].at + cmps[0].op.length).trim();
+      const rk = kindOf(right);
+      if (/^[A-Za-z_]\w*$|^self\.[A-Za-z_]\w*$/.test(right)) {
+        const fam = (k: Kind | undefined) => (k === rk ? 0 : k && rk && ['list', 'set', 'deque'].includes(k) === ['list', 'set', 'deque'].includes(rk) ? 1 : 2);
+        // A string only stands in for a string (`endWord in beginWord` tests a substring).
+        const alts = others(right, (k) => !!k && CONTAINER.has(k) && (k !== 'str' || rk === 'str'), 6).sort((x, y) => fam(kindOf(x)) - fam(kindOf(y)));
+        for (const d of alts.slice(0, 2)) put(`${word} ${left}${cmps[0].op}${d}${colon}`);
+      }
+      // `node.children` → `self.root.children`: the same attribute of another node.
+      const recv = right.match(/^((?:self\.)?[A-Za-z_]\w*)\.([A-Za-z_]\w*)$/);
+      if (recv) for (const r of (sn.users.get(recv[2]) ?? []).filter((r) => r !== recv[1] && before(r)).slice(0, 2)) put(`${word} ${left}${cmps[0].op}${r}.${recv[2]}${colon}`);
+      if (rk === 'dict' && /^[\w.]+$/.test(right) && word !== 'while') put(`${word} ${cmps[0].op.includes('not') ? 'not ' : ''}${right}[${left}]${colon}`);
+    }
+    // `return a == b` between two containers: identity, or only their sizes.
+    if (word === 'return' && cmps.length === 1 && cmps[0].op === '==') {
+      const x = test.slice(0, cmps[0].at).trim();
+      const y = test.slice(cmps[0].at + 2).trim();
+      if ([x, y].every((v) => /^[A-Za-z_]\w*$/.test(v) && CONTAINER.has(kindOf(v) ?? 'num'))) put(`return ${x} is ${y}`), put(`return len(${x}) == len(${y})`);
+    }
+  }
+
+  // 2. Nodes: a sibling, a child or the node itself where the line reads one (never on the left of `=`).
+  const toks = tokenize(code);
+  let offset = 0;
+  const starts = toks.map((t) => (offset += t.length) - t.length);
+  const nonWs = (i: number, step: number) => {
+    for (let j = i + step; j >= 0 && j < toks.length; j += step) if (toks[j].trim()) return j;
+    return -1;
+  };
+  const swapTok = (from: number, to: number, w: string) => put(toks.slice(0, from).join('') + w + toks.slice(to).join(''));
+  const readsFrom = eq.at >= 0 ? eq.at + eq.op.length : 0;
+  const callLike = /^(?:return\b|if\b|elif\b|while\b)/.test(code) || (eq.at < 0 && /\)$/.test(code)) || plainSet;
+  // Per token: inside a call's parentheses (`f(…)`, not a tuple or a subscript).
+  const inCall: boolean[] = [];
+  {
+    const open: boolean[] = [];
+    toks.forEach((t, i) => {
+      if (t === '(') open.push(/^[A-Za-z_]\w*$/.test(toks[nonWs(i, -1)] ?? '') && !KEYWORD.has(toks[nonWs(i, -1)] ?? ''));
+      else if (t === '[' || t === '{') open.push(false);
+      else if (t === ')' || t === ']' || t === '}') open.pop();
+      inCall[i] = open.length > 0 && open[open.length - 1];
+    });
+  }
+  const testOrReturn = /^(?:return\b|if\b|elif\b|while\b)/.test(code);
+  toks.forEach((t, i) => {
+    if (!/^[A-Za-z_]\w*$/.test(t) || KEYWORD.has(t) || starts[i] < readsFrom) return;
+    const p = nonWs(i, -1);
+    if (p >= 0 && toks[p] === '.') return;
+    const n = nonWs(i, 1);
+    const fam = familyOf(t);
+    if (!fam || !fam.length) return;
+    if (n >= 0 && toks[n] === '.') {
+      const attr = toks[nonWs(n, 1)] ?? '';
+      const after = nonWs(nonWs(n, 1), 1);
+      if (!fam.includes(attr) || (after >= 0 && /^[([]$/.test(toks[after]))) return;
+      const end = nonWs(n, 1) + 1;
+      // The node itself (`self.invertTree(root)` for `root.left`), in a call, a test or a return.
+      if (inCall[i] || testOrReturn) swapTok(i, end, t);
+      for (const sib of fam) if (sib !== attr) swapTok(i, end, `${t}.${sib}`);
+      // One step too far, on a linked list.
+      if (attr === 'next' && (after < 0 || toks[after] !== '.')) swapTok(i, end, `${t}.next.next`);
+      // Another node with the same attribute (`list2.next` for `list1.next`): a sibling name when there is one.
+      const rs = (sn.users.get(attr) ?? []).filter((r) => r !== t && r !== lhs && /^[A-Za-z_]\w*$/.test(r) && definedBefore(r, a)).sort((x, y) => like(x, t) - like(y, t));
+      for (const r of rs.slice(0, rs.length && like(rs[0], t) < 1000 ? 1 : 2)) swapTok(i, end, `${r}.${attr}`);
+    } else if (callLike && (n < 0 || !/^[.[(=]$/.test(toks[n]))) {
+      // A child where the line reads the node (`height(root.left)`, `if not root.left:`, `fast = head.next`):
+      // in a test or a return, the first node a call is given, or a whole value set.
+      const firstArg = inCall[i] && !toks.slice(0, i).some((x, q) => inCall[q] && x !== t && familyOf(x) && /^[A-Za-z_]\w*$/.test(x));
+      const whole = !inCall[i] && plainSet && splitTop(rhs).some((v) => v.trim() === t);
+      if ((testOrReturn && !inCall[i]) || firstArg || whole) for (const c of fam.slice(0, 2)) if (c !== 'prev' && c !== 'random') swapTok(i, i + 1, `${t}.${c}`);
+    }
+  });
+  // `l1 = l1.next if l1 else None`: the guard dropped, turned around, its branches swapped, another node in it.
+  const tern = (rhs && plainSet ? rhs : code.startsWith('return ') ? code.slice(7) : '') && ternary(plainSet ? rhs : code.slice(7));
+  if (tern) {
+    const head = plainSet ? `${lhs} = ` : 'return ';
+    put(`${head}${tern.a}`);
+    // Turned around only when it is a name or a call (a comparison has its operator changed already).
+    if (/^(not )?[\w.]+(\(.*\))?$/.test(tern.c)) put(`${head}${tern.a} if ${tern.c.startsWith('not ') ? tern.c.slice(4) : `not ${tern.c}`} else ${tern.b}`);
+    put(`${head}${tern.b} if ${tern.c} else ${tern.a}`);
+    if (/^[A-Za-z_]\w*$/.test(tern.c) && familyOf(tern.c)) for (const r of others(tern.c, (k, v) => !!familyOf(v) || k === 'node', 9).sort((x, y) => like(x, tern.c) - like(y, tern.c)).slice(0, 1)) put(`${head}${tern.a} if ${r} else ${tern.b}`);
+  }
+
+  // 3. The snippet's own functions.
+  const callRe = /(?<![\w.])(self\.)?([A-Za-z_]\w*)\(/g;
+  for (const m of code.matchAll(callRe)) {
+    const def = fnHere(m[2], !!m[1]);
+    if (!def || (!m[1] && def.cls >= 0 && def.parent < 0)) continue;
+    const open = m.index! + m[0].length - 1;
+    const close = closeOf(code, open);
+    if (close < 0) continue;
+    const pre = code.slice(0, m.index!);
+    const post = code.slice(close);
+    const name = `${m[1] ?? ''}${m[2]}`;
+    const args = code.slice(open + 1, close - 1).trim() ? splitTop(code.slice(open + 1, close - 1)).map((x) => x.trim()) : [];
+    // A sibling with the same parameters (`self.insert` / `self.remove`), declared before the line when nested.
+    for (const [other, ds] of sn.defs) {
+      if (other === m[2] || other.startsWith('__')) continue;
+      const d = ds.find((x) => x.cls === def.cls && x.parent === def.parent && x.params.length === def.params.length && (x.parent < 0 || x.line < a.at));
+      if (d && d.params.join() === def.params.join()) put(`${pre}${m[1] ?? ''}${other}(${args.join(', ')})${post}`);
+    }
+    // The call returned instead of run, when its function goes on after it; its result kept in what
+    // the function returns (`best = gain(root)`, `res = backtrack(0)`).
+    if (pre === '' && post === '' && hasLater) {
+      put(`return ${code}`);
+      for (let j = a.at + 1; j < ctx.lines.length; j++) {
+        // `return res` or `return route[::-1]`: a variable the function builds (never `self`).
+        const r = ctx.lines[j].trim().match(/^return\s+([A-Za-z_]\w*)(?:\[[^\]]*\])?$/);
+        const own = r && (ctx.binds.get(r[1]) ?? []).some((b) => b > fnOfLine && (ctx.fnOf[b] ?? -1) === fnOfLine && b < a.at);
+        if ((ctx.fnOf[j] ?? -1) === fnOfLine && indentStr(ctx.lines[j]).length === ind.length && r && r[1] !== 'self' && own) {
+          put(`${r[1]} = ${code}`);
+          break;
+        }
+      }
+    }
+    // A helper not called (`a` for `find(a)`), or only its first step (`parent[a]`, the lookup it repeats).
+    if ((pre !== '' || post !== '') && !/^return $/.test(pre) && args.length === 1 && /^[A-Za-z_]\w*$/.test(args[0]) && !(plainSet && pre.endsWith('= ') && post === '' && !/,/.test(rhs))) {
+      put(`${pre}${args[0]}${post}`);
+      const param = def.params[0];
+      const body = ctx.lines.slice(def.line + 1).filter((_, q) => (ctx.fnOf[def.line + 1 + q] ?? -1) === def.line);
+      const look = param && body.join('\n').match(new RegExp(`(?<![\\w.])([A-Za-z_]\\w*)\\[${param}\\]`));
+      if (look && definedBefore(look[1], a)) put(`${pre}${look[1]}[${args[0]}]${post}`);
+    }
+    // Its arguments: two traded, a number one off, a helper not called.
+    if (args.length === 2 && args[0] !== args[1]) put(`${pre}${name}(${args[1]}, ${args[0]})${post}`);
+    args.forEach((x, k) => {
+      const set = (v: string) => put(`${pre}${name}(${args.map((y, q) => (q === k ? v : y)).join(', ')})${post}`);
+      if (/^[A-Za-z_]\w*$/.test(x) && ctx.kinds.get(x) === 'num') set(`${x} + 1`);
+      const inner = x.match(/^([A-Za-z_]\w*)\(([A-Za-z_]\w*)\)$/);
+      if (inner && sn.defs.has(inner[1])) set(inner[2]);
+      // The key for the entry it names (`self.remove(key)` for `self.remove(self.cache[key])`).
+      const entry = x.match(/^((?:self\.)?[A-Za-z_]\w*)\[([A-Za-z_]\w*)\]$/);
+      if (entry && kindOf(entry[1]) === 'dict') set(entry[2]);
+    });
+    // Its result dropped (`read()` for `node.left = read()`, `read()` for `return read()`), or the function not called.
+    if ((/^return $/.test(pre) || (plainSet && pre === code.slice(0, eq.at + 1) + ' ')) && post === '') put(code.slice(open - name.length, close));
+    if (!args.length && post === '' && (pre === '' || /^return $/.test(pre) || (plainSet && pre.endsWith('= ')))) put(`${pre}${name}`);
+  }
+  // `return best` after `gain(root)`: the helper's own result returned.
+  const retName = code.match(/^return\s+([A-Za-z_]\w*)$/);
+  if (retName) {
+    for (let j = a.at - 1; j >= 0 && (ctx.fnOf[j] ?? -1) === fnOfLine; j--) {
+      const l = ctx.lines[j];
+      if (!l.trim() || indentStr(l).length !== ind.length) continue;
+      const c = l.trim().match(/^(self\.)?([A-Za-z_]\w*)\(.*\)$/);
+      if (c && fnHere(c[2], !!c[1])) put(`return ${l.trim()}`);
+    }
+  }
+
+  // A bare `return` that should stop here: going on instead (`pass`), or, in a loop, only this round.
+  if (/^(return|break|continue)$/.test(code)) {
+    let inLoop = false;
+    for (let j = a.at - 1, level = ind.length; j >= 0 && (ctx.fnOf[j] ?? -1) === fnOfLine; j--) {
+      const l = ctx.lines[j];
+      if (!l.trim() || indentStr(l).length >= level) continue;
+      level = indentStr(l).length;
+      if (/^\s*(for|while)\b/.test(l)) inLoop = true;
+      if (/^\s*(async\s+)?def\b/.test(l)) break;
+    }
+    put('pass');
+    if (inLoop) for (const w of ['break', 'continue', 'return']) if (w !== code) put(w);
+  }
+
+  // 4. Return values.
+  if (/^return\b/.test(code)) {
+    const value = code.slice(6).trim();
+    // The function's other returns, and other functions' plain values.
+    for (let j = 0; j < ctx.lines.length; j++) {
+      const r = ctx.lines[j].trim().match(/^return\s+(.+)$/);
+      if (!r || r[1] === value) continue;
+      if ((ctx.fnOf[j] ?? -1) === fnOfLine || /^(None|True|False|-?\d+|""|''|\[\]|"0")$/.test(r[1])) put(`return ${r[1]}`);
+    }
+    // The function's return type, for an empty value of another type.
+    const def = fnOfLine >= 0 ? ctx.lines[fnOfLine] : '';
+    const ret = def.match(/->\s*(.+?)\s*:\s*$/)?.[1] ?? '';
+    const node = ret.match(/\b(ListNode|TreeNode|Node)\b/)?.[1];
+    const EMPTY: Record<string, string[]> = {
+      '[]': ['None', ...(/^List\[\s*List\b/.test(ret) ? ['[[]]'] : []), ...(/^List\[\s*str\s*\]$/.test(ret) ? ['[""]'] : [])],
+      '""': ['None', ...others('', (k) => k === 'str', 1)],
+      '"0"': ['0', '""'],
+      '0': ['-1', 'None'],
+      None: ['[]', ...(node ? [`${node}()`] : [])],
+    };
+    for (const v of EMPTY[value] ?? []) put(`return ${v}`);
+    // The key for its value (`return head` for `return old_to_new[head]`), the object for its field, a field's sibling.
+    const sub = value.match(/^([\w.]+)\[([A-Za-z_]\w*)\](?:\.([A-Za-z_]\w*))?$/);
+    if (sub) {
+      put(`return ${sub[2]}`);
+      if (sub[3]) {
+        put(`return ${sub[1]}[${sub[2]}]`);
+        for (const f of sn.fields.get(sub[3]) ?? []) if (!STEP_FAMILY.has(f)) put(`return ${sub[1]}[${sub[2]}].${f}`);
+      }
+    }
+    // `return list(groups.values())`: the pairs, or the dict itself.
+    const wrapped = value.match(/^list\(([A-Za-z_][\w.]*)\.(values|keys)\(\)\)$/);
+    if (wrapped) put(`return list(${wrapped[1]}.items())`), put(`return ${wrapped[1]}`);
+    // `return ','.join(out)`: the list itself, or its text.
+    const join = value.match(/^(["'][^"']*["'])\.join\(([A-Za-z_]\w*)\)$/);
+    if (join) put(`return ${join[2]}`), put(`return str(${join[2]})`);
+  }
+
+  // 5. Set-ups and plain assignments.
+  if (plainSet && rhs) {
+    const target = /^(self\.)?[A-Za-z_]\w*$/.test(lhs) ? lhs : '';
+    const used = sn.calls.get(target) ?? new Set<string>();
+    // Another empty container, only where the code calls a method it does not have (or indexes a set).
+    const make = rhs.match(/^(?:collections\.)?(deque|defaultdict|Counter)\((.*)\)$|^(\[\]|\{\}|set\(\))$/);
+    if (make && target) {
+      const lacks = (k: Kind) => [...used].some((u) => !METHODS[k].has(u)) || (k === 'set' && sn.indexed.has(target));
+      const seed = make[1] === 'deque' && make[2].match(/^\[(.+)\]$/);
+      // A deque that starts with something: not seeded, seeded with the item itself, or a list.
+      if (seed) put(`${lhs} = collections.deque()`), put(`${lhs} = collections.deque(${seed[1]})`), lacks('list') && put(`${lhs} = [${seed[1]}]`);
+      else if (!make[2]) for (const [k, w] of MAKE) if (k !== (kindOf(rhs) ?? '') && (k !== 'deque' || ctx.hasDeque) && lacks(k) && w !== rhs) put(`${lhs} = ${w}`);
+    }
+    // A node class not called, or no node at all, or one already there (`dummy = list1`).
+    const ctor = rhs.match(/^([A-Za-z_]\w*)\((.*)\)$/);
+    const cls = ctor && (NODE_CLASS.test(ctor[1]) || ctx.lines.some((l) => new RegExp(`^\\s*class\\s+${ctor[1]}\\b`).test(l))) ? ctor : null;
+    if (cls) {
+      put(`${lhs} = ${cls[1]}`);
+      put(`${lhs} = None`);
+      const cargs = cls[2].trim() ? splitTop(cls[2]).map((x) => x.trim()) : [];
+      if (cargs.length) put(`${lhs} = ${cls[1]}(${cargs.slice(0, -1).join(', ')})`);
+      // A copy not made (`copy = original`), or made of the node instead of its value.
+      const of = cargs.length === 1 && cargs[0].match(/^([A-Za-z_]\w*)\.([A-Za-z_]\w*)$/);
+      if (of) put(`${lhs} = ${of[1]}`), put(`${lhs} = ${cls[1]}(${of[1]})`);
+      if (cargs.length === 2 && /^[A-Za-z_]\w*$/.test(cargs[1])) put(`${lhs} = ${cargs[1]}`);
+      if (target && familyOf(target)) for (const r of others(target, (k, v) => k === 'node' || !!familyOf(v), 2)) put(`${lhs} = ${r}`);
+    }
+    // `set(nums)`: empty, or a set holding the list.
+    const setOf = rhs.match(/^set\(([A-Za-z_]\w*)\)$/);
+    if (setOf) put(`${lhs} = set()`), put(`${lhs} = {${setOf[1]}}`);
+    // `{0}`: an empty dict, `set(0)`, an empty set; `[0]`: an empty list.
+    const one = rhs.match(/^\{([^{}:,]+)\}$/);
+    if (one) put(`${lhs} = {}`), put(`${lhs} = set(${one[1].trim()})`), put(`${lhs} = set()`);
+    if (/^\[[^[\],]+\]$/.test(rhs)) put(`${lhs} = []`);
+    // A mapping turned around, or missing its last pair.
+    const pairs = rhs.match(/^\{(.+)\}$/) && splitTop(rhs.slice(1, -1)).map((x) => x.split(/\s*:\s*/));
+    if (pairs && pairs.length >= 2 && pairs.every((x) => x.length === 2 && x.every((y) => /^["'][^"']*["']$/.test(y.trim())))) {
+      put(`${lhs} = {${pairs.map(([k, v]) => `${v.trim()}: ${k.trim()}`).join(', ')}}`);
+      put(`${lhs} = {${pairs.slice(0, -1).map(([k, v]) => `${k.trim()}: ${v.trim()}`).join(', ')}}`);
+    }
+    // A size one off (`[0] * 25`), or the size of a sequence instead (`[0] * len(word)`).
+    const sized = rhs.match(/^(\[[^\]]*\]\s*\*\s*)(\d+|[A-Za-z_]\w*)$/);
+    if (sized) {
+      const nn = sized[2];
+      if (/^\d+$/.test(nn) && Number(nn) >= 3) {
+        put(`${lhs} = ${sized[1]}${Number(nn) - 1}`);
+        put(`${lhs} = ${sized[1]}${Number(nn) + 1}`);
+        for (const s of others('', (k) => k === 'str' || k === 'list', 1)) put(`${lhs} = ${sized[1]}len(${s})`);
+      } else if (!/^\d+$/.test(nn)) put(`${lhs} = ${sized[1]}(${nn} - 1)`), put(`${lhs} = ${sized[1]}(${nn} + 1)`);
+    }
+    // `heap = [-s for s in stones]`: the list itself, or its indices.
+    const comp = rhs.match(/^\[(.+) for ([A-Za-z_]\w*) in ([A-Za-z_]\w*)\]$/);
+    if (comp && ['list', 'str'].includes(ctx.kinds.get(comp[3]) ?? '')) put(`${lhs} = ${comp[3]}`), put(`${lhs} = [${comp[1]} for ${comp[2]} in range(len(${comp[3]}))]`);
+    // A 32-bit constant mixed up with the others; `0.0` for `1.0`.
+    if (HEX32.includes(rhs)) for (const h of HEX32) if (h !== rhs) put(`${lhs} = ${h}`);
+    if (/^\d+\.\d+$/.test(rhs)) for (const f of ['0.0', '1.0', '2.0']) if (Number(f) !== Number(rhs)) put(`${lhs} = ${f}`);
+    // `x = d[k]`: the key for its value.
+    const val = rhs.match(/^([A-Za-z_][\w.]*)\[([A-Za-z_]\w*)\]$/);
+    if (val && /^[A-Za-z_]\w*$/.test(lhs)) put(`${lhs} = ${val[2]}`);
+    // `lists = merged`: added to, or only its first item; `self.heap = nums`: an empty one instead.
+    if (/^[A-Za-z_]\w*$/.test(lhs) && /^[A-Za-z_]\w*$/.test(rhs) && kindOf(lhs) === 'list' && kindOf(rhs) === 'list') put(`${lhs}.append(${rhs})`), put(`${lhs} = ${rhs}[0]`);
+    if (/^(self\.)?[A-Za-z_]\w*$/.test(lhs) && /^[A-Za-z_]\w*$/.test(rhs) && kindOf(rhs) === 'list') put(`${lhs} = []`);
+    // `node = self.root`: a fresh node instead, or the root's children.
+    if (/^[A-Za-z_]\w*$/.test(lhs) && /^(self\.)?[A-Za-z_]\w*$/.test(rhs) && (kindOf(rhs) === 'node' || familyOf(rhs))) {
+      const made = ctx.lines.map((l) => l.match(/=\s*([A-Z]\w*)\(\)\s*$/)?.[1]).find((c) => c && NODE_CLASS.test(c));
+      if (made) put(`${lhs} = ${made}()`);
+      for (const [attr, rs] of sn.users) if (rs.includes(lhs) && !STEP_FAMILY.has(attr) && sn.attrKinds.get(attr) === 'dict') put(`${lhs} = ${rhs}.${attr}`);
+    }
+    // `d[k] = v`: key and value the other way round.
+    const store = lhs.match(/^([A-Za-z_][\w.]*)\[([A-Za-z_]\w*)\]$/);
+    if (store && /^[A-Za-z_]\w*$/.test(rhs) && store[2] !== rhs) put(`${store[1]}[${rhs}] = ${store[2]}`);
+    // `tokens = data.split(',')`: on whitespace, or into characters.
+    const split = rhs.match(/^([A-Za-z_]\w*)\.split\((["'][^"']+["'])\)$/);
+    if (split) put(`${lhs} = ${split[1]}.split()`), put(`${lhs} = list(${split[1]})`);
+    // `x = abs(x)`: negated instead.
+    const abs = rhs.match(/^abs\(([A-Za-z_]\w*)\)$/);
+    if (abs) put(`${lhs} = -${abs[1]}`);
+    // `n = -n`: inverted instead.
+    const neg = rhs.match(/^-([A-Za-z_]\w*)$/);
+    if (neg) put(`${lhs} = 1 / ${neg[1]}`);
+    // `root_a, root_b = find(a), find(b)` is handled with calls; `slow, fast = head, head` with nodes.
+  }
+  // `self.stack.pop()`: the line's own changes made to the other attribute too (`self.min_stack.pop(0)`).
+  const selfUse = code.match(/\bself\.([A-Za-z_]\w*)\b(?!\s*\()/);
+  if (selfUse && selfAttrs.has(selfUse[1]) && !(eq.at >= 0 && selfUse.index! < eq.at)) {
+    const k = selfAttrs.get(selfUse[1]);
+    const sibs = [...selfAttrs].filter(([o, ok]) => o !== selfUse[1] && (!k || !ok || k === ok) && !code.includes(`self.${o}`)).map(([o]) => o).slice(0, 2);
+    for (const c of rawMutants(a.code)) if (c.includes(`self.${selfUse[1]}`)) for (const o of sibs) put(c.trim().replace(`self.${selfUse[1]}`, `self.${o}`));
+  }
+  // `prev = None`: a node already there; `answer = ""`: no value at all.
+  if (plainSet && /^[A-Za-z_]\w*$/.test(lhs) && rhs === 'None' && familyOf(lhs)) for (const r of others(lhs, (k, v) => k === 'node' || !!familyOf(v), 2)) put(`${lhs} = ${r}`);
+  if (plainSet && rhs === '""') put(`${lhs} = None`);
+  // `+=` / `-=` that should add up, written as `=`; `//=`, `>>=` with another operator.
+  if (eq.at >= 0 && /^[+-]=$/.test(eq.op) && !/^\d/.test(rhs)) put(`${lhs} = ${rhs}`);
+  if (eq.op === '//=') for (const op of ['/=', '%=', '*=']) put(`${lhs} ${op} ${rhs}`);
+  if (eq.op === '>>=' || eq.op === '<<=') put(`${lhs} ${eq.op === '>>=' ? '<<=' : '>>='} ${rhs}`);
+
+  // 6. Containers in use: a push for a pop, a heap used as a list, the result of an in-place call kept.
+  const stmt = code.match(/^((?:self\.)?[A-Za-z_][\w.]*)\.(pop|popleft)\(\)$/);
+  if (stmt) {
+    for (const l of ctx.lines) {
+      const ap = l.trim().match(/^((?:self\.)?[A-Za-z_][\w.]*)\.append\((.+)\)$/);
+      if (ap && ap[1] === stmt[1] && scan(ap[2]).idents.size && [...scan(ap[2]).idents.keys()].every((n) => definedBefore(n, a))) {
+        put(`${stmt[1]}.append(${ap[2]})`);
+        break;
+      }
+    }
+  }
+  const heap = code.match(/^heapq\.(heapify|heappop|heappush)\(([^,()]+)(?:,\s*(.+))?\)$/);
+  if (heap) {
+    const [, fn, h, item] = heap;
+    if (fn === 'heapify') put(`${h} = heapq.heapify(${h})`), put(`heapq.heappop(${h})`);
+    if (fn === 'heappop') put(`${h}.pop()`), put(`${h}.pop(0)`);
+    if (fn === 'heappush' && item) put(`${h}.append(${item})`), put(`heapq.heappop(${h})`);
+  }
+  const app = code.match(/^((?:self\.)?[A-Za-z_][\w.]*(?:\[[^\]]+\])?)\.append\((.+)\)$/);
+  if (app) {
+    // Another value this list is given elsewhere, a `None` for a marker, the list replaced by the value.
+    for (const l of ctx.lines) {
+      const o = l.trim().match(/^((?:self\.)?[A-Za-z_][\w.]*(?:\[[^\]]+\])?)\.append\((.+)\)$/);
+      if (o && o[1] === app[1] && o[2] !== app[2]) put(`${app[1]}.append(${o[2]})`);
+    }
+    if (/^["'][^"']*["']$/.test(app[2])) put(`${app[1]}.append(None)`);
+    if (/\]$/.test(app[1])) put(`${app[1]} = [${app[2]}]`);
+  }
+
+  // 7. Loops: over a dict's values, over indices, with indices.
+  const loop = code.match(/^for\s+(.+?)\s+in\s+(.+):$/);
+  if (loop) {
+    const [, vars, it] = loop;
+    const base = it.match(/^(sorted\()?([A-Za-z_][\w.]*)(\))?$/);
+    if (base && kindOf(base[2]) === 'dict') put(`for ${vars} in ${base[1] ?? ''}${base[2]}.values()${base[3] ?? ''}:`);
+    if (base && !base[1] && CONTAINER.has(kindOf(base[2]) ?? 'num') && /^[A-Za-z_]\w*$/.test(vars)) put(`for ${vars} in range(len(${base[2]})):`);
+    const dictLoop = it.match(/^([A-Za-z_][\w.]*)\.(values|items)\(\)$/);
+    if (dictLoop) for (const m of ['keys', 'values', 'items']) if (m !== dictLoop[2]) put(`for ${vars} in ${dictLoop[1]}.${m}():`);
+    if (/^[A-Za-z_]\w*,\s*[A-Za-z_]\w*$/.test(vars) && /^[A-Za-z_]\w*$/.test(it)) put(`for ${vars} in enumerate(${it}):`);
+    if (base && !base[1] && /^[A-Za-z_]\w*$/.test(vars) && ['set', 'dict'].includes(kindOf(base[2]) ?? '')) put(`for ${vars} in enumerate(${base[2]}):`);
+  }
+  return out;
+}
+
 interface Cand {
   text: string;
   canon: string;
@@ -1395,7 +1973,7 @@ interface Cand {
   own: [number, number];
   /** The change as characters of the answer to replace (made on demand, for 2x2 corners). */
   edit?: { from: number; to: number; with: string };
-  /** Which stage of the pool made it: 0 token swaps, 1 other rules, 2 other names and values. */
+  /** Which stage of the pool made it: 0 token swaps, 1 other rules, 2 other names and values, 3 the extra rules (`extraMutants`). */
   stage?: number;
 }
 
@@ -1410,6 +1988,8 @@ interface Pool {
   rules: () => void;
   /** Adds the other names and values (tier 1) to `first`, once (after the rules): only needed when the line's own changes fall short. */
   synth: () => void;
+  /** Adds the extra rules (tier 1, stage 3) to `first`, once (after `synth`): only for a line that is still short of a full set. */
+  extra: () => void;
 }
 
 const poolCache = new WeakMap<Ctx, Map<string, Pool>>();
@@ -1423,17 +2003,17 @@ function makeCand(text: string, a: Answer, tier: number): Cand {
   return { text, canon: canonKey(text, a.neq), toks, tier, span: [p, a.toks.length - s], own: [p, toks.length - s] };
 }
 
-function poolFor(code: string, ctx: Ctx, at: number | undefined, deny: boolean): Pool {
+function poolFor(code: string, ctx: Ctx, at: number | undefined, deny: boolean, sure = false): Pool {
   let pools = poolCache.get(ctx);
   if (!pools) poolCache.set(ctx, (pools = new Map()));
-  const memo = `${deny ? 1 : 0}|${at ?? -1}|${code}`;
+  const memo = `${deny ? 1 : 0}|${at ?? -1}|${sure ? 1 : 0}|${code}`;
   const hit = pools.get(memo);
   if (hit) return hit;
-  const a = answerInfo(code, ctx, at);
+  const a = answerInfo(code, ctx, at, sure);
   const seen = new Set<string>([a.canon]);
   const first: Cand[] = [];
   const add = (s: string, tier: number, stage: number) => {
-    if (s === code || !allowed(s, a, deny)) return;
+    if (s === code || !allowed(s, a, deny, false, stage === 3)) return;
     const c = makeCand(s, a, tier);
     c.stage = stage;
     if (seen.has(c.canon)) return;
@@ -1445,6 +2025,7 @@ function poolFor(code: string, ctx: Ctx, at: number | undefined, deny: boolean):
   swapMutants(code).forEach((s) => add(s, 0, 0));
   let rulesDone = false;
   let synthDone = false;
+  let extraDone = false;
   const pool: Pool = {
     a,
     first,
@@ -1459,6 +2040,12 @@ function poolFor(code: string, ctx: Ctx, at: number | undefined, deny: boolean):
       pool.rules();
       synthDone = true;
       synthMutants(a).forEach((s) => add(s, 1, 2));
+    },
+    extra: () => {
+      if (extraDone) return;
+      pool.synth();
+      extraDone = true;
+      extraMutants(a).forEach((s) => add(tidy(s), 1, 3));
     },
   };
   pools.set(memo, pool);
@@ -1599,19 +2186,32 @@ const spanKey = (c: Cand) => `${c.span[0]}:${c.span[1]}`;
  * changes and both together), where the answer is never the center; then any set from the changes,
  * second-order changes and fallback lines where it is not the center; then the closest ones.
  */
-function choose(pool: Pool, usable: (c: Cand) => boolean, fallbacks: () => Cand[], n: number, rnd: () => number, deny: boolean): Cand[] {
+function choose(pool: Pool, usable: (c: Cand) => boolean, fallbacks: () => Cand[], n: number, rnd: () => number, deny: boolean, onScreen: (c: Cand) => boolean): Cand[] {
   if (n <= 0) return [];
   // The line's own changes first (token swaps, then the other rules); other names and values only
-  // when those make no good set.
+  // when those make no good set. The extra rules (stage 3) never take part before the last step,
+  // whoever made them first, so a line's options never depend on what was asked before it.
   const swaps = structured(pool, (c) => c.stage === 0 && usable(c), n, rnd, deny);
   if (swaps && swaps.cost <= 1) return swaps.set;
   pool.rules();
   const own = structured(pool, (c) => c.tier === 0 && usable(c), n, rnd, deny);
   if (own && own.cost <= 1) return own.set;
   pool.synth();
-  const any = structured(pool, usable, n, rnd, deny);
+  const known = (c: Cand) => c.stage !== 3 && usable(c);
+  const any = structured(pool, known, n, rnd, deny);
   if (any) return any.set;
-  return search(pool, pool.first.filter(usable), fallbacks, n, rnd, deny, usable);
+  const found = search(pool, pool.first.filter(known), fallbacks, n, rnd, deny, known);
+  if (found.length >= n || !pool.a.ctx.known) return found;
+  // Still short: the extra rules, and any change of the line even when it is on screen (only a
+  // fallback line, another real line of the snippet, must not be).
+  pool.extra();
+  const wide = (c: Cand) => usable(c) || (c.tier !== 3 && onScreen(c));
+  // Nothing new to choose from: keep the set (and leave `rnd` where it was, so the order stays too).
+  if (pool.first.filter(wide).length === pool.first.filter(known).length) return found;
+  const more = structured(pool, wide, n, rnd, deny);
+  if (more) return more.set;
+  const again = search(pool, pool.first.filter(wide), fallbacks, n, rnd, deny, wide);
+  return again.length > found.length ? again : found;
 }
 
 /** The best three alternatives at one site, or 2x2, from `pool.first` (see `choose`). */
@@ -1773,15 +2373,17 @@ function wrongFor(req: ChoiceRequest): string[] {
   // Half of a statement that spans lines: nothing sensible to pick from.
   if (!balanced(code)) return [];
   const ctx = buildCtx(req.context ?? [code, ...req.otherLines], !!req.context || req.otherLines.length > 0);
-  const pool = poolFor(code, ctx, req.context ? req.at : 0, true);
+  // A caller's `at` is the answer's own line (`gapChoices` works out which of two lines with its code).
+  const pool = poolFor(code, ctx, req.context ? req.at : 0, true, req.context ? req.at !== undefined : true);
   const { a } = pool;
   const skip = new Set([...(req.exclude ?? []), ...(req.visible ?? [])].map((l) => keyOf(codeOnly(l))));
   const excluded = new Set((req.exclude ?? []).map((l) => keyOf(codeOnly(l))));
   const visible = new Set((req.visible ?? []).map((l) => keyOf(codeOnly(l))));
   // A line already on screen only as a direct change of the answer (`return True` / `return False`).
   const usable = (c: Cand) => !excluded.has(keyOf(c.text)) && (c.tier === 0 || !visible.has(keyOf(c.text)));
+  const onScreen = (c: Cand) => !excluded.has(keyOf(c.text)) && visible.has(keyOf(c.text));
   const fallbacks = () => shuffleWith(fallbackLines(a, req.otherLines, skip, true), req.rnd);
-  return choose(pool, usable, fallbacks, req.n, req.rnd, true).map((c) => c.text);
+  return choose(pool, usable, fallbacks, req.n, req.rnd, true, onScreen).map((c) => c.text);
 }
 
 // ── API ─────────────────────────────────────────────────────────────────────
@@ -1814,7 +2416,7 @@ export function lineChanges(line: string, opts: ChoiceOptions = {}, other = true
   pool.rules();
   if (!other) return { own: pool.first.filter((c) => c.tier === 0).map((c) => c.text), other: [] };
   pool.synth();
-  return { own: pool.first.filter((c) => c.tier === 0).map((c) => c.text), other: pool.first.filter((c) => c.tier !== 0).map((c) => c.text) };
+  return { own: pool.first.filter((c) => c.tier === 0).map((c) => c.text), other: pool.first.filter((c) => c.tier !== 0 && c.stage !== 3).map((c) => c.text) };
 }
 
 /**
@@ -1836,15 +2438,15 @@ export function lineChoices(
 }
 
 /**
- * Every wrong option the rules can offer for a line, before the deny list: changes, second-order
- * changes, 2x2 corners and fallback lines (from `otherLines`). For scripts/check-distractors, which
+ * Every wrong option the rules can offer for a line, before the deny list: changes (the extra
+ * rules' too), second-order changes, 2x2 corners and fallback lines (from `otherLines`). For scripts/check-distractors, which
  * runs each one in place.
  */
 export function choiceCandidates(answer: string, opts: ChoiceOptions & { otherLines?: readonly string[] } = {}): string[] {
   const code = codeOnly(answer);
   const ctx = buildCtx(opts.context ?? [code, ...(opts.otherLines ?? [])], true);
   const pool = poolFor(code, ctx, opts.context ? opts.at : 0, false);
-  pool.synth();
+  pool.extra();
   const { a } = pool;
   const out = new Map<string, string>();
   const put = (c: Cand) => out.set(c.canon, c.text);
@@ -1881,10 +2483,12 @@ export interface GapChoiceOptions {
 /**
  * The options for each gap of a snippet (`gaps`: indices into `lines`, as `pickGaps` returns them):
  * the answer plus up to `n` wrong lines (`lineChoices`). Fallback lines are never on screen: the
- * other gaps' lines, then `extra`; never a line that can trade places with the gap's
- * (`swapRuns`), so two such gaps cannot be crossed. Deterministic per `seed` and content, so a
- * retry or a reload shows the same options. A gap gets fewer than `n` wrong lines only when its
- * line has too few real alternatives (`return True`, `break`); `isGivenLine` lines (`else:`) get none.
+ * other gaps' lines, then `extra`; never a line that can trade places with the gap's when both are
+ * gaps (`swapRuns`), so two such gaps cannot be crossed. A line whose code is in `context` twice is
+ * placed by the code above it (`opts.visible`, which callers without `at` pass as that). Deterministic
+ * per `seed` and content, so a retry or a reload shows the same options. A gap gets fewer than `n`
+ * wrong lines only when its line has too few real alternatives (a bare `return` whose value no one
+ * reads, `return False` in a yes/no helper); `isGivenLine` lines (`else:`) get none.
  */
 export function gapChoices(
   lines: readonly string[],
@@ -1909,12 +2513,27 @@ export function gapChoices(
       n,
       rnd,
       context,
-      at: own ? i : gaps.length === 1 ? opts.at : undefined,
+      at: own ? i : gaps.length === 1 && opts.at !== undefined ? opts.at : twinAt(context, answer, [...(opts.visible ?? []), ...lines.slice(0, i)]),
       visible,
-      exclude: run.filter((j) => j !== i).map((j) => lines[j]),
+      // Only a partner that is a gap too: one on screen can be offered (picking it is plainly wrong).
+      exclude: run.filter((j) => j !== i && gaps.includes(j)).map((j) => lines[j]),
     });
     return { answer, options: shuffleWith([answer, ...wrong], rnd) };
   });
+}
+
+/**
+ * Where a line sits in `context` when its code is there more than once (`return False` in two
+ * functions, `curr = curr.next` in two loops): the occurrence after as many as are `above` it (the
+ * code shown above it, which every caller without an `at` passes as `visible`). Undefined when the
+ * line is there once (it is found by its code).
+ */
+function twinAt(context: readonly string[], line: string, above: readonly string[]): number | undefined {
+  const key = keyOf(codeOnly(line));
+  const at = context.flatMap((l, j) => (keyOf(codeOnly(l)) === key ? [j] : []));
+  if (at.length < 2) return undefined;
+  const seen = above.filter((l) => keyOf(codeOnly(l)) === key).length;
+  return at[Math.min(seen, at.length - 1)];
 }
 
 /** `swapRuns`, remembered per snippet. */

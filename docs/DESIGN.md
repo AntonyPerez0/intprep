@@ -407,15 +407,35 @@ alone), so picking never climbs the typed ladder.
 
 - `lib/choices.ts` (re-exported from `lib/drills.ts` and `components/CodeGaps.tsx`), pure. A wrong option is a
   plausible mistake, never the answer in disguise, never nonsense, and rarely the "center" of its set (the option
-  closest to all the others: about 3% of sets today; `npm run validate` keeps it under 35%):
+  closest to all the others: about 4% of sets today; `npm run validate` keeps it under 35%):
   `lineChanges(line, { context?, at? }, other?)` gives first-order changes: a token swapped (operators, bounds,
   pointers, methods, literals), an off-by-one, operands swapped, a `not` dropped or added, idiom mistakes (a sort
   dropped or reversed, a copy not made, peek instead of pop, an index loop instead of a value loop, a max-heap's
   minus dropped, a pair's items swapped), then (unless `other` is false) another variable of the same kind where
-  the line reads one, or another start value. With `context` (the whole solution or template, `at` the line's
-  index in it), only names bound before the line in its function or template section, methods the value has and
-  the right argument counts are used. Never a no-op (`+ 0`, `* 1`, `[-0]`, a unary `+`, `x &= x`, a line that
-  sets each target to itself such as `dp[i][j] = dp[i][j]` or `a, b = a, b`), a target twice (`a.x, a.x = …`),
+  the line reads one, or another start value. A line still short of a full set after these and the fallback
+  lines gets the extra rules (`extraMutants`, built only from the snippet's own names, attributes, functions and
+  lines, never for Arrange): the test turned around (`not in` / `in`, `is not` / `is`), the wrong container
+  (`n in nums` for `n in seen`, `self.root.children` for `node.children`) or a dict entry tested for a key; a
+  node's sibling, child or parent (`root.left` / `root.right` / `root`, `.next` / `.random` / `.next.next`,
+  `l2.next` for `l1.next`, `if not root.left:`); a sibling method with the same parameters (`self.insert` /
+  `self.remove`), the call returned or its result kept instead of run (`return self.invertTree(root.left)`,
+  `best = gain(root)`), an argument one off or traded, a helper not called (`a` / `parent[a]` for `find(a)`);
+  the function's other returns, other functions' plain values, an empty value of another type (`None` / `[]` /
+  `[[]]` / `""` / `TreeNode()`), the key for its value (`return head` for `return old_to_new[head]`), a field's
+  sibling (`.key` / `.val`), `is` or the sizes for `==` between containers, `.items()` for `.values()`;
+  another empty container only where the code calls a method it lacks (`[]` for a deque popped from the left), a
+  deque not seeded (`deque()`, `deque(root)`), a node class not called or skipped (`TrieNode`, `None`,
+  `list1` for a dummy), a copy not made (`copy = original`), `{}` / `set(0)` for `{0}`, `set()` / `{nums}` for
+  `set(nums)`, a size one off (`[0] * 25`), a mapping turned around, a 32-bit constant mixed up; a push for a
+  pop (`stack.append(ch)`), a heap used as a list (`self.heap.append(val)`, `heap = heapq.heapify(heap)`), `=`
+  for `+=`, `/=` / `%=` / `*=` for `//=`, `<<=` for `>>=`, a loop over a dict's values or over indices, a guard
+  dropped, turned around or its branches swapped (`l1 = l1.next`), a string split or joined wrong, `pass` for a
+  `return` (or `break` / `continue`) that should stop. Then a change of the line may be offered even when that
+  code is on screen (`self.stack.pop()` above `self.min_stack.pop()`); a fallback line never is. With `context`
+  (the whole solution or template, `at` the line's index in it), only names bound before the line in its
+  function or template section, methods the value has and the right argument counts are used. Never a no-op
+  (`+ 0`, `* 1`, `[-0]`, a unary `+`, `x &= x`, a line that sets each target to itself such as
+  `dp[i][j] = dp[i][j]` or `a, b = a, b`), a target twice (`a.x, a.x = …`),
   a remainder that never changes (`n % 1`, `n % 2 == 2`), a change inside a string, a renamed loop or
   comprehension variable or new name, an `if` turned into a `while`, two names swapped over equal values,
   nonsense such as `left < left`, `x[x]` or `while False`, or a `def` / `class` / structure line; a hex literal
@@ -435,15 +455,20 @@ alone), so picking never climbs the typed ladder.
   else a 2x2: two changes and both together, else a seeded search for a set where it is not; `answerIsCenter`,
   `optionTokens`, `tokenDistance`), preferring a set where the answer is neither the only shortest nor the only
   longest option (validate keeps "pick the shortest" under 31%), never on a deny list and never meaning the same
-  as a denied option (`src/content/distractorDeny.ts`, per solution `contextKey`, written by
-  `scripts/check-distractors.py`, which runs every candidate, `choiceCandidates`, in place on the examples and
-  random inputs; `src/content/templateDeny.ts`, by hand, for the pattern templates), with fallbacks from
-  `otherLines` only of the answer's shape and only with names in scope at the answer (never a nested function's
-  own names; in a template, from its own section), never `visible`; `gapChoices(lines, gaps, seed = 0, n = 3,
-  extra = [], { context, at, visible })` → `{ answer, options }[]` per gap, deterministic per seed and content (a
+  as a denied option (`src/content/distractorDeny.ts`, per solution `contextKey`, and per line, `lineKey@index`,
+  for a line whose code is in its solution twice, used when the screen knows which of the two it asks, else all
+  of them; written by `scripts/check-distractors.py`, which runs every candidate, `choiceCandidates`, in place on
+  the examples, a few added valid inputs that reach code the examples miss (`EXTRA_INPUTS`: an empty string, a
+  ladder with no path…) and random inputs; `src/content/templateDeny.ts`, by hand, for the pattern templates),
+  with fallbacks from `otherLines` only of the answer's shape and only with names in scope at the answer (never a
+  nested function's own names; in a template, from its own section), never `visible`; `gapChoices(lines, gaps,
+  seed = 0, n = 3, extra = [], { context, at, visible })` → `{ answer, options }[]` per gap, deterministic per
+  seed and content (a
   retry or reload shows the same options), fallback lines that are not on screen (the other gaps' lines,
-  `extra`), never a line that can trade places with the gap's (`swapRuns`), so two such gaps cannot be crossed; a
-  gap gets fewer than `n` wrong lines only when its line has few real alternatives. `optionKey`.
+  `extra`), never a line that can trade places with the gap's when both are gaps (`swapRuns`), so two such gaps
+  cannot be crossed (one on screen may be offered: picking it is plainly wrong); a line whose code is in the
+  snippet twice is placed by the code shown above it (`visible`, when there is no `at`); a gap gets fewer than
+  `n` wrong lines only when its line has few real alternatives. `optionKey`.
 - `lib/order.ts`, pure: `swapRuns(lines)` → runs of neighboring simple statements at one indentation whose order
   does not matter (neither writes what the other reads or writes; a known mutating method on a subscript,
   `rows[r].add(x)`, writes its container; conservative: a call that could do anything, or two writes to one
