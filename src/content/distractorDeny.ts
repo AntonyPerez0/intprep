@@ -7,7 +7,7 @@
 // A line whose code is in its solution more than once has an entry per line: `lineKey@index`.
 
 /** Parts of two code lines that get no Arrange distractor (`problemId:chunk`): the review does not deal them as Arrange a part. */
-export const NO_DISTRACTOR_PARTS: readonly string[] = ["add-two-numbers:5", "invert-binary-tree:3", "serialize-and-deserialize-binary-tree:4", "letter-combinations-of-a-phone-number:2", "best-time-to-buy-and-sell-stock-with-cooldown:1", "target-sum:1", "interleaving-string:2", "longest-increasing-path-in-a-matrix:2", "burst-balloons:2", "regular-expression-matching:1", "sum-of-two-integers:1"];
+export const NO_DISTRACTOR_PARTS: readonly string[] = ["add-two-numbers:5", "lru-cache:0", "invert-binary-tree:3", "serialize-and-deserialize-binary-tree:4", "letter-combinations-of-a-phone-number:2", "best-time-to-buy-and-sell-stock-with-cooldown:1", "target-sum:1", "interleaving-string:2", "longest-increasing-path-in-a-matrix:2", "burst-balloons:2", "regular-expression-matching:1", "sum-of-two-integers:1"];
 
 export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
   // 3sum
@@ -16,6 +16,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if i>0 and nums[i]==nums[i-1]:": ["if i<0 or nums[i]==nums[i-1]:", "if i>=0 and nums[i]==nums[i-1]:", "if i>=1 and nums[i]==nums[i-1]:"],
     "if total>0:": ["if total>=1:"],
     "left+=1@18": ["left+=2", "right-=1"],
+    "res.append([nums[i],nums[left],nums[right]])": ["res.append([nums[i],nums[right],nums[left]])", "res.append([nums[left],nums[i],nums[right]])", "res.append([nums[right],nums[left],nums[i]])", "res.insert(0,[nums[i],nums[left],nums[right]])", "res.insert(0,[nums[i],nums[right],nums[left]])", "res.insert(0,[nums[left],nums[i],nums[right]])", "res.insert(0,[nums[right],nums[left],nums[i]])"],
     "total=nums[i]+nums[left]+nums[right]": ["total=nums[i]+nums[right]+nums[left]", "total=nums[left]+nums[i]+nums[right]", "total=nums[right]+nums[left]+nums[i]"],
     "while left<right and nums[left]==nums[left-1]:": ["while left<=right and nums[left]==nums[left-1]:"],
   },
@@ -27,15 +28,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // alien-dictionary
   "sxmj0l": {
     "if ch in done:": ["if ch in order:"],
-    "return False@16": ["return None", "return\"\""],
-    "return False@24": ["return None", "return\"\""],
-    "return True@20": ["return False", "return None", "return\"\"", "return\"\".join(reversed(order))"],
+    "return True@20": ["return\"\"", "return\"\".join(reversed(order))"],
   },
   // balanced-binary-tree
   "11auco": {
     "if abs(left-right)>1:": ["if abs(left-right)>=2:", "if abs(right-left)>1:"],
     "if not node:": ["if node is None:"],
-    "return 0": ["return 1", "return balanced", "return-1"],
+    "return 0": ["return 1", "return-1"],
   },
   // best-time-to-buy-and-sell-stock
   "9y3835": {
@@ -77,7 +76,6 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for _ in range(k+1):": ["for _ in range(1,k+2):"],
     "if prices[u]+cost<new_prices[v]:": ["if new_prices[u]+cost<prices[dst]:", "if new_prices[u]+cost<prices[v]:", "if prices[src]+cost<=new_prices[v]:", "if prices[src]+cost<new_prices[dst]:", "if prices[src]+cost<new_prices[v]:", "if prices[u]+cost<=new_prices[dst]:", "if prices[u]+cost<=new_prices[v]:", "if prices[u]+cost<new_prices[dst]:"],
     "prices=[float(\"inf\")]*n": ["prices=[float(\"inf\")]*(n+1)"],
-    "return-1 if prices[dst]==float(\"inf\")else prices[dst]": ["return-1 if new_prices[dst]==float(\"inf\")else new_prices[dst]", "return-1 if new_prices[dst]==float(\"inf\")else prices[dst]", "return-1 if prices[dst]==float(\"inf\")else new_prices[dst]"],
   },
   // climbing-stairs
   "1h4q7f": {
@@ -96,17 +94,19 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // combination-sum
   "1pdwy37": {
+    "res.append(path[:])": ["res.insert(0,path[:])"],
     "return": ["pass", "return False", "return True", "return path", "return remaining", "return res", "return start"],
   },
   // combination-sum-ii
   "1c34ayw": {
     "break": ["continue", "pass", "return"],
     "if candidates[i]>remaining:": ["if candidates[i]>target:", "if candidates[start]>remaining:", "if candidates[start]>target:", "if i>start and candidates[i]==candidates[i-1]:", "if remaining==0:"],
+    "res.append(path[:])": ["res.insert(0,path[:])"],
     "return": ["return False", "return True", "return path", "return remaining", "return res", "return start"],
   },
   // container-with-most-water
   "12ptuhz": {
-    "best=0": ["best=left", "best=right"],
+    "best=0": ["best=-1", "best=float(\"-inf\")", "best=left"],
     "if height[left]<height[right]:": ["if height[left]<=height[right]:"],
     "while left<right:": ["while left<=right:"],
   },
@@ -120,16 +120,18 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // course-schedule
   "1kxuktq": {
+    "for course in range(numCourses):": ["for course,pre in prerequisites:"],
+    "for course,pre in prerequisites:": ["for pre,course in prerequisites:"],
     "if state[course]==2:": ["if needs[course]==1:", "if needs[course]==2:", "if needs[course]==3:", "if state[course]==1:", "if state[course]==3:"],
-    "return False@10": ["return None"],
-    "return False@16": ["return None"],
+    "return False@10": ["pass"],
     "state=[0]*numCourses": ["state=[0]*(numCourses+1)"],
     "state[course]=2": ["state[course]=3"],
   },
   // course-schedule-ii
   "msdj9b": {
-    "if indegree[nxt]==0:": ["if indegree[nxt]!=1:"],
+    "course=queue.popleft()": ["course=queue.pop()"],
     "indegree=[0]*numCourses": ["indegree=[0]*(numCourses+1)"],
+    "queue.append(nxt)": ["queue.appendleft(nxt)"],
   },
   // decode-ways
   "vzxxeq": {
@@ -138,6 +140,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for i in range(1,len(s)+1):": ["for i in range(0,len(s)+1):"],
     "if i>=2 and 10<=int(s[i-2:i])<=26:": ["if i>1 and 10<=int(s[i-2:i])<=26:"],
     "if s[i-1]!=\"0\":": ["if s[i-2+1]!=\"0\":"],
+  },
+  // design-twitter
+  "12xf4ul": {
+    "heap.append((-t,tid,uid,idx))": ["heap.insert(0,(-t,tid,uid,idx))"],
+    "if idx>0:": ["if idx>=1:"],
+    "self.time+=1": ["self.time+=2"],
+    "self.time=0": ["self.time=-1", "self.time=1"],
   },
   // diameter-of-binary-tree
   "1whwhz3": {
@@ -158,15 +167,22 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for i in range(m+1):": ["for i in range(m):", "for i in range(m-1,-1,-1):"],
     "for j in range(n+1):": ["for j in range(n):", "for j in range(n-1,-1,-1):"],
   },
+  // encode-and-decode-strings
+  "tcdu78": {
+    "j=i": ["j=i+1"],
+    "while i<len(s):": ["while i<=len(s)-1:", "while i<len(s)-1:"],
+  },
   // evaluate-reverse-polish-notation
   "1ivch33": {
-    "elif token==\"-\":": ["elif a==\"-\":", "elif b==\"-\":"],
-    "stack.append(a-b)": ["stack.append(a*b)", "stack.append(a*token)", "stack.append(a+b)", "stack.append(b-a)", "stack.append(int(a/b))", "stack.append(token*b)", "stack.insert(0,b-a)"],
-    "stack.append(int(a/b))": ["stack.insert(0,int(a/b))"],
+    "return stack[0]": ["return stack[-1]"],
   },
   // find-minimum-in-rotated-sorted-array
   "o6p2dg": {
-    "answer=last": ["answer=l", "answer=r", "l,r=0,len(nums)-1", "last=nums[-1]", "m=(l+r)//2"],
+    "answer=last": ["answer=l", "answer=r"],
+    "if nums[m]<=last:": ["if nums[m]<=answer:", "if nums[m]<answer:", "if nums[m]<last:"],
+    "l,r=0,len(nums)-1": ["l,r=0,len(nums)", "l,r=0,len(nums)-2"],
+    "l=m+1": ["l=l+1"],
+    "r=m-1": ["r=r-1", "r=r-2"],
   },
   // find-the-duplicate-number
   "fydcos": {
@@ -174,8 +190,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // gas-station
   "1p5bbyy": {
-    "for i in range(len(gas)):": ["for i in range(len(gas)-1):"],
+    "for i in range(len(gas)):": ["for i in range(len(cost)):", "for i in range(len(cost)-1):", "for i in range(len(gas)-1):"],
     "tank+=gas[i]-cost[i]": ["tank-=cost[i]-gas[i]"],
+    "tank=0@10": ["tank=-1"],
     "tank=0@5": ["tank=start"],
   },
   // generate-parentheses
@@ -183,6 +200,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if open_count<n:": ["if open_count<=n:"],
     "res.append(\"\".join(stack))": ["res.insert(0,\"\".join(stack))"],
     "return": ["pass", "return False", "return True", "return close_count", "return open_count", "return res"],
+    "stack.pop()@15": ["return stack.pop()"],
   },
   // graph-valid-tree
   "1v0thee": {
@@ -202,6 +220,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for start in sorted(count):": ["for start in count:"],
     "if len(hand)%groupSize!=0:": ["if len(hand)%groupSize==1:", "if len(hand)-1%groupSize==0:", "if len(hand)//groupSize==0:"],
     "if need==0:": ["if groupSize==0:", "if groupSize==1:", "if len(hand)%groupSize!=0:"],
+    "return False@3": ["pass"],
   },
   // happy-number
   "k3niic": {
@@ -238,14 +257,10 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // jump-game-ii
   "11pitza": {
-    "farthest=0": ["farthest=-1", "farthest=1", "farthest=float(\"-inf\")", "farthest=jumps", "farthest=l"],
+    "farthest=0": ["farthest=-1", "farthest=1", "farthest=float(\"-inf\")", "farthest=l", "farthest=r"],
     "for i in range(l,r+1):": ["for i in range(farthest,r+1):", "for i in range(jumps,r+1):"],
     "l,r=r+1,farthest": ["l,r=l+1,farthest", "l,r=l,farthest", "l,r=r,farthest"],
     "while r<len(nums)-1:": ["while r<=len(nums)-2:"],
-  },
-  // k-closest-points-to-origin
-  "1mdh6m0": {
-    "for x,y in points:": ["for y,x in points:"],
   },
   // koko-eating-bananas
   "sz4owc": {
@@ -267,6 +282,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // letter-combinations-of-a-phone-number
   "1jfc8r": {
+    "res.append(\"\".join(path))": ["res.insert(0,\"\".join(path))"],
     "return": ["return False", "return True", "return i", "return path", "return res", "return[]"],
   },
   // longest-common-subsequence
@@ -277,7 +293,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // longest-consecutive-sequence
   "1d5db7p": {
-    "if n-1 not in num_set:": ["if n in num_set:", "if n-1 not in nums:"],
+    "if n-1 not in num_set:": ["if n-1 not in nums:"],
     "length=1": ["length=0"],
     "while n+length in num_set:": ["while n+length in nums:"],
   },
@@ -309,6 +325,18 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "11le4ld": {
     "best=0": ["best=l"],
   },
+  // lowest-common-ancestor-of-a-binary-search-tree
+  "43um6r": {
+    "elif p.val<node.val and q.val<node.val:": ["elif q.val<node.val and p.val<node.val:"],
+    "if p.val>node.val and q.val>node.val:": ["if q.val>node.val and p.val>node.val:"],
+    "while node:": ["while p:", "while q:", "while root:"],
+  },
+  // lru-cache
+  "1qnyl58": {
+    "self.left,self.right=Node(0,0),Node(0,0)": ["self.left,self.right=Node(0,0),Node(0,1)", "self.left,self.right=Node(0,0),Node(1,0)", "self.left,self.right=Node(0,0),Node(1,1)", "self.left,self.right=Node(0,1),Node(0,0)", "self.left,self.right=Node(0,1),Node(0,1)", "self.left,self.right=Node(0,1),Node(1,0)", "self.left,self.right=Node(1,0),Node(0,0)", "self.left,self.right=Node(1,0),Node(0,1)", "self.left,self.right=Node(1,0),Node(1,0)", "self.left,self.right=Node(1,1),Node(0,0)"],
+    "self.left.next,self.right.prev=self.right,self.left": ["self.left.next,self.right.prev=self.left,self.left", "self.left.prev,self.right.prev=self.left,self.left", "self.left.prev,self.right.prev=self.right,self.left", "self.right.next,self.right.prev=self.left,self.left", "self.right.next,self.right.prev=self.right,self.left"],
+    "self.prev=self.next=None": ["self.cache={}", "self.key,self.val=key,val", "self.prev=self.next=0", "self.prev=self.prev=0", "self.prev=self.prev=None"],
+  },
   // max-area-of-island
   "1mii5nd": {
     "best=0": ["best=-1", "best=float(\"-inf\")"],
@@ -321,7 +349,6 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // maximum-product-subarray
   "1rrgsne": {
-    "best=cur_max=cur_min=nums[0]": ["best=cur_min=cur_max=nums[0]"],
     "candidates=(x,cur_max*x,cur_min*x)": ["candidates=(x,cur_min*x,cur_max*x)"],
   },
   // maximum-subarray
@@ -337,8 +364,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "b_left=B[j-1]if j>0 else float(\"-inf\")": ["b_left=B[j-1]", "b_left=B[j-1]if half>0 else float(\"-inf\")", "b_left=B[j-1]if half>0 else float(\"inf\")", "b_left=B[j-1]if half>=0 else float(\"-inf\")", "b_left=B[j-1]if i>=0 else float(\"-inf\")", "b_left=B[j-1]if j>0 else float(\"inf\")", "b_left=B[j-1]if j>=0 else float(\"-inf\")", "b_left=B[j-1]if j>=0 else float(\"inf\")", "b_left=B[j-1]if j>=1 else float(\"-inf\")", "b_left=B[j-1]if l>=0 else float(\"-inf\")", "b_left=B[j-1]if r>=0 else float(\"-inf\")", "b_left=B[j-2+1]if j>0 else float(\"-inf\")"],
     "b_right=B[j]if j<len(B)else float(\"inf\")": ["b_right=B[j]if j<=len(B)-1 else float(\"inf\")"],
     "if len(A)>len(B):": ["if len(A)>len(nums2):", "if len(nums1)>len(B):", "if len(nums1)>len(nums2):"],
-    "l=i+1": ["r=r+1"],
-    "r=i-1": ["l=l-1", "r=i"],
+    "r=i-1": ["r=i"],
     "total=len(A)+len(B)": ["total=len(B)+len(A)", "total=len(nums1)+len(nums2)", "total=len(nums2)+len(nums1)"],
     "while l<=r:": ["while half<=total:", "while half>=r:", "while l<=half:", "while l<=total:", "while l<half:", "while l<total:", "while total>=r:", "while total>r:"],
   },
@@ -359,7 +385,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // merge-k-sorted-lists
   "g0dof5": {
+    "if l1.val<=l2.val:": ["if l1.val<l2.val:"],
     "l2=lists[i+1]if i+1<len(lists)else None": ["l2=lists[i+1]if i+1<=len(lists)-1 else None", "l2=lists[i+1]if i+1<len(lists)else 0", "l2=lists[i+1]if i+2<=len(lists)else None"],
+    "merged.append(self.mergeTwo(l1,l2))": ["merged.append(self.mergeTwo(l2,l1))", "merged.insert(0,self.mergeTwo(l1,l2))", "merged.insert(0,self.mergeTwo(l2,l1))"],
     "return lists[0]": ["return lists[-1]"],
     "tail.next=l1": ["tail.next=l1 or l2"],
     "while len(lists)>1:": ["while len(lists)-1>0:", "while len(lists)>=2:"],
@@ -371,6 +399,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // merge-two-sorted-lists
   "m3noi3": {
     "dummy=ListNode()": ["dummy=ListNode"],
+    "if list1.val<=list2.val:": ["if list1.val<list2.val:"],
     "tail.next=list1": ["tail.next=list1 or list2"],
   },
   // min-cost-climbing-stairs
@@ -405,11 +434,12 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // n-queens
   "bq6mw4": {
-    "return": ["pass", "return False", "return True", "return r", "return res"],
+    "res.append([\"\".join(row)for row in board])": ["res.insert(0,[\"\".join(row)for row in board])"],
+    "return": ["pass", "return False", "return True", "return board", "return r", "return res"],
   },
   // network-delay-time
   "p9nurx": {
-    "if nxt not in arrival:": ["if node in arrival:", "if node not in heap:", "if nxt not in heap:", "if time not in heap:", "if u not in heap:", "if v not in heap:"],
+    "if nxt not in arrival:": ["if n not in heap:", "if node in arrival:", "if node not in heap:", "if nxt not in heap:", "if time not in heap:", "if w not in heap:"],
   },
   // non-overlapping-intervals
   "gtzaxh": {
@@ -420,22 +450,22 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "epobg9": {
     "for a,b in edges:": ["for b,a in edges:"],
     "parent[root_a]=root_b": ["parent[root_a]=b", "parent[root_b]=root_a"],
-    "parent[x]=parent[parent[x]]": ["components=n", "parent[root_a]=root_b", "x=parent[x]"],
+    "parent[x]=parent[parent[x]]": ["components=n", "x=parent[x]"],
     "root_a,root_b=find(a),find(b)": ["root_b,root_a=find(a),find(b)"],
     "while parent[x]!=x:": ["if parent[x]!=n:", "if parent[x]!=x:"],
   },
   // number-of-islands
   "15k2ahp": {
-    "dfs(r-1,c)": ["dfs(r-1,c+1)"],
-    "return": ["return False", "return True", "return cols", "return count", "return grid"],
+    "grid[r][c]=\"0\"": ["grid[r][c]=0"],
+    "return": ["return False", "return True", "return cols", "return grid"],
     "rows,cols=len(grid),len(grid[0])": ["rows,cols=len(grid),len(grid[-1])"],
   },
   // pacific-atlantic-water-flow
   "mqm5fi": {
-    "dfs(r,cols-1,atlantic,heights[r][cols-1])": ["dfs(r,c,atlantic,heights[r][cols-1])"],
     "dfs(rows-1,c,atlantic,heights[rows-1][c])": ["dfs(rows-1,c,atlantic,heights[rows-2+1][c])"],
     "for nr,nc in((r+1,c),(r-1,c),(r,c+1),(r,c-1)):": ["for nr,nc in((r+1,c),(r-1,c),(r,c-1),(r,c+1)):", "for nr,nc in((r-1,c),(r+1,c),(r,c+1),(r,c-1)):"],
     "if(r,c)in pacific and(r,c)in atlantic:": ["if(r,c)in atlantic and(r,c)in pacific:"],
+    "result.append([r,c])": ["result.insert(0,[r,c])"],
     "return@6": ["return False", "return True", "return pacific", "return prev_height", "return seen"],
     "return@8": ["return False", "return True", "return pacific", "return prev_height", "return seen"],
     "rows,cols=len(heights),len(heights[0])": ["rows,cols=len(heights),len(heights[-1])"],
@@ -443,6 +473,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   // palindrome-partitioning
   "111xjy0": {
     "for end in range(start,len(s)):": ["for end in range(start,len(s)+1):"],
+    "res.append(path[:])": ["res.insert(0,path[:])"],
     "return": ["pass", "return False", "return True", "return path", "return res", "return start"],
   },
   // palindromic-substrings
@@ -452,7 +483,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // partition-equal-subset-sum
   "uqrhtu": {
-    "reachable|={s+x for s in reachable if s+x<=target}": ["reachable|={s+x for s in reachable if s+total>=target}", "reachable|={s+x for s in reachable if s+total>target}", "reachable|={s+x for s in reachable if s+x<=total}", "reachable|={s+x for s in reachable if s+x<total}", "reachable|={s+x for s in reachable if s-total<=target}", "reachable|={s+x for s in reachable if s-x<=target}", "reachable|={s+x for s in reachable if s-x<=total}", "reachable|={s+x for s in reachable if s-x<target}", "reachable|={s+x for s in reachable if total+x>=target}", "reachable|={s+x for s in reachable if total+x>target}"],
+    "reachable|={s+x for s in reachable if s+x<=target}": ["reachable|={s+x for s in reachable if s+total>=target}", "reachable|={s+x for s in reachable if s+total>target}", "reachable|={s+x for s in reachable if s+x<=total}", "reachable|={s+x for s in reachable if s+x<total}", "reachable|={s+x for s in reachable if s-total<=target}", "reachable|={s+x for s in reachable if s-x<=target}", "reachable|={s+x for s in reachable if s-x<=total}", "reachable|={s+x for s in reachable if s-x<target}"],
     "target=total//2": ["target=total/2"],
   },
   // partition-labels
@@ -474,7 +505,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "for i in range(len(nums)):": ["for i in range(len(used)):"],
     "if len(path)==len(nums):": ["if len(path)==len(used):"],
     "path.append(nums[i])": ["path.append(nums[i-1])"],
-    "res.append(path[:])": ["res.append(nums[:])", "res.insert(0,nums[:])", "res.insert(0,path[:])"],
+    "res.append(path[:])": ["res.insert(0,path[:])"],
     "return": ["pass", "return False", "return True", "return path", "return res", "return used"],
     "used=[False]*len(nums)": ["used=[None]*len(nums)"],
     "used[i]=False": ["used[i]=None"],
@@ -492,17 +523,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "17wzzjs": {
     "parent=list(range(len(edges)+1))": ["parent=list(range(len(edges)+2))"],
     "parent[root_a]=root_b": ["parent[root_a]=b", "parent[root_b]=root_a"],
-    "parent[x]=parent[parent[x]]": ["parent[root_a]=root_b", "x=parent[x]"],
+    "parent[x]=parent[parent[x]]": ["x=parent[x]"],
     "root_a,root_b=find(a),find(b)": ["root_b,root_a=find(a),find(b)"],
   },
   // regular-expression-matching
   "1wlxoo0": {
     "first=i<len(s)and(p[j]==s[i]or p[j]==\".\")": ["first=i<=len(s)-1 and(p[j]==s[i]or p[j]==\".\")", "first=i>=len(s)or(p[j]==s[i]or p[j]==\".\")"],
     "if j+1<len(p)and p[j+1]==\"*\":": ["if j+1<=len(p)-1 and p[j+1]==\"*\":", "if j+2<=len(p)and p[j+1]==\"*\":", "if j<len(p)-1 and p[j+1]==\"*\":"],
-  },
-  // remove-nth-node-from-end-of-list
-  "mxf2vo": {
-    "dummy=ListNode(0,head)": ["dummy=ListNode(1,head)"],
   },
   // reorder-list
   "dfz37z": {
@@ -517,6 +544,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // reverse-nodes-in-k-group
   "19vb50s": {
+    "group_prev.next=kth": ["group_prev.next=prev"],
     "if not kth:": ["if kth is None:"],
     "while curr and k>0:": ["while curr and k>=1:"],
   },
@@ -526,7 +554,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // rotting-oranges
   "rqpjso": {
+    "elif grid[r][c]==1:": ["elif grid[r][c]!=0:"],
     "for nr,nc in((r+1,c),(r-1,c),(r,c+1),(r,c-1)):": ["for nr,nc in((r+1,c),(r-1,c),(r,c-1),(r,c+1)):", "for nr,nc in((r-1,c),(r+1,c),(r,c+1),(r,c-1)):"],
+    "grid[nr][nc]=2": ["grid[nr][nc]=3"],
     "queue.append((r,c))": ["queue.appendleft((r,c))"],
     "rows,cols=len(grid),len(grid[0])": ["rows,cols=len(grid),len(grid[-1])"],
     "while queue and fresh>0:": ["while queue and fresh>=1:"],
@@ -543,10 +573,18 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // search-in-rotated-sorted-array
   "141h22b": {
+    "if nums[l]<=nums[m]:": ["if nums[l-1]<=nums[m]:", "if nums[r]<=nums[m]:", "if nums[r]<nums[m]:"],
     "if nums[l]<=target<nums[m]:": ["if nums[l]<=target<=nums[m]:"],
-    "if nums[m]<target<=nums[r]:": ["if nums[m]<=target<=nums[r]:"],
-    "r=m-1@16": ["r=l+1", "r=m"],
-    "r=m-1@9": ["r=l", "r=l+1"],
+    "if nums[m]<target<=nums[r]:": ["if nums[m+1]<=target<=nums[r]:", "if nums[m]<=target<=nums[r]:", "if nums[m]<target<nums[l]:"],
+    "l=m+1@11": ["l=l+1"],
+    "l=m+1@14": ["l=l+1", "l=l+2", "l=m"],
+    "r=m-1@16": ["l=l-1", "r=m", "r=r-1", "r=r-2"],
+    "r=m-1@9": ["l=l-1", "r=m", "r=r-1", "r=r-2"],
+  },
+  // serialize-and-deserialize-binary-tree
+  "1jeow7s": {
+    "if not node:": ["if node is None:"],
+    "return": ["return False", "return True", "return node", "return out", "return root", "return\",\".join(out)"],
   },
   // set-matrix-zeroes
   "oyxuhy": {
@@ -567,13 +605,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "1121wh1": {
     "for col in range(left,right+1):": ["for col in range(top,right+1):"],
     "for col in range(right,left-1,-1):": ["for col in range(right,top-2,-1):"],
-    "for row in range(bottom,top-1,-1):": ["for row in range(bottom,col,-1):", "for row in range(bottom,left,-1):"],
-    "if left<=right:": ["if col<=right:"],
-    "if top<=bottom:": ["if left<bottom:", "if top<=right:", "if top<bottom:", "if top<col:"],
+    "for row in range(bottom,top-1,-1):": ["for row in range(bottom,left,-1):"],
+    "if top<=bottom:": ["if left<bottom:", "if top<=right:", "if top<bottom:"],
     "left,right=0,len(matrix[0])-1": ["left,right=0,len(matrix[-1])-1"],
-    "result.append(matrix[bottom][col])": ["result.append(matrix[row][col])"],
-    "result.append(matrix[row][left])": ["result.append(matrix[row][col])"],
-    "result.append(matrix[row][right])": ["result.append(matrix[row][col])"],
     "result.append(matrix[top][col])": ["result.append(matrix[left][col])"],
     "while top<=bottom and left<=right:": ["while left<=bottom and top<=right:"],
   },
@@ -594,6 +628,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if not subRoot:": ["if self.sameTree(root,subRoot):", "if subRoot is None:"],
     "if self.sameTree(root,subRoot):": ["if self.sameTree(subRoot,root):"],
     "return False@13": ["return None"],
+    "return True@3": ["pass", "return False", "return None", "return self.isSubtree(root.left,subRoot)or self.isSubtree(root.right,subRoot)"],
     "return self.sameTree(a.left,b.left)and self.sameTree(a.right,b.right)": ["return self.sameTree(a.left,b.left)and self.sameTree(b.right,a.right)", "return self.sameTree(b.left,a.left)and self.sameTree(a.right,b.right)", "return self.sameTree(b.left,a.left)and self.sameTree(b.right,a.right)"],
   },
   // sum-of-two-integers
@@ -603,8 +638,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // surrounded-regions
   "htv2x4": {
-    "if r in(0,rows-1)or c in(0,cols-1):": ["if c in(0,rows-1)or r in(0,rows-1):", "if r in(0,rows-1)or c in(0,rows-1):"],
-    "if r<0 or c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":": ["if r<0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c<1 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c<=0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c>0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c>=0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<1 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<=0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r>0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r>=0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":"],
+    "if r<0 or c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":": ["if r<0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c<1 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c<=0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<0 and c>=0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<1 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r<=0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r>0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":", "if r>=0 and c<0 or r>=rows or c>=cols or board[r][c]!=\"O\":"],
     "return": ["return False", "return True", "return board", "return cols"],
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
@@ -620,6 +654,13 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "heapq.heappush(heap,cooldown.popleft()[0])": ["heapq.heappush(heap,cooldown.popleft()[-2])"],
     "if cooldown and cooldown[0][1]==time:": ["if cooldown and cooldown[0][-1]==time:"],
     "time=cooldown[0][1]": ["counts=collections.Counter(tasks)", "time=cooldown[0][-1]"],
+  },
+  // time-based-key-value-store
+  "1u4li61": {
+    "answer=pairs[m][1]": ["answer=pairs[m][-1]"],
+    "if pairs[m][0]<=timestamp:": ["if pairs[m][-2]<=timestamp:"],
+    "l=m+1": ["l=l+1"],
+    "r=m-1": ["r=r-1", "r=r-2"],
   },
   // top-k-frequent-elements
   "13oypd5": {
@@ -655,6 +696,11 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "16p0far": {
     "return False": ["return left_min==0"],
   },
+  // valid-sudoku
+  "1fpvwq5": {
+    "b=(r//3)*3+c//3": ["b=(c//3)*3+r//3", "b=(r//3)*3-c//3"],
+    "val=board[r][c]": ["val=board[c][r]"],
+  },
   // validate-binary-search-tree
   "9g05j3": {
     "if not node:": ["if node is None:"],
@@ -681,9 +727,6 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   },
   // word-search
   "fz197c": {
-    "for c in range(cols):": ["for c in range(rows):"],
-    "for r in range(rows):": ["for r in range(cols):"],
-    "if r<0 or c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:": ["if r<1 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:", "if r<=0 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:", "if r>=0 and c<0 or r>=rows or c>=cols or board[r][c]!=word[k]:"],
     "return False@7": ["return None"],
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
@@ -691,7 +734,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "10ivt2z": {
     "for nr,nc in((r+1,c),(r-1,c),(r,c+1),(r,c-1)):": ["for nr,nc in((r+1,c),(r-1,c),(r,c-1),(r,c+1)):", "for nr,nc in((r-1,c),(r+1,c),(r,c+1),(r,c-1)):"],
     "found.append(node.word)": ["found.insert(0,node.word)"],
-    "if not node.children and node.word is None:": ["if node is None:", "if node.children and node.word is not None:", "if node.word is not None:", "if not node.children and node.word is not None:", "if not node.children and root.word is None:", "if not node.children and root.word is not None:", "if not node.children or node.word is not None:", "if not root.children and node.word is None:", "if not root.children and node.word is not None:", "if not root.children and root.word is None:"],
+    "if not node.children and node.word is None:": ["if node is None:", "if node.children and node.word is not None:", "if node.word is not None:", "if not node.children and node.word is not None:", "if not node.children and root.word is None:", "if not node.children and root.word is not None:", "if not node.children or node.word is not None:", "if not root.children and node.word is None:", "if not root.children and node.word is not None:"],
     "return": ["return False", "return True", "return cols", "return found", "return parent"],
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },

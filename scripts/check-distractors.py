@@ -14,23 +14,25 @@ Rerun it after changing a solution, adding a problem, or changing the distractor
     python3 scripts/check-distractors.py two-sum ...  # check some problems, print only
     python3 scripts/check-distractors.py --log out.txt  # also write every survivor to a file
 
-It needs python3 and `npx tsx` (scripts/check-distractors.ts lists the options). It takes a few
+It needs python3 and `npx tsx` (scripts/check-distractors.ts lists the options). It takes about three
 minutes, three problems at a time, each in its own process (a problem gets 5 minutes at most). Then
 run `npm run validate`.
 
-Limits: only problems with a `class Solution` method whose arguments it can generate (ints, floats,
-bools, strings, lists of those, grids, linked lists, binary trees) are run; design problems (a class
-with several methods) and a few others are left to the static rules in choices.ts, and so is a
-problem where most options survive (its random inputs never reach what the code is for). Random
-inputs are built from the shape and values of the examples (often an example grid with a cell or two
-changed, a second string that is a shuffle of the first, a target that is a sum of two items), so a
-narrow generator can make an option "survive" that a rarer input would catch: that only removes an
-option, and when unsure we deny. For problems whose answer may come "in any order", outputs are
-compared with every list sorted. Survivors are kept per solution (`contextKey`), so a line that
-works one way in one problem keeps its options everywhere else. A line whose code is in its solution
-more than once (`return True` in two places) gets its own entry, `lineKey@index`: what runs the same
-in one place can be wrong in the other. A screen that knows which of the two it asks uses that
-entry; one that does not, all of them.
+Limits: a problem is run when it has a `class Solution` method whose arguments it can generate (ints,
+floats, bools, strings, lists of those, grids, linked lists, binary trees) or is a design class with an
+operation generator in `DESIGN`; a few others (a graph of `Node`s, too few valid examples) are left to the
+static rules in choices.ts, and so is a problem where most options survive (its random inputs never reach what
+the code is for). Random inputs are built from the shape and values of the examples (often an example grid with
+a cell or two changed, a second string that is a shuffle of the first, a target that is a sum of two items), or,
+for a problem in `VALID_INPUTS`, made to its rules (a rotated list of distinct values, p and q nodes of the
+tree). A narrow generator can make an option "survive" that a rarer input would catch: that only removes an
+option, and when unsure we deny. Only what LeetCode judges is compared: the result, or the arguments for a
+method that returns nothing; lists in the order that counts (`ANY_ORDER`, else sorted at every level when the
+prompt says "any order"); for more than one right answer, whether it is right (`CHECKS`). Survivors are kept per
+solution (`contextKey`), so a line that works one way in one problem keeps its options everywhere else. A
+line whose code is in its solution more than once (`return True` in two places) gets its own entry,
+`lineKey@index`: what runs the same in one place can be wrong in the other. A screen that knows which of the
+two it asks uses that entry; one that does not, all of them.
 """
 import ast
 import bisect
@@ -121,7 +123,8 @@ def mk_tree(vals):
 
 
 def ser(x, depth=0, any_order=False):
-    """A comparable form of a result (lists sorted at every level when the order does not matter)."""
+    """A comparable form of a result. `any_order`: 'deep' sorts lists at every level, 'outer' only the
+    result's own list (its items are sequences or points whose order counts), False none."""
     if depth > 50:
         return '...'
     if isinstance(x, ListNode):
@@ -143,7 +146,7 @@ def ser(x, depth=0, any_order=False):
     if isinstance(x, Node):
         return ('N', x.val)
     if isinstance(x, (list, tuple)):
-        items = [ser(y, depth + 1, any_order) for y in x]
+        items = [ser(y, depth + 1, any_order if any_order == 'deep' else False) for y in x]
         if any_order:
             items.sort(key=repr)
         return (type(x).__name__, tuple(items))
@@ -395,9 +398,332 @@ SUPPORTED = {'int', 'float', 'bool', 'List[int]', 'str', 'List[str]', 'List[List
              'Optional[ListNode]', 'Optional[TreeNode]', 'TreeNode', "'TreeNode'", 'List[Optional[ListNode]]'}
 
 
+# ── Problems whose inputs or answers the general rules above get wrong ─────────────────────────
+
+# How a result may be ordered on LeetCode, where the prompt's "any order" says too much or too little:
+# 'deep' (the items, and each item's own items), 'outer' (only the items: each is a sequence, a point
+# or a board whose order counts), False (the order counts: an answer per query).
+ANY_ORDER = {
+    '3sum': 'deep', 'combination-sum': 'deep', 'combination-sum-ii': 'deep', 'subsets': 'deep', 'subsets-ii': 'deep',
+    'group-anagrams': 'deep',
+    'permutations': 'outer', 'palindrome-partitioning': 'outer', 'letter-combinations-of-a-phone-number': 'outer',
+    'n-queens': 'outer', 'pacific-atlantic-water-flow': 'outer', 'k-closest-points-to-origin': 'outer',
+    'merge-intervals': 'outer', 'generate-parentheses': 'outer', 'word-search-ii': 'outer', 'top-k-frequent-elements': 'outer',
+    'minimum-interval-to-include-each-query': False,
+}
+
+
+def rotated(rnd, lo=-10, hi=15):
+    """A sorted list of distinct values, rotated (LeetCode 33 and 153)."""
+    n = rnd.randint(1, 8)
+    a = sorted(rnd.sample(range(lo, hi), n))
+    k = rnd.randrange(n)
+    return a[k:] + a[:k]
+
+
+def gas_station(rnd):
+    """gas and cost with at most one station that works (LeetCode 134: the answer is unique)."""
+    while True:
+        n = rnd.randint(1, 6)
+        gas, cost = [rnd.randint(0, 5) for _ in range(n)], [rnd.randint(0, 5) for _ in range(n)]
+        ok = 0
+        for s0 in range(n):
+            t = 0
+            for k in range(n):
+                t += gas[(s0 + k) % n] - cost[(s0 + k) % n]
+                if t < 0:
+                    break
+            else:
+                ok += 1
+        if ok <= 1:
+            return [gas, cost]
+
+
+def courses(rnd, acyclic_often=False, self_loops=False):
+    """numCourses and distinct prerequisite pairs [a, b] in range (a == b only where the problem allows it)."""
+    n = rnd.randint(1, 6)
+    perm = list(range(n))
+    rnd.shuffle(perm)
+    acyclic = acyclic_often and rnd.random() < 0.7
+    pre = set()
+    for _ in range(rnd.randint(0, 7)):
+        a, b = rnd.randrange(n), rnd.randrange(n)
+        if a == b and not (self_loops and rnd.random() < 0.15):
+            continue
+        if acyclic and perm.index(a) < perm.index(b):
+            a, b = b, a
+        pre.add((a, b))
+    return [n, [list(x) for x in pre]]
+
+
+def grid(rnd, cells, hi=5):
+    """A rows x cols grid (each 1 to `hi`, not only square) of the given cell values."""
+    rows, cols = rnd.randint(1, hi), rnd.randint(1, hi)
+    return [[rnd.choice(cells) for _ in range(cols)] for _ in range(rows)]
+
+
+def word_search(rnd):
+    """A board and a word that is often a path in it (so a search can fail one way and succeed another)."""
+    board = grid(rnd, 'ABC', 3)
+    rows, cols = len(board), len(board[0])
+    if rnd.random() < 0.6:
+        r, c = rnd.randrange(rows), rnd.randrange(cols)
+        w, seen = board[r][c], {(r, c)}
+        for _ in range(rnd.randint(0, 5)):
+            nb = [(r + a, c + b) for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)) if 0 <= r + a < rows and 0 <= c + b < cols and (r + a, c + b) not in seen]
+            if not nb:
+                break
+            r, c = rnd.choice(nb)
+            seen.add((r, c))
+            w += board[r][c]
+        return [board, w]
+    return [board, ''.join(rnd.choice('ABC') for _ in range(rnd.randint(1, 4)))]
+
+
+def rpn(rnd):
+    """A valid Reverse Polish expression (no division by zero), as tokens."""
+    def expr(depth):
+        if depth == 0 or rnd.random() < 0.3:
+            v = rnd.randint(-9, 9)
+            return [str(v)], v
+        (lt, lv), (rt, rv) = expr(depth - 1), expr(depth - 1)
+        op = rnd.choice('+-*/' if rv else '+-*')
+        v = lv + rv if op == '+' else lv - rv if op == '-' else lv * rv if op == '*' else int(lv / rv)
+        return lt + rt + [op], v
+    return [expr(rnd.randint(1, 3))[0]]
+
+
+def rand_tree(rnd, n, lo, hi):
+    if n == 0:
+        return None
+    nodes = [TreeNode(rnd.randint(lo, hi)) for _ in range(n)]
+    for nd in nodes[1:]:
+        cur = nodes[0]
+        while True:
+            side = 'left' if rnd.random() < 0.5 else 'right'
+            if getattr(cur, side) is None:
+                setattr(cur, side, nd)
+                break
+            cur = getattr(cur, side)
+    return nodes[0]
+
+
+def subtree_inputs(rnd):
+    """Two non-empty trees; half the time the second is a copy of a subtree of the first, sometimes changed."""
+    root = rand_tree(rnd, rnd.randint(1, 9), 0, 3)
+    if rnd.random() < 0.5:
+        nodes, q = [], [root]
+        while q:
+            t = q.pop()
+            if t:
+                nodes.append(t)
+                q += [t.left, t.right]
+
+        def cp(t):
+            return None if t is None else TreeNode(t.val, cp(t.left), cp(t.right))
+        sub = cp(rnd.choice(nodes))
+        if rnd.random() < 0.3:
+            t = sub
+            while t.left or t.right:
+                t = t.left or t.right
+            t.left = TreeNode(rnd.randint(0, 3))
+        return [root, sub]
+    return [root, rand_tree(rnd, rnd.randint(1, 3), 0, 3)]
+
+
+def bst_with_two(rnd):
+    """A BST of distinct values and two of its own nodes (LeetCode 235: p and q are in the tree)."""
+    vals = rnd.sample(range(0, 30), rnd.randint(2, 10))
+    root = None
+    for v in vals:
+        node, parent = root, None
+        while node:
+            parent, node = node, (node.left if v < node.val else node.right)
+        if parent is None:
+            root = TreeNode(v)
+        elif v < parent.val:
+            parent.left = TreeNode(v)
+        else:
+            parent.right = TreeNode(v)
+
+    def find(v):
+        t = root
+        while t.val != v:
+            t = t.left if v < t.val else t.right
+        return t
+    a, b = rnd.sample(vals, 2)
+    return [root, find(a), find(b)]
+
+
+def sudoku(rnd):
+    """A solved grid with most cells cleared, often with one cell changed (which may break a rule)."""
+    digits = list(range(1, 10))
+    rnd.shuffle(digits)
+    grid = [[str(digits[(i * 3 + i // 3 + j) % 9]) if rnd.random() < 0.35 else '.' for j in range(9)] for i in range(9)]
+    if rnd.random() < 0.6:
+        grid[rnd.randrange(9)][rnd.randrange(9)] = str(rnd.randint(1, 9))
+    return [grid]
+
+
+# Valid inputs (within each problem's constraints) for problems whose example-shaped random inputs
+# break them (a rotated list that is not sorted or has repeats, a k larger than the list, a node p
+# that is not in the tree, a station list with two answers, one height for a container, a token list
+# that is no expression) or never reach a case that matters (grids that are not square, a word that
+# is a path in the board, a course that needs itself). On a broken input a right option can differ,
+# and on a narrow one a wrong option can survive, so these replace them.
+VALID_INPUTS = {
+    'search-in-rotated-sorted-array': lambda rnd: (lambda a: [a, rnd.choice(a + [rnd.randint(-11, 16)])])(rotated(rnd)),
+    'find-minimum-in-rotated-sorted-array': lambda rnd: [rotated(rnd)],
+    'gas-station': gas_station,
+    'container-with-most-water': lambda rnd: [[rnd.randint(0, 9) for _ in range(rnd.randint(2, 8))]],
+    'course-schedule': lambda rnd: courses(rnd, self_loops=True),
+    'number-of-islands': lambda rnd: [grid(rnd, '0111')],
+    'max-area-of-island': lambda rnd: [grid(rnd, [0, 1, 1])],
+    'surrounded-regions': lambda rnd: [grid(rnd, 'XXO')],
+    'rotting-oranges': lambda rnd: [grid(rnd, [0, 1, 1, 2], 4)],
+    'pacific-atlantic-water-flow': lambda rnd: [grid(rnd, [0, 1, 2, 3, 4])],
+    'walls-and-gates': lambda rnd: [grid(rnd, [2147483647, 2147483647, -1, 0])],
+    'word-search': word_search,
+    'evaluate-reverse-polish-notation': rpn,
+    'course-schedule-ii': lambda rnd: courses(rnd, acyclic_often=True),
+    'subtree-of-another-tree': subtree_inputs,
+    'lowest-common-ancestor-of-a-binary-search-tree': bst_with_two,
+    'valid-sudoku': sudoku,
+    'reverse-nodes-in-k-group': lambda rnd: (lambda n: [mk_list([rnd.randint(0, 9) for _ in range(n)]), rnd.randint(1, n)])(rnd.randint(1, 8)),
+}
+
+
+def topo_order(args, out):
+    """Course Schedule II takes any order that respects every prerequisite: 'valid', [] or the bad answer."""
+    n, pre = args
+    if not isinstance(out, list) or out == []:
+        return ('empty',) if out == [] else ('bad', repr(out))
+    if sorted(out) != list(range(n)):
+        return ('bad', repr(out))
+    pos = {c: i for i, c in enumerate(out)}
+    return ('valid',) if all(pos[b] < pos[a] for a, b in pre) else ('bad', repr(out))
+
+
+def alien_order(args, out):
+    """Alien Dictionary takes any order of all the letters that keeps every pair the words give."""
+    words = args[0]
+    if out == '':
+        return ('empty',)
+    if not isinstance(out, str) or sorted(out) != sorted({c for w in words for c in w}):
+        return ('bad', repr(out))
+    pos = {c: i for i, c in enumerate(out)}
+    for w1, w2 in zip(words, words[1:]):
+        for a, b in zip(w1, w2):
+            if a != b:
+                if pos[a] > pos[b]:
+                    return ('bad', repr(out))
+                break
+    return ('valid',)
+
+
+# Problems with more than one right answer: the result is compared by what makes it right.
+CHECKS = {'course-schedule-ii': topo_order, 'alien-dictionary': alien_order}
+
+
+def word(rnd, n, alpha):
+    return ''.join(rnd.choice(alpha) for _ in range(n))
+
+
+def ops_min_stack(rnd):
+    ops, size = [], 0
+    for _ in range(rnd.randint(1, 14)):
+        c = rnd.random()
+        if size == 0 or c < 0.4:
+            ops.append(('push', rnd.randint(-3, 3)))
+            size += 1
+        elif c < 0.6:
+            ops.append(('pop',))
+            size -= 1
+        else:
+            ops.append((rnd.choice(['top', 'getMin']),))
+    return ('MinStack', (), ops)
+
+
+def ops_twitter(rnd):
+    ops, ids = [], rnd.sample(range(1, 200), 40)
+    for _ in range(rnd.randint(1, 40)):
+        c = rnd.random()
+        if c < 0.5 and ids:
+            ops.append(('postTweet', rnd.randint(1, 3), ids.pop()))
+        elif c < 0.65:
+            ops.append(('getNewsFeed', rnd.randint(1, 3)))
+        else:
+            ops.append((rnd.choice(['follow', 'unfollow']), rnd.randint(1, 3), rnd.randint(1, 3)))
+    return ('Twitter', (), ops)
+
+
+def ops_time_map(rnd):
+    ops, t = [], 0
+    for _ in range(rnd.randint(1, 14)):
+        if rnd.random() < 0.5:
+            t += rnd.randint(1, 3)  # timestamps of set only grow
+            ops.append(('set', rnd.choice('xy'), word(rnd, 2, 'pq'), t))
+        else:
+            ops.append(('get', rnd.choice('xyz'), rnd.randint(0, t + 2)))
+    return ('TimeMap', (), ops)
+
+
+def ops_median(rnd):
+    ops, size = [], 0
+    for _ in range(rnd.randint(1, 14)):
+        if size == 0 or rnd.random() < 0.6:
+            ops.append(('addNum', rnd.randint(-5, 8)))
+            size += 1
+        else:
+            ops.append(('findMedian',))
+    return ('MedianFinder', (), ops)
+
+
+def ops_kth(rnd):
+    k = rnd.randint(1, 4)
+    nums = [rnd.randint(-3, 6) for _ in range(rnd.randint(max(0, k - 1), 6))]
+    return ('KthLargest', (k, nums), [('add', rnd.randint(-4, 7)) for _ in range(rnd.randint(1, 8))])
+
+
+# Design problems: a class driven by a random run of its operations (each within the problem's
+# rules: no pop on an empty stack, growing timestamps, unique tweet ids); every result is compared.
+# The codecs are compared by a round trip, as LeetCode checks them.
+DESIGN = {
+    'min-stack': ops_min_stack,
+    'lru-cache': lambda rnd: ('LRUCache', (rnd.randint(1, 3),), [('put', rnd.randint(0, 4), rnd.randint(0, 9)) if rnd.random() < 0.5 else ('get', rnd.randint(0, 4)) for _ in range(rnd.randint(1, 16))]),
+    'implement-trie-prefix-tree': lambda rnd: ('Trie', (), [(rnd.choice(['insert', 'insert', 'search', 'startsWith']), word(rnd, rnd.randint(1, 4), 'ab')) for _ in range(rnd.randint(1, 14))]),
+    'design-add-and-search-words-data-structure': lambda rnd: ('WordDictionary', (), [('addWord', word(rnd, rnd.randint(1, 4), 'ab')) if rnd.random() < 0.5 else ('search', word(rnd, rnd.randint(1, 4), 'ab..')) for _ in range(rnd.randint(1, 14))]),
+    'kth-largest-element-in-a-stream': ops_kth,
+    'time-based-key-value-store': ops_time_map,
+    'find-median-from-data-stream': ops_median,
+    'detect-squares': lambda rnd: ('DetectSquares', (), [('add' if rnd.random() < 0.65 else 'count', [rnd.randint(0, 3), rnd.randint(0, 3)]) for _ in range(rnd.randint(1, 16))]),
+    'design-twitter': ops_twitter,
+    'encode-and-decode-strings': lambda rnd: ('Codec', (), [('roundtrip', [word(rnd, rnd.choice([rnd.randint(0, 5), rnd.randint(9, 23)]), 'ab#1 2,') for _ in range(rnd.randint(0, 4))])]),
+    'serialize-and-deserialize-binary-tree': lambda rnd: ('Codec', (), [('roundtrip', rand_tree(rnd, rnd.randint(0, 9), -12, 12))]),
+}
+
+
+def run_design(ns, spec):
+    cls, init, ops = spec
+    obj = ns[cls](*init)
+    out = []
+    for op in ops:
+        if op[0] == 'roundtrip':
+            data = obj.encode(op[1]) if isinstance(op[1], list) else obj.serialize(op[1])
+            if not isinstance(data, str):
+                out.append(('not a string',))
+                continue
+            out.append(ser(obj.decode(data) if isinstance(op[1], list) else obj.deserialize(data)))
+            continue
+        out.append(ser(getattr(obj, op[0])(*op[1:])))
+    return out
+
+
 def setup(p):
     """The method to call, its parameters and the examples' values, or a reason it cannot be run."""
     tree = ast.parse(p['code'])
+    if p['id'] in DESIGN:
+        return dict(id=p['id'], code=p['code'], design=True), None
     cls = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'Solution']
     if not cls:
         return None, 'no Solution class (a design problem)'
@@ -421,33 +747,58 @@ def setup(p):
             exin.append(([vals[name] for name, _ in params], vals.get('pos')))
             for name, _ in params:
                 exvals[name].append(vals[name])
-    return dict(code=p['code'], method=m.name, params=params, exvals=exvals, exin=exin, cycle=cycle, any_order=p['anyOrder']), None
+    # A method that returns nothing changes its arguments: they are the answer. Otherwise only the
+    # result counts (LeetCode never looks at a list the method merged or a grid it marked).
+    inplace = isinstance(m.returns, ast.Constant) and m.returns.value is None
+    order = ANY_ORDER.get(p['id'], 'deep' if p['anyOrder'] else False)
+    return dict(id=p['id'], code=p['code'], method=m.name, params=params, exvals=exvals, exin=exin, cycle=cycle, any_order=order, inplace=inplace), None
+
+
+def observe(S, ns, args, limit):
+    """Run one input (an argument list, or a design problem's operations) and return (status, comparable result)."""
+    if S.get('design'):
+        return call(lambda: run_design(ns, args), (), limit)
+    fresh = copy.deepcopy(args) if S['id'] in CHECKS else None
+    st, r = call(getattr(ns['Solution'](), S['method']), args, limit)
+    if st != 'ok':
+        return st, r
+    if S['id'] in CHECKS:
+        return 'ok', CHECKS[S['id']](fresh, r)
+    return 'ok', ser(args if S['inplace'] else r, any_order=S['any_order'])
 
 
 def make_inputs(S, seed=1):
     rnd = random.Random(seed)
     ns = load(S['code'])
     inputs = []
-    for e, pos in S['exin']:
-        args = [convert(ann, copy.deepcopy(v)) for (_, ann), v in zip(S['params'], e)]
-        if S['cycle']:
-            args = [with_cycle(a, pos) if isinstance(a, ListNode) else a for a in args]
-        inputs.append(args)
-    tries = 0
-    while len(inputs) < N_INPUTS and tries < N_INPUTS * 6:
-        tries += 1
-        inputs.append(relate(S, [gen_value(ann, S['exvals'].get(name, []), rnd) for name, ann in S['params']], rnd))
+    if S.get('design'):
+        inputs = [DESIGN[S['id']](rnd) for _ in range(N_INPUTS)]
+    else:
+        for e, pos in S['exin']:
+            args = [convert(ann, copy.deepcopy(v)) for (_, ann), v in zip(S['params'], e)]
+            if S['cycle']:
+                args = [with_cycle(a, pos) if isinstance(a, ListNode) else a for a in args]
+            inputs.append(args)
+        tries = 0
+        # Valid inputs cost little and reach rare cases (one region that only a step right finds): more of them.
+        want = N_INPUTS * 5 // 2 if S['id'] in VALID_INPUTS else N_INPUTS
+        while len(inputs) < want and tries < want * 6:
+            tries += 1
+            if S['id'] in VALID_INPUTS:
+                inputs.append(VALID_INPUTS[S['id']](rnd))
+            else:
+                inputs.append(relate(S, [gen_value(ann, S['exvals'].get(name, []), rnd) for name, ann in S['params']], rnd))
     good, outs, slowest, total = [], [], 0.0, 0.0
     for args in inputs:
         a = copy.deepcopy(args)
         t0 = time.perf_counter()
-        st, r = call(getattr(ns['Solution'](), S['method']), a, 1.0)
+        st, r = observe(S, ns, a, 1.0)
         if st != 'ok':
             continue  # an input the problem does not allow (the answer fails or loops on it)
         slowest = max(slowest, time.perf_counter() - t0)
         total += time.perf_counter() - t0
         good.append(args)
-        outs.append(ser((r, a), any_order=S['any_order']))
+        outs.append(r)
     return good, outs, slowest, total
 
 
@@ -457,22 +808,20 @@ def run_option(S, code, good, outs, limit, budget):
     except Exception as e:
         return 'load ' + type(e).__name__
     t0 = time.perf_counter()
-    for args, want in zip(good, outs):
+    for n, (args, want) in enumerate(zip(good, outs)):
         # Much slower than the answer but right so far: as good as right (when unsure, deny).
         if time.perf_counter() - t0 > budget:
             return 'SURVIVED slow'
         a = copy.deepcopy(args)
         try:
-            obj = ns['Solution']()
-        except Exception as e:
-            return 'init ' + type(e).__name__
-        st, r = call(getattr(obj, S['method']), a, limit)
-        if st != 'ok':
-            return st
-        try:
-            got = ser((r, a), any_order=S['any_order'])
+            st, got = observe(S, ns, a, limit)
+            # Right so far, then out of time: once more with longer, in case the machine was busy.
+            if st == 'timeout' and n:
+                st, got = observe(S, ns, copy.deepcopy(args), min(limit * 4, 2.0))
         except Exception:
             return 'diff'
+        if st != 'ok':
+            return st
         if got != want:
             return 'diff'
     return 'SURVIVED'

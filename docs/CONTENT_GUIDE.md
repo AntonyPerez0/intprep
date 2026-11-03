@@ -117,7 +117,12 @@ them in its place, on the problem's examples and random inputs, and writes the o
 answer (code that works, so it must never be marked wrong) to `src/content/distractorDeny.ts`, with the parts
 that get no Arrange distractor. When none of the examples reaches a line (an empty input, a case with no
 answer), every option of it "works" there and is denied: add a valid input that reaches it to `EXTRA_INPUTS` in
-the script (within the problem's constraints; the original solution is run on it like on an example).
+the script (within the problem's constraints; the original solution is run on it like on an example). When the
+random inputs break a problem's rules (a rotated list that is not sorted, a node that is not in the tree, a
+token list that is no expression), a right option can look wrong on them: give the problem a generator of
+valid inputs in `VALID_INPUTS`. A problem with more than one right answer needs a checker in `CHECKS`, one
+whose answer may come in any order an entry in `ANY_ORDER` (`'deep'` or `'outer'`), and a new design class
+(a class with several methods) an operation generator in `DESIGN`.
 `npm run validate` fails when that list of parts is out of date or when a solution changed since the list was
 made (its entries no longer match), but it cannot find new working options by itself, so run the script
 whenever a solution changes. Pattern templates are not run: their working options

@@ -686,8 +686,14 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   const pickRef = useRef<PickGapsHandle>(null);
   const lines = useMemo(() => parsed.lines.map((l) => l.text), [parsed]);
   // A keyboard arrives on the options of a picked card, as it arrives in the typed card's input.
+  // On a phone (no focus) the options still come into view above the action bar, as in Key lines:
+  // the whole solution is above them, so they would open half under the bar.
+  const rootRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (autoFocus && !typing) pickRef.current?.focusOptions();
+    if (typing) return;
+    if (autoFocus) return pickRef.current?.focusOptions();
+    const raf = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLElement>('.pick-panel-row')?.scrollIntoView({ block: 'nearest' }));
+    return () => cancelAnimationFrame(raf);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!drill) {
     return <OrderDrill problem={p} onDone={onDone} kicker={kicker} combo={combo} badge={badge} meta={meta} />;
@@ -766,7 +772,7 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   const n = drill.lineIndex + 1;
 
   return (
-    <section className="drill drill-code" data-drill="keyline" data-problem={p.id} data-input={typing ? 'type' : 'pick'}>
+    <section ref={rootRef} className="drill drill-code" data-drill="keyline" data-problem={p.id} data-input={typing ? 'type' : 'pick'}>
       <DrillHead
         kind="keyline"
         input={typing ? 'type' : 'pick'}

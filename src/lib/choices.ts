@@ -6,23 +6,29 @@
 // variable of the same snippet where the line reads one. So the choice is about the idea, not about
 // spotting a stranger. The rules (see `lineChanges` and `lineChoices`):
 // - Never the answer in disguise: options are compared by meaning (`canonKey`: `a > b` is `b < a`,
-//   `x + 0` is `x`, `a, b = x, y` is `b, a = y, x`), an `if` never becomes a `while`, two names are
-//   never swapped over equal values, `<=` never stands in for `<` on an `elif` after `==` on the same
-//   operands, and wrong options that ran exactly like the answer in its solution are denied
+//   `x + 0` is `x`, `a, b = x, y` is `b, a = y, x`; and `canonIn`, by what the line does where it
+//   stands: a dummy's unread value, `None` for `False` in a helper only ever tested, a call of a
+//   function that returns nothing whatever its arguments), an `if` never becomes a `while`, two names
+//   are never swapped over equal values, `<=` never stands in for `<` on an `elif` after `==` on the
+//   same operands, and wrong options that ran exactly like the answer in its solution are denied
 //   (src/content/distractorDeny.ts, made by scripts/check-distractors.py).
-// - Never nonsense: no name the snippet does not define (or defines only later), no method the
-//   value does not have (`.appendleft` on a list, `.prev` on a singly linked node), no no-op
-//   (`+ 0`, `* 1`, `[-0]`, a unary `+`), no change inside a string, no renamed loop variable or new
-//   name the line itself introduces, no `def` or `class` line.
+// - Never nonsense: no name that is not bound on the way to the line (defined only later, only in
+//   a comprehension, only in another branch's loop, or bound first by the line itself), no line that
+//   leaves a name unset that a later line reads or makes a closure's name local, no method the value
+//   does not have (`.appendleft` on a list, `.prev` on a singly linked node), no call with an argument
+//   count its function does not take, no no-op (`+ 0`, `* 1`, `[-0]`, a unary `+`), no statement that
+//   is only a value, no test whose result is known there, no change inside a string, no renamed loop
+//   variable or new name the line itself introduces, no `def` or `class` line.
 // - The answer is not the "center" of its options. Three wrong options are alternatives at one site
-//   (`<` with `<=`, `>`, `>=`) or a 2x2 (two changes and both together), so every option is as
-//   close to the others as the answer is; only when a line has neither do other shapes come in.
+//   (`<` with `<=`, `>`, `>=`) or a 2x2 (two changes and both together, never two that add the same
+//   word), so every option is as close to the others as the answer is; only when a line has neither
+//   do other shapes come in.
 // - Fallback lines (other real lines of the snippet, when a line has too few changes) have the
-//   answer's shape (the same kind of statement or block opener), are never on screen, and never
-//   two lines that can trade places (`order.ts`).
+//   answer's shape (the same kind of statement or block opener), are never on screen, and never a
+//   line that can take the answer's place (`partnersOf`, `order.ts`).
 // - A line still short of a full set gets the extra rules (`extraMutants`: more real mistakes built
-//   from the snippet's own names, functions and lines), and then a change of it may be one that is
-//   on screen (`self.stack.pop()` above `self.min_stack.pop()`).
+//   from the snippet's own names, functions and lines), and only then may a change of it be one that
+//   is on screen (`self.stack.pop()` above `self.min_stack.pop()`).
 // Options are code only (no trailing comment), at the answer's indentation.
 //
 // Pure: no React, no DOM; its only content is the generated deny list. Re-exported from
@@ -31,7 +37,7 @@
 import { DISTRACTOR_DENY } from '../content/distractorDeny';
 import { TEMPLATE_DENY } from '../content/templateDeny';
 import { lineKey } from './codegrade';
-import { splitTop, swapRuns, topLevelAssign } from './order';
+import { effects, exprEffectsOf, independent, splitTop, swapRuns, topLevelAssign } from './order';
 import { stripComment } from './parseSolution';
 import { hashString, seededRandom, shuffleWith } from './random';
 
@@ -198,8 +204,10 @@ const NONSENSE = new RegExp(
     String.raw`(?<![\w.])([A-Za-z_]\w*)\[\s*\3\s*\]`,
     // A condition that is always false, or an `if` that is always true.
     String.raw`^\s*(?:(?:if|elif|while)\s+(?:False|None|0)|(?:if|elif)\s+True)\s*:`,
-    // A statement that is only a value (`None`, `0`, `"N"`): it does nothing.
+    // A statement that is only a value (`None`, `0`, `"N"`) or a name read and dropped (`read`,
+    // `self.heap[0]`): it does nothing. (A slice, `nums[::-1]`, is a real mistake: it reverses nothing.)
     String.raw`^\s*(?:None|True|False|-?\d+(?:\.\d+)?|"[^"]*"|'[^']*')\s*$`,
+    String.raw`^\s*(?!(?:return|pass|break|continue|raise|yield|else|try|finally)\s*$)[A-Za-z_]\w*(?:\.[A-Za-z_]\w*|\[[^\]:]*\])*\s*$`,
   ].join('|'),
 );
 
@@ -323,6 +331,9 @@ const BUILTINS = new Set([
 
 const NUM_CALLS = /^(len|int|ord|abs|sum|float|round|pow|divmod)$/;
 
+/** Unannotated parameters taken for strings (a pattern template's `def balanced(s):`). */
+const STR_PARAM = /^(s|t|word|text)$/;
+
 /** The kind of value an expression gives, from literals, a few calls, and the kinds of names it uses. */
 function kindOfExpr(e: string, kinds: ReadonlyMap<string, Kind>): Kind | undefined {
   const s = e.trim();
@@ -397,6 +408,10 @@ interface Ctx {
   parentFn: Map<number, number>;
   /** Per line, its section of a pattern template (0 in a solution). */
   secOf: number[];
+  /** Names bound only by a comprehension (`s` of `[-s for s in stones]`): out of scope on any other line. */
+  compOnly: Set<string>;
+  /** Each function's `def` lines by name, and whether it is a class's method (never a bare name). */
+  defLines: Map<string, { line: number; method: boolean }[]>;
   hasDeque: boolean;
 }
 
@@ -431,13 +446,25 @@ function lineTargets(code: string): string[] {
   const names = (t: string) => out.push(...(t.match(/[A-Za-z_]\w*/g) ?? []).filter((n) => !KEYWORD.has(n)));
   const f = s.match(/^(?:async\s+)?for\s+(.+?)\s+in\b/);
   if (f) names(f[1]);
-  const { at, op } = topLevelAssign(s);
-  if (at >= 0 && op === '=') {
-    for (const t of splitTop(s.slice(0, at))) if (/^\s*\(?\s*\*?[A-Za-z_]\w*\s*\)?\s*$/.test(t)) names(t);
+  for (const target of assignChain(s)?.targets ?? []) {
+    for (const t of splitTop(target)) if (/^\s*\(?\s*\*?[A-Za-z_]\w*\s*\)?\s*$/.test(t)) names(t);
   }
   for (const m of s.matchAll(/([A-Za-z_]\w*)\s*:=/g)) out.push(m[1]);
   for (const m of s.matchAll(/\bas\s+([A-Za-z_]\w*)/g)) out.push(m[1]);
   return out;
+}
+
+/** The targets of a plain assignment, chained ones too (`dummy = tail = ListNode()`), and the value; null for any other line. */
+function assignChain(s: string): { targets: string[]; value: string } | null {
+  const first = topLevelAssign(s);
+  if (first.at < 0 || first.op !== '=') return null;
+  const targets = [s.slice(0, first.at)];
+  let value = s.slice(first.at + 1);
+  for (let next = topLevelAssign(value); next.at >= 0 && next.op === '='; next = topLevelAssign(value)) {
+    targets.push(value.slice(0, next.at));
+    value = value.slice(next.at + 1);
+  }
+  return { targets, value };
 }
 
 /** Names bound by every `for` in a line, a comprehension's included (`i` of `deque(i for i in range(n))`). */
@@ -462,6 +489,8 @@ function buildCtx(code: readonly string[], known: boolean): Ctx {
   const notVars = new Set<string>(['self', '_']);
   const bound: { n: string; rhs: string }[] = [];
   const loopVars = new Set<string>();
+  const compVars = new Set<string>();
+  const defLines = new Map<string, { line: number; method: boolean }[]>();
   const lineIdents: Map<string, number>[] = [];
   const seqs = new Set<string>();
   const selfKinds = new Map<number, Map<string, Kind | undefined>>();
@@ -512,9 +541,11 @@ function buildCtx(code: readonly string[], known: boolean): Ctx {
     const def = s.match(/^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\((.*)\)/);
     if (def) {
       notVars.add(def[1]);
+      defLines.set(def[1], [...(defLines.get(def[1]) ?? []), { line: i, method: cls >= 0 && (parentFn.get(i) ?? -1) < 0 }]);
       for (const p of splitTop(def[2])) {
         const m = p.trim().match(/^\**([A-Za-z_]\w*)\s*(?::\s*([^=]+))?/);
-        if (m && m[1] !== 'self') bind(m[1], i, m[2] ? kindOfAnnotation(m[2]) : undefined);
+        // A pattern template's parameters have no annotations: `s` or `word` is a string there.
+        if (m && m[1] !== 'self') bind(m[1], i, m[2] ? kindOfAnnotation(m[2]) : STR_PARAM.test(m[1]) ? 'str' : undefined);
       }
       return;
     }
@@ -526,20 +557,25 @@ function buildCtx(code: readonly string[], known: boolean): Ctx {
     }
     for (const m of s.matchAll(/\bfor\s+([A-Za-z_][\w\s,()]*?)\s+in\s+(\w+)?/g)) {
       const ns = m[1].match(/[A-Za-z_]\w*/g) ?? [];
+      // A comprehension's own name (`c` of `[-c for c in counts.values()]`) lives only inside it.
+      if (!/^(?:async\s+)?$/.test(s.slice(0, m.index))) {
+        ns.forEach((n) => compVars.add(n));
+        continue;
+      }
       ns.forEach((n) => loopVars.add(n));
       ns.forEach((n, k) => bind(n, i, m[2] === 'range' || (m[2] === 'enumerate' && k === 0 && ns.length === 2) ? 'num' : undefined));
       if (ns.length === 1 && m[2]) bound.push({ n: ns[0], rhs: `for:${m[2]}` });
     }
     for (const m of s.matchAll(/\blambda\s+([^:]*):/g)) for (const n of m[1].match(/[A-Za-z_]\w*/g) ?? []) notVars.add(n);
-    const { at, op } = topLevelAssign(s);
-    if (at >= 0 && op === '=') {
-      const lhs = splitTop(s.slice(0, at));
-      const rhs = splitTop(s.slice(at + 1));
+    const chain = assignChain(s);
+    for (const target of chain?.targets ?? []) {
+      const lhs = splitTop(target);
+      const rhs = splitTop(chain!.value);
       lhs.forEach((t, k) => {
         const m = t.trim().match(/^\(?\s*\*?([A-Za-z_]\w*)\s*\)?$/);
         if (!m) return;
         bind(m[1], i);
-        bound.push({ n: m[1], rhs: lhs.length === rhs.length ? rhs[k] : lhs.length === 1 ? s.slice(at + 1) : '' });
+        bound.push({ n: m[1], rhs: lhs.length === rhs.length ? rhs[k] : lhs.length === 1 ? chain!.value : '' });
       });
     }
     for (const m of s.matchAll(/([A-Za-z_]\w*)\s*:=/g)) bind(m[1], i);
@@ -579,6 +615,8 @@ function buildCtx(code: readonly string[], known: boolean): Ctx {
     fnOf,
     parentFn,
     secOf,
+    compOnly: new Set([...compVars].filter((n) => !binds.has(n))),
+    defLines,
     hasDeque: /\bdeque\b/.test(lines.join('\n')),
     denyKey: hashString(lines.join('\n')).toString(36),
   };
@@ -679,6 +717,122 @@ function canonOf(line: string, neq: readonly (readonly [string, string])[]): str
     }
   }
   return k;
+}
+
+// ── Meaning in place: lines that differ in code but do the same where the answer stands ──
+
+/** `canonKey`, then what it means at the answer's place (`contextCanon`), remembered per answer. */
+function canonIn(a: Answer, s: string): string {
+  const k = canonKey(s, a.neq);
+  let v = a.canons.get(k);
+  if (v === undefined) a.canons.set(k, (v = a.at >= 0 && a.ctx.known ? contextCanon(a, k) : k));
+  return v;
+}
+
+/**
+ * A line's `canonKey` with what its place in the snippet settles (two options with one key do the
+ * same there, so a set never holds both, and one with the answer's key is never offered):
+ * - a dummy node's value that nothing reads (`dummy = ListNode(1, head)` is `ListNode(0, head)`), and
+ *   `dummy.next` while it is still the `head` it was made with;
+ * - a test whose result is known: `x is y` between two containers the code makes (`False`), a
+ *   container `is None` (`False`), `n in nums` inside `for n in nums:` (`True`);
+ * - in a yes/no function (`isBoolFn`), every false value (`None`, `""`, `0`, `[]`) is `False`;
+ * - a call of a function that returns nothing, returned or kept in what the function returns
+ *   (`return backtrack(0)`, `res = backtrack(1)`): the function returns `None`, whatever the arguments;
+ * - the last line's call with its result dropped (`dfs(0, self.root)` for `return dfs(0, self.root)`)
+ *   of a function that only computes it: the function returns `None`.
+ */
+function contextCanon(a: Answer, key: string): string {
+  const { ctx } = a;
+  const sn = snippetOf(ctx);
+  const fn = ctx.fnOf[a.at] ?? -1;
+  let k = key;
+  const lineKeys = ctx.keys;
+  // 1. Dummy nodes.
+  k = k.replace(/^([A-Za-z_]\w*)=(ListNode|TreeNode|Node)\(-?\d+(?=[,)])/, (m, d: string, c: string) => (valUnread(ctx, d) ? `${d}=${c}(0` : m));
+  for (let j = a.at - 1; j >= 0 && (ctx.fnOf[j] ?? -1) === fn; j--) {
+    const made = lineKeys[j].match(/^([A-Za-z_]\w*)=ListNode\([^,()]*,([A-Za-z_]\w*)\)$/);
+    if (!made) continue;
+    const [, d, h] = made;
+    const between = lineKeys.slice(j + 1, a.at);
+    if (between.some((l) => l.startsWith(`${d}.next=`) || new RegExp(`^${h}=`).test(l))) continue;
+    k = k.replace(new RegExp(String.raw`(?<![\w.])${d}\.next\b`, 'g'), h);
+  }
+  // 2. Tests with a known result.
+  const t = k.match(/^(if|elif|while|return) (.+?)(:?)$/);
+  if (t && !/\b(and|or|lambda|if|for)\b/.test(t[2])) {
+    const v = knownTest(a, t[2]);
+    if (v) k = `${t[1]} ${v}${t[3]}`;
+  }
+  // 3. A yes/no function's false values.
+  if (fn >= 0 && sn.boolFns.has(fn) && /^return(?:\s*(?:None|False|""|0|\[\]|\{\}|set\(\)))?$/.test(k)) k = 'return False';
+  // 4. A call of a function that returns nothing, returned or kept in what is returned.
+  const kept = k.match(/^(?:return |([A-Za-z_]\w*)=)(?:self\.)?([A-Za-z_]\w*)\(.*\)$/);
+  if (kept && sn.noValue.has(kept[2]) && sn.defs.has(kept[2])) {
+    const later = laterLines(a).filter((j) => (ctx.fnOf[j] ?? -1) === fn);
+    if (!kept[1] || later.some((j) => lineKeys[j] === `return ${kept[1]}`)) k = `return ${kept[2]}(…)`;
+  }
+  // 5. The last line's call, its result dropped: what it changes is gone once the function returns.
+  const bare = k.match(/^((?:self\.)?([A-Za-z_]\w*))\(.*\)$/);
+  if (
+    bare &&
+    (sn.pure.has(bare[1]) || quietInside(ctx, bare[1], fn)) &&
+    new RegExp(String.raw`^return ${bare[1].replace('.', '\\.')}\(`).test(a.key) &&
+    !laterLines(a).some((j) => (ctx.fnOf[j] ?? -1) === fn)
+  )
+    k = 'return';
+  return k;
+}
+
+/**
+ * Whether `name` is a helper defined inside function `fn` that changes only `fn`'s own names
+ * (`read()` of `deserialize`, which moves `i`): nothing outside `fn` sees what it does.
+ */
+function quietInside(ctx: Ctx, name: string, fn: number): boolean {
+  if (fn < 0) return false;
+  const d = (snippetOf(ctx).defs.get(name) ?? []).find((x) => x.parent === fn);
+  if (!d) return false;
+  const outer = new Set(snippetOf(ctx).defs.get(ctx.lines[fn].match(/def\s+([A-Za-z_]\w*)/)?.[1] ?? '')?.find((x) => x.line === fn)?.params ?? []);
+  return bodyOf(ctx, d.line).every((j) => {
+    const t = ctx.lines[j].trim();
+    if (/\bself\./.test(t) && /=|\.(append|pop|add|remove|insert|extend|update|clear|discard)\(/.test(t)) return false;
+    return ![...outer].some((p) => new RegExp(String.raw`(?<![\w.])${p}(?:\[[^\]]*\])*\s*(?:[-+*/%|&^]?=(?!=)|\.(?:append|pop|add|remove|insert|extend|update|clear|discard|sort|reverse)\()`).test(t));
+  });
+}
+
+/** Whether nothing reads a node's `.val`: neither on it nor on a name set to it (`tail = dummy`). */
+function valUnread(ctx: Ctx, d: string): boolean {
+  const users = snippetOf(ctx).users.get('val') ?? [];
+  const names = [d, ...ctx.keys.flatMap((l) => l.match(new RegExp(`^([A-Za-z_]\\w*)=${d}$`))?.[1] ?? [])];
+  return !names.some((n) => users.includes(n));
+}
+
+/** `True` or `False` for a test whose result is settled where the answer stands, else ''. */
+function knownTest(a: Answer, expr: string): string {
+  const { ctx } = a;
+  const container = (n: string) => ['list', 'set', 'dict', 'deque'].includes(ctx.kinds.get(n) ?? '');
+  const made = (n: string) => (ctx.binds.get(n) ?? []).length === 1 && container(n);
+  const id = expr.match(/^([A-Za-z_]\w*) is( not)? ([A-Za-z_]\w*)$/);
+  if (id) {
+    const [, x, not, y] = id;
+    const none = x === 'None' ? y : y === 'None' ? x : '';
+    // A container is never `None`; two the code makes are never one object.
+    if ((none && container(none)) || (!none && x !== y && made(x) && made(y))) return not ? 'True' : 'False';
+  }
+  const member = expr.match(/^([A-Za-z_]\w*) (not )?in ([A-Za-z_]\w*)$/);
+  if (member) {
+    const [, x, not, c] = member;
+    // Inside `for x in c:`, `x in c` holds.
+    let ind = indentStr(ctx.lines[a.at]).length;
+    for (let j = a.at - 1; j >= 0; j--) {
+      const l = ctx.lines[j];
+      if (!l.trim() || indentStr(l).length >= ind) continue;
+      ind = indentStr(l).length;
+      if (ctx.keys[j] === `for ${x} in ${c}:`) return not ? 'False' : 'True';
+      if (/^\s*(async\s+)?def\b/.test(l) || !ind) break;
+    }
+  }
+  return '';
 }
 
 /**
@@ -819,13 +973,13 @@ function symmetricTwins(a: Answer): Set<string> {
               if (!swap && sx === 1 && sy === 1) continue;
               const ok = pairs.every(([p, q]) => set.has(`${sx * (swap ? q : p) || 0},${sy * (swap ? p : q) || 0}`));
               if (!ok) continue;
-              if (j === a.at && swap && sx === 1 && sy === 1) out.add(canonKey(swapped, a.neq));
+              if (j === a.at && swap && sx === 1 && sy === 1) out.add(canonIn(a, swapped));
               if (j !== a.at) {
                 const map = new Map([
                   [x, `${sx < 0 ? '-' : ''}${swap ? y : x}`],
                   [y, `${sy < 0 ? '-' : ''}${swap ? x : y}`],
                 ]);
-                out.add(canonKey(renamed(a.code, map), a.neq));
+                out.add(canonIn(a, renamed(a.code, map)));
               }
             }
       } else if (j === a.at) {
@@ -836,7 +990,7 @@ function symmetricTwins(a: Answer): Set<string> {
           [y, x],
         ]);
         const back = body.map((k) => keyOf(renamed(ctx.lines[k], map))).sort();
-        if (keys.length && keys.every((k, i) => k === back[i])) out.add(canonKey(swapped, a.neq));
+        if (keys.length && keys.every((k, i) => k === back[i])) out.add(canonIn(a, swapped));
       }
       break;
     }
@@ -847,7 +1001,7 @@ function symmetricTwins(a: Answer): Set<string> {
 
 /** The meanings (`canonKey`) of the options denied for an answer, so no twin of one is offered. */
 function deniedCanons(a: Answer): Set<string> {
-  return (a.deniedCanons ??= new Set([...(denied(a) ?? [])].map((d) => canonKey(d, a.neq))));
+  return (a.deniedCanons ??= new Set([...(denied(a) ?? [])].map((d) => canonIn(a, d))));
 }
 
 // ── Candidates ──────────────────────────────────────────────────────────────
@@ -863,6 +1017,8 @@ interface Answer {
   twins?: Set<string>;
   /** The line's names, words and dots (see `sameWords`), made on demand. */
   words?: string;
+  /** `canonIn` answers, by `canonKey`. */
+  canons: Map<string, string>;
   code: string;
   indent: string;
   key: string;
@@ -905,11 +1061,11 @@ function answerInfo(code: string, ctx: Ctx, at?: number, sure = false): Answer {
     return false;
   };
   const introduced = new Set([...targets.filter((n) => isFor || idx < 0 || !usedEarlier(n)), ...loopNames(code)]);
-  return {
+  const a: Answer = {
     code,
     indent: indentStr(code),
     key,
-    canon: canonKey(code, neq),
+    canon: '',
     neq,
     toks: tokenize(code).filter((t) => t.trim() !== ''),
     idents: sc.idents,
@@ -921,7 +1077,10 @@ function answerInfo(code: string, ctx: Ctx, at?: number, sure = false): Answer {
     sure: sure && known,
     ctx,
     seen: new Map(),
+    canons: new Map(),
   };
+  a.canon = canonIn(a, code);
+  return a;
 }
 
 /** Whether `name` exists before the answer's line (a variable bound earlier, a builtin, a function). */
@@ -934,31 +1093,101 @@ function definedBefore(name: string, a: Answer): boolean {
 function definedAt(name: string, a: Answer): boolean {
   const { ctx } = a;
   if (BUILTINS.has(name) || KEYWORD.has(name)) return true;
-  if (!ctx.names.has(name)) return false;
+  if (!ctx.names.has(name) || ctx.compOnly.has(name)) return false;
   const lines = ctx.binds.get(name);
+  // A function of the snippet is there inside itself, or after its `def` in the function around it
+  // (`backtrack(0)` above `def backtrack` fails; a method is reached through `self.`).
+  const defs = ctx.defLines.get(name);
+  if (defs && !lines && a.at >= 0) {
+    const chainOf = new Set<number>([-1]);
+    for (let f = ctx.fnOf[a.at] ?? -1; f >= 0; f = ctx.parentFn.get(f) ?? -1) chainOf.add(f);
+    return defs.some((d) => !d.method && (chainOf.has(d.line) || (chainOf.has(ctx.parentFn.get(d.line) ?? -1) && d.line < a.at && dominates(ctx, d.line, a.at))));
+  }
   if (!lines || a.at < 0) return true;
   // Bound earlier in the answer's function or one around it (another method's locals do not count).
+  // A name the answer's own function sets anywhere is its own there (Python scoping: `pre` of
+  // `for pre in needs[course]` hides the outer `pre` in the whole function), and a loop's own name
+  // exists only inside the loop (`child` of `for child in …` is not there in another branch, nor
+  // after a loop that may not run).
+  const fn = ctx.fnOf[a.at] ?? -1;
   const chain = new Set<number>();
-  for (let f = ctx.fnOf[a.at] ?? -1; f >= 0; f = ctx.parentFn.get(f) ?? -1) chain.add(f);
+  for (let f = fn; f >= 0; f = ctx.parentFn.get(f) ?? -1) chain.add(f);
   chain.add(-1);
-  return lines.some((b) => b < a.at && chain.has(ctx.fnOf[b] ?? -1) && ctx.secOf[b] === ctx.secOf[a.at]);
+  const own = lines.filter((b) => (ctx.fnOf[b] ?? -1) === fn);
+  return (own.length ? own : lines).some(
+    (b) =>
+      b < a.at &&
+      chain.has(ctx.fnOf[b] ?? -1) &&
+      ctx.secOf[b] === ctx.secOf[a.at] &&
+      (!loopBinds(ctx, b, name) || blockOf(ctx.lines, b).includes(a.at)) &&
+      dominates(ctx, b, a.at),
+  );
 }
 
 /**
- * Whether `name` exists anywhere in the answer's function or one around it (or at the top): a
- * fallback line may use what is set later, but never a nested function's own names (`node` of a
- * helper, offered at the level that defines the helper).
+ * Whether line `b` runs on every way to line `at`: each block around it (an `if`, a loop, a `try`)
+ * holds `at` too. A name set inside a loop or one branch may be unset after it (`total` set in a
+ * `while` body, read after the loop; `t` of a loop over tweets, read below it).
  */
-function inScope(name: string, a: Answer): boolean {
+function dominates(ctx: Ctx, b: number, at: number): boolean {
+  const fn = ctx.fnOf[b] ?? -1;
+  let ind = indentStr(ctx.lines[b]).length;
+  for (let j = b - 1; j > fn; j--) {
+    const l = ctx.lines[j];
+    // Only block openers count (a statement's first line above its continuation does not).
+    if (!l.trim() || !/:\s*$/.test(l)) continue;
+    const ji = indentStr(l).length;
+    if (ji >= ind) continue;
+    ind = ji;
+    if (/^\s*((async\s+)?def|class)\b/.test(l)) break;
+    if (!blockOf(ctx.lines, j).includes(at)) return false;
+    if (!ji) break;
+  }
+  return true;
+}
+
+/** Whether line `b` binds `name` as a `for` loop's own name (not a comprehension's). */
+function loopBinds(ctx: Ctx, b: number, name: string): boolean {
+  const m = ctx.lines[b].trim().match(/^(?:async\s+)?for\s+(.+?)\s+in\b/);
+  return !!m && (m[1].match(/[A-Za-z_]\w*/g) ?? ([] as string[])).includes(name);
+}
+
+/** Lines in the answer's function (or a function inside it) after the answer's line. */
+function laterLines(a: Answer): number[] {
   const { ctx } = a;
-  if (BUILTINS.has(name) || KEYWORD.has(name)) return true;
-  if (!ctx.names.has(name)) return false;
-  const lines = ctx.binds.get(name);
-  if (!lines || a.at < 0) return true;
-  const chain = new Set<number>();
-  for (let f = ctx.fnOf[a.at] ?? -1; f >= 0; f = ctx.parentFn.get(f) ?? -1) chain.add(f);
-  chain.add(-1);
-  return lines.some((b) => chain.has(ctx.fnOf[b] ?? -1) && ctx.secOf[b] === ctx.secOf[a.at]);
+  const fn = ctx.fnOf[a.at] ?? -1;
+  const out: number[] = [];
+  for (let j = a.at + 1; j < ctx.lines.length; j++) {
+    let f = ctx.fnOf[j] ?? -1;
+    while (f >= 0 && f !== fn) f = ctx.parentFn.get(f) ?? -1;
+    if (f === fn) out.push(j);
+  }
+  return out;
+}
+
+/** Whether a line after the answer's, in its function, reads `name`. */
+function readLater(name: string, a: Answer): boolean {
+  if (a.at < 0) return false;
+  return laterLines(a).some((j) => a.ctx.lineIdents[j]?.has(name) && !(lineTargets(a.ctx.lines[j]).includes(name) && a.ctx.lineIdents[j]?.get(name) === 1));
+}
+
+/**
+ * Whether setting `name` on the answer's line would make it local to the answer's function while
+ * that function reads it from the one around it (a closure's name, with no `nonlocal`).
+ */
+function shadows(name: string, a: Answer): boolean {
+  const { ctx } = a;
+  if (a.at < 0) return false;
+  const fn = ctx.fnOf[a.at] ?? -1;
+  if (fn < 0) return false;
+  if ((ctx.binds.get(name) ?? []).some((b) => (ctx.fnOf[b] ?? -1) === fn)) return false;
+  let reads = false;
+  for (let j = fn + 1; j < ctx.lines.length; j++) {
+    if ((ctx.fnOf[j] ?? -1) !== fn) continue;
+    if (new RegExp(String.raw`^\s*(nonlocal|global)\b.*\b${name}\b`).test(ctx.lines[j])) return false;
+    if (ctx.lineIdents[j]?.has(name)) reads = true;
+  }
+  return reads;
 }
 
 /**
@@ -970,8 +1199,10 @@ function allowed(s: string, a: Answer, deny = true, fallback = false, extra = fa
   if (!s.startsWith(a.indent) || !s.trim()) return false;
   const k = keyOf(s);
   if (!k || k === a.key || NONSENSE.test(s) || noOps(s) > a.noOps) return false;
-  const canon = canonKey(s, a.neq);
-  if (canon === a.canon || symmetricTwins(a).has(canon)) return false;
+  const canon = canonIn(a, s);
+  // The same as the answer where it stands, or a test whose result is known there (`if n in nums:`
+  // inside `for n in nums:`, `if stack is None:` for a list): never a real choice.
+  if (canon === a.canon || symmetricTwins(a).has(canon) || /^(?:(?:if|elif) True|(?:if|elif|while) False):$/.test(canon)) return false;
   // Denied by its code, or by its meaning: a twin of a denied option runs the same way.
   if (deny && (denied(a)?.has(k) || deniedCanons(a).has(canon))) return false;
   const { ctx } = a;
@@ -987,21 +1218,30 @@ function allowed(s: string, a: Answer, deny = true, fallback = false, extra = fa
   // Only operators, numbers or strings changed (`<` / `<=`, `1` / `2`): no name or method to check.
   if (!fallback && sameWords(s, a)) return true;
   const sc = scan(s);
+  const targets = lineTargets(s);
   // A fallback line is another real line of the snippet: a name it only sets need not exist yet.
-  const sets = fallback ? new Set(lineTargets(s).filter((n) => ctx.names.has(n) && sc.idents.get(n) === 1)) : new Set<string>();
+  const sets = fallback ? new Set(targets.filter((n) => ctx.names.has(n) && sc.idents.get(n) === 1)) : new Set<string>();
+  // Its own comprehension's name (`c` of `[-c for c in counts]`) is bound where it is read.
+  const ownComp = new Set(loopNames(s));
   for (const [n, count] of sc.idents) {
     const had = a.idents.get(n) ?? 0;
-    // A fallback line may use what the snippet sets later (it is the line that comes later); a change
-    // to the answer only what exists before it.
-    if (!had && !sets.has(n) && !(fallback ? inScope(n, a) : definedBefore(n, a))) return false;
-    // A name the line binds first is not there to read yet (`m = (m + r) // 2`).
-    if (!fallback && count > had && a.introduced.has(n)) return false;
+    // Every name it reads exists at the answer's place: bound before it in its function or one around
+    // it, never only later (`return length` above `length` is set) or inside a comprehension.
+    if (!had && !sets.has(n) && !ownComp.has(n) && !definedBefore(n, a)) return false;
+    // A name the line binds first is not there to read yet (`m = (m + r) // 2`, `tail = tail.next`
+    // for `tail = dummy`).
+    if (count > had && a.introduced.has(n)) return false;
   }
   // A name the line introduces (a loop variable, a new variable) is never renamed: only reordered.
-  if (a.introduced.size && !fallback) {
-    const t = new Set([...lineTargets(s), ...loopNames(s)]);
-    for (const n of a.introduced) if (!t.has(n)) return false;
+  // A fallback line may leave one out only when no later line reads it (`stack = []` for
+  // `pairs = {...}` leaves `pairs` unset for the loop below).
+  if (a.introduced.size) {
+    const t = new Set([...targets, ...loopNames(s)]);
+    for (const n of a.introduced) if (!t.has(n) && (!fallback || readLater(n, a))) return false;
   }
+  // Setting a name the function only reads from the one around it makes it local there, and the read
+  // fails (`tokens = data.split(',')` inside `read()`).
+  for (const n of targets) if (!a.targets.includes(n) && shadows(n, a)) return false;
   for (const p of sc.pairs) {
     if (a.pairs.has(p)) continue;
     const call = p.endsWith('()');
@@ -1020,9 +1260,10 @@ function allowed(s: string, a: Answer, deny = true, fallback = false, extra = fa
       if (!METHODS[kind].has(attr)) return false;
     } else if (!ctx.attrs.has(attr) || (DEQUE_ONLY.has(attr) && !ctx.hasDeque)) return false;
   }
-  // `heappop` takes the heap only, `heappush` the heap and an item; `.reverse()` nothing…
-  const own = extra ? snippetOf(ctx).defs : undefined;
-  if (arityErrors(s, own) > arityErrors(a.code, own)) return false;
+  // `heappop` takes the heap only, `heappush` the heap and an item; `.reverse()` nothing; the
+  // snippet's own functions and classes what they declare (`Node(key)` for `Node(key, val)`).
+  const own = snippetOf(ctx).defs;
+  if (arityErrors(s, own) + ownArityErrors(s, ctx) > arityErrors(a.code, own) + ownArityErrors(a.code, ctx)) return false;
   // A loop turned into an `if` around a `break` or `continue` does not compile.
   if (/^\s*if\b/.test(s) && /^\s*while\b/.test(a.code) && a.at >= 0) {
     const ind = a.indent.length;
@@ -1052,6 +1293,20 @@ function arityErrors(s: string, own?: ReadonlyMap<string, unknown>): number {
     const [lo, hi] = ARITY[m[1]];
     const args = callArgs(s, m.index! + m[0].length);
     if (args < lo || args > hi) n++;
+  }
+  return n;
+}
+
+/** Calls of the snippet's own functions, methods and classes with an argument count none of their definitions takes. */
+function ownArityErrors(s: string, ctx: Ctx): number {
+  const { defs } = snippetOf(ctx);
+  let n = 0;
+  for (const m of s.matchAll(/(?<![\w.])(self\.)?([A-Za-z_]\w*)\(/g)) {
+    const classLine = m[1] ? -1 : ctx.lines.findIndex((l) => new RegExp(`^\\s*class\\s+${m[2]}\\b`).test(l));
+    const ds = classLine >= 0 ? (defs.get('__init__') ?? []).filter((d) => d.cls === classLine) : (defs.get(m[2]) ?? []).filter((d) => (m[1] ? d.cls >= 0 : true));
+    if (!ds.length) continue;
+    const args = callArgs(s, m.index! + m[0].length);
+    if (!ds.some((d) => args >= d.required && args <= d.most)) n++;
   }
   return n;
 }
@@ -1435,8 +1690,11 @@ const HEX32 = ['0xFFFFFFFF', '0x7FFFFFFF', '0x80000000', '0x100000000'];
 
 /** What the extra rules need to know about a snippet beyond `Ctx`. */
 interface Snippet {
-  /** Functions it defines: name → each definition (its line, parameters without `self`, class line, parent function). */
-  defs: Map<string, { line: number; params: string[]; cls: number; parent: number }[]>;
+  /**
+   * Functions it defines: name → each definition (its line, parameters without `self`, how many
+   * arguments a call needs and takes, class line, parent function).
+   */
+  defs: Map<string, { line: number; params: string[]; required: number; most: number; cls: number; parent: number }[]>;
   /** Methods called on each receiver (`stack` → append, pop; `self.heap` → …). */
   calls: Map<string, Set<string>>;
   /** Receivers each attribute is read on (`children` → node, self.root), in order of first use. */
@@ -1447,6 +1705,14 @@ interface Snippet {
   fields: Map<string, Set<string>>;
   /** Names indexed somewhere (`x[…]`). */
   indexed: Set<string>;
+  /** Functions that only compute a value (by call name: `expand`, `self.maxDepth`): see `ownPure`. */
+  pure: Set<string>;
+  /** Functions whose every `return` is bare (by name): a call of one is `None`. */
+  noValue: Set<string>;
+  /** `def` lines of helpers whose result is only ever tested (`isBoolFn`). */
+  boolFns: Set<number>;
+  /** Runs of lines that can trade places (`swapRuns` over the whole snippet, own pure calls counted). */
+  runs: number[][];
 }
 
 const snippetMemo = new WeakMap<Ctx, Snippet>();
@@ -1463,10 +1729,13 @@ function snippetOf(ctx: Ctx): Snippet {
     if (!t) return;
     const d = t.match(/^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\((.*)\)/);
     if (d) {
-      const params = splitTop(d[2])
-        .map((p) => p.trim().match(/^\**([A-Za-z_]\w*)/)?.[1] ?? '')
-        .filter((p) => p && p !== 'self');
-      defs.set(d[1], [...(defs.get(d[1]) ?? []), { line: i, params, cls: ctx.classOf[i], parent: ctx.parentFn.get(i) ?? -1 }]);
+      const parts = splitTop(d[2])
+        .map((p) => p.trim())
+        .filter((p) => p && !/^self\b/.test(p));
+      const params = parts.map((p) => p.match(/^\**([A-Za-z_]\w*)/)?.[1] ?? '').filter(Boolean);
+      const required = parts.filter((p) => !p.includes('=') && !p.startsWith('*')).length;
+      const most = parts.some((p) => p.startsWith('*')) ? Infinity : parts.length;
+      defs.set(d[1], [...(defs.get(d[1]) ?? []), { line: i, params, required, most, cls: ctx.classOf[i], parent: ctx.parentFn.get(i) ?? -1 }]);
       return;
     }
     const s = t.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""');
@@ -1491,9 +1760,78 @@ function snippetOf(ctx: Ctx): Snippet {
     }
   }
   clash.forEach((k) => attrKinds.delete(k));
-  const out = { defs, calls, users, attrKinds, fields, indexed };
+  const pure = ownPure(ctx, defs);
+  const noValue = new Set<string>();
+  for (const [name, ds] of defs) {
+    const bodies = ds.map((d) => ctx.lines.filter((_, j) => j > d.line && (ctx.fnOf[j] ?? -1) === d.line));
+    if (bodies.every((b) => !b.some((l) => /^\s*return\s+\S/.test(l)))) noValue.add(name);
+  }
+  const boolFns = new Set<number>();
+  for (const ds of defs.values()) for (const d of ds) if (isBoolFn(ctx, d.line, new Set())) boolFns.add(d.line);
+  const out = { defs, calls, users, attrKinds, fields, indexed, pure, noValue, boolFns, runs: swapRuns(ctx.lines, pure) };
   snippetMemo.set(ctx, out);
   return out;
+}
+
+/** A function's body: the lines whose function is it (a nested function's lines are its own). */
+const bodyOf = (ctx: Ctx, def: number) => ctx.lines.flatMap((l, j) => (j > def && (ctx.fnOf[j] ?? -1) === def && l.trim() ? [j] : []));
+
+/**
+ * The snippet's own functions that only compute a value from what they are given (`expand(left, right)`,
+ * `self.maxDepth(root)`): they set only their own names, change no container they are given or see
+ * around them, and call only builtins and functions like them. By call name (`self.f` for a method).
+ */
+function ownPure(ctx: Ctx, defs: Snippet['defs']): Set<string> {
+  const callName = (d: { cls: number; parent: number }, name: string) => (d.cls >= 0 && d.parent < 0 ? `self.${name}` : name);
+  let pure = new Set<string>();
+  for (const [name, ds] of defs) for (const d of ds) if (!name.startsWith('__')) pure.add(callName(d, name));
+  for (let pass = 0; pass < 4; pass++) {
+    const next = new Set<string>();
+    for (const [name, ds] of defs)
+      for (const d of ds) {
+        const call = callName(d, name);
+        if (!pure.has(call)) continue;
+        const locals = new Set([...d.params, ...bodyOf(ctx, d.line).flatMap((j) => [...lineTargets(ctx.lines[j]), ...loopNames(ctx.lines[j])])]);
+        const ok = bodyOf(ctx, d.line).every((j) => {
+          const t = ctx.lines[j].trim();
+          if (/^(nonlocal|global|yield|raise|del)\b/.test(t)) return false;
+          if (/^(else|try|finally|pass|break|continue|return)\s*:?$|^except\b/.test(t)) return true;
+          const head = t.match(/^(?:if|elif|while|return|assert)\s+(.+?):?$/) ?? t.match(/^for\s+.+?\s+in\s+(.+):$/);
+          const fx = head ? exprEffectsOf(head[1], pure) : effects(t, pure);
+          if (!fx) return false;
+          // A name it sets is its own; a container it changes must be too (`found += 1`, not `res.append(…)`).
+          return fx.writes.every((w) => locals.has(w.split(/[.[]/)[0]) && !w.startsWith('self.'));
+        });
+        if (ok) next.add(call);
+      }
+    if (next.size === pure.size) break;
+    pure = next;
+  }
+  return pure;
+}
+
+/**
+ * Whether a function's result is only ever tested (`if has_cycle(nxt):`, `return not dfs(…)` in
+ * such a function, `any(dfs(x) for …)`), so only its truth counts: a helper inside another function
+ * or outside any class. (A method's result goes back to its caller as it is: `None` is not `False`.)
+ */
+function isBoolFn(ctx: Ctx, def: number, seen: Set<number>): boolean {
+  const head = ctx.lines[def] ?? '';
+  const name = head.match(/^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)/)?.[1];
+  if (!name || seen.has(def) || (ctx.classOf[def] >= 0 && (ctx.parentFn.get(def) ?? -1) < 0)) return false;
+  seen.add(def);
+  const call = new RegExp(String.raw`(?<![\w.])(?:self\.)?${name}\(`);
+  const sites = ctx.lines.flatMap((l, j) => (j !== def && call.test(l) ? [j] : []));
+  return (
+    sites.length > 0 &&
+    sites.every((j) => {
+      const l = ctx.lines[j].trim();
+      if (/^(?:if|elif|while)\b/.test(l) || new RegExp(String.raw`\b(?:any|all|not)\(?\s*(?:self\.)?${name}\(`).test(l)) return true;
+      const f = ctx.fnOf[j] ?? -1;
+      // `return dfs(…)`: a test when the function that returns it answers yes or no.
+      return new RegExp(String.raw`^return\s+(?:not\s+)?(?:self\.)?${name}\(`).test(l) && f >= 0 && (f === def || isBoolFn(ctx, f, seen));
+    })
+  );
 }
 
 /** The index just past the bracket that closes the one at `open` (strings skipped), or -1. */
@@ -1555,10 +1893,14 @@ function ternary(e: string): { a: string; c: string; b: string } | null {
  *   a node class not called (`TrieNode`) or skipped (`None`, `list1` for a dummy), a copy not made
  *   (`copy = original`), `{}` / `set(0)` for `{0}`, `set()` / `{nums}` for `set(nums)`, a size one off
  *   (`[0] * 25`), a mapping turned around, a 32-bit constant mixed up, `0.0` for `1.0`;
- * - a pop at the wrong end or a push for a pop (`stack.append(ch)`), a heap misused
- *   (`self.heap.append(val)`, `self.heap = heapq.heapify(self.heap)`), `=` for `+=`, `/=` / `%=` /
- *   `*=` for `//=`, `<<=` for `>>=`, a loop over a dict's values or over indices, a guard dropped,
- *   turned around or with its branches swapped (`l1 = l1.next`), a string split or joined wrong.
+ * - a pop at the wrong end or a push for a pop (`stack.append(ch)`), its value returned from a function
+ *   that returns nothing (`return self.min_stack.pop()`), a heap misused (`self.heap.append(val)`,
+ *   `self.heap = heapq.heapify(self.heap)`, `heapq.heapify(h)` or a push for `heapq.heappop(h)`), `=`
+ *   for `+=`, `/=` / `%=` / `*=` for `//=`, `<<=` for `>>=`, a loop over a dict's values or over
+ *   indices, a guard dropped, turned around or with its branches swapped (`l1 = l1.next`), a string
+ *   split or joined wrong, `d[k]` or `d.get(k)` for `d.get(k, default)`;
+ * - `pass` for a bare `return` / `break` / `continue`, or for a guard's `return <value>` (the only line
+ *   under its `if`).
  */
 function extraMutants(a: Answer): string[] {
   const { ctx } = a;
@@ -1778,6 +2120,15 @@ function extraMutants(a: Answer): string[] {
     put('pass');
     if (inLoop) for (const w of ['break', 'continue', 'return']) if (w !== code) put(w);
   }
+  // A guard's `return <value>` (the only line under its `if`): going on instead (`pass`).
+  if (/^return\s+\S/.test(code)) {
+    let j = a.at - 1;
+    while (j >= 0 && !ctx.lines[j].trim()) j--;
+    let k = a.at + 1;
+    while (k < ctx.lines.length && !ctx.lines[k].trim()) k++;
+    const opener = j >= 0 && /^\s*(if|elif)\b.*:\s*$/.test(ctx.lines[j]) && indentStr(ctx.lines[j]).length < ind.length;
+    if (opener && (k >= ctx.lines.length || indentStr(ctx.lines[k]).length < ind.length)) put('pass');
+  }
 
   // 4. Return values.
   if (/^return\b/.test(code)) {
@@ -1891,6 +2242,9 @@ function extraMutants(a: Answer): string[] {
     // `tokens = data.split(',')`: on whitespace, or into characters.
     const split = rhs.match(/^([A-Za-z_]\w*)\.split\((["'][^"']+["'])\)$/);
     if (split) put(`${lhs} = ${split[1]}.split()`), put(`${lhs} = list(${split[1]})`);
+    // `pairs = self.store.get(key, [])`: no default, so a missing key fails (`[key]`) or gives `None`.
+    const got = rhs.match(/^([A-Za-z_][\w.]*)\.get\(([^,()]+),\s*([^()]+)\)$/);
+    if (got && kindOf(got[1]) === 'dict') put(`${lhs} = ${got[1]}[${got[2].trim()}]`), put(`${lhs} = ${got[1]}.get(${got[2].trim()})`);
     // `x = abs(x)`: negated instead.
     const abs = rhs.match(/^abs\(([A-Za-z_]\w*)\)$/);
     if (abs) put(`${lhs} = -${abs[1]}`);
@@ -1925,11 +2279,24 @@ function extraMutants(a: Answer): string[] {
       }
     }
   }
+  // A pop in a function that returns nothing: its value returned (`return self.min_stack.pop()`).
+  const fnName = fnOfLine >= 0 ? ctx.lines[fnOfLine].match(/def\s+([A-Za-z_]\w*)/)?.[1] : undefined;
+  if (stmt && fnName && sn.noValue.has(fnName) && !/->\s*(?!None)\S/.test(ctx.lines[fnOfLine])) put(`return ${code}`);
   const heap = code.match(/^heapq\.(heapify|heappop|heappush)\(([^,()]+)(?:,\s*(.+))?\)$/);
   if (heap) {
     const [, fn, h, item] = heap;
     if (fn === 'heapify') put(`${h} = heapq.heapify(${h})`), put(`heapq.heappop(${h})`);
-    if (fn === 'heappop') put(`${h}.pop()`), put(`${h}.pop(0)`);
+    if (fn === 'heappop') {
+      put(`${h}.pop()`), put(`${h}.pop(0)`), put(`heapq.heapify(${h})`);
+      // A push for the pop: an item this heap is given elsewhere, when it is there to push.
+      for (const l of ctx.lines) {
+        const push = l.trim().match(/^heapq\.heappush\(([^,()]+),\s*(.+)\)$/);
+        if (push && push[1].trim() === h.trim() && [...scan(push[2]).idents.keys()].every((n) => definedBefore(n, a))) {
+          put(`heapq.heappush(${h}, ${push[2]})`);
+          break;
+        }
+      }
+    }
     if (fn === 'heappush' && item) put(`${h}.append(${item})`), put(`heapq.heappop(${h})`);
   }
   const app = code.match(/^((?:self\.)?[A-Za-z_][\w.]*(?:\[[^\]]+\])?)\.append\((.+)\)$/);
@@ -2000,7 +2367,7 @@ function makeCand(text: string, a: Answer, tier: number): Cand {
   while (p < toks.length && p < a.toks.length && toks[p] === a.toks[p]) p++;
   let s = 0;
   while (s < toks.length - p && s < a.toks.length - p && toks[toks.length - 1 - s] === a.toks[a.toks.length - 1 - s]) s++;
-  return { text, canon: canonKey(text, a.neq), toks, tier, span: [p, a.toks.length - s], own: [p, toks.length - s] };
+  return { text, canon: canonIn(a, text), toks, tier, span: [p, a.toks.length - s], own: [p, toks.length - s] };
 }
 
 function poolFor(code: string, ctx: Ctx, at: number | undefined, deny: boolean, sure = false): Pool {
@@ -2128,7 +2495,10 @@ function corner(pool: Pool, x: Cand, y: Cand, deny: boolean): Cand | null {
   const [ex, ey] = [edit(pool.a, x), edit(pool.a, y)];
   // Two names traded both ways (`max(left, right)` → `max(right, left)`) often mean the same.
   const swap = (p: Cand, q: Cand) => p.span[1] - p.span[0] === 1 && p.own[1] - p.own[0] === 1 && pool.a.toks[p.span[0]] === q.toks[q.own[0]] && pool.a.toks[q.span[0]] === p.toks[p.own[0]];
-  if (swap(x, y) && q1(x) && q1(y)) {
+  // Two changes that each add the same word (`head.next, head` and `head, head.next`; `[1] * n` and
+  // `[0] * (n - 1)`) would leave the answer the only option without it; two extra rules stacked
+  // (`self.heap = heapq.heappop(self.heap)`) are no mistake anyone makes.
+  if ((swap(x, y) && q1(x) && q1(y)) || addsSame(pool.a, x, y) || (x.stage === 3 && y.stage === 3)) {
     pool.corners.set(memo, null);
     return null;
   }
@@ -2147,6 +2517,18 @@ function corner(pool: Pool, x: Cand, y: Cand, deny: boolean): Cand | null {
   }
   pool.corners.set(memo, c);
   return c;
+}
+
+/** The names and numbers a change adds to the answer's tokens. */
+function added(a: Answer, c: Cand): string[] {
+  const had = a.toks.slice(c.span[0], c.span[1]);
+  return c.toks.slice(c.own[0], c.own[1]).filter((t) => /^[A-Za-z_\d]/.test(t) && !KEYWORD.has(t) && !had.includes(t));
+}
+
+/** Whether two changes add a common name or number. */
+function addsSame(a: Answer, x: Cand, y: Cand): boolean {
+  const ys = new Set(added(a, y));
+  return added(a, x).some((t) => ys.has(t));
 }
 
 /** A change of exactly one token for one token. */
@@ -2202,16 +2584,24 @@ function choose(pool: Pool, usable: (c: Cand) => boolean, fallbacks: () => Cand[
   if (any) return any.set;
   const found = search(pool, pool.first.filter(known), fallbacks, n, rnd, deny, known);
   if (found.length >= n || !pool.a.ctx.known) return found;
-  // Still short: the extra rules, and any change of the line even when it is on screen (only a
+  // Still short: the extra rules; then any change of the line even when it is on screen (only a
   // fallback line, another real line of the snippet, must not be).
   pool.extra();
+  let best = found;
+  if (pool.first.filter(usable).length > pool.first.filter(known).length) {
+    const ext = structured(pool, usable, n, rnd, deny);
+    if (ext) return ext.set;
+    const again = search(pool, pool.first.filter(usable), fallbacks, n, rnd, deny, usable);
+    if (again.length >= n) return again;
+    if (again.length > best.length) best = again;
+  }
   const wide = (c: Cand) => usable(c) || (c.tier !== 3 && onScreen(c));
   // Nothing new to choose from: keep the set (and leave `rnd` where it was, so the order stays too).
-  if (pool.first.filter(wide).length === pool.first.filter(known).length) return found;
+  if (pool.first.filter(wide).length === pool.first.filter(usable).length) return best;
   const more = structured(pool, wide, n, rnd, deny);
   if (more) return more.set;
   const again = search(pool, pool.first.filter(wide), fallbacks, n, rnd, deny, wide);
-  return again.length > found.length ? again : found;
+  return again.length > best.length ? again : best;
 }
 
 /** The best three alternatives at one site, or 2x2, from `pool.first` (see `choose`). */
@@ -2288,6 +2678,10 @@ function fairLength<T>(sets: T[], of: (t: T) => readonly Cand[], a: Answer): T[]
   const n = charLength(a.code);
   const shortest = (t: T) => of(t).every((c) => charLength(c.text) > n);
   const even = sets.filter((t) => fair(of(t), a));
+  // Among those, one where a wrong option is shorter than the answer (not only as short): a tie for
+  // the shortest still leaves "pick the shortest" a better guess than chance.
+  const below = even.filter((t) => of(t).some((c) => charLength(c.text) < n));
+  if (below.length) return below;
   if (even.length) return even;
   const notShort = sets.filter((t) => !shortest(t));
   return notShort.length ? notShort : sets;
@@ -2314,26 +2708,33 @@ function search(pool: Pool, first: Cand[], fallbacks: () => Cand[], n: number, r
     let best: { idx: number[]; cost: number }[] = [];
     let min = Infinity;
     const m = cands.length;
+    // The cheapest sets, and a little dearer ones kept for when every cheapest set gives the answer
+    // away by its length (it is the only shortest or the only longest option).
     const consider = (idx: number[]) => {
       if (centered(d, idx)) return;
       const cost = idx.reduce((s, i) => s + TIER_COST[cands[i - 1].tier] + d(0, i) * 0.25, 0);
       if (cost < min - 1e-9) {
         min = cost;
-        best = best.filter((b) => b.cost < cost + 0.5);
+        best = best.filter((b) => b.cost < cost + 1.5);
       }
-      if (cost < min + 0.5) best.push({ idx, cost });
+      if (cost < min + 1.5) best.push({ idx, cost });
     };
     for (let i = 1; i <= m; i++)
       for (let j = i + 1; j <= m; j++) {
         if (n === 2) consider([i, j]);
         else for (let k = j + 1; k <= m; k++) consider([i, j, k]);
       }
-    best = fairLength(
+    const of = (b: { idx: number[] }) => b.idx.map((i) => cands[i - 1]);
+    let chosen = fairLength(
       best.filter((b) => b.cost < min + 0.5),
-      (b) => b.idx.map((i) => cands[i - 1]),
+      of,
       a,
     );
-    if (best.length) return best[Math.floor(rnd() * best.length)].idx.map((i) => cands[i - 1]);
+    if (chosen.length && !fair(of(chosen[0]), a)) {
+      const wider = fairLength(best, of, a);
+      if (fair(of(wider[0]), a)) chosen = wider;
+    }
+    if (chosen.length) return of(chosen[Math.floor(rnd() * chosen.length)]);
   }
   return cands.slice(0, n);
 }
@@ -2368,6 +2769,36 @@ function fallbackLines(a: Answer, lines: readonly string[], skip: ReadonlySet<st
   return out;
 }
 
+/**
+ * Lines of the snippet that can trade places with the answer's: its run (`swapRuns` over the whole
+ * snippet, with the snippet's own pure functions counted as pure), and neighbors that add to the same
+ * number (`count += expand(i, i)` / `count += expand(i, i + 1)`) from parts that change nothing else.
+ */
+function partnersOf(a: Answer): number[] {
+  const { ctx } = a;
+  const sn = snippetOf(ctx);
+  const out = new Set((sn.runs.find((r) => r.includes(a.at)) ?? []).filter((j) => j !== a.at));
+  const acc = (j: number) => {
+    const m = ctx.lines[j].trim().match(/^([A-Za-z_]\w*)\s*[+-]=\s*(.+)$/);
+    if (!m || ctx.kinds.get(m[1]) !== 'num') return null;
+    const fx = exprEffectsOf(m[2], sn.pure);
+    return fx && !fx.reads.includes(m[1]) && !fx.writes.length ? { target: m[1], fx } : null;
+  };
+  const mine = acc(a.at);
+  if (mine) {
+    for (const step of [-1, 1]) {
+      for (let j = a.at + step; j >= 0 && j < ctx.lines.length; j += step) {
+        if (!ctx.lines[j].trim()) continue;
+        if (indentStr(ctx.lines[j]) !== indentStr(ctx.lines[a.at])) break;
+        const o = acc(j);
+        if (!o || o.target !== mine.target || !independent(o.fx, mine.fx)) break;
+        out.add(j);
+      }
+    }
+  }
+  return [...out];
+}
+
 function wrongFor(req: ChoiceRequest): string[] {
   const code = codeOnly(req.answer);
   // Half of a statement that spans lines: nothing sensible to pick from.
@@ -2376,9 +2807,12 @@ function wrongFor(req: ChoiceRequest): string[] {
   // A caller's `at` is the answer's own line (`gapChoices` works out which of two lines with its code).
   const pool = poolFor(code, ctx, req.context ? req.at : 0, true, req.context ? req.at !== undefined : true);
   const { a } = pool;
-  const skip = new Set([...(req.exclude ?? []), ...(req.visible ?? [])].map((l) => keyOf(codeOnly(l))));
-  const excluded = new Set((req.exclude ?? []).map((l) => keyOf(codeOnly(l))));
   const visible = new Set((req.visible ?? []).map((l) => keyOf(codeOnly(l))));
+  // Lines that could take the answer's place (`pairs = {…}` / `stack = []`, `count += expand(i, i)` /
+  // `count += expand(i, i + 1)`): never offered while hidden, so a right program is never graded wrong.
+  const partners = ctx.known && a.at >= 0 ? partnersOf(a).map((j) => ctx.keys[j]).filter((k) => !visible.has(k)) : [];
+  const excluded = new Set([...(req.exclude ?? []).map((l) => keyOf(codeOnly(l))), ...partners]);
+  const skip = new Set([...excluded, ...visible]);
   // A line already on screen only as a direct change of the answer (`return True` / `return False`).
   const usable = (c: Cand) => !excluded.has(keyOf(c.text)) && (c.tier === 0 || !visible.has(keyOf(c.text)));
   const onScreen = (c: Cand) => !excluded.has(keyOf(c.text)) && visible.has(keyOf(c.text));

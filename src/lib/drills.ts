@@ -155,11 +155,14 @@ export function keyLineIndices(p: Problem): number[] {
 
 /**
  * A key line to blank, with three plausible wrong options (`lineChoices`: changes to the line, in
- * the context of its solution). The card shows the whole solution, so no line of it stands in as a
- * wrong option; when the line has too few changes, key lines of the same pattern's other problems
- * with its shape fill in (only ones that use names this solution defines). `at` asks for a specific
- * line (an index from `keyLineIndices`); otherwise a random key line, other than `avoid` when there
- * is one. `rnd` orders the options (default `Math.random`; seeded in checks).
+ * the context of its solution). The card shows the whole solution, so no other line of it is
+ * offered as a fallback; when the line has too few changes, key lines of the same pattern's other
+ * problems with its shape fill in (only ones that use names this solution defines before the
+ * line). Only when nothing else makes three options may a change of the line be one that is on
+ * screen (`self.stack.pop()` for `self.min_stack.pop()`: plainly wrong, so it is the last resort).
+ * `at` asks for a specific line (an index from `keyLineIndices`); otherwise a random key line,
+ * other than `avoid` when there is one. `rnd` orders the options (default `Math.random`; seeded in
+ * checks).
  */
 export function keyLineDrill(p: Problem, avoid?: number, at?: number, rnd: () => number = Math.random): KeyLineDrill | null {
   const parsed = parseSolution(p.solution);

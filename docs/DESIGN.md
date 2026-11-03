@@ -407,7 +407,7 @@ alone), so picking never climbs the typed ladder.
 
 - `lib/choices.ts` (re-exported from `lib/drills.ts` and `components/CodeGaps.tsx`), pure. A wrong option is a
   plausible mistake, never the answer in disguise, never nonsense, and rarely the "center" of its set (the option
-  closest to all the others: about 4% of sets today; `npm run validate` keeps it under 35%):
+  closest to all the others: about 6% of sets today; `npm run validate` keeps it under 35%):
   `lineChanges(line, { context?, at? }, other?)` gives first-order changes: a token swapped (operators, bounds,
   pointers, methods, literals), an off-by-one, operands swapped, a `not` dropped or added, idiom mistakes (a sort
   dropped or reversed, a copy not made, peek instead of pop, an index loop instead of a value loop, a max-heap's
@@ -430,16 +430,27 @@ alone), so picking never climbs the typed ladder.
   pop (`stack.append(ch)`), a heap used as a list (`self.heap.append(val)`, `heap = heapq.heapify(heap)`), `=`
   for `+=`, `/=` / `%=` / `*=` for `//=`, `<<=` for `>>=`, a loop over a dict's values or over indices, a guard
   dropped, turned around or its branches swapped (`l1 = l1.next`), a string split or joined wrong, `pass` for a
-  `return` (or `break` / `continue`) that should stop. Then a change of the line may be offered even when that
-  code is on screen (`self.stack.pop()` above `self.min_stack.pop()`); a fallback line never is. With `context`
-  (the whole solution or template, `at` the line's index in it), only names bound before the line in its
-  function or template section, methods the value has and the right argument counts are used. Never a no-op
+  `return` (or `break` / `continue`) that should stop or for a guard's `return <value>`, a pop's value returned
+  from a function that returns nothing (`return self.min_stack.pop()`), `heapify` or a push for a `heappop`,
+  `d[k]` or `d.get(k)` for `d.get(k, default)`. Two extra rules are never stacked into one option. Only when
+  these still make no full set may a change of the line be one whose code is on screen (`self.stack.pop()`
+  above `self.min_stack.pop()`: plainly wrong, so the last resort); a fallback line never is. With `context`
+  (the whole solution or template, `at` the line's index in it), every name an option reads is bound before
+  the line on its way there: in its function (a name the function sets anywhere is its own throughout, as in
+  Python) or one around it, inside the loop that binds it (a loop's name is not there in another branch or
+  after the loop), never only inside a comprehension (`s` of `[-s for s in stones]`) and never a name the
+  answer binds first (`tail = tail.next` for `tail = dummy`); an option leaves no name unset that a later line
+  reads (`stack = []` for `pairs = {…}`) and sets no name the function only reads from the one around it
+  (`tokens = …` inside `read()`); methods the value has and the right argument counts are used, the snippet's
+  own functions and classes included (`Node(key)` for `Node(key, val)`). Never a no-op
   (`+ 0`, `* 1`, `[-0]`, a unary `+`, `x &= x`, a line that sets each target to itself such as
   `dp[i][j] = dp[i][j]` or `a, b = a, b`), a target twice (`a.x, a.x = …`),
   a remainder that never changes (`n % 1`, `n % 2 == 2`), a change inside a string, a renamed loop or
   comprehension variable or new name, an `if` turned into a `while`, two names swapped over equal values,
-  nonsense such as `left < left`, `x[x]` or `while False`, or a `def` / `class` / structure line; a hex literal
-  is one token (`0x7FFFFFFF` never becomes `1x7FFFFFFF`).
+  nonsense such as `left < left`, `x[x]`, `while False`, a test whose result is known where it stands
+  (`if n in nums:` inside `for n in nums:`, `if stack is None:` for a list) or a statement that is only a value
+  (`read`, `self.heap[0]`), or a `def` / `class` / structure line; a hex literal is one token (`0x7FFFFFFF`
+  never becomes `1x7FFFFFFF`).
   `isGivenLine(line)`: bare structure (`else:`, `try:`, `pass`, `while True:`, decorators, `def` / `class` lines,
   lone brackets, half of a multi-line statement) that gets no options. `MIN_PICK_OPTIONS = 3` and
   `isRealPick(line, options)`: a pick needs the answer and two wrong options and a line that is not bare
@@ -449,7 +460,14 @@ alone), so picking never climbs the typed ladder.
   is `return`, `n % 2 != 0` is `n % 2 == 1`, the pairs of `a, b = x, y` sorted, `min` / `max` / `*` operands
   sorted), so no option means the same as the answer or as another option; a loop's symmetry counts too
   (`for a, b in edges:` with a body that adds both directions, a loop over `((1, 0), (-1, 0), (0, 1), (0, -1))`
-  where the names may trade places or change sign). `codeOnly(line)` (an option as shown: code at its
+  where the names may trade places or change sign), and so does the line's place (`canonIn`): a dummy node's
+  value nothing reads (`ListNode(1, head)` is `ListNode(0, head)`) and its `.next` while it is still `head`;
+  `x is y` between two containers the code makes is `False`; in a helper whose result is only ever tested
+  (`if has_cycle(nxt):`) every false value (`None`, `""`, `0`) is `False` (a method's result goes back as it is,
+  so there `None` is not `False`); a call of a function that returns nothing, returned or kept in what is
+  returned, is the same whatever its arguments (`return backtrack(0)`, `res = backtrack(1)`); the last line's
+  call with its result dropped (`dfs(0, self.root)` for `return dfs(0, self.root)`) is a bare `return`.
+  `codeOnly(line)` (an option as shown: code at its
   indentation, no trailing comment); `lineChoices(answer, otherLines, n = 3, rnd = Math.random, { context, at,
   visible })` → up to `n` wrong lines chosen so the answer is not the center (three alternatives at one site,
   else a 2x2: two changes and both together, else a seeded search for a set where it is not; `answerIsCenter`,
@@ -459,14 +477,23 @@ alone), so picking never climbs the typed ladder.
   for a line whose code is in its solution twice, used when the screen knows which of the two it asks, else all
   of them; written by `scripts/check-distractors.py`, which runs every candidate, `choiceCandidates`, in place on
   the examples, a few added valid inputs that reach code the examples miss (`EXTRA_INPUTS`: an empty string, a
-  ladder with no path…) and random inputs; `src/content/templateDeny.ts`, by hand, for the pattern templates),
-  with fallbacks from `otherLines` only of the answer's shape and only with names in scope at the answer (never a
-  nested function's own names; in a template, from its own section), never `visible`; `gapChoices(lines, gaps,
+  ladder with no path…) and random inputs, or, where random inputs would break the problem's rules or miss what
+  matters, inputs made to its rules (`VALID_INPUTS`: a rotated list of distinct values, a k within the list, p and
+  q nodes of the tree, one answer for Gas Station, grids that are not square, a word that is a path); it compares
+  only what LeetCode judges (the result; the arguments only for a method that returns nothing), lists in the order
+  that counts (`ANY_ORDER`: a set of combinations in any order, each permutation as it is), any right order for
+  Course Schedule II and Alien Dictionary (`CHECKS`), and runs the design classes on random operations within
+  their rules (`DESIGN`; the codecs by a round trip); `src/content/templateDeny.ts`, by hand, for the pattern
+  templates), with fallbacks from `otherLines` only of the answer's shape and only with names bound before the
+  answer (never a nested function's own names; in a template, from its own section), never `visible`; `gapChoices(lines, gaps,
   seed = 0, n = 3, extra = [], { context, at, visible })` → `{ answer, options }[]` per gap, deterministic per
   seed and content (a
   retry or reload shows the same options), fallback lines that are not on screen (the other gaps' lines,
   `extra`), never a line that can trade places with the gap's when both are gaps (`swapRuns`), so two such gaps
-  cannot be crossed (one on screen may be offered: picking it is plainly wrong); a line whose code is in the
+  cannot be crossed (one on screen may be offered: picking it is plainly wrong), and never a hidden line of the
+  snippet that can take the answer's place (its run in `swapRuns` over the whole snippet, with the snippet's own
+  pure functions such as `expand` or `self.maxDepth` counted as pure, and neighbors adding to one number:
+  `count += expand(i, i)` / `count += expand(i, i + 1)`); a line whose code is in the
   snippet twice is placed by the code shown above it (`visible`, when there is no `at`); a gap gets fewer than
   `n` wrong lines only when its line has few real alternatives. `optionKey`.
 - `lib/order.ts`, pure: `swapRuns(lines)` → runs of neighboring simple statements at one indentation whose order

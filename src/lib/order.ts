@@ -43,7 +43,7 @@ const KEYWORDS = new Set([
 const NOT_SIMPLE =
   /^(return|break|continue|pass|raise|yield|del|global|nonlocal|import|from|assert|if|elif|else|while|for|with|try|except|finally|def|class|async|await|@)\b/;
 
-interface Effects {
+export interface Effects {
   reads: string[];
   writes: string[];
 }
@@ -81,9 +81,10 @@ const path = (t: string) => t.replace(/\s+/g, '');
 
 /**
  * What an expression reads and writes (a mutating method writes its receiver), or null when it calls
- * something that could do anything.
+ * something that could do anything. `pure`: the snippet's own functions known to only compute a
+ * value (`expand`, `self.maxDepth`), called like a pure builtin.
  */
-function exprEffects(expr: string, out: Effects): boolean {
+function exprEffects(expr: string, out: Effects, pure?: ReadonlySet<string>): boolean {
   const toks = expr.match(TOK) ?? [];
   for (let k = 0; k < toks.length; k++) {
     const t = toks[k];
@@ -106,7 +107,7 @@ function exprEffects(expr: string, out: Effects): boolean {
     // A keyword argument's name (`key=…` inside a call).
     if (toks[k + 1] === '=' && k > 0 && (toks[k - 1] === '(' || toks[k - 1] === ',')) continue;
     if (toks[k + 1] === '(') {
-      if (PURE_CALLS.has(p)) continue;
+      if (PURE_CALLS.has(p) || pure?.has(p)) continue;
       const dot = p.lastIndexOf('.');
       if (dot < 0) return false; // a free function: could do anything
       const recv = p.slice(0, dot);
@@ -145,14 +146,14 @@ function subscriptBase(toks: readonly string[], end: number): string | null {
 }
 
 /** The names a target writes (`a[i]` writes `a`, `self.x` writes `self.x`) and reads (its indices). */
-function targetEffects(target: string, out: Effects): boolean {
+function targetEffects(target: string, out: Effects, pure?: ReadonlySet<string>): boolean {
   for (const raw of splitTop(target.replace(/^[([]\s*|\s*[)\]]$/g, ''))) {
     const t = raw.trim().replace(/^\*/, '');
     if (!t) continue;
     const m = t.match(/^([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*(\[.*\])?$/);
     if (!m) return false;
     out.writes.push(path(m[1]));
-    if (m[2] && !exprEffects(m[2].slice(1, -1), out)) return false;
+    if (m[2] && !exprEffects(m[2].slice(1, -1), out, pure)) return false;
   }
   return true;
 }
@@ -183,8 +184,8 @@ export function splitTop(s: string): string[] {
   return out;
 }
 
-/** What a simple statement reads and writes, or null when it is not one that can move. */
-function effects(line: string): Effects | null {
+/** What a simple statement reads and writes, or null when it is not one that can move (`pure`: see `exprEffects`). */
+export function effects(line: string, pure?: ReadonlySet<string>): Effects | null {
   const s = stripComment(line).trim();
   if (!s || s.endsWith(':') || NOT_SIMPLE.test(s) || /\bprint\s*\(|\byield\b|:=/.test(s)) return null;
   const out: Effects = { reads: [], writes: [] };
@@ -192,7 +193,7 @@ function effects(line: string): Effects | null {
   if (at < 0) {
     // A call statement: `nums.sort()`, `heapq.heappush(heap, x)`.
     if (!/\)$/.test(s)) return null;
-    if (!exprEffects(s, out) || !out.writes.length) return null;
+    if (!exprEffects(s, out, pure) || !out.writes.length) return null;
     return out;
   }
   const lhs = s.slice(0, at);
@@ -204,17 +205,23 @@ function effects(line: string): Effects | null {
     parts.push(rest.slice(0, a.at));
     rest = rest.slice(a.at + 1);
   }
-  for (const t of parts) if (!targetEffects(t, out)) return null;
+  for (const t of parts) if (!targetEffects(t, out, pure)) return null;
   if (op !== '=') out.reads.push(...out.writes);
-  if (!exprEffects(rest, out)) return null;
+  if (!exprEffects(rest, out, pure)) return null;
   return out;
 }
 
 const overlaps = (a: string, b: string) => a === b || a.startsWith(b + '.') || b.startsWith(a + '.');
 const meets = (xs: readonly string[], ys: readonly string[]) => xs.some((x) => ys.some((y) => overlaps(x, y)));
 
+/** What an expression reads and writes, or null when it calls something that could do anything (`pure`: see `exprEffects`). */
+export function exprEffectsOf(expr: string, pure?: ReadonlySet<string>): Effects | null {
+  const out: Effects = { reads: [], writes: [] };
+  return exprEffects(expr, out, pure) ? out : null;
+}
+
 /** Two simple statements that run the same in either order. */
-function independent(a: Effects, b: Effects): boolean {
+export function independent(a: Effects, b: Effects): boolean {
   return !meets(a.writes, [...b.reads, ...b.writes]) && !meets(b.writes, a.reads);
 }
 
@@ -236,7 +243,7 @@ export function canSwap(a: string, b: string): boolean {
  * in order). Blank and comment-only lines are skipped; any other line between two lines, or a change
  * of indentation, ends a run. Every pair in a run is independent, so any order of a run is right.
  */
-export function swapRuns(lines: readonly string[]): number[][] {
+export function swapRuns(lines: readonly string[], pure?: ReadonlySet<string>): number[][] {
   const runs: number[][] = [];
   let run: number[] = [];
   let runFx: Effects[] = [];
@@ -248,7 +255,7 @@ export function swapRuns(lines: readonly string[]): number[][] {
   };
   lines.forEach((line, i) => {
     if (!stripComment(line).trim()) return;
-    const fx = effects(line);
+    const fx = effects(line, pure);
     if (!fx) return close();
     const ind = indentOf(line);
     if (run.length && ind === runIndent && runFx.every((o) => independent(o, fx))) {
