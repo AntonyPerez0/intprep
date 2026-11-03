@@ -37,6 +37,11 @@ export const XP = {
   blitzPerCorrect: 2,
   /** Pattern Blitz, Key lines: each key line typed right on the first check. */
   blitzCodePerCorrect: 4,
+  /**
+   * Pattern Blitz, Key lines: each key line picked right from four options. About 5/8 of typing it
+   * (as `pickCorrect` to `codeCorrect`), above a pattern spotted (`blitzPerCorrect`).
+   */
+  blitzCodePickPerCorrect: 3,
 };
 
 export const GEMS = {
@@ -143,7 +148,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'combo-10', icon: 'bolt', title: 'Combo Breaker', desc: 'Get 10 answers right in a row', gems: 10, test: (p) => p.stats.bestCombo >= 10 },
   { id: 'blitz-150', icon: 'timer', title: 'Speed Reader', desc: 'Score 150 in Spot the pattern', gems: 10, test: (p) => p.stats.blitzBest >= 150 },
   { id: 'blitz-400', icon: 'rocket', title: 'Pattern Radar', desc: 'Score 400 in Spot the pattern', gems: 30, test: (p) => p.stats.blitzBest >= 400 },
-  { id: 'rebuild-perfect', icon: 'keyboard', title: 'From Memory', desc: 'Rebuild a solution with no misses', gems: 15, test: (p) => p.stats.perfectRebuilds >= 1 },
+  { id: 'rebuild-perfect', icon: 'keyboard', title: 'From Memory', desc: 'Type a solution from memory with no misses', gems: 15, test: (p) => p.stats.perfectRebuilds >= 1 },
   { id: 'mastered-5', icon: 'star', title: 'Crowned', desc: 'Get 5 problems to Mastered', gems: 30, test: (p) => masteredCount(p) >= 5 },
   { id: 'level-10', icon: 'award', title: 'Rising Star', desc: 'Reach level 10', gems: 25, test: (p) => levelInfo(p.xp).level >= 10 },
 ];

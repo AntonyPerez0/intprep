@@ -6,8 +6,10 @@
 // - From memory: type the whole template into a blank editor, then compare it line by line.
 // In all three, the first check sets the score and the learner may fix their answer and check
 // again. Without ?mode= it opens where the ladder says: Pick the gaps while the template is new
-// (`templateInput`), then Fill the gaps until that is strong (80%+) or the template has been typed
-// from memory, then From memory. "Always type" skips picking; "Always pick" opens on picking.
+// (`templateInput`: until a Pick the gaps round here, or typed gaps, reach 80%), then Fill the gaps
+// until that is strong (80%+) or the template has been typed from memory, then From memory.
+// "Always type" skips picking; "Always pick" opens on picking. In "Pick first, then type", Pick the
+// gaps offers "Type instead" (the same gaps, typed) until its first check.
 
 import '../styles/pages/drills.css';
 import '../styles/pages/template-drill.css';
@@ -45,6 +47,7 @@ import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordTemplate, useProgress, type Progress, type TemplateMode, type TemplateProgress } from '../lib/store';
 import { ActionBar, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeTyper } from '../components/CodeTyper';
+import { InputSwitch } from '../components/InputSwitch';
 import { GapsWindow, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
 import { SessionShell } from '../components/Shell';
@@ -71,9 +74,10 @@ const READY = TEMPLATE_READY;
 
 /**
  * The ladder: Pick the gaps while the template is new (`templateInput`: in "Pick first, then
- * type" until a pick or gaps best of 80%+ or a From memory try; always in "Always pick"; never in
- * "Always type"), then Fill the gaps until that is strong or the template has been typed from
- * memory, then From memory.
+ * type" until a Pick the gaps round here of 80%+ (the pattern intro's pick does not count), a
+ * typed gaps best of 80%+, or a From memory try; always in "Always pick"; never in "Always
+ * type"), then Fill the gaps until that is strong or the template has been typed from memory,
+ * then From memory.
  */
 export function templateLadder(setting: InputMode | undefined, t: TemplateProgress | undefined): Mode {
   if (templateInput(setting, t) === 'pick') return 'pick';
@@ -170,6 +174,15 @@ interface DrillProps {
   onRestart: (mode?: Mode) => void;
 }
 
+/** Pick the gaps and Fill the gaps: the round per unit, and "Type instead". */
+interface GapsDrillProps extends DrillProps {
+  rounds: RefObject<Record<string, number>>;
+  /** Pick the gaps: "Type instead" (Pick first, then type only), the same gaps typed. */
+  onTypeInstead?: () => void;
+  /** Fill the gaps: set by "Type instead", so the first gap takes focus on arrival. */
+  focusNow?: RefObject<boolean>;
+}
+
 /**
  * Picks the mode (from ?mode=, else the ladder), keeps the URL in sync, and asks before a mode
  * switch after the first Check, since that restarts the attempt.
@@ -192,7 +205,13 @@ function TemplateDrill({
   const [setting] = useState<InputMode>(() => getProgress().settings.typingMode);
   const [auto] = useState<Mode>(() => templateLadder(setting, getProgress().templates?.[g.category]));
   const asked = params.get('mode');
-  const mode: Mode = isMode(asked) ? asked : auto;
+  // "Type instead" shows Fill the gaps at once, inside the click (see `typeInstead`), until the URL
+  // catches up.
+  const [instead, setInstead] = useState<Mode | null>(null);
+  const mode: Mode = instead ?? (isMode(asked) ? asked : auto);
+  useEffect(() => {
+    if (instead && asked === instead) setInstead(null);
+  }, [asked, instead]);
   const [checked, setChecked] = useState(false);
   const [pending, setPending] = useState<Mode | null>(null);
 
@@ -214,6 +233,16 @@ function TemplateDrill({
   const keepGoing = () => {
     switched.current = false;
     setPending(null);
+  };
+  // "Type instead" on Pick the gaps (before its first check): Fill the gaps on the same round, so
+  // the same lines, typed. The typed drill mounts inside the click (local state: the router's
+  // update comes later) and focuses its first gap, so a phone opens its keyboard: the learner asked
+  // to type.
+  const typeNow = useRef(false);
+  const typeInstead = () => {
+    typeNow.current = true;
+    flushSync(() => setInstead('gaps'));
+    setMode('gaps');
   };
 
   // After a switch, keep keyboard and screen-reader focus on the switch (now on the new mode's
@@ -238,9 +267,9 @@ function TemplateDrill({
       {mode === 'memory' ? (
         <MemoryDrill key="memory" {...shared} />
       ) : mode === 'pick' ? (
-        <PickDrill key="pick" {...shared} rounds={rounds} />
+        <PickDrill key="pick" {...shared} rounds={rounds} onTypeInstead={setting === 'auto' ? typeInstead : undefined} />
       ) : (
-        <GapsDrill key="gaps" {...shared} rounds={rounds} />
+        <GapsDrill key="gaps" {...shared} rounds={rounds} focusNow={typeNow} />
       )}
       {pending && (
         <Modal onClose={keepGoing} labelledBy="tdrill-switch-title">
@@ -426,7 +455,7 @@ function NewGapsButton({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" className="btn btn-quiet btn-sm tdrill-tool" onClick={onClick} title="Blank a different set of lines">
       <RefreshCw aria-hidden="true" />
-      New gaps
+      <span className="tdrill-tool-label">New gaps</span>
     </button>
   );
 }
@@ -536,7 +565,7 @@ function GapsDone({
  * slots, each picked from the template's line and plausible wrong ones (`usePickGaps`), in the
  * same window as Fill the gaps. Check once every slot has a pick.
  */
-function PickDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+function PickDrill({ g, modes, setting, onChecked, onRestart, rounds, onTypeInstead }: GapsDrillProps) {
   const nav = useNavigate();
   const { back } = useBack(g);
   const meta = CATEGORY_BY_ID[g.category];
@@ -653,7 +682,14 @@ function PickDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillPro
           onContinue={finish}
           title={title}
           feedback={feedback}
-          secondary={first ? undefined : <NewGapsButton onClick={ex.fresh} />}
+          secondary={
+            first ? undefined : (
+              <div className="tdrill-tools">
+                {onTypeInstead && <InputSwitch to="type" onClick={onTypeInstead} />}
+                <NewGapsButton onClick={ex.fresh} />
+              </div>
+            )
+          }
           checkedSecondary={status === 'wrong' ? <CheckedAction onClick={retry} /> : undefined}
         />
       </div>
@@ -663,7 +699,7 @@ function PickDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillPro
 
 // ── Fill the gaps ───────────────────────────────────────────────────────────
 
-function GapsDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillProps & { rounds: RefObject<Record<string, number>> }) {
+function GapsDrill({ g, modes, setting, onChecked, onRestart, rounds, focusNow }: GapsDrillProps) {
   const nav = useNavigate();
   const { back } = useBack(g);
   const meta = CATEGORY_BY_ID[g.category];
@@ -675,8 +711,12 @@ function GapsDrill({ g, modes, setting, onChecked, onRestart, rounds }: DrillPro
   const [first, setFirst] = useState<GapsGrade | null>(null);
   const [checks, setChecks] = useState(0);
   const [result, setResult] = useState<GapsResult | null>(null);
-  // Phones wait for a tap, so the keyboard does not cover the template on arrival.
-  const [autoFocus] = useState(isFinePointer);
+  // Phones wait for a tap, so the keyboard does not cover the template on arrival, unless the
+  // learner just asked to type ("Type instead" on Pick the gaps).
+  const [autoFocus] = useState(() => isFinePointer() || !!focusNow?.current);
+  useEffect(() => {
+    if (focusNow) focusNow.current = false;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const workRef = useRef<HTMLDivElement>(null);
   const gapsRef = useRef<CodeGapsHandle>(null);
 

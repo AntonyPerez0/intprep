@@ -453,7 +453,8 @@ function MemoryRow({ pick, mode }: { pick: MemoryPick; mode: InputMode }) {
   const picking = pick.input === 'pick';
   const picked = pickedSummary(pick.picked);
   // Not typed from memory yet: while the code is new (Pick first, then type) it is picked, line by
-  // line, and typing takes over after a right review; in Always pick it stays picked.
+  // line, and typing takes over once the learner has shown they know it (`isNewCode` in
+  // lib/input.ts); in Always pick it stays picked.
   const never = picking
     ? mode === 'tap'
       ? picked

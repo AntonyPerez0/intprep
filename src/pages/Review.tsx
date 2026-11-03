@@ -1,6 +1,6 @@
 import '../styles/pages/review.css';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Brain, CalendarCheck, CircleCheck, GraduationCap, Keyboard, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Brain, CalendarCheck, CircleCheck, CodeXml, GraduationCap, Keyboard, ListChecks, Repeat2, RotateCcw, Trophy, Zap, type LucideIcon } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, PROBLEMS } from '../content/index';
@@ -11,7 +11,7 @@ import { holdToasts } from '../lib/events';
 import { daysBetween, parseDay, today } from '../lib/date';
 import { cardsForProblem, orderDeck, retryCard, SESSION_PROBLEMS, type DrillCardSpec } from '../lib/drills';
 import { XP } from '../lib/game';
-import { problemInput } from '../lib/input';
+import { problemInput, sharedInput, type InputMode } from '../lib/input';
 import { shuffle } from '../lib/random';
 import { gradeFrom, type Grade } from '../lib/srs';
 import { sfx } from '../lib/sound';
@@ -61,14 +61,15 @@ interface Tally {
 }
 
 /**
- * A typed coding card missed by a little: at least 3 lines in 4 right on the first check, or one
- * line wrong in two or more. It counts as half right toward the problem's grade, so a typo is not
- * scheduled like a blank recall. A key line (one line) is all or nothing, "Show answer" with
- * nothing typed has no line right, and picked cards have no partial credit, so those stay a miss.
+ * A coding card missed by a little: at least 3 lines in 4 right on the first check, or one line
+ * wrong in two or more, typed (`lines`) or picked (`picked`: gaps picked, or a part's lines put in
+ * order). It counts as half right toward the problem's grade, so a slip is not scheduled like a
+ * blank recall. A key line (one line) is all or nothing, and "Show answer" with nothing typed has
+ * no line right, so those stay a miss.
  */
 function nearMiss(r: DrillResult): boolean {
-  const l = r.lines;
-  if (r.correct || !r.coded || !l || l.total < 2) return false;
+  const l = r.coded ? r.lines : r.input === 'pick' ? r.picked : undefined;
+  if (r.correct || !l || l.total < 2) return false;
   return l.correct / l.total >= 0.75 || l.total - l.correct === 1;
 }
 
@@ -217,7 +218,7 @@ function ReviewSession({ mode }: { mode: Mode }) {
             How Daily review works
           </div>
           <ol className="review-how" aria-labelledby="review-how-label">
-            {HOW_IT_WORKS.map((s, k) => (
+            {howItWorks(progress.settings.typingMode).map((s, k) => (
               <li key={s.title} className="review-how-step">
                 <IconTile icon={s.icon} size="sm" />
                 <div className="grow">
@@ -237,11 +238,29 @@ function ReviewSession({ mode }: { mode: Mode }) {
 
   if (done) {
     const acc = Math.round((correct / Math.max(1, firstTotal)) * 100);
-    // Pattern Blitz's typing game (Key lines) opens at 3 learned problems.
-    const keyLines = keyLinePool(progress, PROBLEMS).length >= KEY_LINES_MIN;
+    // Pattern Blitz's Key lines opens at 3 learned problems. Its button says how its rounds will
+    // take the line, as its lobby does: all picked, all typed, or a mix.
+    const pool = keyLinePool(progress, PROBLEMS);
+    const keyLines = pool.length >= KEY_LINES_MIN;
+    const linesInput = sharedInput(progress.settings.typingMode, pool.map((e) => progress.problems[e.p.id]));
     const perfect = acc === 100;
     const wrote = code.total > 0;
     const codeLine = wrote ? ` You wrote ${code.correct} of ${code.total} lines of code right on the first check.` : '';
+    // Only problems that were due move on the schedule: practice ahead (and unit practice on
+    // problems not due) leaves it as it was.
+    const dueCount = ids.filter((id) => dueAtStart.has(id)).length;
+    const schedule =
+      dueCount === ids.length
+        ? perfect
+          ? ' These problems now move further out on your schedule.'
+          : ' Missed problems come back sooner, so they stick.'
+        : dueCount === 0
+          ? perfect
+            ? ' Practice doesn’t change your schedule.'
+            : ' Missed cards came back in this session. Practice doesn’t change your schedule.'
+          : perfect
+            ? ' The ones that were due now move further out on your schedule.'
+            : ' Missed problems that were due come back sooner, so they stick.';
     return (
       <SessionShell progress={1} onClose={() => nav('/')} title={title}>
         <div className="review-done">
@@ -252,12 +271,12 @@ function ReviewSession({ mode }: { mode: Mode }) {
             subtitle={
               perfect ? (
                 <>
-                  Flawless: all {firstTotal} cards right on the first try{wrote ? `, ${code.total} lines of code included` : ''}. These problems now move
-                  further out on your schedule.
+                  Flawless: all {firstTotal} cards right on the first try{wrote ? `, ${code.total} lines of code included` : ''}.{schedule}
                 </>
               ) : (
                 <>
-                  {correct} of {firstTotal} cards right on the first try.{codeLine} Missed problems come back sooner, so they stick.
+                  {correct} of {firstTotal} cards right on the first try.{codeLine}
+                  {schedule}
                 </>
               )
             }
@@ -290,8 +309,22 @@ function ReviewSession({ mode }: { mode: Mode }) {
             </Link>
             {keyLines ? (
               <Link to="/blitz?game=lines" className="btn btn-secondary btn-lg btn-block">
-                <Keyboard aria-hidden="true" />
-                Type key lines
+                {linesInput === 'pick' ? (
+                  <>
+                    <ListChecks aria-hidden="true" />
+                    Pick key lines
+                  </>
+                ) : linesInput === 'type' ? (
+                  <>
+                    <Keyboard aria-hidden="true" />
+                    Type key lines
+                  </>
+                ) : (
+                  <>
+                    <CodeXml aria-hidden="true" />
+                    Play Key lines
+                  </>
+                )}
               </Link>
             ) : (
               <Link to="/blitz" className="btn btn-secondary btn-lg btn-block">
@@ -430,8 +463,17 @@ const GRADE_UI: Record<Grade, { label: string; tone: 'danger' | 'warning' | 'suc
   easy: { label: 'Easy', tone: 'brand' },
 };
 
-const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [
-  { icon: GraduationCap, title: 'Learn a problem', body: 'A guided lesson walks you from the prompt to working code.' },
-  { icon: Brain, title: 'Recall it', body: 'Spot the pattern, then the code: pick its lines while they are new, type them once you know them.' },
-  { icon: CalendarCheck, title: 'Space it out', body: 'Each good review pushes the next one further away.' },
-];
+/** How a review asks for the code, in the learner's "Code practice" setting (as Home's review card says it). */
+const RECALL_HOW: Record<InputMode, string> = {
+  auto: 'Spot the pattern, then recall the code: pick it while it’s new, type it once you know it.',
+  type: 'Spot the pattern, then write the code from memory.',
+  tap: 'Spot the pattern, then pick its code from choices.',
+};
+
+function howItWorks(mode: InputMode): { icon: LucideIcon; title: string; body: string }[] {
+  return [
+    { icon: GraduationCap, title: 'Learn a problem', body: 'A guided lesson walks you from the prompt to working code.' },
+    { icon: Brain, title: 'Recall it', body: RECALL_HOW[mode] ?? RECALL_HOW.auto },
+    { icon: CalendarCheck, title: 'Space it out', body: 'Each good review pushes the next one further away.' },
+  ];
+}

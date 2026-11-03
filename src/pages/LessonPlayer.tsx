@@ -443,7 +443,9 @@ export function LessonPlayer({ mode }: Props) {
       if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: r.perfect }));
       if (isRequeue) return;
       setGapsFirst({ grade: r, input });
-      if (typed > 0) recordTemplate(slide.category, r.score, input === 'pick' ? 'pick' : 'gaps');
+      // The intro's pick never marks the template known (`pickReady`): it comes right after the
+      // template was on screen. Template practice's next Pick the gaps round decides.
+      if (typed > 0) recordTemplate(slide.category, r.score, input === 'pick' ? 'pick' : 'gaps', { intro: true });
       if (!r.perfect) setQueue((q) => [...q, idx]);
     };
     // "Type instead": in "Pick first, then type" only (the pick step offers it until its first

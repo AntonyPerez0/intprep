@@ -3,8 +3,10 @@
 // - Spot the pattern: rapid-fire "which pattern is this?" across all units (recognition).
 // - Key lines: the key line of a solution you have learned, from the code around it (recall).
 //   Typed, or picked from four options while the problem's code is still new ("Pick first, then
-//   type": `problemInput` decides each round). Both score the same.
-// Misses on learned problems join today's review.
+//   type": `problemInput` decides each round). Both score the same points; a picked line earns
+//   less XP (`blitzCodePickPerCorrect`) and only typed lines count toward the Key lines best.
+// Misses on learned problems join the next review: today's, unless the problem was learned (or
+// lapsed) today (`flagForReview`).
 
 import '../styles/pages/blitz.css';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -19,11 +21,11 @@ import {
   CodeXml,
   Eye,
   Flame,
+  Keyboard,
   LayoutGrid,
   Leaf,
   ListChecks,
   Lock,
-  PencilLine,
   Play,
   Repeat2,
   RotateCcw,
@@ -50,16 +52,17 @@ import {
   type KeyLineView,
 } from '../lib/blitzLines';
 import { confetti } from '../lib/confetti';
+import { today } from '../lib/date';
 import { acceptedCategories, patternChoices } from '../lib/drills';
 import { XP } from '../lib/game';
 import { gradeGaps } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
-import { isNewCode, problemInput, type CodeInput } from '../lib/input';
+import { isNewCode, problemInput, sharedInput, type CodeInput } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { nextStep } from '../lib/path';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
-import { awardXp, flagForReview, getProgress, recordAnswers, recordBlitz, recordBlitzCode, updateSettings, useProgress } from '../lib/store';
+import { awardXp, flagForReview, getProgress, recordAnswers, recordBlitz, recordBlitzCode, updateSettings, useProgress, type Progress } from '../lib/store';
 import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
@@ -340,6 +343,14 @@ function Lobby({
   /** Some rounds will be picked (Pick first, then type): the lobby says which. */
   const somePick = typingMode === 'auto' && newCount > 0;
   const verb = allPick ? 'Pick' : 'Type';
+  // Picked lines earn less XP and do not count toward the best (only typed lines do).
+  const xpRule = !lines
+    ? `Each correct answer also earns ${xpEach} XP.`
+    : allPick
+      ? `Each correct line also earns ${XP.blitzCodePickPerCorrect} XP. Picked lines don't count toward your best.`
+      : somePick
+        ? `Each correct line also earns ${xpEach} XP typed, ${XP.blitzCodePickPerCorrect} picked. Only typed lines count toward your best.`
+        : `Each correct line also earns ${xpEach} XP.`;
 
   return (
     <SessionShell progress={null} onClose={() => nav('/')} title="Pattern Blitz">
@@ -508,9 +519,7 @@ function Lobby({
             </span>
             <div>
               <div className="blitz-rule-title">{POINTS} points a hit</div>
-              <div className="blitz-rule-body">
-                Each correct {lines ? 'line' : 'answer'} also earns {xpEach} XP.
-              </div>
+              <div className="blitz-rule-body">{xpRule}</div>
             </div>
           </div>
           <div className="blitz-rule">
@@ -528,7 +537,7 @@ function Lobby({
             </span>
             <div>
               <div className="blitz-rule-title">Misses come back</div>
-              <div className="blitz-rule-body">{lines ? 'Problems you miss' : 'Learned problems you miss'} join today's review.</div>
+              <div className="blitz-rule-body">{lines ? 'Problems you miss' : 'Learned problems you miss'} join your next review.</div>
             </div>
           </div>
         </section>
@@ -600,7 +609,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
     if (phase !== 'over' || settled.current) return;
     settled.current = true;
     const correct = answers.filter((a) => a.ok).length;
-    // Missed a problem you have learned? It joins today's review queue.
+    // Missed a problem you have learned? It joins today's review queue (one learned today waits for tomorrow's).
     answers.filter((a) => !a.ok).forEach((a) => flagForReview(a.p.id));
     const isBest = zen ? false : recordBlitz(score);
     setNewBest(isBest && score > 0);
@@ -705,7 +714,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
                     <span className="badge badge-danger tabular blitz-count">{misses.length}</span>
                   </>
                 }
-                sub="Misses on problems you've learned are added to today's review."
+                sub="Misses on problems you've learned join your next review."
               />
               <div className="list">
                 {misses.map((m, i) => {
@@ -946,6 +955,8 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
   const [open, setOpen] = useState<number | null>(0);
   const [answers, setAnswers] = useState<LineAnswer[]>([]);
   const [score, setScore] = useState(0);
+  // Points from typed lines only: the Key lines best counts these (a pick is a tap from four).
+  const [typedScore, setTypedScore] = useState(0);
   const [streak, setStreak] = useState(0);
   const [longest, setLongest] = useState(0);
   const [pops, setPops] = useState<{ id: number; text: string }[]>([]);
@@ -993,12 +1004,12 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
     const correct = answers.filter((a) => a.ok).length;
     // Every key-line problem is learned: a miss pulls it into today's review.
     new Set(answers.filter((a) => !a.ok).map((a) => a.p.id)).forEach((id) => flagForReview(id));
-    const isBest = zen ? false : recordBlitzCode(score);
-    setNewBest(isBest && score > 0);
+    const isBest = zen ? false : recordBlitzCode(typedScore);
+    setNewBest(isBest && typedScore > 0);
     recordAnswers(answers.length, correct, longest);
-    awardXp(correct * XP.blitzCodePerCorrect, 'blitz');
+    awardXp(linesXp(answers), 'blitz');
     sfx('complete');
-    if (isBest && score > 0) confetti();
+    if (isBest && typedScore > 0) confetti();
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { view } = round;
@@ -1073,6 +1084,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
     setStreak(nextStreak);
     setLongest((b) => Math.max(b, nextStreak));
     setScore((s) => s + gained);
+    if (round.input === 'type') setTypedScore((s) => s + gained);
     setPops((ps) => [...ps.slice(-3), { id: Date.now(), text: `+${gained}` }]);
     sfx('correct', nextStreak);
     advance(answered, (next) => ({ kind: 'correct', gained, mult, next: next.p.title, id: Date.now() }));
@@ -1106,9 +1118,14 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
     const picked = answers.filter((a) => a.input === 'pick').length;
     const accuracy = answers.length ? Math.round((correct / answers.length) * 100) : 0;
     const bestNow = progress.stats.blitzCodeBest;
-    // Which lines were picked, when some were: they score the same, so it is a note, not a stat.
+    // Which lines were picked, when some were: they score the same points, but only typed lines
+    // count toward the best, so a timed round says what its typed lines scored.
     const how =
-      picked === 0 ? '' : picked === answers.length ? ' Every line was picked from choices.' : ` ${picked} picked from choices, ${answers.length - picked} typed.`;
+      picked === 0
+        ? ''
+        : picked === answers.length
+          ? ` Every line was picked from choices.${zen ? '' : " Picked lines don't count toward your best."}`
+          : ` ${picked} picked from choices, ${answers.length - picked} typed.${zen ? '' : ` Typed lines scored ${typedScore} toward your best.`}`;
     const summary = `${correct} of ${answers.length} line${answers.length === 1 ? '' : 's'} right, longest streak ${longest}.${how}`;
     const subtitle =
       answers.length === 0
@@ -1144,7 +1161,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
                           </>
                         ),
                     },
-                    { label: 'XP earned', value: `+${correct * XP.blitzCodePerCorrect}` },
+                    { label: 'XP earned', value: `+${linesXp(answers)}` },
                   ]
             }
           >
@@ -1160,7 +1177,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
                     <span className="badge badge-danger tabular blitz-count">{misses.length}</span>
                   </>
                 }
-                sub="These problems join today's review. Write one from memory to lock it in."
+                sub={missesSub(progress, misses)}
               />
               <ul className="blitz-lmisses">
                 {misses.map((m, i) => (
@@ -1381,8 +1398,29 @@ function Fold() {
   );
 }
 
+/** Key lines XP: each line right on the first check, at the typed rate or the (lower) picked rate. */
+function linesXp(answers: readonly LineAnswer[]): number {
+  return answers.reduce((n, a) => n + (!a.ok ? 0 : a.input === 'pick' ? XP.blitzCodePickPerCorrect : XP.blitzCodePerCorrect), 0);
+}
+
+/**
+ * Under the missed lines: when they come back (today's review, or the next one for a problem
+ * learned or lapsed today), and the next step in the words of how Code from memory will take each
+ * problem's code: "Write" when every one is typed, else "Practice".
+ */
+function missesSub(progress: Progress, misses: readonly LineAnswer[]): string {
+  const ids = [...new Set(misses.map((m) => m.p.id))];
+  const t = today();
+  const when = ids.every((id) => (progress.problems[id]?.srs?.due ?? t) <= t) ? "today's review" : 'your next review';
+  const typed = sharedInput(progress.settings.typingMode, ids.map((id) => progress.problems[id])) === 'type';
+  return `These problems join ${when}. ${typed ? 'Write' : 'Practice'} one from memory to lock it in.`;
+}
+
 /** A missed key line on the results screen: the problem, what was typed or picked, the right line. */
 function LineMiss({ m }: { m: LineAnswer }) {
+  const progress = useProgress();
+  // Code from memory picks the code while it is new: the button's icon says which it will be.
+  const MemoryIcon = problemInput(progress.settings.typingMode, progress.problems[m.p.id]) === 'pick' ? ListChecks : Keyboard;
   const cat = CATEGORY_BY_ID[m.p.category];
   const n = m.view.start + m.view.gap;
   const typed = m.typed.trim();
@@ -1398,7 +1436,7 @@ function LineMiss({ m }: { m: LineAnswer }) {
           </div>
         </div>
         <Link to={`/p/${m.p.id}/rebuild`} className="btn btn-secondary btn-sm blitz-lmiss-cta" aria-label={`Code from memory: ${m.p.title}`}>
-          <PencilLine aria-hidden="true" />
+          <MemoryIcon aria-hidden="true" />
           Code from memory
         </Link>
       </div>

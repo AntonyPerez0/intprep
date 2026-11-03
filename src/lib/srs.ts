@@ -16,6 +16,8 @@ export interface SrsCard {
   reps: number;
   lapses: number;
   last: string;
+  /** The grade of the last review that moved this card. Optional: older saves do not have it. */
+  grade?: Grade;
 }
 
 const MIN_EASE = 1.3;
@@ -32,7 +34,7 @@ export function newCard(): SrsCard {
  */
 export function review(card: SrsCard, grade: Grade): SrsCard {
   const t = today();
-  const c = { ...card, last: t };
+  const c: SrsCard = { ...card, last: t, grade };
   const overdue = Math.max(0, daysBetween(card.due, t));
   const elapsed = Math.max(1, daysBetween(card.last, t));
   // Early reviews only count for the time that actually passed. A card that is due because it

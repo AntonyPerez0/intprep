@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react';
 import { addDays, daysBetween, today } from './date';
 import { later, toast } from './events';
 import { ACHIEVEMENTS, GEMS, levelInfo, levelTitle } from './game';
+import { TEMPLATE_READY, TYPED_PROOF } from './input';
 import { newCard, review, type Grade, type SrsCard } from './srs';
 import type { Difficulty } from '../content/types';
 import { sfx } from './sound';
@@ -31,6 +32,14 @@ export interface ProblemProgress {
   gapsPickBest?: number;
   /** When this problem was last written from memory (any mode, typed). */
   rebuiltAt?: number;
+  /**
+   * When it was last typed from memory well enough to count as known: a typed Fill the gaps or
+   * From scratch run of `TYPED_PROOF` (80%) or more (see `hasTypedProof` in lib/input.ts). A later
+   * lapse (`lapsedAt`) makes it stale. Optional: older saves do not have it.
+   */
+  typedAt?: number;
+  /** When its review card last lapsed (a review graded 'again' that reset it). Optional: older saves do not have it. */
+  lapsedAt?: number;
 }
 
 export interface TemplateProgress {
@@ -47,6 +56,12 @@ export interface TemplateProgress {
    * "Pick first, then type": see `templateInput` in lib/input.ts). Optional: older saves do not have it.
    */
   pickBest?: number;
+  /**
+   * A Pick the gaps round in Template practice reached `TEMPLATE_READY` (80%): the template counts
+   * as known (`isNewTemplate`). The pattern intro's "Your turn" pick never sets it. Optional: older
+   * saves do not have it.
+   */
+  pickReady?: boolean;
 }
 
 /** How a template was practiced: its gaps picked from choices, its gaps typed, or the whole template typed from memory. */
@@ -339,10 +354,13 @@ export function repairStreak(): boolean {
   return true;
 }
 
-/** Pull a learned problem into today's reviews (e.g. after a Blitz miss). */
+/**
+ * Pull a learned problem into today's reviews (e.g. after a Blitz miss). A problem learned or
+ * lapsed today stays due tomorrow: its next review needs a night in between.
+ */
 export function flagForReview(id: string) {
   const p = state.problems[id];
-  if (!p?.srs || p.srs.due <= today()) return;
+  if (!p?.srs || p.srs.due <= today() || (p.srs.reps === 0 && p.srs.last === today())) return;
   update((d) => {
     d.problems[id].srs!.due = today();
   });
@@ -412,7 +430,11 @@ export function reviewProblem(id: string, grade: Grade, opts: { force?: boolean;
     if (!p?.srs) return;
     p.reviews += 1;
     p.lastGrade = grade;
-    if (opts.force || p.srs.due <= today() || (grade === 'again' && opts.lapse !== false)) p.srs = review(p.srs, grade);
+    if (opts.force || p.srs.due <= today() || (grade === 'again' && opts.lapse !== false)) {
+      p.srs = review(p.srs, grade);
+      // A lapse makes earlier typed proof stale: the code is picked again (lib/input.ts).
+      if (grade === 'again') p.lapsedAt = Date.now();
+    }
   });
 }
 
@@ -454,7 +476,9 @@ export function recordBlitzCode(score: number) {
  * A finished Code from memory session: part by part (default), fill the gaps, or the whole
  * solution from scratch. `input` 'pick' (lines picked from choices: part by part or fill the gaps)
  * records its own best (`rebuildPickBest`, `gapsPickBest`) and leaves the typed bests, the last
- * written date and the perfect-rebuild count alone.
+ * written date and the perfect-rebuild count alone. A typed Fill the gaps or From scratch run of
+ * `TYPED_PROOF` or more is typed proof (`typedAt`): the code counts as known from then on, until a
+ * lapse.
  */
 export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gaps' | 'scratch' = 'parts', input: 'pick' | 'type' = 'type') {
   const picked = input === 'pick' && mode !== 'scratch';
@@ -472,14 +496,17 @@ export function recordRebuild(id: string, accuracy: number, mode: 'parts' | 'gap
     else if (mode === 'gaps') p.gapsBest = Math.max(p.gapsBest ?? 0, accuracy);
     else p.rebuildBest = Math.max(p.rebuildBest ?? 0, accuracy);
     p.rebuiltAt = Date.now();
+    if (mode !== 'parts' && accuracy >= TYPED_PROOF) p.typedAt = p.rebuiltAt;
   });
 }
 
 /**
  * Record a template drill for a unit: its gaps picked from choices, its gaps typed, or typed from
- * memory (default). Only ever raises a best. Returns true on a new best for that mode.
+ * memory (default). Only ever raises a best. Returns true on a new best for that mode. A Pick the
+ * gaps round of `TEMPLATE_READY` or more marks the template known (`pickReady`), except the
+ * pattern intro's check (`intro`), which comes right after the template was on screen.
  */
-export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode = 'memory'): boolean {
+export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode = 'memory', opts: { intro?: boolean } = {}): boolean {
   const prev = state.templates?.[cat];
   const best =
     mode === 'pick'
@@ -496,8 +523,12 @@ export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode
       at: Date.now(),
       ...(cur?.gapsBest !== undefined ? { gapsBest: cur.gapsBest } : {}),
       ...(cur?.pickBest !== undefined ? { pickBest: cur.pickBest } : {}),
+      ...(cur?.pickReady ? { pickReady: true } : {}),
     };
-    if (mode === 'pick') next.pickBest = Math.max(cur?.pickBest ?? 0, accuracy);
+    if (mode === 'pick') {
+      next.pickBest = Math.max(cur?.pickBest ?? 0, accuracy);
+      if (!opts.intro && accuracy >= TEMPLATE_READY) next.pickReady = true;
+    }
     else if (mode === 'gaps') next.gapsBest = Math.max(cur?.gapsBest ?? 0, accuracy);
     else {
       next.best = Math.max(cur?.best ?? 0, accuracy);

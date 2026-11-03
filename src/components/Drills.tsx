@@ -71,6 +71,12 @@ export interface DrillResult {
   input?: CodeInput;
   /** Typed code lines on the first check: how many were right, out of how many (typed cards only). */
   lines?: { correct: number; total: number };
+  /**
+   * Picked code on the first check: how many picks were right, out of how many (picked cards only:
+   * the gaps, or a part's lines with a placed distractor counted as one more). It gives a picked
+   * near miss the same partial credit as a typed one (Review's `nearMiss`); it is not code written.
+   */
+  picked?: { correct: number; total: number };
 }
 
 interface DrillProps {
@@ -732,7 +738,8 @@ export function KeyLineDrill({ problem: p, onDone, kicker, combo = 0, badge, met
   const finish = () => {
     const r = first ?? { ok, input: credit };
     const coded = r.input === 'type';
-    onDone({ kind: 'keyline', correct: r.ok, input: r.input, coded, lines: coded ? { correct: r.ok ? 1 : 0, total: 1 } : undefined });
+    const one = { correct: r.ok ? 1 : 0, total: 1 };
+    onDone({ kind: 'keyline', correct: r.ok, input: r.input, coded, lines: coded ? one : undefined, picked: coded ? undefined : one });
   };
   const later = checks > 1;
   // Right after "Show answer", the second step is typing the line, not fixing one.
@@ -998,7 +1005,7 @@ function PickGapsCard({ problem: p, onDone, kicker, combo = 0, badge, meta, seed
     flushSync(ex.retry);
     pickRef.current?.focusOptions();
   };
-  const finish = () => onDone({ kind: 'gaps', correct: !!first?.perfect, input: 'pick' });
+  const finish = () => onDone({ kind: 'gaps', correct: !!first?.perfect, input: 'pick', picked: first ? { correct: first.correct, total: first.total } : undefined });
   const fb = ex.revealed ? codeFeedback({ checks, perfect: g.perfect, gaveUp: false, summary: gapsSummary(g), comesBack, unit: 'gaps' }) : null;
 
   return (
@@ -1328,7 +1335,14 @@ function ArrangePartCard({
     flushSync(ex.retry);
     arrangeRef.current?.focus(k >= 0 ? k : undefined);
   };
-  const finish = () => onDone({ kind: 'part', correct: !!first?.perfect, input: 'pick' });
+  // A placed distractor counts as one more wrong line, as the score does.
+  const finish = () =>
+    onDone({
+      kind: 'part',
+      correct: !!first?.perfect,
+      input: 'pick',
+      picked: first ? { correct: first.correct, total: first.total + (first.usedDistractor ? 1 : 0) } : undefined,
+    });
   const fb = ex.revealed ? codeFeedback({ checks, perfect: r.perfect, gaveUp: false, summary: arrangeSummary(r), comesBack, unit: 'lines' }) : null;
 
   return (
@@ -1432,7 +1446,7 @@ function PickLinePartCard({
     });
     pickRef.current?.focusOptions();
   };
-  const finish = () => onDone({ kind: 'part', correct: !!first, input: 'pick' });
+  const finish = () => onDone({ kind: 'part', correct: !!first, input: 'pick', picked: { correct: first ? 1 : 0, total: 1 } });
   const fb = status !== 'idle' ? codeFeedback({ checks, perfect: ok, gaveUp: false, summary: `${ok ? 1 : 0} of 1 line correct`, comesBack, unit: 'lines' }) : null;
 
   return (

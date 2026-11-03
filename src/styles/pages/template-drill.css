@@ -235,6 +235,37 @@ details.disclosure.tdrill-cues > .tdrill-cue-list {
 .tdrill .actionbar .buttons > .tdrill-tool:first-child {
   margin-left: -12px;
 }
+/* Pick the gaps: "Type instead" (the shared InputSwitch) and "New gaps" side by side */
+.tdrill-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin-left: -12px;
+}
+/* Phones, with both tools: "New gaps" shows its icon only (its name stays for screen readers), so
+   "Type instead" keeps its words; the narrowest phones show both as icons, so Check keeps its full
+   width inside the screen */
+@media (max-width: 479px) {
+  .tdrill-tools:has(.input-switch) .tdrill-tool {
+    padding-inline: 10px;
+  }
+  .tdrill-tools:has(.input-switch) .tdrill-tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 379px) {
+  .tdrill-tools .input-switch {
+    gap: 0;
+    font-size: 0;
+    padding-inline: 10px;
+  }
+}
 
 /* ── Completion ─────────────────────────────────────────────────────────── */
 .tdrill-done .complete .lead {
