@@ -62,7 +62,7 @@ page, or the original blog post). Full references are at the end.
 | IntPrep feature | Main principles (section numbers) |
 |---|---|
 | Beginner foundations track (Python, Big-O, recursion, problem-solving framework) | Beginners need guidance (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
-| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on a new idea, 21 of 64, starts as "Pick the right code" from look-alike snippets; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
+| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on each new idea, 37 of 80, starts as "Pick the right code" from look-alike snippets, and a later exercise in the same lesson or the next types it; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
 | Pattern unit intro (analogy, recognition cues, template, the template's missing lines picked from choices while it is new, else typed, quiz) | Schemas and templates (9), worked examples (4), faded guidance (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
 | Guided lesson: predict the pattern first | Pretesting (6), calibration (11) |
 | Guided lesson: progressive hints | Faded guidance (4), productive struggle (6), expertise reversal (4) |
@@ -76,7 +76,7 @@ page, or the original blog post). Full references are at the end.
 | Review: a missed card comes back in the same session as a fresh version | Successive relearning (2), feedback (12) |
 | Insight recall with self-rating | Retrieval (1), generation (6), calibration (11) |
 | Code from memory (part by part, fill the gaps, from scratch; the first two picked while the code is new) and Template practice (pick the gaps, fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10) |
-| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s; a key line is picked from four while its problem is new, else typed), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
+| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s; a key line is picked from up to four while its problem is new, else typed), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
 | "Code practice" setting: Pick first, then type (default), Always type, Always pick | Faded guidance (4), Parsons problems (5), desirable difficulties only when the learner can succeed (7), generation (6); see [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code) |
 | XP, daily XP goal, levels, achievements | Gamification evidence (16), goal setting (18), self-determination theory (15) |
 | Streak, streak freezes bought with gems | Habit formation (19), Duolingo data (17), emergency reserves (18), broken-streak effects (18) |
@@ -116,9 +116,11 @@ Rowland (2014); Adesope, Trevisan & Sundararajan (2017); Pan & Rickard (2018); D
 - Because recall beats recognition, the coding cards **climb a format ladder** as a problem matures (see the
   [scheduling rules](#intpreps-review-scheduling-rules)): while the code is new, arrange a part and pick the
   gaps; then, typed, the key line and the gaps; then the gaps and a whole part; once it is mature, two parts.
-  Picking is the first rung, not the goal: typing takes over after the first right review. Code from memory
-  and Template practice climb the same way, from picking or filling gaps to a blank file. The top mastery
-  crowns should still require a successful recall-format drill, not only multiple choice.
+  Picking is the first rung, not the goal: typing takes over once the learner has shown they know the code: a
+  clean right review on a later day (a "Fuzzy" first review keeps it picked one more review), or a typed Code
+  from memory run of 80% or more. Code from memory and Template practice climb the same way, from picking or
+  filling gaps to a blank file. The top mastery crowns should still require a successful recall-format drill, not
+  only multiple choice.
 
 ## 2. Spacing and spaced-repetition scheduling
 
@@ -218,7 +220,7 @@ Morrison, Margulieux & Guzdial (2015).
 - **Fading across a unit:** the first problem in a pattern should be fully worked; later problems in the same
   unit can start with the walkthrough collapsed and invite an attempt first.
 - **Fading from picking to typing:** new code is picked from choices (a part's lines put in order, a missing
-  line chosen from four) and typed once the learner knows it, so the first attempts at a solution have support
+  line chosen from up to four) and typed once the learner knows it, so the first attempts at a solution have support
   that the later ones do not. See [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code).
 - **Fading across reviews:** the coding cards' format ladder (Section 1) removes scaffolding as the review
   interval grows, and Code from memory and Template practice open one rung above what the learner has shown.
@@ -246,11 +248,16 @@ Ericson, Margulieux & Rick (2017); Ericson, Foley & Rick (2018); Ericson et al. 
   builds each part by putting its lines in order, and the review's "Arrange a part" card does the same. Each
   has **one distractor** (when the part has two or more lines of code): a copy of one of its lines, a key line
   when there is one, with one small change (an off-by-one bound, a flipped comparison, a wrong pointer move),
-  placed next to the line it imitates. Lines keep their indentation. Distractors lowered learning efficiency for
-  young novice programmers (Harms, Chen & Kelleher, 2016), so each exercise has only one.
+  placed next to the line it imitates, and never a line of the solution. Lines keep their indentation. Lines
+  whose order does not matter (`left += 1` next to `right -= 1`) are right in either order, so only real order
+  mistakes count. A two-line part that has no fair distractor is not asked as a Parsons problem: the lesson
+  picks its lines one by one instead, and the review asks another part. Distractors lowered learning efficiency
+  for young novice programmers (Harms, Chen & Kelleher, 2016), so each exercise has only one.
 - The order-the-steps card (plain-English steps, not code) stays in reviews as one of the recognition cards.
-- "Always pick" (Profile, Code practice) keeps every coding exercise picked, for learners who cannot type
-  comfortably; it still sits between recognition and full recall.
+- "Always pick" (Profile, Code practice) picks every coding exercise that has a pick version, for learners who
+  cannot type comfortably; it still sits between recognition and full recall. The rest stay typed: From scratch
+  in Code from memory, From memory in Template practice, and Foundations "Your turn" slides without authored
+  options (43 of 80).
 - Not built yet: **adaptive Parsons** (if the learner makes two wrong moves, make it easier by merging two
   blocks or removing the distractor; Ericson, Foley & Rick, 2018).
 
@@ -426,8 +433,8 @@ Karpicke & Roediger, 2007).
   the lesson, and Pattern Blitz lists each missed line with the right one when the round ends.
 - **End-of-session recap:** list the misses with the correct answers again. This adds the benefit of delayed,
   spaced re-exposure without slowing the drill.
-- Multiple-choice distractors should be **plausible neighbours** (similar patterns, off-by-one complexities),
-  never joke options.
+- Multiple-choice distractors should be **plausible neighbors** (similar patterns, off-by-one complexities, a
+  one-token slip in a line of code), never joke options, and never code that works like the answer.
 - Keep praise about the work ("You spotted the window shrink condition") rather than the person ("You're a genius").
 
 ## 13. Teaching absolute beginners to program
@@ -450,9 +457,10 @@ Pólya (1945).
 - The **foundations track** teaches *reading and tracing* before *writing*: "What does this print?" and
   "What is `i` after the loop?" come first, then the learner writes code on most concept slides ("Your turn"),
   from a single line up to a small program or function, with the starter code given and the result checked
-  line by line. The first exercise on a new idea often starts as "Pick the right code" (the answer among a few
-  look-alike snippets), so a beginner sees the right shape before typing it. The first lesson demonstrates retrieval itself: the learner writes a line, then recalls its
-  shape from memory a few slides later.
+  line by line. The first exercise on each new idea starts as "Pick the right code" (the answer among a few
+  look-alike snippets), so a beginner sees the right shape before typing it, and a typed exercise later in the
+  same lesson or the next practices it. The first lesson demonstrates retrieval itself: the learner writes a line,
+  then recalls its shape from memory a few slides later.
 - The **problem-solving framework** (understand, examples, brute force, optimise, code, test) is taught once in
   foundations and then shown as a slim progress bar in every guided lesson, so the learner always knows which stage
   they are in.
@@ -670,10 +678,11 @@ not yet built.
 **Combo meter, Pattern Blitz, celebrations**
 1. In normal drills, the combo meter counts consecutive correct answers but never rewards speed.
 2. Pattern Blitz: two games with a combo multiplier, a personal best each, and an untimed Zen mode. *Spot the
-   pattern* runs 60 seconds; *Key lines* (the key line of a learned solution, picked from four while the problem is
-   new, else typed) runs 90, since recalling a line takes longer than naming a pattern, and opens once 3
-   problems are learned. Misses on learned problems go to the review
-   queue, and the round ends with a recap of each miss (the clues, or your line and the right one).
+   pattern* runs 60 seconds; *Key lines* (the key line of a learned solution, picked from up to four while the
+   problem is new, else typed; a picked line earns less XP and does not count toward the best) runs 90, since
+   recalling a line takes longer than naming a pattern, and opens once 3 problems are learned. Misses on learned
+   problems go to the review queue, and the round ends with a recap of each miss (the clues, or your line and the
+   right one).
 3. Confetti and sounds are for session end, goal met, crown earned and milestones. Use a small tick or shimmer for
    single correct answers. Nothing animates during reading.
 
@@ -703,8 +712,14 @@ not yet built.
   coding cards chosen from its schedule (`codeStage` in `lib/drills.ts`): while the code is new (no right review
   yet, `reps` under `PICK_UNTIL_REPS` = 1), arrange a part + pick the gaps, both picked from choices; interval
   under 10 days, write the key line + fill the gaps; 10–20 days, fill the gaps + write a part; 21 days or more,
-  two different parts. Phones type too (a key bar supplies indents and symbols). Profile, Code practice: "Always
-  type" types the new stage too (write the key line + fill the gaps), and "Always pick" picks every stage.
+  two different parts. In the default setting, a problem whose first review was "Fuzzy", or came on the day it
+  was learned, is still new: its interval-under-10 stage is picked too (pick the key line + pick the gaps), and
+  typing starts at the next review. A typed Code from memory run of 80% or more ends picking early. Phones type
+  too (a key bar supplies indents and symbols). Profile, Code practice: "Always type" types the new stage too
+  (write the key line + fill the gaps), and "Always pick" picks every stage.
+- **Near misses count half:** a coding card nearly right on the first check (3 lines in 4, or one wrong in two or
+  more) counts as half right toward the problem's grade, picked or typed, so two slips make a review "Fuzzy",
+  not "Forgot". A key line is all or nothing.
 - **Self-rating cross-check:** if a self-rated "Easy" is followed by a failed objective drill on the same problem,
   treat the review as Again.
 - **Retention target:** monitor the learner's review accuracy. Aim for 85–90%. Lengthen intervals if accuracy stays
@@ -723,32 +738,40 @@ design and the exact rules are in [`docs/DESIGN.md`](DESIGN.md), "Pick first, th
 
 | Research | What it says (Section) | What IntPrep does with it |
 |---|---|---|
-| Faded guidance (Renkl & Atkinson, 2003; expertise reversal, Kalyuga et al., 2003) | Move from studying worked examples to solving alone by removing support step by step; support that helps a novice can hold back someone who already knows the material (4) | Picking is a step between studying the code and writing it from a blank editor. In the default setting, the guided lesson for a new problem is picked, and typing takes over after the problem's first right review. Every pick screen offers "Type instead" (in the default setting, before the first check), so a learner who already knows the code can skip the support |
-| Parsons problems (Parsons & Haden, 2006; Ericson, Margulieux & Rick, 2017) | Putting scrambled lines in order is an established exercise; with distractor lines, students learned about as much as from writing the same code, in less time (5) | "Arrange a part" in the guided lesson and in reviews: the part's lines shuffled, plus one distractor placed next to the line it imitates (one only: Harms, Chen & Kelleher, 2016) |
-| Desirable difficulties (Bjork & Bjork, 2011) | A difficulty helps only if the learner can respond to it successfully (7) | We treat typing code you have seen only once as too hard for many beginners, so picking keeps the first attempts winnable; typing comes after a right review |
+| Faded guidance (Renkl & Atkinson, 2003; expertise reversal, Kalyuga et al., 2003) | Move from studying worked examples to solving alone by removing support step by step; support that helps a novice can hold back someone who already knows the material (4) | Picking is a step between studying the code and writing it from a blank editor. In the default setting, the guided lesson for a new problem is picked, and typing takes over once the learner has shown they know it (a clean review on a later day, or typed proof). Every pick screen offers "Type instead" (in the default setting, before the first check), so a learner who already knows the code can skip the support |
+| Parsons problems (Parsons & Haden, 2006; Ericson, Margulieux & Rick, 2017) | Putting scrambled lines in order is an established exercise; with distractor lines, students learned about as much as from writing the same code, in less time (5) | "Arrange a part" in the guided lesson and in reviews: the part's lines shuffled, plus one distractor placed next to the line it imitates (one only: Harms, Chen & Kelleher, 2016) that is never a line of the solution; lines whose order does not matter are right in any order |
+| Desirable difficulties (Bjork & Bjork, 2011) | A difficulty helps only if the learner can respond to it successfully (7) | We treat typing code you have seen only once as too hard for many beginners, so picking keeps the first attempts winnable; typing comes after a clean right review on a later day, or a typed run of 80% or more |
 | Recall beats recognition (Rowland, 2014; Kang et al., 2007) and the generation effect (Slamecka & Graf, 1978; Bertsch et al., 2007) | Producing an answer helps memory more than recognizing it (1, 6) | Picking is a first rung, not the goal: typing takes over as soon as the learner has shown they know the code, and later reviews are typed unless a lapse sends the code back to picking |
-| Plausible distractors (Little et al., 2012) | Competitive wrong options make learners think about why they are wrong (12) | Wrong options are mostly copies of the right line with one small change (an off-by-one bound, a flipped comparison, a swapped pointer), topped up with other lines of the same solution, never joke options |
+| Plausible distractors (Little et al., 2012) | Competitive wrong options make learners think about why they are wrong (12) | Wrong options are copies of the right line with one small change (an off-by-one bound, a flipped comparison, a swapped pointer, a common idiom mistake) or another variable of the same solution, set as three alternatives at one place or a 2x2 (two changes and both together), so the answer is never simply the most typical option. Other lines of the same solution with its shape, not on screen, only top up. Never code that works like the answer (each option is compared by meaning, and run in place against the examples and random inputs), never joke options |
 
 **The numbers, and why these values.** They are design choices that follow the research above, not values
 taken from a study.
 
 - `PICK_UNTIL_REPS = 1`: a problem's code is new until its review card has one right review in a row. So the
-  guided lesson and the first review are picked, typing starts at the second review, and a lapse (Forgot, which
-  sets the count back to 0) returns to picking until the next right review. A "Fuzzy" review counts as right.
-- `TEMPLATE_READY = 0.8`: a pattern template counts as known once the best first check of its picked or typed
-  gaps reaches 80%, or after any From memory try. The template ladder is Pick the gaps, then Fill the gaps, then
-  From memory.
+  guided lesson and the first review are picked, and a lapse (Forgot, which sets the count back to 0) returns to
+  picking. One right review is not always enough: a "Fuzzy" first review, or one on the day the problem was
+  learned, keeps the code picked for one more review, since a slip or a recall minutes after the lesson shows
+  little. A clean right review on a later day hands the code over to typing.
+- `TYPED_PROOF = 0.8`: a typed Code from memory run of 80% or more (Fill the gaps or From scratch), made since the
+  last lapse, shows the learner knows the code and ends picking early. A later lapse makes it stale.
+- `TEMPLATE_READY = 0.8`: a pattern template counts as known once a Pick the gaps round in Template practice
+  reaches 80% (the pattern intro's pick does not count: it comes seconds after the template was on screen), or
+  its typed gaps reach 80%, or after any From memory try. The template ladder is Pick the gaps, then Fill the
+  gaps, then From memory.
 - XP: picked code right on the first check earns `XP.pickCorrect` = 5, between a recognition card
   (`XP.drillCorrect` = 4) and typed code (`XP.codeCorrect` = 8). Picking is real practice, but takes less effort
   than producing the code, and the reward should not make picking more attractive than typing once both are
-  open. Template practice's pick rung earns up to `XP.templatePickMax` = 8 (Fill the gaps: up to 12).
+  open. Template practice's pick rung earns up to `XP.templatePickMax` = 8 (Fill the gaps: up to 12). In Key
+  lines a picked line earns `XP.blitzCodePickPerCorrect` = 3 (typed: 4), and only typed lines count toward the
+  Key lines best. Picked review cards get the same near-miss half credit as typed ones.
 - Picked runs of Code from memory keep their own bests (`rebuildPickBest`, `gapsPickBest`), so picking never
   counts as typed progress and never unlocks From scratch.
 
 **What we do not know yet.** No study has tested this exact sequence (Parsons-style picking, then typed recall,
-switched by a review count) on interview problems, so the thresholds are starting points. Worth measuring: the
-share of picked first checks that are right (aim for about 85–90%, Section 14; a much higher rate suggests
-distractors that are too easy), and how the first typed review after picking goes compared with "Always type".
+switched by the first clean review or typed proof) on interview problems, so the thresholds are starting points.
+Worth measuring: the share of picked first checks that are right (aim for about 85–90%, Section 14; a much higher
+rate suggests distractors that are too easy), and how the first typed review after picking goes compared with
+"Always type".
 
 ---
 

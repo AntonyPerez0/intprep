@@ -109,3 +109,10 @@ npm run validate -- <category-id> [<category-id> ...]
 npx tsc --noEmit --strict --skipLibCheck --target es2022 --module esnext --moduleResolution bundler src/content/problems/<category-id>.ts
 ```
 Both must pass with zero errors. Fix warnings where reasonable.
+
+After adding a problem or changing a solution, also run `python3 scripts/check-distractors.py` (a few minutes;
+needs python3). The pick screens make wrong options from each line of a solution; this script runs every one of
+them in its place, on the problem's examples and random inputs, and writes the ones that still give the right
+answer (code that works, so it must never be marked wrong) to `src/content/distractorDeny.ts`, with the parts
+that get no Arrange distractor. `npm run validate` fails when that list of parts is out of date, but it cannot
+find new working options by itself, so run the script whenever a solution changes.
