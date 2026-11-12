@@ -16,12 +16,14 @@ import {
   NotebookPen,
   PencilLine,
   Plus,
+  Quote,
   RotateCcw,
   ScanSearch,
   Terminal,
   Wrench,
 } from 'lucide-react';
-import { CATEGORY_BY_ID } from '../content/categories';
+import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
+import { CUES } from '../content/cues';
 import { FOUNDATIONS, guideFor } from '../content/index';
 import type { CategoryId, PatternGuide, Slide, TypeSlide } from '../content/types';
 import { baseIndent, codeLines, gradeBest, gradeCode, type Grade } from '../lib/codegrade';
@@ -33,6 +35,9 @@ import { inline, Md } from '../lib/markdown';
 import { shuffle } from '../lib/random';
 import { sfx } from '../lib/sound';
 import { TEMPLATE_READY, templateInput, type CodeInput } from '../lib/input';
+import { errorHelp, pythonEnabled, runSnippet, sameOutput, TimeoutError, usesIdeasOf, warmPython, type SnippetResult } from '../lib/python';
+import { clearResume, loadResume, saveResume } from '../lib/resume';
+import { toast } from '../lib/events';
 import { completeLesson, getProgress, recordTemplate, type TemplateMode } from '../lib/store';
 import { ActionBar, Choices, CodeWindow, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeDiff, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
@@ -40,6 +45,7 @@ import { CodeOptions, GapsWindow, PickGapsWindow, useGaps, usePickGaps, type Cod
 import { InputSwitch } from '../components/InputSwitch';
 import { SessionShell } from '../components/Shell';
 import { CATEGORY_ICON, LESSON_ICON, type LucideIcon } from '../components/icons';
+import { PyErrorLine } from '../components/RunResults';
 import { Badge, Completion } from '../components/ui';
 
 /**
@@ -58,6 +64,39 @@ const TEMPLATE_TURN: Record<CodeInput, { label: string; icon: LucideIcon }> = {
   type: { label: 'Your turn · Fill the gaps', icon: Keyboard },
 };
 
+/**
+ * A pattern's clue words in its intro (src/content/cues.ts): the list ("see this, reach for that"),
+ * then one question asking which of four wordings points to this pattern, the other three taken
+ * from other patterns. The Clue words drill keeps asking them afterwards.
+ */
+function clueSlides(cat: CategoryId): PlayerSlide[] {
+  const cues = CUES[cat] ?? [];
+  if (!cues.length) return [];
+  const name = CATEGORY_BY_ID[cat].name;
+  const list: PlayerSlide = {
+    kind: 'text',
+    eyebrow: 'Clue words',
+    icon: Quote,
+    title: 'The wording to watch for',
+    body: `When a problem says the left side, reach for the right side. These are worth knowing by heart.\n\n${cues.map((c) => `- ${c.see} → ${c.use}`).join('\n')}`,
+  };
+  const answer = cues[0];
+  const wrong: { cat: CategoryId; see: string }[] = [];
+  for (const c of shuffle(CATEGORIES.filter((x) => x.id !== cat && !(answer.also ?? []).includes(x.id)))) {
+    const other = shuffle((CUES[c.id] ?? []).filter((x) => !(x.also ?? []).includes(cat)))[0];
+    if (other && wrong.length < 3) wrong.push({ cat: c.id, see: other.see });
+  }
+  if (wrong.length < 3) return [list];
+  const quiz: PlayerSlide = {
+    kind: 'quiz',
+    q: `Which wording should make you reach for **${name}**?`,
+    options: [answer.see, ...wrong.map((w) => w.see)],
+    answer: 0,
+    explain: `${answer.see} → ${answer.use}. The others point elsewhere: ${wrong.map((w) => CATEGORY_BY_ID[w.cat].name).join(', ')}.`,
+  };
+  return [list, quiz];
+}
+
 /** Turn a pattern guide into a short slide lesson; `input` is how its "Your turn" slide takes the template's lines. */
 function guideSlides(g: PatternGuide, input: CodeInput): PlayerSlide[] {
   const meta = CATEGORY_BY_ID[g.category];
@@ -66,6 +105,7 @@ function guideSlides(g: PatternGuide, input: CodeInput): PlayerSlide[] {
     { kind: 'text', eyebrow: 'The pattern', icon: CATEGORY_ICON[g.category], title: meta.name, body: g.summary },
     { kind: 'text', eyebrow: 'Analogy', icon: Lightbulb, title: 'Picture it like this', body: g.analogy },
     { kind: 'text', eyebrow: 'Recognize it', icon: ScanSearch, title: 'When to reach for it', body: g.whenToUse.map((w) => `- ${w}`).join('\n') },
+    ...clueSlides(g.category),
     ...(q1 ? [{ kind: 'quiz' as const, ...q1 }] : []),
     {
       kind: 'code',
@@ -73,7 +113,7 @@ function guideSlides(g: PatternGuide, input: CodeInput): PlayerSlide[] {
       icon: Wrench,
       file: `${g.category}.py`,
       title: 'The reusable template',
-      body: `Most problems in this unit are a variation of this shape. Read it closely: you will ${input === 'pick' ? 'fill in' : 'type'} its key lines in a moment.`,
+      body: `This is the unit's central shape, and its problems are variations on it or build on it. Read it closely: you will ${input === 'pick' ? 'fill in' : 'type'} its key lines in a moment.`,
       code: g.template,
     },
     {
@@ -135,12 +175,21 @@ export function LessonPlayer({ mode }: Props) {
       : null;
   }, [mode, lessonId, cat, tplInput]);
 
+  // Where the learner was, if they left this lesson part-way (a reload, a closed tab): the lesson
+  // picks up there. The shape ties the saved place to this version of the lesson.
+  const shape = lesson ? `${lesson.slides.length}:${lesson.slides.map((x) => x.kind[0]).join('')}` : '';
+  const [resumed] = useState(() => {
+    const r = lesson ? loadResume<{ queue: number[]; pos: number; firstTry: Record<number, boolean>; typedSlides: Record<number, true> }>(lesson.key, shape) : null;
+    const n = lesson?.slides.length ?? 0;
+    const ok = !!r && Array.isArray(r.queue) && r.pos > 0 && r.pos < r.queue.length && r.queue.every((i) => Number.isInteger(i) && i >= 0 && i < n);
+    return ok ? r : null;
+  });
   // Queue of slide indices. Missed quiz questions come back at the end.
-  const [queue, setQueue] = useState<number[]>(() => (lesson ? lesson.slides.map((_, i) => i) : []));
-  const [pos, setPos] = useState(0);
+  const [queue, setQueue] = useState<number[]>(() => resumed?.queue ?? (lesson ? lesson.slides.map((_, i) => i) : []));
+  const [pos, setPos] = useState(resumed?.pos ?? 0);
   const [sel, setSel] = useState<string | null>(null);
   const [status, setStatus] = useState<CheckStatus>('idle');
-  const [firstTry, setFirstTry] = useState<Record<number, boolean>>({});
+  const [firstTry, setFirstTry] = useState<Record<number, boolean>>(resumed?.firstTry ?? {});
   const [done, setDone] = useState(false);
   const [xpEarned, setXpEarned] = useState(0);
   // Captured once so the completion screen shows the XP actually awarded (repeats earn a third).
@@ -152,8 +201,31 @@ export function LessonPlayer({ mode }: Props) {
   const [revealed, setRevealed] = useState(false);
   const [hint, setHint] = useState(false);
   // "Pick the right code": slides the learner chose to type instead (their comeback is typed too).
-  const [typedSlides, setTypedSlides] = useState<Record<number, true>>({});
+  const [typedSlides, setTypedSlides] = useState<Record<number, true>>(resumed?.typedSlides ?? {});
   const codeRef = useRef<HTMLTextAreaElement | null>(null);
+  // "Your turn" with real Python (lib/python.ts): what running the learner's code gave, and whether
+  // it counts as right though it is not line for line one of the accepted answers.
+  const [ran, setRan] = useState<SnippetResult | null>(null);
+  const [works, setWorks] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const runs = mode === 'foundation' && !!lesson?.slides.some((x) => x.kind === 'type');
+  const announced = useRef(false);
+  // Changes whenever the slide on screen moves on or its answer is revealed (see `checkCode`).
+  const live = useRef({ token: 0 });
+  useEffect(() => {
+    if (runs) warmPython();
+    // Once per visit (an effect can run twice in development).
+    if (resumed && !announced.current) {
+      announced.current = true;
+      toast({ icon: 'bookmark', title: 'Picked up where you left off', body: `Slide ${resumed.pos + 1} of ${resumed.queue.length}`, tone: 'info' });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep the place: saved whenever it moves, cleared when the lesson is finished.
+  useEffect(() => {
+    if (!lesson) return;
+    if (done) clearResume(lesson.key);
+    else if (pos > 0) saveResume(lesson.key, shape, { queue, pos, firstTry, typedSlides });
+  }, [pos, queue, firstTry, typedSlides, done]); // eslint-disable-line react-hooks/exhaustive-deps
   // Guides: the first check of "Fill in the template" (first visit) and how its lines were given
   // (picked or typed), for the completion screen.
   const [gapsFirst, setGapsFirst] = useState<{ grade: GapsGrade; input: CodeInput } | null>(null);
@@ -194,6 +266,9 @@ export function LessonPlayer({ mode }: Props) {
     setTries(0);
     setRevealed(false);
     setHint(false);
+    setRan(null);
+    setWorks(false);
+    live.current.token++;
     if (pos + 1 < queue.length) {
       setPos(pos + 1);
       window.scrollTo(0, 0);
@@ -299,6 +374,12 @@ export function LessonPlayer({ mode }: Props) {
                 </Link>
               </>
             )}
+            {mode === 'guide' && (CUES[cat as CategoryId] ?? []).length > 0 && (
+              <Link to={`/clues?cat=${cat}`} className="btn btn-secondary btn-lg btn-block">
+                <Quote aria-hidden="true" />
+                <span className="truncate">Drill its clue words</span>
+              </Link>
+            )}
             <Link to="/" className={`btn btn-lg btn-block ${mode === 'foundation' ? 'btn-secondary' : 'btn-quiet'}`}>
               Back to dashboard
             </Link>
@@ -321,22 +402,60 @@ export function LessonPlayer({ mode }: Props) {
   };
 
   // ── "Your turn" slides: write the code, check it line by line ──────────────
-  const typeStatus: CheckStatus = isType && grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+  const typeStatus: CheckStatus = isType && grade ? (grade.perfect || works ? 'correct' : 'wrong') : 'idle';
   const finePointer = !!window.matchMedia?.('(pointer: fine)').matches;
-  const checkCode = () => {
-    if (slide.kind !== 'type' || !code.trim()) return;
+  const checkCode = async () => {
+    if (slide.kind !== 'type' || !code.trim() || checking) return;
+    // The check may take a moment (Python starting): if the learner moves on meanwhile ("Show
+    // answer", then Continue), its result belongs to a slide that is gone.
+    const asked = live.current.token;
     // The editor starts at the answer's column, under the starter: indentation is graded from there,
     // so a line typed one level too deep (inside the block above) is a wrong indent.
-    const { grade: g } = gradeBest(code, [slide.answer, ...(slide.accept ?? [])], { anchor: baseIndent(slide.answer) });
+    const col = baseIndent(slide.answer);
+    const { grade: g } = gradeBest(code, [slide.answer, ...(slide.accept ?? [])], { anchor: col });
+    // Not one of the accepted answers line for line: run it. Code that does the job is right
+    // however it is written, and code that does not gets Python's own error or output, which is
+    // what a beginner has to learn to read. Without Python (offline before its first use, or
+    // turned off) the comparison above stands.
+    let run: SnippetResult | null = null;
+    let ok = g.perfect;
+    if (!ok && pythonEnabled() && (slide.output !== undefined || slide.check)) {
+      setChecking(true);
+      const typed = code
+        .replace(/\t/g, '    ')
+        .split('\n')
+        .map((l) => (l.trim() ? ' '.repeat(col) + l : l))
+        .join('\n');
+      try {
+        run = await runSnippet(slide.starter ? `${slide.starter}\n${typed}` : typed, slide.check, 8000);
+        // With a `check` the asserts decide; without one, the output must match and the code must
+        // use what the exercise is about (so `print(15)` is not "add 5 with +=") the way the
+        // answer or one of the accepted answers does.
+        const answers = [slide.answer, ...(slide.accept ?? [])];
+        ok = run.ok && (slide.output === undefined || sameOutput(run.stdout, slide.output)) && (!!slide.check || answers.some((a) => usesIdeasOf(code, a)));
+      } catch (e) {
+        // Code that never finished (the watchdog ended it) is the learner's to fix; anything else
+        // means Python is not ready, and the comparison stands.
+        run = e instanceof TimeoutError ? { ok: false, stdout: '', error: { type: 'TimeLimit', message: e.message, line: null }, checkFailed: false } : null;
+      }
+      setChecking(false);
+      if (live.current.token !== asked) return;
+    }
+    setRan(run);
+    setWorks(ok && !g.perfect);
     setGrade(g);
     setTries((t) => t + 1);
-    sfx(g.perfect ? 'correct' : 'wrong');
-    if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: g.perfect }));
+    sfx(ok ? 'correct' : 'wrong');
+    if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: ok }));
   };
   // Back to the editor with the learner's code kept and the caret at the end. flushSync mounts
   // the editor inside the click, so a phone opens its keyboard.
   const tryAgain = () => {
-    flushSync(() => setGrade(null));
+    flushSync(() => {
+      setGrade(null);
+      setRan(null);
+      setWorks(false);
+    });
     const ta = codeRef.current;
     if (ta) {
       ta.focus();
@@ -345,11 +464,14 @@ export function LessonPlayer({ mode }: Props) {
   };
   // Stuck: show the answer and move on. The slide comes back once at the end of the lesson.
   const revealAnswer = () => {
+    live.current.token++;
     if (!(idx in firstTry)) setFirstTry((f) => ({ ...f, [idx]: false }));
     if (!isRequeue) setQueue((q) => [...q, idx]);
     flushSync(() => {
       setRevealed(true);
       setGrade(null);
+      setRan(null);
+      setWorks(false);
     });
     document.querySelector<HTMLButtonElement>('.actionbar .buttons > .btn:last-child')?.focus();
   };
@@ -494,6 +616,8 @@ export function LessonPlayer({ mode }: Props) {
             code={code}
             setCode={setCode}
             grade={grade}
+            ran={ran}
+            works={works}
             revealed={revealed}
             hint={hint}
             comesBack={!isRequeue}
@@ -508,12 +632,15 @@ export function LessonPlayer({ mode }: Props) {
         <ActionBar
           step={`${pos}:${tries}:${revealed ? 1 : 0}`}
           status={revealed ? 'idle' : typeStatus}
-          onCheck={revealed ? undefined : checkCode}
-          canCheck={code.trim().length > 0}
+          onCheck={revealed ? undefined : () => void checkCode()}
+          canCheck={code.trim().length > 0 && !checking}
+          checkLabel={checking ? 'Running…' : 'Check'}
           onContinue={typeStatus === 'wrong' ? tryAgain : advance}
           continueLabel={typeStatus === 'wrong' ? 'Try again' : 'Continue'}
-          title={grade && onlyIndentWrong(grade) ? 'Right code, wrong indentation' : undefined}
-          feedback={grade ? <Md text={slide.explain} /> : undefined}
+          title={works ? 'It works' : grade && !ran && onlyIndentWrong(grade) ? 'Right code, wrong indentation' : undefined}
+          // Code that was run and is not right yet: Python's message (above) is the feedback, and the
+          // explanation, which describes the answer, waits until the learner has it or asks for it.
+          feedback={grade ? typeStatus === 'wrong' && ran ? 'Read what Python says about your code, fix it and check again.' : <Md text={slide.explain} /> : undefined}
           // A miss: "Show answer" left of "Try again", as "Fix and check again" sits on the other typing screens.
           checkedSecondary={
             typeStatus === 'wrong' ? <CheckedAction onClick={revealAnswer} label="Show answer" short="Answer" icon={<Eye aria-hidden="true" />} /> : undefined
@@ -525,13 +652,13 @@ export function LessonPlayer({ mode }: Props) {
             !revealed ? (
               <div className="lplayer-tools">
                 {slide.hint && !hint && (
-                  <button type="button" className="btn btn-quiet btn-sm" onClick={showHint}>
+                  <button type="button" className="btn btn-quiet btn-sm" onClick={showHint} disabled={checking}>
                     <Lightbulb aria-hidden="true" />
                     <span className="lplayer-tool-label">Hint</span>
                   </button>
                 )}
                 {(tries > 0 || hint || !slide.hint) && (
-                  <button type="button" className="btn btn-quiet btn-sm" onClick={revealAnswer}>
+                  <button type="button" className="btn btn-quiet btn-sm" onClick={revealAnswer} disabled={checking}>
                     <Eye aria-hidden="true" />
                     <span className="lplayer-tool-label">Show answer</span>
                   </button>
@@ -658,6 +785,8 @@ function TypeSlideView({
   code,
   setCode,
   grade,
+  ran,
+  works,
   revealed,
   hint,
   comesBack,
@@ -669,6 +798,10 @@ function TypeSlideView({
   code: string;
   setCode: (v: string) => void;
   grade: Grade | null;
+  /** What running the code gave, when it was run (it did not match an accepted answer line for line). */
+  ran: SnippetResult | null;
+  /** The code ran and does the job, though it is written differently from the answer. */
+  works: boolean;
   revealed: boolean;
   hint: boolean;
   /** First visit: a revealed answer queues the slide again at the end of the lesson. */
@@ -682,8 +815,13 @@ function TypeSlideView({
   // The answer is written at its real indentation under the starter (a function body is
   // indented); the editor starts typing at that column, and grading is anchored there.
   const indent = baseIndent(expected);
-  const done = revealed || !!grade?.perfect;
+  const done = revealed || !!grade?.perfect || works;
   const output = slide.output ? <OutputPane text={slide.output} label={done ? 'Output' : 'Expected output'} /> : null;
+  // Code that was run is judged by what it did, so its lines are not marked against the answer:
+  // the editor shows it as written (read-only until "Try again"), with Python's result under it.
+  // Code that works is shown next to our version; code that fails keeps the answer hidden.
+  const judgedByRun = !!grade && !!ran;
+  const failedRun = judgedByRun && !works;
 
   return (
     <div className="lplayer-slide" key={animKey}>
@@ -729,7 +867,8 @@ function TypeSlideView({
           <CodeTyper
             value={code}
             onChange={setCode}
-            grade={grade}
+            grade={judgedByRun ? null : grade}
+            status={grade ? (grade.perfect || works ? 'correct' : 'wrong') : 'idle'}
             label={slide.title ? `Your code: ${slide.title}` : 'Your code'}
             given={starter}
             indent={indent}
@@ -744,7 +883,18 @@ function TypeSlideView({
             after={output}
           />
         )}
-        {grade && !grade.perfect && <DiffKey grade={grade} />}
+        {grade && !grade.perfect && !judgedByRun && <DiffKey grade={grade} />}
+        {failedRun && <RunFeedback ran={ran!} expected={slide.output} />}
+        {works && (
+          <div className="lplayer-works">
+            <div className="lplayer-works-label">Your code does the job. Here is how we wrote it:</div>
+            <pre className="lplayer-works-code" translate="no">
+              {slide.answer.split('\n').map((l, k) => (
+                <div key={k}>{l === '' ? ' ' : highlightLine(l.slice(indent))}</div>
+              ))}
+            </pre>
+          </div>
+        )}
       </div>
 
       {revealed && (
@@ -755,6 +905,53 @@ function TypeSlideView({
             {comesBack && <p className="lplayer-type-again">This one comes back at the end of the lesson, so you can write it from memory.</p>}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What Python said about code that was run and is not right: the error with its line and what it
+ * means, or what the code printed against what it should print, or the check it failed.
+ */
+function RunFeedback({ ran, expected }: { ran: SnippetResult; expected?: string }) {
+  const help = ran.error ? errorHelp(ran.error) : null;
+  return (
+    <div className="lplayer-run" role="status">
+      {ran.error ? (
+        <>
+          <div className="lplayer-run-label">{ran.error.type === 'TimeLimit' ? 'Your code did not finish' : 'Python stopped with an error'}</div>
+          <PyErrorLine error={ran.error} />
+          {help && <Md text={help} className="lplayer-run-help" />}
+        </>
+      ) : ran.checkFailed ? (
+        <>
+          <div className="lplayer-run-label">Your code ran, but it does not do the job yet</div>
+          {ran.failed && (
+            <p className="lplayer-run-help">
+              This check failed: <code translate="no">{ran.failed.replace(/^assert\s+/, '')}</code>
+            </p>
+          )}
+        </>
+      ) : expected !== undefined && !sameOutput(ran.stdout, expected) ? (
+        <>
+          <div className="lplayer-run-label">{ran.stdout.trim() ? 'Your code ran, but printed something else' : 'Your code ran, but printed nothing'}</div>
+          {ran.stdout.trim() && (
+            <div className="lplayer-run-out">
+              <span>It printed</span>
+              <pre translate="no">{ran.stdout.replace(/\n$/, '')}</pre>
+            </div>
+          )}
+          <div className="lplayer-run-out">
+            <span>Expected</span>
+            <pre translate="no">{expected}</pre>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="lplayer-run-label">It prints the right thing, another way</div>
+          <p className="lplayer-run-help">This exercise is about the code the task describes. Write it that way and check again.</p>
+        </>
       )}
     </div>
   );

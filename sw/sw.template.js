@@ -9,13 +9,19 @@
 // - install downloads the whole app for this deploy (page, JS/CSS bundle, manifest, icons, Latin
 //   fonts), then takes over at once (skipWaiting + clients.claim).
 // - activate deletes the previous deploys' caches. Tabs that are already open keep working: the
-//   page loads all of its JS at once (the entry and the content chunk it imports statically), so
-//   an open tab has all of its code in memory and never asks for an old file again (the plugin
-//   warns if code splitting ever adds lazy chunks).
+//   page loads its own JS at once (the entry and the content chunk it imports statically), so an
+//   open tab has that code in memory. Two things load later and are precached with the rest: the
+//   step-by-step traces (a chunk per unit) and the tests of "run my code". A tab left open across
+//   a deploy can no longer fetch the old ones; the app then goes without (a note in place of the
+//   trace, code compared instead of run) until the tab is reloaded. The plugin warns about any
+//   other lazy chunk.
 // - Opening the app is network-first, so a new deploy shows up at once. The precached page is used
 //   offline, on a server error, or if the network hasn't answered within 3 s.
 //   Navigations never write to the cache: the page only comes from this deploy's precache, so it
 //   always matches the bundle cached next to it, and an error page can't become the offline app.
+// - The Python runtime that runs a learner's code (pyodide/, about 13 MB) is not precached: it is
+//   fetched the first time code is run and kept in its own cache, 'intprep-python-<its version>',
+//   which a new deploy leaves alone. After that first use, running code works offline.
 // - Other files are cache-first. Hashed files under assets/ that aren't precached (rarer font
 //   subsets) are added to this deploy's cache when first used; nothing else is cached at runtime.
 //
@@ -33,6 +39,10 @@ const abs = (path) => new URL(path, self.location.href).href;
 const PRECACHE = BUILD.precache.map(abs);
 const SHELL = abs('./');
 const ASSETS = abs(BUILD.assetsDir);
+// The Python runtime ("run my code") is big and changes only when Pyodide is upgraded, so it has
+// its own cache that outlives deploys: 'intprep-python-<pyodide version>'.
+const PYTHON = abs(BUILD.python.dir);
+const PY_CACHE = PREFIX + 'python-' + BUILD.python.version;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(precache(PRECACHE).then(() => self.skipWaiting()));
@@ -42,7 +52,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
-      await Promise.all(names.filter((n) => n.startsWith(PREFIX) && n !== CACHE).map((n) => caches.delete(n)));
+      await Promise.all(names.filter((n) => n.startsWith(PREFIX) && n !== CACHE && n !== PY_CACHE).map((n) => caches.delete(n)));
       await self.clients.claim();
     })(),
   );
@@ -118,6 +128,7 @@ async function navigate(event) {
 
 async function cacheFirst(event) {
   const req = event.request;
+  if (req.url.startsWith(PYTHON)) return python(event);
   const hit = await cached(req.url);
   if (hit) return hit;
   const res = await fetch(req);
@@ -132,13 +143,30 @@ async function cacheFirst(event) {
   return res;
 }
 
+// The Python runtime: from its own cache, else from the network and into that cache. Its file
+// names carry no hash, so the cache is named by the Pyodide version (a new version is a new cache,
+// and activate deletes the old one).
+async function python(event) {
+  const req = event.request;
+  const hit = await caches.match(req.url, { cacheName: PY_CACHE });
+  if (hit) return hit;
+  // Revalidated with the server: these names do not change between Pyodide versions, so the HTTP
+  // cache could hand a new version's cache the old version's file.
+  const res = await fetch(req.url, { cache: 'no-cache' });
+  if (res.ok && res.type === 'basic') {
+    const copy = res.clone();
+    event.waitUntil(caches.open(PY_CACHE).then((c) => c.put(req.url, copy)).catch(() => {}));
+  }
+  return res;
+}
+
 // Another project on this origin (a worker that deletes every cache but its own) or the user can
 // wipe this cache while this worker stays installed. Each time the app opens, quietly download
 // whatever is missing again.
 async function repair() {
   const names = await caches.keys();
   // A newer deploy is installing or has taken over: its own cache is what matters now.
-  if (names.some((n) => n.startsWith(PREFIX) && n !== CACHE)) return;
+  if (names.some((n) => n.startsWith(PREFIX) && n !== CACHE && !n.startsWith(PREFIX + 'python-'))) return;
   const have = names.includes(CACHE) ? (await (await caches.open(CACHE)).keys()).map((r) => r.url) : [];
   const missing = PRECACHE.filter((url) => !have.includes(url));
   if (missing.length) await precache(missing).catch(() => {}); // offline: try again next time

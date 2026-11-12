@@ -8,3 +8,5 @@ screenshots
 
 # Local agent/worktree state
 .claude/
+scripts/__pycache__/
+src/judge/__pycache__/

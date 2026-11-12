@@ -325,6 +325,9 @@ function HeroPreview() {
   );
 }
 
+/** The Easy and Medium problems: the learning path's first pass. */
+const CORE_COUNT = PROBLEMS.filter((p) => p.difficulty !== 'Hard').length;
+
 // ── Stats strip ─────────────────────────────────────────────────────────────
 
 function Stats() {
@@ -549,7 +552,7 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
     kind: 'lessons',
     icon: BookOpen,
     title: 'Guided lessons',
-    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to building every part of the solution yourself.`,
+    body: `All ${PROBLEMS.length} problems taught step by step, from reading the prompt to building every part of the solution yourself, then watching it run line by line on an example.`,
   },
   {
     kind: 'review',
@@ -560,20 +563,20 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
   {
     kind: 'rebuild',
     icon: Keyboard,
-    title: 'Code from memory',
-    body: 'Rebuild a solution part by part from plain-English cues, fill in its missing lines, then write it from a blank file, on desktop or phone. While the code is new, you pick each line from choices.',
+    title: 'Write it, run it',
+    body: 'Rebuild a solution part by part, fill in its missing lines, then write it in a blank file and run it against the tests with real Python in your browser. Any correct code passes, and a wrong one shows the case it fails. Solve a problem before its lesson and you skip the lesson.',
   },
   {
     kind: 'blitz',
     icon: Zap,
-    title: 'Pattern Blitz',
-    body: 'Two games against the clock: spot the pattern of a problem in 60 seconds, or recall the key lines of solutions you learned in 90, picking them from choices while they’re new. Or play untimed in Zen mode.',
+    title: 'Against the clock',
+    body: 'A mock interview gives you one problem, a blank file and a timer, with no hints and no pattern name. Pattern Blitz is the quick version: name the pattern of as many problems as you can in 60 seconds, or recall the key lines of solutions you learned.',
   },
   {
     kind: 'guide',
     icon: BookMarked,
-    title: 'Pattern guide',
-    body: `A searchable cheat sheet of recognition cues and templates for all ${CATEGORIES.length} patterns.`,
+    title: 'Clue words',
+    body: `Learn the wording that gives each pattern away, and what to reach for when you see it. Drill it like flashcards, and follow each pattern's steps to memorize, from first read to writing its template from a blank file. All ${CATEGORIES.length} patterns are in a searchable guide.`,
   },
   {
     kind: 'progress',
@@ -780,7 +783,11 @@ const FAQ: { q: string; a: ReactNode }[] = [
   },
   {
     q: 'How long does it take?',
-    a: `You choose a daily goal, from about 5 to 30 or more minutes a day. Learning one new problem a day, you would cover all ${PROBLEMS.length} in about five months, with short reviews keeping earlier problems fresh.`,
+    a: `You choose a daily goal, from about 10 minutes to an hour or more a day. At two new problems a day you cover the Easy and Medium problems of every pattern (${CORE_COUNT} of the ${PROBLEMS.length}) in about ${Math.round(CORE_COUNT / 2 / 7)} weeks, with short reviews keeping earlier problems fresh; the Hard ones come after. Set your interview date and the plan works back from it. If you already know a problem, solve it on the spot and skip its lesson.`,
+  },
+  {
+    q: 'Does it run my code?',
+    a: 'Yes. When you write code, IntPrep runs it with real Python inside your browser (nothing is sent anywhere) and checks it against tests, so any correct solution passes and a wrong one shows the error or the failing case. The first run downloads Python once, about 7 MB; after that it works offline. You can turn it off in your profile.',
   },
   {
     q: 'Do I have to type all the code?',

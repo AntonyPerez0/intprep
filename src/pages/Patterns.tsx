@@ -11,6 +11,7 @@ import {
   Keyboard,
   Lightbulb,
   ListChecks,
+  Quote,
   Search,
   SearchX,
   TextCursorInput,
@@ -18,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID, type CategoryMeta } from '../content/categories';
+import { CUES } from '../content/cues';
 import { guideFor, problemsFor } from '../content/index';
 import type { Difficulty } from '../content/types';
 import { HighlightedCode } from '../lib/highlight';
@@ -27,6 +29,7 @@ import { isDue } from '../lib/srs';
 import { templateScore, useProgress, type Progress, type TemplateMode } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon } from '../components/icons';
+import { ClueList } from '../components/Memorize';
 import { CodeWindow } from '../components/interact';
 import { EmptyState, ProgressBar } from '../components/ui';
 
@@ -73,7 +76,8 @@ export function Patterns() {
     () =>
       CATEGORIES.flatMap((c) => {
         const g = guideFor(c.id);
-        return g ? g.whenToUse.map((w) => ({ cat: c, cue: w })) : [];
+        // The clue words first (the wording, then what to reach for), then the guide's longer cues.
+        return [...(CUES[c.id] ?? []).map((x) => ({ cat: c, cue: `${x.see} → ${x.use}` })), ...(g ? g.whenToUse.map((w) => ({ cat: c, cue: w })) : [])];
       }),
     [],
   );
@@ -114,7 +118,13 @@ export function Patterns() {
     <div className="patterns">
       <PageHeader
         title="Pattern guide"
-        sub={`If you see this, reach for that. All ${CATEGORIES.length} patterns with their recognition cues, a reusable template and the problems that use them.`}
+        sub={`If you see this, reach for that. All ${CATEGORIES.length} patterns with their clue words, a reusable template and the problems that use them.`}
+        right={
+          <Link to="/clues" className="btn btn-primary">
+            <Quote aria-hidden="true" />
+            Drill the clue words
+          </Link>
+        }
       />
 
       <div className="input-group patterns-search">
@@ -343,6 +353,19 @@ function PatternBody({ c, progress }: { c: CategoryMeta; progress: Progress }) {
           </div>
         </div>
       </section>
+
+      {(CUES[c.id] ?? []).length > 0 && (
+        <section className="patterns-section">
+          <div className="patterns-template-head">
+            <h3>Clue words</h3>
+            <Link to={`/clues?cat=${c.id}`} className="btn btn-secondary btn-sm">
+              <Quote aria-hidden="true" />
+              Drill them
+            </Link>
+          </div>
+          <ClueList cat={c.id} />
+        </section>
+      )}
 
       <section className="patterns-section">
         <h3>Reach for it when…</h3>

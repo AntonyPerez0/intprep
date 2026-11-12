@@ -61,13 +61,17 @@ page, or the original blog post). Full references are at the end.
 
 | IntPrep feature | Main principles (section numbers) |
 |---|---|
-| Beginner foundations track (Python, Big-O, recursion, problem-solving framework) | Beginners need guidance (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
-| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on each new idea, 39 of 82, starts as "Pick the right code" from look-alike snippets, and a later exercise in the same lesson or the next types it; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
+| Beginner foundations track (Python, Big-O, recursion, problem-solving framework), with "Trace it" questions and find-the-bug exercises; only a learner who says they are new to coding is led through it | Beginners need guidance (4), expertise reversal (4), tracing before writing (13), explicit problem-solving steps (13), chunking (9) |
+| Foundations "Your turn" exercises (write the code on most concept slides, checked line by line; the first exercise on each new idea, 55 of 113, starts as "Pick the right code" from look-alike snippets, and a later exercise in the same lesson or the next types it; a revealed answer comes back at the end) | Generation (6), retrieval (1), faded guidance (4), immediate feedback (12), successive relearning (2) |
+| Running the learner's code (beginner exercises that differ from the accepted answers, From scratch, Solve it yourself, mock interviews): working code counts however it is written; wrong code shows Python's real error in plain language, or the failing test | Feedback about the task (12), predict and run (13), generation (6), calibration (11) |
 | Pattern unit intro (analogy, recognition cues, template, the template's missing lines picked from choices while it is new, else typed, quiz) | Schemas and templates (9), worked examples (4), faded guidance (4), generation (6), retrieval (1), interleaving needs clear categories first (3) |
-| Guided lesson: predict the pattern first | Pretesting (6), calibration (11) |
-| Guided lesson: progressive hints | Faded guidance (4), productive struggle (6), expertise reversal (4) |
-| Guided lesson: brute force, then key insight, then algorithm | Worked examples (4), contrasting cases (3), self-explanation (8) |
+| Solve it yourself before the lesson ("Try it yourself first": a blank file run against the tests; passing skips the lesson and the problem joins the reviews a week out) | Pretesting and productive failure (6), expertise reversal (4), calibration (11) |
+| Guided lesson: predict the pattern first (the first step does not name it) | Pretesting (6), calibration (11) |
+| Guided lesson: progressive hints, with an optional sentence of the learner's own idea before the answer | Faded guidance (4), productive struggle (6), expertise reversal (4), generation (6), self-explanation (8) |
+| Guided lesson: brute force, then key insight, then algorithm; for dynamic programming, the brute force as code in stages (plain recursion, the same with a cache, the table) | Worked examples and fading (4), contrasting cases (3), self-explanation (8), schemas and templates (9) |
 | Guided lesson: the code part by part (look, cover, then build it from choices while the code is new, or write it once known; check) | Worked examples and faded guidance (4), Parsons problems (5), generation (6), retrieval (1), immediate feedback (12), chunking and subgoal labels (9, 4), self-explanation (8) |
+| Guided lesson: "Watch it run", a step-by-step trace of the solution on a small input (the line about to run, the variables, the call stack) | Tracing before writing (13), worked examples (4), self-explanation (8) |
+| Guided lesson: "Why is it wrong?" after a miss (the solution is run with the learner's line in place) | Feedback (12), feedback on confident errors (11) |
 | Guided lesson: complexity check, final check over the whole solution (gaps picked while new, else typed) | Retrieval (1), generation (6) |
 | Spaced-repetition review queue (SM-2 style, auto-graded) | Spacing (2), retrieval (1), successive relearning (2), calibration (11) |
 | Interleaved daily review | Interleaving (3), spacing (2), deliberate practice (10) |
@@ -75,12 +79,16 @@ page, or the original blog post). Full references are at the end.
 | Review: two coding cards per problem, chosen by schedule stage (while the code is new: arrange a part and pick the gaps; then typed: write the key line, fill the gaps, write a part) | Generation (6), recall beats recognition (1), faded guidance (4), Parsons problems (5), feedback (12) |
 | Review: a missed card comes back in the same session as a fresh version | Successive relearning (2), feedback (12) |
 | Insight recall with self-rating | Retrieval (1), generation (6), calibration (11) |
-| Code from memory (part by part, fill the gaps, from scratch; the first two picked while the code is new) and Template practice (pick the gaps, fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10) |
-| Pattern Blitz: Spot the pattern (60 s) and Key lines (90 s; a key line is picked from up to four while its problem is new, else typed), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
+| Code from memory (part by part, fill the gaps, from scratch; the first two picked while the code is new; From scratch is run against the tests, so any correct solution passes) and Template practice (pick the gaps, fill the gaps, from memory) | Recall beats recognition (1), faded guidance (4), desirable difficulty (7), deliberate practice (10), feedback (12) |
+| Mock interview (one problem against the clock, a blank file, no hints, no pattern name; the code must pass the tests) | Recall beats recognition (1), choosing the strategy unprompted (3), calibration (11), deliberate practice (10); time-pressure risk in Part C |
+| Clue words: the wording that should trigger each pattern, with what to reach for; taught in the pattern intro, listed in the guide, drilled both ways (wording to pattern, pattern to wording) and asked in reviews as a learned problem's clue phrases without its statement | Cue-dependent retrieval: practice recalling the pattern from the cue the interview will give (1), discrimination between look-alike patterns through mixed practice (3), feedback after every card |
+| "Memorize this pattern" and "Memorize this solution": the steps in order, with what is done and the next one as a button | Goal setting with specific next steps (18), faded guidance from most support to none (4), recall beats recognition (1) |
+| Pattern Blitz: Spot the pattern (60 s; by default from the units the learner has started) and Key lines (90 s; a key line is picked from up to four while its problem is new, else typed), combo multiplier | Interleaving (3), flow (14), fluency through retrieval (1), generation (6); risks in Part C |
 | "Code practice" setting: Pick first, then type (default), Always type, Always pick | Faded guidance (4), Parsons problems (5), desirable difficulties only when the learner can succeed (7), generation (6); see [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code) |
+| "Your plan" (reviews due, new problems today against a target, where the pace leads), an optional interview date, reviews before new material when many are due, core problems before Hard ones | Spacing against a known test date (2), goal setting (18), pacing over bingeing (17, Part C), autonomy (15) |
 | XP, daily XP goal, levels, achievements | Gamification evidence (16), goal setting (18), self-determination theory (15) |
 | Streak, streak freezes bought with gems | Habit formation (19), Duolingo data (17), emergency reserves (18), broken-streak effects (18) |
-| Mastery crowns per problem (from review interval) | Spacing (2), competence feedback (15), goal gradient (18) |
+| Mastery crowns per problem (from review interval; the top crown also needs code typed from memory or run) | Spacing (2), recall beats recognition (1), competence feedback (15), goal gradient (18) |
 | Confetti, sounds, haptics, combo meter | Juiciness and seductive details (Part C), flow (14) |
 | Weekly XP chart, streak calendar | Performance graphs support competence (16), fresh-start effect (18) |
 
@@ -119,8 +127,14 @@ Rowland (2014); Adesope, Trevisan & Sundararajan (2017); Pan & Rickard (2018); D
   Picking is the first rung, not the goal: typing takes over once the learner has shown they know the code: a
   clean right review on a later day (a "Fuzzy" first review keeps it picked one more review), or a typed Code
   from memory run of 80% or more. Code from memory and Template practice climb the same way, from picking or
-  filling gaps to a blank file. The top mastery crowns should still require a successful recall-format drill, not
-  only multiple choice.
+  filling gaps to a blank file. The top mastery crown requires a recall-format success, not only picking: on top
+  of a review interval of 60 days or more, a typed Code from memory run of 80% or more or the learner's own code
+  passing the problem's tests (`mastery` in `lib/input.ts`).
+- **Free recall of a whole solution** is the top of the ladder: From scratch in Code from memory, Solve it
+  yourself and the mock interview all start from a blank file under the problem's signature. Where the app can run
+  Python, the code is run against the problem's tests instead of being compared with the taught solution, so the
+  learner is tested on producing a working answer, which is what an interview asks for, and not on reproducing one
+  particular wording of it.
 
 ## 2. Spacing and spaced-repetition scheduling
 
@@ -157,14 +171,21 @@ item correctly during practice, then relearn it again in several later spaced se
 **How IntPrep uses it.**
 - Every problem a learner finishes enters the review queue with an SM-2-style schedule. The app grades each
   review Again, Hard, Good or Easy from performance (see the [scheduling rules](#intpreps-review-scheduling-rules)).
+  A problem the learner solves unaided before its lesson enters the queue too, with its first review a week out
+  instead of the next day.
 - A missed card comes back **once, later in the same session** (SM-2's end-of-session repeat and the
   successive-relearning criterion). A coding card comes back as a fresh version (other gaps, another key line
   or another part), so the retry is recall rather than a copy of the answer just shown. The problem then
   returns sooner on the schedule.
 - Practicing ahead and unit practice are optional: a miss there never resets the schedule of a problem that is
-  not due.
+  not due. A pass moves the schedule only of a problem that is nearly due (three quarters of its interval have
+  passed, for intervals of 4 days or more), so a learner can work a day ahead of a busy one.
+- **An interview date is a retention interval.** Cepeda et al. (2008) found the best gap depends on how far away
+  the test is. A learner can set an interview date; from then on each review caps the new interval so the problem
+  comes due again before the day, and the plan keeps the last days before it for review (see the
+  [scheduling rules](#intpreps-review-scheduling-rules)).
 - Mastery crowns are derived from the current review interval, so a crown means "you have remembered this across
-  a long gap", which is an honest signal of durable learning.
+  a long gap", which is an honest signal of durable learning. (The top crown also needs typed proof: Section 1.)
 - SM-2 is a good, explainable starting point. If enough review data builds up, FSRS can replace it. The
   open-spaced-repetition project publishes an open-source TypeScript implementation (ts-fsrs).
 
@@ -187,7 +208,10 @@ Brunmair & Richter (2019).
 **How IntPrep uses it.**
 - Each pattern unit is taught as a block first, so the learner has a clear idea of the category before mixing.
 - The **interleaved daily review** and **Pattern Blitz** shuffle problems from every pattern the learner has
-  studied. Identifying the pattern is exactly the discrimination skill an interview tests.
+  studied. Identifying the pattern is exactly the discrimination skill an interview tests. (Spot the pattern
+  defaults to the units the learner has started once those hold 8 problems; the learner can widen it to all 150.)
+- The guided lesson's first step does not show the pattern's name, and a **mock interview** never does: the
+  learner has to decide which strategy applies, the step blocked practice lets them skip (Rohrer, 2012).
 - The mix should **favour confusable pairs** (for example, two pointers vs. sliding window, BFS vs. DFS,
   1-D DP vs. greedy), because that is where interleaving helps most. Problems with an `alsoAccept` pattern
   are good contrast cases.
@@ -216,16 +240,33 @@ Morrison, Margulieux & Guzdial (2015).
   one part at a time. Each part is studied and then written from memory right away (look, cover, write,
   check), so the worked example fades part by part. The `#@` chunk explanations in the content format work as
   subgoal labels.
+- **A worked example of the execution, too.** After the code step, "Watch it run" steps through the solution on
+  one small input: the line about to run, the variables of the running call with the ones that just changed
+  marked, the call stack for recursion, and the explanation of the part the line belongs to. A novice who has
+  rebuilt the code has not necessarily seen what it does; the trace shows it without asking them to hold every
+  variable in working memory (Sweller, 1988).
+- **A worked derivation for dynamic programming.** The brute-force step of the 23 dynamic-programming problems
+  shows the versions that lead up to the taught solution as runnable code, each a small change from the one
+  before: plain recursion, the same recursion with a cache, then the table (one to three stages, stopping where
+  the taught solution takes over). Each stage is a worked example (Sweller & Cooper, 1985; Atkinson et al., 2000),
+  and reading what changes between two working versions is the same contrast the lesson draws between the brute
+  force and the key insight. No study in our references tests this exact sequence; it is a design choice.
 - **Progressive hints** (gentle, then strong) let each learner take only as much guidance as they need.
 - **Fading across a unit:** the first problem in a pattern should be fully worked; later problems in the same
-  unit can start with the walkthrough collapsed and invite an attempt first.
+  unit can start with the walkthrough collapsed and invite an attempt first. Built so far: every lesson's first
+  step invites an attempt ("Try it yourself first"), on the first problem of a unit as on the last, and the
+  walkthrough itself is the same for every problem.
 - **Fading from picking to typing:** new code is picked from choices (a part's lines put in order, a missing
   line chosen from up to four) and typed once the learner knows it, so the first attempts at a solution have support
   that the later ones do not. See [Pick first, then type](#pick-first-then-type-from-the-research-to-the-code).
 - **Fading across reviews:** the coding cards' format ladder (Section 1) removes scaffolding as the review
   interval grows, and Code from memory and Template practice open one rung above what the learner has shown.
-- **Expertise reversal:** learners who already know a pattern (high accuracy in its drills) should be able to skip
-  straight to "try it, then check", rather than sit through the full walkthrough.
+- **Expertise reversal:** learners who already know a problem can skip straight to "try it, then check", rather
+  than sit through the full walkthrough: "Solve it yourself" (from the lesson's first step or the problem page)
+  gives them a blank file, runs their code against the tests, and on a pass adds the problem to the reviews a week
+  out without the lesson. For the same reason only a learner who says they are new to coding is led through the
+  beginner track; for the others it stays optional. Not built: offering the skip from the learner's accuracy in a
+  pattern's drills.
 
 ## 5. Parsons problems
 
@@ -257,8 +298,8 @@ Ericson, Margulieux & Rick (2017); Ericson, Foley & Rick (2018); Ericson et al. 
 - The order-the-steps card (plain-English steps, not code) stays in reviews as one of the recognition cards.
 - "Always pick" (Profile, Code practice) picks every coding exercise that has a pick version, for learners who
   cannot type comfortably; it still sits between recognition and full recall. The rest stay typed: From scratch
-  in Code from memory, From memory in Template practice, and Foundations "Your turn" slides without authored
-  options (43 of 82).
+  in Code from memory, Solve it yourself and the mock interview, From memory in Template practice, and Foundations
+  "Your turn" slides without authored options (58 of 113).
 - Not built yet: **adaptive Parsons** (if the learner makes two wrong moves, make it easier by merging two
   blocks or removing the distractor; Ericson, Foley & Rick, 2018).
 
@@ -279,10 +320,12 @@ to make a real attempt (Kapur, 2016).
 (2007); Kapur (2008, 2016); Sinha & Kapur (2021).
 
 **How IntPrep uses it.**
-- **Predict the pattern first.** Each guided lesson opens with a low-stakes guess. Wrong guesses must cost nothing:
+- **Predict the pattern first.** Each guided lesson opens with a low-stakes guess. The step before it shows the
+  problem without the pattern's name, so the guess is a real prediction. Wrong guesses must cost nothing:
   no XP loss and no effect on the streak. You can even award a little XP for making the guess.
 - **Brute force before the insight.** Asking "what is the obvious way?" is a generation step and sets up the
-  contrast that makes the key insight meaningful.
+  contrast that makes the key insight meaningful. For the dynamic-programming problems the brute force is shown as
+  code, followed by the versions between it and the solution (Section 4).
 - **Writing code from memory** is IntPrep's main generation task once the learner knows the code. The learner
   types the key line, the missing lines or a whole part in reviews, the template from memory, the whole
   solution in Code from memory, and small programs on most slides of the beginner lessons. New code is picked
@@ -294,8 +337,16 @@ to make a real attempt (Kapur, 2016).
   is new, typed once known), then compared line by line (check). Peeking is allowed but the part no longer
   counts as right.
 - **Insight recall** is a generation task too.
-- **Attempt-first mode** (productive failure) should be offered once a learner has some knowledge of the pattern,
-  for example after the first problem in a unit. It should not be forced on complete beginners.
+- **Attempting a problem before instruction.** The first step of every guided lesson offers "Try it yourself
+  first", and the problem page offers "Solve it yourself" (where the app can run code; with "Run my code" off, the
+  lesson suggests trying the problem on LeetCode instead): a blank file under the problem's signature, with the
+  examples to run and every test on Submit. A pass skips the lesson; a failed attempt costs nothing, and "I am
+  stuck: take the lesson" leads straight into the lesson the attempt has prepared the learner for (Richland,
+  Kornell & Kao, 2009; Kapur, 2016). It is always optional and never forced on a beginner. The research says
+  struggle helps most when the learner knows enough to make a real attempt (Sinha & Kapur, 2021), so the copy
+  frames it as "Think you can solve it already?", and the mock interview's "new problem" pool draws only from
+  patterns the learner has started. Still a recommendation, not built: suggesting an attempt first only once the
+  learner has some knowledge of the pattern, for example after the first problem in a unit.
 
 ## 7. Desirable difficulties
 
@@ -333,9 +384,13 @@ Nesbit, Salimi & Winne (2018).
 
 **How IntPrep uses it.**
 - Each code chunk is paired with a plain-English "why", modelling the explanation we want learners to make.
+- "Watch it run" asks the learner to say what the marked line will change before each step, then shows the
+  variables after it and the explanation of the part the line belongs to. The prompt is not graded.
 - **Ask before telling:** on key lines (`#!`), ask "Why is this line needed?" with three short options before
   showing the explanation. This is quick, can be auto-graded, and turns passive reading into self-explanation.
 - In insight-recall drills, ask the learner to type or think the key idea in one sentence *before* revealing it.
+  The guided lesson's hints step does: under the hints, an optional field, "Your idea, in a sentence", which is
+  not checked or kept; with something in it, the button to the next step reads "Compare with the answer".
 
 ## 9. Chunking, schemas and code templates
 
@@ -376,6 +431,10 @@ practice: specific goals, feedback, and attention to weak spots.
 **How IntPrep uses it.**
 - Each drill type isolates one sub-skill (recognise, recall the insight, write the key line, analyse complexity,
   rebuild) and gives immediate feedback.
+- The **mock interview** practices the whole performance instead of a sub-skill: one problem, a blank file and a
+  clock (15 minutes for an Easy problem, 25 for a Medium, 40 for a Hard), with no hints and no pattern name, and
+  the tests as feedback. It draws a learned problem the learner has not been tested on lately, or an unlearned
+  problem from a pattern they have started. A learned problem that is not solved goes into today's review.
 - The scheduler naturally brings weak problems back more often. The **daily drill should also weight weak
   patterns** (lowest recent accuracy) more heavily, and a "weak spots" view should show the learner where to focus.
 - Do not promise that hours alone produce mastery; reward accurate, focused practice rather than volume.
@@ -397,6 +456,11 @@ Butterfield & Metcalfe (2001); Butler, Karpicke & Roediger (2008).
 
 **How IntPrep uses it.**
 - The scheduler grades reviews from **what the learner actually got right**, not only from self-ratings.
+- **Running code is an objective check.** A solution that "looks right" is exactly the case where the answer in
+  front of you feels easier than it is (Koriat & Bjork, 2005). Where the app can run Python, a whole solution is
+  judged by the problem's tests, and "Solve it yourself" after a lesson tells the learner whether they can produce
+  the code unaided, not only recognize it. The problem page records it ("Your own code passed every test") next
+  to the last mock interview's result.
 - Where self-rating is used (insight recall), ask for confidence *before* revealing the answer, then compare. Use
   objective drills (key-line fill-in, Parsons) to cross-check self-rated items. If a learner rates "Easy" but then
   fails an objective drill, shorten that problem's interval.
@@ -428,7 +492,22 @@ Karpicke & Roediger, 2007).
 - **Corrective feedback on code, line by line.** Every check shows a diff: lines that match, lines that are off
   (with the right line under them) and lines with the wrong indentation. The first check decides the score;
   "Fix and check again" then lets the learner correct their own lines with the answer in view, which turns the
-  feedback into one more retrieval instead of a glance.
+  feedback into one more retrieval instead of a glance. The comparison accepts what does not change the code:
+  indentation of any consistent width, and neighboring lines that can trade places in either order.
+- **Feedback from running the code.** A whole solution written from a blank file (From scratch, Solve it
+  yourself, the mock interview) is run against the problem's tests where the app can run Python. A failing run
+  shows the first failing tests: the input, the expected answer and what the code returned, or Python's error and
+  its line. This is feedback about the task and the process, the kinds that work best (Hattie & Timperley, 2007;
+  Shute, 2008), and it does not give the solution away; in From scratch the line-by-line comparison with the
+  taught solution is one click further. Code that passes with far more work than the taught solution is told so.
+- **Real errors, explained.** A beginner exercise that is not line for line an accepted answer is run. Working
+  code counts ("It works", with our version shown next to it). Code that fails shows Python's own error with a
+  plain-language explanation of what that kind of error means, what the code printed against what was expected, or
+  the check that failed. Reading an error message is a skill the learner needs outside the app.
+- **"Why is it wrong?"** After a miss in a guided lesson's code step or final check, the learner can run the
+  solution with their version in place: the app shows the input it breaks on, with what it returns against the
+  right answer, or the error. When their version passes every test, it says so: it may be another way to write
+  the line.
 - **Missed work comes back in the same session:** a missed review card returns as a fresh version at the end of
   the session, a "Your turn" exercise whose answer was shown (or a missed template check) returns at the end of
   the lesson, and Pattern Blitz lists each missed line with the right one when the round ends.
@@ -464,6 +543,19 @@ Pólya (1945).
   look-alike snippets), so a beginner sees the right shape before typing it, and a typed exercise later in the
   same lesson or the next practices it. The first lesson demonstrates retrieval itself: the learner writes a line,
   then recalls its shape from memory a few slides later.
+- **Tracing is practiced, not only shown.** "Trace it" questions ask for a variable's value after a given pass of
+  a loop, the calls on the stack at the deepest point of a recursion, or how often a line runs (Lister et al.,
+  2004; Xie et al., 2019). Find-the-bug exercises give a short program with its wrong output and ask the learner
+  to trace it, then write it again fixed. In the pattern units, every guided lesson has a "Watch it run" step that
+  traces the solution on a small input.
+- **Predict, run, investigate, modify, make.** The exercises cover PRIMM's stages (Sentance, Waite & Kallia,
+  2019): output and trace questions predict; the learner's code is run with real Python; an error is shown with
+  its line and a plain-language explanation to investigate; find-the-bug exercises modify; and some exercises
+  state only a goal ("Write `has_duplicate(nums)`…") and accept any code that passes their checks.
+- The track is for beginners: only a learner who says they are new to coding is led through it. Two lessons,
+  Grids and Pointers and Python You Will Meet, cover the loop shapes and Python idioms the solutions rely on (two
+  pointers, stacks, grids; one-line `if`/`else`, `key=`, heaps of tuples, `@cache`, bit operators), so a learner
+  meets the syntax before the pattern that uses it (cognitive load, Section 4).
 - The **problem-solving framework** (understand, examples, brute force, optimise, code, test) is taught once in
   foundations and then shown as a slim progress bar in every guided lesson, so the learner always knows which stage
   they are in.
@@ -491,6 +583,11 @@ learning algorithms, learning is fastest when training is answered correctly abo
   85% heuristic. If a learner's review accuracy stays above about 95%, intervals can grow faster; if it falls
   below about 75%, intervals should shrink and fewer new problems should be introduced.
 - Pattern Blitz should draw only from patterns the learner has studied, so a fast pace does not turn into guessing.
+  Spot the pattern defaults to the units the learner has started once those hold 8 problems; before that, or by
+  choice, it asks about all 150, and the lobby tells a learner who has not started a pattern that most of those
+  are guesses. The dashboard's empty review card leads a new learner to the next lesson, not to the game.
+- A mock interview is timed at about what an interviewer gives one problem (15, 25 or 40 minutes by difficulty).
+  Its problems come from what the learner has learned or from patterns they have started, and it is optional.
 
 ## 15. Self-determination theory
 
@@ -508,7 +605,9 @@ Nicklin & Ford (2014).
 
 **How IntPrep uses it.**
 - **Autonomy:** learners pick their daily XP goal, choose which unit to study, and can mute sounds, turn off
-  confetti or hide the streak.
+  confetti or hide the streak. They also choose the order of the path (the Easy and Medium problems of every
+  pattern first, or each unit to its end), whether to set an interview date, whether their code is run, and
+  whether to take a lesson or solve the problem first.
 - **Competence:** mastery crowns, the weekly XP chart, the streak calendar and per-pattern accuracy show real
   progress. XP and achievements should be framed as *information about learning* ("12 problems now remembered
   for 3+ weeks") rather than as payment.
@@ -590,6 +689,12 @@ evidence (Section 16 and Part C) shows it carries the most risk for learners, so
 
 **How IntPrep uses it.**
 - **Goal gradient:** the daily goal ring and "2 more reviews to hit today's goal" messages; crown progress bars.
+- **Goal setting:** the dashboard's "Your plan" card turns the daily goal into specific numbers with feedback
+  (Locke & Latham, 2002): reviews due, new problems learned today against a target, core problems left, and a
+  sentence saying where the pace leads ("At 2 new problems a day you finish the core by…"). With an interview
+  date the target is worked back from the day; when the date asks for more than 6 new problems a day, the plan
+  says how many core problems fit instead of asking for a pace few people keep. Each daily goal's description says
+  what a day at that goal is ("About 20 min: reviews and one new problem").
 - **Endowed progress:** count real completed work at the start of a unit (for example, the pattern intro is step 1)
   so progress bars never start at a discouraging zero. Never fake progress.
 - **Loss aversion:** use lightly. A long streak is motivating, but do not threaten learners with loss.
@@ -631,10 +736,11 @@ did not materially affect habit formation** (Lally et al., 2010). Consistency ma
 | **Leaderboards and competition** | Leaderboards were the element most often linked to negative effects, and loss of performance was the most common effect (Toda et al., 2018). Badges, leaderboards, competition and points were the elements most often reported as causing negative effects (Almeida et al., 2023). | Self-competition only: weekly XP vs. last week, Blitz personal best. |
 | **Gaming the system and "gamification misuse"** | Some Duolingo users become so fixated on the game layer that it distracts them from learning, wasting time and harming learning. Competitiveness was a common cause (Hadi Mogavi et al., 2022). Gaming the system and cheating are frequently reported side effects (Almeida et al., 2023). | XP for **due** reviews and **new** learning. Re-drilling items that aren't due gives sharply reduced XP. Hints never cost XP but do lower the review grade, so there is no incentive to hide struggle. XP for a correct answer after an initial miss. |
 | **Streak anxiety and broken-streak drop-off** | Losing a long streak is discouraging (Loh, 2017). Engagement falls after a streak breaks (Silverman & Barasch, 2023). One missed day does not harm habit formation (Lally et al., 2010). | Auto-applied freezes (max 2), an optional streak repair, a weekly rest-day option, "total days practised" and "longest streak" shown alongside the current streak, an option to hide the streak, and no guilt-tripping copy. |
-| **Bingeing instead of spacing** | Bingers are more likely to quit (Loh, 2017). Massed practice feels effective but retains less (Kornell & Bjork, 2008; Cepeda et al., 2006). | A clear "done for today" state once due reviews and the daily goal are finished. Cap new problems per day. Reduced XP for extra non-due drilling. |
-| **Fluency illusions from easy formats** | Recognition formats feel easy and give smaller benefits than recall (Rowland, 2014). Learners misread effort as poor learning (Kirk-Johnson et al., 2019). | A format ladder that moves to recall as items mature. Top crowns require a recall drill. In-app explanations of why harder practice works. |
+| **Bingeing instead of spacing** | Bingers are more likely to quit (Loh, 2017). Massed practice feels effective but retains less (Kornell & Bjork, 2008; Cepeda et al., 2006). | A clear "done for today" state once due reviews and the daily goal are finished. Cap new problems per day. Reduced XP for extra non-due drilling. Built: the plan card gives a daily target of new problems (1 to 5 by daily goal; up to 6 when an interview date needs it) and marks it "Done for today" once met; it puts reviews first when more than 12 are due and asks for nothing new when more than 30 are. It is a target, not a lock: the next lesson stays one tap away. |
+| **Fluency illusions from easy formats** | Recognition formats feel easy and give smaller benefits than recall (Rowland, 2014). Learners misread effort as poor learning (Kirk-Johnson et al., 2019). | A format ladder that moves to recall as items mature. The top crown requires typed or run code. Whole solutions are judged by running them, not by how they look. In-app explanations of why harder practice works. |
 | **Distracting "juice" and seductive details** | Interesting but irrelevant additions reduce learning (Harp & Mayer, 1998; Rey, 2012). Visual embellishments improve appeal but affect felt competence only in some circumstances (Hicks et al., 2019). | Celebrate at **boundaries** (correct answer, session end, goal met, crown earned), never during reading or the walkthrough. Respect `prefers-reduced-motion`, offer a single sound toggle, and keep haptics short and optional. |
-| **Time pressure for novices** | Flow needs challenge matched to skill (Nakamura & Csikszentmihalyi, 2002). Speed before accuracy pushes guessing. | Pattern Blitz unlocks after 3 patterns, uses only studied patterns, and has an untimed practice mode. Combos reward streaks of correct answers; only Blitz rewards speed. Blitz misses go into the review queue. |
+| **Time pressure for novices** | Flow needs challenge matched to skill (Nakamura & Csikszentmihalyi, 2002). Speed before accuracy pushes guessing. | Pattern Blitz unlocks after 3 patterns, uses only studied patterns, and has an untimed practice mode. Combos reward streaks of correct answers; only Blitz rewards speed. Blitz misses go into the review queue. Built for Spot the pattern: it defaults to the units the learner has started (once they hold 8 problems), and a miss pulls a learned problem into today's review without shortening its interval when the learner then gets it right. Mock interviews are optional, allow 15, 25 or 40 minutes by difficulty, and draw only learned problems or new ones from patterns the learner has started (Hard ones once half the unit is learned). |
+| **Attempting a problem without enough prior knowledge** | Productive failure helps most when learners know enough to make a real attempt; younger learners and domain-general skills favored instruction first (Sinha & Kapur, 2021; Kapur, 2016). Minimal guidance tends to fail novices (Kirschner, Sweller & Clark, 2006). | "Try it yourself first" is an offer, never a gate. A failed attempt costs no XP and does not touch the streak or the schedule, and "I am stuck: take the lesson" is on the screen throughout. Learners new to coding go through the beginner track first. |
 | **Manipulative "dark pattern" design** | Chou (2015) separates "White Hat" drives (meaning, accomplishment, empowerment) from "Black Hat" drives (scarcity, unpredictability, loss), which create urgency but burn out users. Eyal (2014) proposes asking whether a habit-forming product materially improves users' lives. | Lead with White Hat drives: crowns, progress and skill. Use loss (streaks) gently and always with forgiveness. No artificial scarcity, no gems for sale, no random reward boxes. |
 
 ## IntPrep's gamification rules
@@ -649,12 +755,17 @@ not yet built.
    cost gems that a learner earns in about two days of normal practice, so they are slack with a modest cost, not
    a paywall. New learners start with one free freeze.
 3. **Streak repair (recommended):** if a streak breaks with no freeze available, offer a 48-hour window to restore it
-   by completing a slightly longer "repair session" (Silverman & Barasch, 2023; Lally et al., 2010).
+   by completing a slightly longer "repair session" (Silverman & Barasch, 2023; Lally et al., 2010). Built: the
+   repair is paid in gems instead of a longer session, and the 48 hours run from the first missed day, not from
+   the day the app is next opened, so a streak that ended a month ago is not offered back.
 4. **Optional weekly rest day:** a learner can choose one day a week that never breaks the streak (Weekend Amulet
    result in Loh, 2017; flexibility result in Beshears et al., 2021).
 5. Display current streak, longest streak and total days practised. After a break, show "fresh start" messaging,
    not a large "0" (Dai et al., 2014).
-6. Use the user's local midnight for day boundaries and say clearly when the day ends.
+6. Use the user's local midnight for day boundaries and say clearly when the day ends. A device clock that moves
+   back (a trip west, a corrected clock) never costs a streak, and days missed while a tab stayed open overnight
+   are settled when XP is next earned: a freeze is used, or the streak becomes repairable, instead of silently
+   restarting.
 
 **Daily XP goal**
 1. Offer 4 levels (for example 10, 20, 30, 50 XP). Default to a modest one and let learners change it any time.
@@ -672,6 +783,9 @@ not yet built.
 1. Levels come from XP and act as a light progress signal.
 2. **Crowns are the headline mastery signal.** Derive them from the review interval (for example 1 crown at 7 days,
    2 at 21 days, 3 at 60 days), and require a successful recall drill (key-line fill-in or rebuild) for the top crown.
+   Built: five crowns, at intervals of under 3 days, 3, 7, 21 and 60 days; the fifth ("Mastered") also needs a typed
+   Code from memory run of 80% or more or the learner's own code passing the problem's tests, made since the last
+   lapse.
 3. When a crowned problem becomes overdue, show it as "fading" rather than removing the crown. This is an honest
    cue to review, not a punishment.
 4. Achievements should mostly reward **learning behaviours**: "Predicted the pattern before reading 25 times",
@@ -695,22 +809,61 @@ not yet built.
    several days.
 2. Order a session as due reviews first (the most fragile memories), then the interleaved review, then new material.
 
+What the app does today (`DAILY_GOALS` in `lib/game.ts`, `lib/plan.ts`, `SESSION_PROBLEMS` in `lib/drills.ts`):
+- The four daily goals say what a day is and set the plan's pace (`minutes` and `newPerDay`): Casual, about 10
+  minutes and 1 new problem a day; Regular, about 20 minutes and 1; Serious, about 40 minutes and 2; Intense, an
+  hour or more and 4. So the default (Regular) is a longer day than rule 1 recommends, and the largest goal
+  introduces more than 3 new problems; rule 1 stays the recommendation for a beginner. With an interview date the pace is worked back from
+  the day, up to 6 new problems a day.
+- A review session holds up to 8 due problems (5 when practicing ahead or by unit). There is no cap on a day's
+  reviews and no spreading of a backlog. Instead, the plan stops asking for new problems: with more than 12
+  problems due, the dashboard makes the review the primary action and the plan card says to do the reviews first;
+  with more than 30 due, the day's target of new problems is zero. Neither blocks a lesson.
+- The pace is not adjusted by review accuracy.
+- The learning path takes the Easy and Medium problems of every unit first and the Hard ones in a second pass,
+  so a learner meets all 18 patterns before the hardest problem of the second one ("Path order" in the profile
+  switches to unit by unit).
+
 ## IntPrep's review-scheduling rules
 
-**Auto-grading.** Each review of a problem is graded from performance:
+**Auto-grading.** Each review of a problem is graded from performance: the first try of its three cards, one
+recognition card and two coding cards (`gradeFrom` in `lib/srs.ts`). A wrong answer, "Show answer" and a revealed
+solution all count as a miss; a coding card that is nearly right counts as half (see below).
 
-| Grade | Rule (any drill type) |
-|---|---|
-| **Again** | Wrong answer, revealed the solution, or gave up. |
-| **Hard** | Correct but used a hint, needed a second attempt, or reported low confidence. (Hard is a pass, as in Anki.) |
-| **Good** | Correct, unaided, on the first attempt. |
-| **Easy** | Correct, unaided, first attempt, high confidence, and well under the typical time. For rebuild drills, all key lines correct. |
+| Grade | Shown as | Rule |
+|---|---|---|
+| **Again** | Forgot | The misses add up to two or more of the three cards (a near miss counts half), or "Forgot" chosen on a self-rated insight card. |
+| **Hard** | Fuzzy | Any miss short of that: one card missed, or one to three near misses. Also "Fuzzy" chosen on the insight card. (Hard is a pass, as in Anki.) |
+| **Good** | Got it | Every card right on the first try. |
+| **Easy** | Easy | Every card right on the first try, and "Easy" chosen on the insight card. |
 
-**Scheduling.**
-- Start with SM-2: intervals of 1 day, then 6 days, then interval × EF (EF starts at 2.5, minimum 1.3). Hard grows the
-  interval a little, Easy a lot.
-- **Again:** the problem comes back later in the same session until answered correctly, then returns tomorrow
-  (successive relearning; SM-2 step 7).
+A Code from memory run counts as the review of a problem that is due: 90% or more is Good, 60% or more Hard, less
+Again. Recommended, not built: lowering the grade for a hint or a slow answer, and Easy from speed.
+
+**Scheduling** (`review` in `lib/srs.ts`). The scheduler is SM-2 in shape: an interval that is multiplied by an
+ease factor (EF, starting at 2.5, never below 1.3) after each passed review. The rules, including where they
+depart from SM-2:
+- **First steps.** A problem learned in a lesson is due the next day. Passed, it comes back after 2 days, then 4,
+  then the interval times EF. A problem the learner solved unaided before its lesson skips these steps and starts
+  a week out (`knownCard`).
+- **Good:** the interval times EF. Ease lost to earlier lapses comes back 0.05 with each Good, up to 2.5.
+- **Hard:** the interval still grows, by a fifth and at least a day, and EF is left alone. One slip among three
+  cards says little about how hard the problem is, and an ease that only ever falls turns every problem into a
+  daily card.
+- **Easy:** EF rises by 0.15 and the interval grows by EF times 1.3 (4 days for a new card).
+- **Again (a lapse):** the missed card comes back once, later in the same session, as a fresh version
+  (successive relearning; SM-2 step 7). The problem keeps a fifth of its interval, at least a day, so forgetting a
+  60-day problem brings it back in 12 days, not tomorrow; EF drops by 0.2.
+- **An overdue problem** that is passed gets credit for half the extra days it was remembered.
+- **Reviewed early and passed, the interval is kept.** A problem can be asked before its interval has passed: a
+  Pattern Blitz miss or a failed mock interview pulls it into today's review, and optional practice (practicing
+  ahead, unit practice, Code from memory) counts as a review once three quarters of an interval of 4 days or more
+  have passed. The new interval is worked out from the days that actually passed, and is never shorter than the
+  one the problem had: being asked early and getting it right is no evidence of forgetting. (A problem learned or
+  lapsed today is not pulled in at all, and a miss in optional practice never lapses a problem that is not due.)
+- **Spread.** An interval of a week or more is moved by up to 8% either way, at random, so problems learned on the
+  same day do not all come back on the same day.
+- **Longest interval:** 365 days.
 - **Format ladder:** every problem gets one recognition card (spot the pattern about 70% of the time) and two
   coding cards chosen from its schedule (`codeStage` in `lib/drills.ts`): while the code is new (no right review
   yet, `reps` under `PICK_UNTIL_REPS` = 1), arrange a part + pick the gaps, both picked from choices; interval
@@ -724,11 +877,21 @@ not yet built.
   more) counts as half right toward the problem's grade, picked or typed, so two slips make a review "Fuzzy",
   not "Forgot". A key line is all or nothing.
 - **Self-rating cross-check:** if a self-rated "Easy" is followed by a failed objective drill on the same problem,
-  treat the review as Again.
+  treat the review as Again. (Built: a missed card in the same review makes it Fuzzy or Forgot whatever the
+  self-rating.)
 - **Retention target:** monitor the learner's review accuracy. Aim for 85–90%. Lengthen intervals if accuracy stays
-  above about 95%, and shorten them and slow new material if it drops below about 75%.
+  above about 95%, and shorten them and slow new material if it drops below about 75%. (Not built: intervals do
+  not depend on the learner's overall accuracy.)
 - **Optional interview date:** if a learner sets one, cap intervals so every studied problem gets at least one review
   in the final week, and keep gaps at roughly 10–20% of the time remaining (a rough reading of Cepeda et al., 2008).
+  Built so far: a learner can set a date in onboarding or the profile. From then on, every review caps the new
+  interval at the days left minus two, so no review is scheduled past the interview, and setting the date pulls
+  any review already scheduled beyond it into the last stretch before the day, spread over those days
+  (`pullInReviews` in `lib/store.ts`). Gaps are not otherwise scaled to the time remaining.
+  The plan uses the date too (`lib/plan.ts`): it works the daily number of new problems back from the day, after
+  setting aside the last 15% of the days (at least 2 when more than 3 days are left, at most 10) for review and
+  mock interviews, and it asks for at most 6 new problems a day; when the core problems do not fit, it says how
+  many do.
 
 ## Pick first, then type: from the research to the code
 
@@ -756,7 +919,9 @@ taken from a study.
   learned, keeps the code picked for one more review, since a slip or a recall minutes after the lesson shows
   little. A clean right review on a later day hands the code over to typing.
 - `TYPED_PROOF = 0.8`: a typed Code from memory run of 80% or more (Fill the gaps or From scratch), made since the
-  last lapse, shows the learner knows the code and ends picking early. A later lapse makes it stale.
+  last lapse, shows the learner knows the code and ends picking early. So does the learner's own code passing every
+  test of a learned problem (From scratch, Solve it yourself, a mock interview). A later lapse makes it stale. The
+  same proof is what the fifth mastery crown asks for on top of a 60-day interval.
 - `TEMPLATE_READY = 0.8`: a pattern template counts as known once a Pick the gaps round in Template practice
   reaches 80% (the pattern intro's pick does not count: it comes seconds after the template was on screen), or
   its typed gaps reach 80%, or after any From memory try. The template ladder is Pick the gaps, then Fill the

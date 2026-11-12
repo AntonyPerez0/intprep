@@ -198,11 +198,17 @@ export function normalizeCode(s: string): string {
   return out + normalizeCodePart(code);
 }
 
-/** Code between string literals: one space between words, none around anything else. */
+/**
+ * Code between string literals: one space between words, none around anything else. An operator
+ * written with a space inside it (`< =`, `= =`, `+ =`, `* *`, `/ /`, `! =`, `- >`) is a syntax
+ * error in Python, so it is kept apart from the real one and never matches it.
+ */
 function normalizeCodePart(code: string): string {
   return code
-    .replace(/\s+/g, ' ')
-    .replace(/ ?([^\w ]) ?/g, '$1')
+    .replace(/([=!<>+\-*/%&|^]) +(=)/g, '$1\u00a0$2')
+    .replace(/(\*) +(\*)|(\/) +(\/)|(-) +(>)/g, (m) => m.replace(/ +/, '\u00a0'))
+    .replace(/\s+/g, (ws) => (ws.includes('\u00a0') ? '\u00a0' : ' '))
+    .replace(/ ?([^\w \u00a0]) ?/g, '$1')
     .trim()
     .replace(/,\)/g, ')')
     .replace(/,\]/g, ']')

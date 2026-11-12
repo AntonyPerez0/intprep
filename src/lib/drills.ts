@@ -16,10 +16,11 @@ import { PICK_UNTIL_REPS, type CodeInput } from './input';
 import { pick, sample, shuffle, shuffleWith } from './random';
 import type { SrsCard } from './srs';
 
-export type DrillKind = 'pattern' | 'technique' | 'insight' | 'order' | 'keyline' | 'complexity' | 'gaps' | 'part';
+export type DrillKind = 'pattern' | 'clues' | 'technique' | 'insight' | 'order' | 'keyline' | 'complexity' | 'gaps' | 'part';
 
 export const DRILL_LABEL: Record<DrillKind, string> = {
   pattern: 'Spot the pattern',
+  clues: 'Read the clue words',
   technique: 'Name the technique',
   insight: 'Recall the key insight',
   order: 'Put the steps in order',
@@ -53,7 +54,7 @@ export const SESSION_PROBLEMS = { due: 8, ahead: 5, unit: 5 } as const;
 export const acceptedCategories = (p: Problem): CategoryId[] => [p.category, ...(p.alsoAccept ?? [])];
 
 // Pairs that are easy to confuse make better distractors than random ones.
-const CONFUSABLE: Partial<Record<CategoryId, CategoryId[]>> = {
+export const CONFUSABLE: Partial<Record<CategoryId, CategoryId[]>> = {
   'arrays-hashing': ['two-pointers', 'sliding-window', 'greedy'],
   'two-pointers': ['sliding-window', 'binary-search', 'arrays-hashing'],
   'sliding-window': ['two-pointers', 'arrays-hashing', 'dp-1d'],
@@ -461,13 +462,17 @@ export interface DeckOptions {
 }
 
 /**
- * The cards used to review one problem: one recognition card first (Spot the pattern about 70% of
- * the time, otherwise the key insight, the technique, the complexity or the steps in order), then
+ * The cards used to review one problem: one recognition card first (Spot the pattern or Read the
+ * clue words about 70% of the time, otherwise the key insight, the technique, the complexity or the
+ * steps in order), then
  * two coding cards chosen by the problem's stage and input (see `codingKinds`). Every coding card
  * carries the input.
  */
 export function cardsForProblem(p: Problem, { srs, round = 0, input = 'type' }: DeckOptions = {}): DrillCardSpec[] {
-  const lead: DrillKind = Math.random() < 0.7 ? 'pattern' : pick(RECOGNITION_OTHER);
+  // Recognition: the whole problem (45%), only its clue words (25%: the wording that should
+  // trigger the pattern, without the statement that gives the problem away), or one of the others.
+  const roll = Math.random();
+  const lead: DrillKind = roll < 0.45 ? 'pattern' : roll < 0.7 ? 'clues' : pick(RECOGNITION_OTHER);
   let coding = codingKinds(codeStage(srs), input, partChunks(p, input).length);
   // A solution without a key line to blank (picked: without one that is a real pick): a part
   // instead (or the gaps). Picked, a problem without a part to pick asks the gaps instead.

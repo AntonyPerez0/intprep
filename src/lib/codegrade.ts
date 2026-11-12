@@ -13,6 +13,7 @@
 //
 // Pure: no React, no DOM. Display lives in src/components/CodeTyper.tsx.
 
+import { swapRuns, topLevelAssign } from './order';
 import { normalizeCode, stripComment } from './parseSolution';
 
 /**
@@ -108,11 +109,14 @@ export function codeLines(src: string | string[]): string[] {
     .filter((l) => !isIgnorable(l));
 }
 
-/** The comparison key of one line: normalizeCode, plus trailing commas (`{a: 1,}`, end of line) do not matter. */
+/**
+ * The comparison key of one line: normalizeCode, plus trailing commas that change nothing do not
+ * matter: `{a: 1,}`, and the comma after an item on its own line (`(1, 0),` in a list written over
+ * several lines). A comma that ends an assignment or a return stays: `x = 1,` is a tuple, not 1.
+ */
 export function lineKey(line: string): string {
-  return normalizeCode(line)
-    .replace(/,\}/g, '}')
-    .replace(/,+$/, '');
+  const key = normalizeCode(line).replace(/,\}/g, '}');
+  return /^(return|yield)\b/.test(key) || topLevelAssign(key).at >= 0 ? key : key.replace(/,+$/, '');
 }
 
 /** The smallest indentation among a snippet's code lines (0 if it has none): where an editor for it starts. */
@@ -133,13 +137,64 @@ export interface GradeOptions {
 }
 
 /**
+ * How deep each line sits: 0 at `base`, one more for every indentation that is still open above it
+ * (Python's own rule, so any consistent width counts: 2 spaces, 4, a tab). A line left of `base` is
+ * -1, and a line that dedents to a column no open block has (inconsistent typing) gets a depth
+ * between the two blocks, which matches nothing.
+ */
+function depths(lines: readonly string[], base: number): number[] {
+  const open = [base];
+  return lines.map((l) => {
+    const col = indentOf(l);
+    if (col < base) return -1;
+    const dedent = open[open.length - 1] > col;
+    while (open.length > 1 && open[open.length - 1] > col) open.pop();
+    if (col > open[open.length - 1]) {
+      // After a dedent, a column no open block has: Python calls it an IndentationError.
+      if (dedent) return open.length - 0.5;
+      open.push(col);
+    }
+    return open.length - 1;
+  });
+}
+
+/**
+ * The expected lines, with each run of lines that may come in any order (`swapRuns`: neighboring
+ * simple statements that do not touch each other's variables, such as `l += 1` and `r -= 1`) put
+ * in the order the learner typed them, when the typed code has the same lines side by side.
+ * Either order runs the same, so neither is a mistake.
+ */
+function orderLike(expected: string[], typed: readonly string[]): string[] {
+  const runs = swapRuns(expected);
+  if (!runs.length) return expected;
+  const tk = typed.map(lineKey);
+  const out = [...expected];
+  for (const run of runs) {
+    const keys = run.map((i) => lineKey(expected[i]));
+    const want = [...keys].sort().join('\n');
+    for (let at = 0; at + run.length <= tk.length; at++) {
+      const window = tk.slice(at, at + run.length);
+      if ([...window].sort().join('\n') !== want) continue;
+      // The typed order of this run: place the expected lines to match it.
+      const pool = run.map((i) => expected[i]);
+      window.forEach((k, n) => {
+        const j = pool.findIndex((line) => lineKey(line) === k);
+        out[run[n]] = pool.splice(j, 1)[0];
+      });
+      break;
+    }
+  }
+  return out;
+}
+
+/**
  * Grade typed code against the expected code.
  * @param typed    What the learner typed (the textarea value).
  * @param expected The answer: a string or an array of lines (may contain blank and comment lines).
  */
 export function gradeCode(typed: string, expected: string | string[], opts: GradeOptions = {}): Grade {
   const t = codeLines(typed);
-  const e = codeLines(expected);
+  const e = orderLike(codeLines(expected), t);
   const tk = t.map(lineKey);
   const ek = e.map(lineKey);
   const n = t.length;
@@ -207,6 +262,11 @@ export function gradeCode(typed: string, expected: string | string[], opts: Grad
   }
   const baseExp = minExpAll;
   const baseGot = Math.max(0, baseExp + offset);
+  // Indentation is compared by depth, not by column: a body indented two spaces under its `for`
+  // is as right as one indented four, as long as the typing is consistent. Typed column
+  // `baseGot` is the answer's column `baseExp`.
+  const depthGot = depths(t, baseGot);
+  const depthExp = depths(e, baseExp);
 
   const rows: GradeRow[] = [];
   let correct = 0;
@@ -216,7 +276,9 @@ export function gradeCode(typed: string, expected: string | string[], opts: Grad
   let wrongIndent = 0;
   for (const s of steps) {
     if (s.kind === 'match') {
-      const ok = indentOf(t[s.i]) - indentOf(e[s.j]) === offset;
+      // Right at the same depth, or at the very column the answer has it (the lines under a
+      // missing `if` sit where they should, even though they are one block shallower).
+      const ok = Number.isInteger(depthGot[s.i]) && (depthGot[s.i] === depthExp[s.j] || indentOf(t[s.i]) - indentOf(e[s.j]) === offset);
       if (ok) correct++;
       else wrongIndent++;
       rows.push({ kind: ok ? 'ok' : 'indent', got: t[s.i], exp: e[s.j], gotIndex: s.i, expIndex: s.j });
@@ -295,4 +357,17 @@ export function gradeSummaryParts(g: Grade): string[] {
 /** "3 of 4 lines correct · 1 extra · 1 wrong indent": the summary TyperFooter shows. */
 export function gradeSummary(g: Grade): string {
   return gradeSummaryParts(g).join(' · ');
+}
+
+/**
+ * A learner's typed lines as a whole file: under the lines the editor shows as given (the class
+ * and method signature), at the body's indentation. Whatever column the learner started from (the
+ * editor's own, or the full indentation typed out) their relative indentation is kept.
+ */
+export function withGiven(given: readonly string[], typed: string, indent: number): string {
+  const lines = typed.replace(/\t/g, '    ').split('\n');
+  const used = lines.filter((l) => l.trim());
+  const base = used.length ? Math.min(...used.map((l) => l.length - l.trimStart().length)) : 0;
+  const body = lines.map((l) => (l.trim() ? ' '.repeat(indent) + l.slice(base) : ''));
+  return [...given, ...body].join('\n');
 }

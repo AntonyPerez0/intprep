@@ -9,9 +9,11 @@ Always start by **defining \`dp[i]\` in words**, for example "\`dp[i]\` = number
 
 Most 1-D DP solutions grow through four stages, each a small upgrade of the last:
 - **Recursion**: write the recurrence directly. Correct, but often exponential because it repeats work.
-- **Memoization** (top-down): the same recursion plus a cache, so each subproblem is solved once.
+- **Memoization** (top-down): the same recursion plus a cache, so each subproblem is solved once. The cache is the \`memo\` dict you wrote in the beginner lessons; Python's \`@cache\` is that same dict, kept for you.
 - **Bottom-up table**: fill \`dp[0], dp[1], ...\` in a loop from small to big. No recursion needed.
-- **Rolling variables**: if \`dp[i]\` only looks back one or two steps, keep just those values for O(1) space.`,
+- **Rolling variables**: if \`dp[i]\` only looks back one or two steps, keep just those values for O(1) space.
+
+Every problem in this unit shows you these stages before its solution: first the recursion, then the same code with a cache, then the table when the solution goes further than that. The solution is always one small step on from the last stage you read.`,
     analogy:
       'Write "1 + 1 + 1 + 1 + 1" on paper and a friend counts: 5. Add "+ 1" and they say 6 instantly, without recounting, because they remembered the 5. DP is exactly that: remember earlier answers and build on them.',
     whenToUse: [
@@ -56,7 +58,7 @@ def ways_rolling(n):
     templateNotes: [
       '**Define `dp[i]` in words first.** If you cannot say what it means in one sentence, the recurrence will not come.',
       'Base cases are the smallest inputs you can answer without the recurrence (here `dp[0]` and `dp[1]`).',
-      '`@cache` (from `functools`) memoizes a function: the first call with an argument computes it, later calls return the stored answer.',
+      '`@cache` (from `functools`) is the memo dict from the beginner lessons, written for you. By hand you would start the function with `if i in memo: return memo[i]` and store `memo[i] = answer` before returning. Putting `@cache` on the line above the `def` does both: the first call with an argument computes the answer, later calls return the stored one.',
       'Bottom-up must fill entries in an order where everything `dp[i]` needs is **already filled**, usually left to right.',
       'Tuple assignment `prev, cur = cur, cur + prev` updates both variables from the **old** values at once.',
     ],
@@ -87,7 +89,7 @@ def ways_rolling(n):
         explain: 'Same recursion, but the first answer for each argument is stored and reused. Exponential becomes linear here.',
       },
       {
-        q: 'Your recurrence is `dp[i] = max(dp[i - 1], dp[i - 2] + nums[i])`. How much extra space do you really need?',
+        q: 'Your recurrence is `dp[i] = max(dp[i - 1], dp[i - 2] + nums[i - 1])`. How much extra space do you really need?',
         options: ['O(n²)', 'O(n)', 'O(1): two rolling variables', 'O(log n)'],
         answer: 2,
         explain: 'Each entry only looks back two steps, so two variables can replace the whole list.',
@@ -131,9 +133,9 @@ def ways_rolling(n):
         'That is the Fibonacci pattern. Keep only the last two values and loop up to n.',
       ],
       brute:
-        'Recursively try both moves from every step: `ways(n) = ways(n - 1) + ways(n - 2)`. With no memory, the same steps are recomputed again and again: **O(2ⁿ)** time.',
+        'Plain recursion on your last move, with no memory: **O(2ⁿ)** time.',
       insight:
-        'Every route to step n ends with a 1-step from n − 1 or a 2-step from n − 2, so `ways(n) = ways(n - 1) + ways(n - 2)`. Build it from the bottom, keeping only two numbers.',
+        'Every route to step n ends with a 1-step from n − 1 or a 2-step from n − 2, so `ways(n) = ways(n - 1) + ways(n - 2)`. The table you just saw reads only its last two cells, so drop the list and keep just those two numbers.',
       mnemonic: 'Last move was 1 or 2: add the two before.',
       steps: [
         'Define ways(i) as the number of ways to reach step i.',
@@ -144,7 +146,7 @@ def ways_rolling(n):
       solution: py`
 class Solution:
     def climbStairs(self, n: int) -> int:
-        #@ prev = ways to reach step 0 (just stand there), cur = ways to reach step 1.
+        #@ The first two cells of the table: prev = ways to reach step 0 (just stand there), cur = ways to reach step 1.
         prev, cur = 1, 1
         #@ ways(i) = ways(i - 1) + ways(i - 2). Slide the pair forward one step at a time.
         for _ in range(2, n + 1):
@@ -184,9 +186,9 @@ class Solution:
         '`dp[i] = min(dp[i - 1] + cost[i - 1], dp[i - 2] + cost[i - 2])`. The top is index `len(cost)`, and two variables are enough.',
       ],
       brute:
-        'Recursively try both moves from every stair. The same stairs are solved over and over: **O(2ⁿ)** time.',
+        'Plain recursion on the stair you came from, with no memory: **O(2ⁿ)** time.',
       insight:
-        'The cheapest way to stand on stair i comes from one of the two stairs below it, plus the cost of leaving that stair. Fill this from left to right and keep only the last two values.',
+        'The cheapest way to stand on stair i comes from one of the two stairs below it, plus the cost of leaving that stair. The table you just saw fills this from left to right and reads only its last two cells, so keep just those two values.',
       mnemonic: 'Cheaper of: one below plus its cost, two below plus its cost.',
       steps: [
         'Define dp[i] as the cheapest cost to stand on stair i; dp[0] and dp[1] are both 0.',
@@ -197,7 +199,7 @@ class Solution:
       solution: py`
 class Solution:
     def minCostClimbingStairs(self, cost: List[int]) -> int:
-        #@ dp[i] = cheapest cost to stand on stair i. Starting on stair 0 or 1 is free.
+        #@ dp[i] = cheapest cost to stand on stair i. Starting on stair 0 or 1 is free, so the first two cells of the table are 0: prev2 is dp[0] and prev1 is dp[1].
         prev2, prev1 = 0, 0
         #@ Reach stair i from i - 1 or i - 2, paying for the stair you leave. Keep the cheaper.
         for i in range(2, len(cost) + 1):
@@ -233,13 +235,13 @@ class Solution:
       ],
       hints: [
         'At each house you have two choices. What are they, and what does each one cost you?',
-        'Best up to house i = the larger of: skip it (best up to i − 1), or rob it (best up to i − 2, plus `nums[i]`).',
+        'Let `best(i)` be the most money from the **first `i` houses**. The last of them is `nums[i - 1]`: skip it and keep `best(i - 1)`, or rob it and add its money to `best(i - 2)`.',
         'Keep two running values: the best total up to the previous house, and up to the house before that.',
       ],
       brute:
-        'Recursively decide rob-or-skip for every house and keep the best valid total: **O(2ⁿ)** time.',
+        'Plain recursion that skips or robs the last house, with no memory: **O(2ⁿ)** time.',
       insight:
-        'At house i, either skip it (keep the best so far) or rob it (best from two houses back plus this money). `dp[i] = max(dp[i - 1], dp[i - 2] + nums[i])`, and two variables are enough.',
+        'With `dp[i]` = the most money from the first `i` houses, the last house, `nums[i - 1]`, is either skipped (keep `dp[i - 1]`) or robbed (its money plus `dp[i - 2]`, the best from two houses back): `dp[i] = max(dp[i - 1], dp[i - 2] + nums[i - 1])`. The table you just saw reads only its last two cells, so two variables are enough.',
       mnemonic: 'Skip it, or rob it plus two back. Take the max.',
       steps: [
         'Set prev and curr to 0: the best totals two houses back and one house back.',
@@ -251,9 +253,9 @@ class Solution:
       solution: py`
 class Solution:
     def rob(self, nums: List[int]) -> int:
-        #@ prev = best total up to two houses back, curr = best total up to the last house.
+        #@ The last two cells of the table. When we reach a house, curr is the best total from all the houses before it and prev is the best total without the house just before it. With no houses yet, both are 0.
         prev, curr = 0, 0
-        #@ For each house: skip it (curr) or rob it (prev + money). Keep the bigger, then slide.
+        #@ For each house: skip it (curr) or rob it (prev + money), the same line as in the table. Keep the bigger, then slide.
         for money in nums:
             prev, curr = curr, max(curr, prev + money)  #!
         #@ curr is the best total over all the houses.
@@ -294,7 +296,7 @@ class Solution:
         'Either the first house is left out, or the last house is left out. Each case is an ordinary straight row.',
         'Answer = max(rob(nums[1:]), rob(nums[:-1])) with the normal House Robber. Watch out for a single house.',
       ],
-      brute: 'Try every subset of houses and reject any with two neighbors (including first + last): **O(2ⁿ)**.',
+      brute: 'Try every subset of houses and reject any with two neighbors (including first + last): **O(2ⁿ)**. The recursion below is the first step away from that: it breaks the circle, then reuses House Robber.',
       insight:
         'You can never rob both the first and the last house, so solve two ordinary House Robber rows, one **without the first house** and one **without the last**, and take the better.',
       mnemonic: 'Break the circle twice: drop first, drop last, take max.',
@@ -355,7 +357,7 @@ class Solution:
       brute:
         'Check every substring (O(n²) of them) and test each one for being a palindrome (O(n)): **O(n³)** total.',
       insight:
-        'Grow palindromes from their **center**. There are only 2n − 1 centers (each letter and each gap), and expanding from one costs O(n), so the whole search is O(n²) with O(1) extra space.',
+        'Grow palindromes from their **center**. There are only 2n − 1 centers (each letter and each gap), and expanding from one costs O(n), so the whole search is O(n²) with O(1) extra space. No table is needed: this problem sits in the DP unit because a 2-D table also solves it, but two pointers moving outward are simpler and use less memory.',
       mnemonic: 'Every palindrome has a middle; expand from all of them.',
       steps: [
         'Track the start and the length of the best palindrome found so far.',
@@ -484,9 +486,9 @@ class Solution:
         'Add `dp[i - 1]` if `s[i - 1]` is not "0"; add `dp[i - 2]` if `s[i - 2:i]` is between 10 and 26. Start with `dp[0] = 1`.',
       ],
       brute:
-        'Recursively split off 1 digit or 2 digits at each position. The same suffixes are solved over and over: **O(2ⁿ)**.',
+        'Plain recursion on how the last letter was written (one digit or two), with no memory: the same prefixes are decoded over and over, **O(2ⁿ)**.',
       insight:
-        'This is Climbing Stairs with rules: a 1-digit step is allowed only if the digit is 1–9, and a 2-digit step only if the pair is 10–26. `dp[i]` adds up the allowed steps.',
+        'This is Climbing Stairs with rules: a 1-digit step is allowed only if the digit is 1–9, and a 2-digit step only if the pair is 10–26. `dp[i]` adds up the allowed steps. The table below is the cache of the recursion you just read, written as a list: one cell per prefix length, filled from `dp[0]` upward.',
       mnemonic: 'Stairs with rules: one digit if not 0, two if 10–26.',
       steps: [
         'Create dp of length n + 1 with dp[0] = 1 for the empty prefix.',
@@ -501,7 +503,7 @@ class Solution:
         #@ dp[i] = ways to decode the first i characters. There is one way to decode nothing.
         dp = [0] * (len(s) + 1)
         dp[0] = 1
-        #@ Fill in longer and longer prefixes.
+        #@ The recursion only asked about shorter prefixes, so fill in longer and longer prefixes.
         for i in range(1, len(s) + 1):
             #@ The last digit on its own is a letter if it is 1-9.
             if s[i - 1] != "0":
@@ -549,9 +551,9 @@ class Solution:
         '`dp[a] = 1 + min(dp[a - c])` over every coin `c <= a`, with `dp[0] = 0`. Fill `a` from 1 up to `amount`.',
       ],
       brute:
-        'Recursively try every coin at every step until the amount hits 0. The same leftover amounts are solved again and again: **exponential** time.',
+        'Plain recursion on the last coin, with no memory: **exponential** time.',
       insight:
-        'Whatever the best way to make `a` is, it ends with some coin `c`, and the rest must be a best way to make `a - c`. So `dp[a] = 1 + min(dp[a - c])`, built from 0 up to `amount`.',
+        'Whatever the best way to make `a` is, it ends with some coin `c`, and the rest must be a best way to make `a - c`. So `dp[a] = 1 + min(dp[a - c])`. The table below is the cache of the recursion you just read, written as a list: the recursion only asks about smaller amounts, so fill it from 0 up to `amount`.',
       mnemonic: 'Last coin c: one plus the best for a − c.',
       steps: [
         'Create dp of size amount + 1 filled with a too-big value, and set dp[0] = 0.',
@@ -565,7 +567,7 @@ class Solution:
         #@ dp[a] = fewest coins that make a. amount + 1 means "impossible" (no answer is that big).
         dp = [amount + 1] * (amount + 1)
         dp[0] = 0  #!
-        #@ Build up from small amounts to the target.
+        #@ The recursion only asked about smaller amounts, so build up from small amounts to the target.
         for a in range(1, amount + 1):
             #@ Try each coin as the LAST coin: one coin plus the best way to make the rest.
             for coin in coins:
@@ -602,13 +604,13 @@ class Solution:
         'zeros wipe the product out',
       ],
       hints: [
-        'For the largest **sum** you track the best sum ending at each index. Why is a product trickier?',
-        'A very negative product can become the biggest one after multiplying by another negative. So track the smallest product too.',
+        'Walk left to right and ask at each index: what is the largest product of a subarray that **ends exactly here**? It either starts fresh at this number or extends the best one ending at the previous index. Is "the best one" always the one with the largest product?',
+        'No. A very negative product becomes the biggest one after multiplying by another negative. So also track the **smallest** product ending at each index.',
         'At each x: new max = max(x, max · x, min · x) and new min = min of the same three. Update the answer with the new max.',
       ],
       brute: 'Try every start and end, multiplying as you go: **O(n²)**.',
       insight:
-        'Keep **both** the largest and the smallest product of a subarray ending at the current index. A negative number swaps their roles, and the "start fresh at x" option handles zeros.',
+        'Keep **both** the largest and the smallest product of a subarray ending at the current index. A negative number swaps their roles, and the "start fresh at x" option handles zeros. The table you just saw kept two lists, but each cell reads only the one before it, so one variable for each is enough.',
       mnemonic: 'Track the max and the min; negatives swap them.',
       steps: [
         'Start best, cur_max and cur_min at nums[0].',
@@ -672,9 +674,9 @@ class Solution:
         'Let `dp[i]` = can `s[:i]` be cut into words, with `dp[0] = True`. For each i, check every j < i.',
       ],
       brute:
-        'Recursively try every word that matches the start of the remaining string. Inputs like "aaaa...ab" re-check the same suffixes over and over: **exponential** time.',
+        'Plain recursion on where the last cut goes, with no memory: inputs like "aaaa...ab" decide the same prefixes over and over, **exponential** time.',
       insight:
-        '`dp[i]` asks "can the first `i` letters be cut into words?". It is True when some earlier split point `j` is True and the piece `s[j:i]` is a word. Fill it from left to right over **end positions**.',
+        '`dp[i]` asks "can the first `i` letters be cut into words?". It is True when some earlier split point `j` is True and the piece `s[j:i]` is a word. The table below is the cache of the recursion you just read, written as a list: the recursion only asks about shorter prefixes, so fill it from left to right over **end positions**.',
       mnemonic: 'Good prefix + dictionary word = a longer good prefix.',
       steps: [
         'Put the dictionary words into a set.',
@@ -735,9 +737,9 @@ class Solution:
         'If `nums[j] < nums[i]` for some earlier j, you can extend the best subsequence ending at j by one.',
         '`dp[i] = 1 + max(dp[j])` over all j < i with `nums[j] < nums[i]` (or just 1 if there is none). The answer is `max(dp)`.',
       ],
-      brute: 'Generate all 2ⁿ subsequences and keep the longest increasing one: **O(2ⁿ · n)**.',
+      brute: 'The first idea is to generate all 2ⁿ subsequences and keep the longest increasing one: **O(2ⁿ · n)**. The recursion below is the first step toward something better. It asks a smaller question: how long is the longest increasing subsequence that **ends** at each index?',
       insight:
-        'Define `dp[i]` = length of the longest increasing subsequence **ending at** `nums[i]`. It extends the best earlier ending with a smaller value. The answer can end anywhere, so return `max(dp)`.',
+        'Define `dp[i]` = length of the longest increasing subsequence **ending at** `nums[i]`. It extends the best earlier ending with a smaller value. The table below is the cache of the recursion you just read, written as a list and filled from left to right, because an ending only looks at earlier indices. The answer can end anywhere, so return `max(dp)`.',
       mnemonic: 'Ending here: one more than the best smaller one before me.',
       steps: [
         'Create dp with a 1 for every index (each element alone).',
@@ -788,11 +790,11 @@ class Solution:
       hints: [
         'If the two groups are equal, what must each one add up to?',
         'Each group sums to total / 2. So the real question is: does some subset add up to exactly total / 2?',
-        'Keep a set of every sum you can reach. For each number, add it to every sum already in the set.',
+        'For each number decide: leave it out, or put it in the group. Keep a set of every sum you can reach so far. A new number keeps all the old sums (left out) and adds itself to each of them (put in).',
       ],
       brute: 'Try all 2ⁿ ways to put each number in group A or group B: **O(2ⁿ)**.',
       insight:
-        'Equal halves means one group sums to exactly `total / 2`. Track every **reachable subset sum**: each new number either stays out (the old sums) or joins (old sums + x).',
+        'Equal halves means one group sums to exactly `total / 2`. Track every **reachable subset sum**: each new number either stays out (the old sums) or joins (old sums + x). This is the table you just saw, shrunk: each row reads only the row above it, and all a row has to remember is which sums are True. So keep one row, as a set of those sums.',
       mnemonic: 'Half the total; grow the set of reachable sums.',
       steps: [
         'Compute the total; if it is odd, return False.',
@@ -810,10 +812,10 @@ class Solution:
             return False
         #@ The real question: can some subset add up to exactly half?
         target = total // 2  #!
-        #@ reachable = every subset sum we can make from the numbers seen so far.
+        #@ reachable = every subset sum we can make from the numbers seen so far: one row of the table, kept as the set of sums whose cell is True. With no numbers, only 0 is reachable.
         reachable = {0}
         for x in nums:
-            #@ x stays out (old sums) or joins (old sums + x). New sums are built from the OLD set.
+            #@ x stays out (old sums) or joins (old sums + x). The braces are a set comprehension: a new set holding s + x for every old sum s that stays within the target. Then |= adds all of those to reachable. The new set is finished before anything is added, so x is never used twice.
             reachable |= {s + x for s in reachable if s + x <= target}  #!
             #@ Stop as soon as half is reachable.
             if target in reachable:
@@ -826,7 +828,7 @@ class Solution:
         'The set never holds more than target + 1 sums, and each of the n numbers scans it once.',
       pitfalls: [
         'Odd totals can never split evenly, so check that first.',
-        'Adding to the set while looping over it would let one number be used twice. Build the new sums from the **old** set first.',
+        'Adding to the set while looping over it would let one number be used twice (Python also raises an error when a set changes size during a loop). Build the new sums from the **old** set first, then merge them in with `|=`.',
         'The 1-D boolean list version (`dp[s] = dp[s] or dp[s - x]`) must loop `s` from **high to low** for the same reason.',
         'Capping sums at the target keeps the set small.',
       ],

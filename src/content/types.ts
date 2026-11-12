@@ -68,7 +68,7 @@ export interface Problem {
   pattern: string;
   /**
    * Other categories whose technique is ALSO a fair answer for "which pattern?"
-   * (e.g. Generate Parentheses lives under Stack but is really backtracking).
+   * (e.g. Best Time to Buy and Sell Stock lives under Sliding Window but is as much greedy).
    * These are never used as wrong-answer distractors for this problem.
    */
   alsoAccept?: CategoryId[];
@@ -126,6 +126,46 @@ export interface PatternGuide {
   quiz: QuizQuestion[];
 }
 
+/**
+ * One stage on the way from the obvious solution to the final one, shown in a problem's lesson
+ * between the brute force and the key insight (dynamic programming: plain recursion, then the
+ * same recursion with a cache, then the table). Each `code` is a complete, runnable answer in the
+ * problem's own signature (`class Solution` ...), passing the same tests as its `solution`.
+ */
+export interface DerivationStage {
+  /** Short name of the stage, e.g. 'Plain recursion'. */
+  title: string;
+  /** What this stage does and what is still wrong with it (mini-markdown, 1–3 sentences). */
+  note: string;
+  /** Complete runnable Python (no `#@` / `#!` markers). */
+  code: string;
+  /** Its time complexity, e.g. 'O(2^n)'. */
+  time?: string;
+}
+
+/**
+ * A clue word: wording that shows up in problem statements, and what it should make the learner
+ * reach for. The "see this, use that" pairs of a pattern (src/content/cues.ts) are what the Clue
+ * words drill asks, in both directions, and what the pattern guide lists.
+ */
+export interface Cue {
+  /**
+   * What the learner reads: a phrase a problem statement really uses, or a fact about its input
+   * that is visible on the page (mini-markdown, at most 90 characters). Not a thought the learner
+   * has while solving ("the brute force repeats work"): wording they can spot.
+   */
+  see: string;
+  /** What to reach for, in a few words (mini-markdown, at most 70 characters): the tool or the move. */
+  use: string;
+  /**
+   * Other patterns this wording also points to (a sorted input: binary search and two pointers).
+   * They count as right in the drill and are never offered as wrong options for this clue.
+   */
+  also?: CategoryId[];
+  /** One or two problems of this unit whose statement shows the wording (ids). */
+  problems?: string[];
+}
+
 export interface CategoryContent {
   guide: PatternGuide;
   problems: Problem[];
@@ -158,6 +198,14 @@ export interface TypeSlide {
   explain: string;
   /** What `starter` + `answer` prints, exactly as python3 prints it. Shown as the expected output. */
   output?: string;
+  /**
+   * Python run after the learner's code when the app can run it (asserts on what they wrote, e.g.
+   * `assert total([1, 2]) == 3`). It prints nothing; raising means the code is wrong. With `check`,
+   * any code that runs clean (and prints `output`, when there is one) is correct, so the prompt can
+   * state only the goal instead of dictating names and lines. `answer` is still the solution shown,
+   * and the fallback the code is compared with when Python cannot be run (offline, first visit).
+   */
+  check?: string;
   /**
    * 2–3 WRONG versions of `answer` ("Pick first, then type"): with these, the slide is "Pick the
    * right code" in 'auto' ("Pick first, then type") and 'tap' ("Always pick"): the learner picks

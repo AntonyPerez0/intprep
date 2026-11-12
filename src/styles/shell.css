@@ -641,3 +641,44 @@ html:has(.actionbar) {
     display: inline-grid;
   }
 }
+
+/* ── A screen that failed to render (components/Crash.tsx) ───────────────── */
+.crash {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  background: var(--canvas);
+}
+.crash h1 {
+  font-size: var(--fs-2xl);
+  margin: 6px 0 0;
+}
+.crash p {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.crash-detail {
+  max-width: min(560px, 90vw);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}

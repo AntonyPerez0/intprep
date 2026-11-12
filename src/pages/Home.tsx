@@ -8,10 +8,12 @@ import { addDays, dayKey, daysBetween, friendlyDue, lastNDays, parseDay, today, 
 import { KEY_LINES_MIN, keyLinePool } from '../lib/blitzLines';
 import { SESSION_PROBLEMS } from '../lib/drills';
 import { GEMS, levelInfo, levelTitle } from '../lib/game';
-import { problemInput, type CodeInput, type InputMode } from '../lib/input';
+import { mastery, problemInput, type CodeInput, type InputMode } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { foundationsDone, nextStep, unitProgress, type NextStep } from '../lib/path';
-import { crowns } from '../lib/srs';
+import { cluesKnown } from '../lib/clues';
+import { REVIEWS_FIRST } from '../lib/plan';
+import { PlanCard } from '../components/PlanCard';
 import { dueProblemIds, learnedIds, repairableStreak, repairStreak, useProgress, xpToday, type Progress } from '../lib/store';
 import { CategoryIcon, Icon, IconTile, ICONS, LESSON_ICON } from '../components/icons';
 import { Badge, DifficultyChip, ProgressBar, Ring, StatCard } from '../components/ui';
@@ -31,7 +33,9 @@ export function Home() {
   const next = nextStep(p);
   const due = dueProblemIds(p);
   const learned = learnedIds(p).length;
-  const mastered = Object.values(p.problems).filter((x) => crowns(x.srs) >= 4).length;
+  const mastered = Object.values(p.problems).filter((x) => mastery(x) >= 4).length;
+  // A review backlog comes before new material (lib/plan.ts): the review card takes the primary button.
+  const reviewsFirst = due.length > REVIEWS_FIRST;
   const x = xpToday(p);
   const goal = p.settings.dailyGoal;
   const firstName = p.settings.name.trim().split(/\s+/)[0] ?? '';
@@ -45,10 +49,12 @@ export function Home() {
     status =
       x > 0
         ? x >= goal
-          ? `Daily goal complete. Your ${p.streak.current}-day streak is safe.`
+          ? due.length > 0
+            ? `Daily goal complete and your ${p.streak.current}-day streak is safe, with ${plural(due.length, 'review')} still due.`
+            : `Daily goal complete. Your ${p.streak.current}-day streak is safe.`
           : `Your ${p.streak.current}-day streak is safe for today. ${goal - x} XP to your daily goal.`
         : `Keep your ${p.streak.current}-day streak going. One lesson or review is enough.`;
-  else if (x >= goal) status = 'Daily goal complete. Nice work today.';
+  else if (x >= goal) status = due.length > 0 ? `Daily goal complete, with ${plural(due.length, 'review')} still due.` : 'Daily goal complete. Nice work today.';
   else if (due.length > 0) status = `${plural(due.length, 'review')} due and ${goal - x} XP to your daily goal.`;
   else status = `${goal - x} XP to your daily goal. One lesson starts a new streak.`;
 
@@ -67,10 +73,11 @@ export function Home() {
         {repairable > 0 && <RepairCard p={p} />}
 
         <div className="home-hero">
-          <ContinueCard p={p} next={next} />
+          <ContinueCard p={p} next={next} reviewsFirst={reviewsFirst} />
           <GetStarted p={p} learned={learned} next={next} />
-          <ReviewCard p={p} due={due.length} learned={learned} memory={pickMemory(p)} />
+          <ReviewCard p={p} due={due.length} learned={learned} memory={pickMemory(p)} primary={reviewsFirst} next={next} />
           <TodayPanel p={p} xp={x} />
+          {(!isNew || p.settings.interviewDate) && <PlanCard p={p} />}
         </div>
 
         {!isNew && (
@@ -238,7 +245,7 @@ function describeNext(p: Progress, next: NextStep): NextView {
   }
 }
 
-function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
+function ContinueCard({ p, next, reviewsFirst }: { p: Progress; next: NextStep; reviewsFirst: boolean }) {
   const v = describeNext(p, next);
   return (
     <section className="card home-card home-continue" style={{ ['--c' as string]: v.accent } as CSSProperties} aria-labelledby="home-continue-title">
@@ -275,7 +282,7 @@ function ContinueCard({ p, next }: { p: Progress; next: NextStep }) {
         ) : (
           <div className="grow" />
         )}
-        <Link to={next.href} className="btn btn-primary btn-lg home-continue-cta">
+        <Link to={next.href} className={`btn ${reviewsFirst && next.kind !== 'done' ? 'btn-secondary' : 'btn-primary'} btn-lg home-continue-cta`}>
           {v.cta}
           <Icon name="arrow" />
         </Link>
@@ -305,7 +312,7 @@ const REVIEW_HOW: Record<InputMode, { due: string; first: string }> = {
   },
 };
 
-function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; learned: number; memory: MemoryPick | null }) {
+function ReviewCard({ p, due, learned, memory, primary, next }: { p: Progress; due: number; learned: number; memory: MemoryPick | null; primary: boolean; next: NextStep }) {
   const t = today();
   const tomorrow = Math.max(0, dueProblemIds(p, addDays(t, 1)).length - due);
   const upcoming = Object.values(p.problems)
@@ -323,7 +330,7 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
     body = how.due;
     foot = tomorrow > 0 ? `${tomorrow} more due tomorrow` : null;
     action = (
-      <Link to="/review" className="btn btn-secondary home-review-cta">
+      <Link to="/review" className={`btn ${primary ? 'btn-primary' : 'btn-secondary'} home-review-cta`}>
         Start review
       </Link>
     );
@@ -339,9 +346,11 @@ function ReviewCard({ p, due, learned, memory }: { p: Progress; due: number; lea
   } else {
     title = 'Nothing to review yet';
     body = `Problems you learn come back here the next day: spot the pattern, then ${how.first}.`;
+    // Nothing learned yet: the way to a first review is the next lesson, not a game about
+    // patterns the learner has not met.
     action = (
-      <Link to="/blitz" className="btn btn-secondary home-review-cta">
-        Play Pattern Blitz
+      <Link to={next.href} className="btn btn-secondary home-review-cta">
+        Continue learning
       </Link>
     );
   }
@@ -874,6 +883,7 @@ function QuickLinks({ p }: { p: Progress }) {
   const fDone = foundationsDone(p);
   // Pattern Blitz's typing game opens at 3 learned problems; until then, the pattern game.
   const keyLines = keyLinePool(p, PROBLEMS).length >= KEY_LINES_MIN;
+  const cluesDone = CATEGORIES.filter((c) => cluesKnown(p, c.id)).length;
   return (
     <section className="card home-card home-links" aria-labelledby="home-links-title">
       <div className="home-card-head">
@@ -905,6 +915,30 @@ function QuickLinks({ p }: { p: Progress }) {
             </Link>
           )}
         </li>
+        <li>
+          <Link to="/clues" className="home-link">
+            <IconTile icon={ICONS.search} color={NEUTRAL} size="sm" />
+            <div className="grow">
+              <div className="home-link-title">Clue words</div>
+              <div className="home-link-meta">
+                {cluesDone > 0 ? `${cluesDone} of ${CATEGORIES.length} patterns known by their wording` : 'See the wording, name the pattern.'}
+              </div>
+            </div>
+            <Icon name="chevron" className="home-link-chevron" />
+          </Link>
+        </li>
+        {learnedIds(p).length > 0 && (
+          <li>
+            <Link to="/mock" className="home-link">
+              <IconTile icon={ICONS.timer} color={NEUTRAL} size="sm" />
+              <div className="grow">
+                <div className="home-link-title">Mock interview</div>
+                <div className="home-link-meta">{p.stats.mocks > 0 ? `${p.stats.mocksPassed} of ${p.stats.mocks} passed` : 'One problem, a blank file and a clock.'}</div>
+              </div>
+              <Icon name="chevron" className="home-link-chevron" />
+            </Link>
+          </li>
+        )}
         {FOUNDATIONS.length > 0 && (
           <li>
             <Link to="/learn#foundations" className="home-link">

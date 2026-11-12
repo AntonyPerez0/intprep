@@ -869,3 +869,23 @@
     margin-left: 0;
   }
 }
+
+/* ── Memorize this pattern: its steps, and its clue words (components/Memorize.tsx) ── */
+.unit-memo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 980px) {
+  .unit-memo {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+.unit-memo-card {
+  padding: 18px 20px;
+  min-width: 0;
+}
+.unit-memo-sub {
+  margin: 0 0 6px;
+}

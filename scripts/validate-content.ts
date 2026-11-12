@@ -17,7 +17,8 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { CATEGORIES } from '../src/content/categories';
+import { CATEGORIES, CATEGORY_BY_ID } from '../src/content/categories';
+import { CUES } from '../src/content/cues';
 import { CONTENT, PROBLEM_BY_ID } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { isSignatureLine, lessonParts, parseSolution } from '../src/lib/parseSolution';
@@ -195,8 +196,17 @@ function checkFoundations() {
           if (!gradeCode(typed, a, { anchor: col }).perfect) err(sw, `answer does not grade as correct against itself: ${a.trim().split('\n')[0]}`);
         });
         // starter + answer (and starter + each accepted answer) must be valid Python.
+        // With a `check`, it is run after the code and must not raise (the python3 run needs an output to
+        // run a snippet at all, so a slide with only a `check` runs against an empty one).
+        if (s.check !== undefined) nonEmpty(sw, 'check', s.check);
+        if (s.check !== undefined && s.pick !== undefined) err(sw, 'a slide with "check" is typed: it cannot have "pick" options');
+        const tail = s.check ? `\n${s.check}` : '';
         answers.forEach((a, k) =>
-          pyFiles.push({ label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`, code: s.starter ? `${s.starter}\n${a}` : a, output: s.output }),
+          pyFiles.push({
+            label: `${sw}/${k === 0 ? 'answer' : `accept[${k - 1}]`}`,
+            code: (s.starter ? `${s.starter}\n${a}` : a) + tail,
+            output: s.check && s.output === undefined ? '' : s.output,
+          }),
         );
         if (s.pick !== undefined) checkPick(sw, s);
       } else {
@@ -334,6 +344,18 @@ function checkTypingKit() {
   if (!gradeCode('if s == \u2018\u2019:\n    return \u201cempty\u201d', 'if s == "":\n    return "empty"').perfect)
     err(w, 'gradeCode should accept curly quotes');
   if (!gradeGaps(['return \u2018\u2019.join(out)'], ["return ''.join(out)"]).perfect) err(w, 'gradeGaps should accept curly quotes');
+  // Indentation is graded by depth, so any consistent width is right; a body that is not indented is not.
+  const loop = 'for n in nums:\n    if n in seen:\n        return True\n    seen.add(n)';
+  if (!gradeCode('for n in nums:\n  if n in seen:\n    return True\n  seen.add(n)', loop).perfect) err(w, 'gradeCode should accept a consistent 2-space indent');
+  if (gradeCode('for n in nums:\n    if n in seen:\n    return True\n    seen.add(n)', loop).perfect) err(w, 'gradeCode should reject a body that is not indented');
+  if (gradeCode('    x = 1', 'x = 1', { anchor: 0 }).perfect) err(w, 'gradeCode should reject a line typed one level too deep under an anchor');
+  // Neighboring statements that do not touch each other's variables are right in either order.
+  if (!gradeCode('l += 1\nr -= 1', 'r -= 1\nl += 1').perfect) err(w, 'gradeCode should accept independent lines in either order');
+  if (gradeCode('y = x\nx = 1', 'x = 1\ny = x').perfect) err(w, 'gradeCode should reject dependent lines out of order');
+  // An operator split by a space is a syntax error, and a comma after an assignment makes a tuple.
+  for (const [typed, exp] of [['if a < = b:', 'if a <= b:'], ['x + = 1', 'x += 1'], ['a * * 2', 'a ** 2'], ['x = 1,', 'x = 1']])
+    if (lineKey(typed) === lineKey(exp)) err(w, `"${typed}" should not match "${exp}"`);
+  if (lineKey('a<=b') !== lineKey('a <= b') || lineKey('(1, 0),') !== lineKey('(1, 0)')) err(w, 'spacing around an operator and a trailing comma after an item should not matter');
 }
 
 /**
@@ -348,8 +370,20 @@ function checkScheduler() {
   const pulled = card(53, 3);
   const good = review(pulled, 'good').interval;
   const hard = review(pulled, 'hard').interval;
-  if (good > 10) err(w, `a 53-day card reviewed 3 days ago and pulled in (good) should get about 8 days, got ${good}`);
-  if (hard > 53) err(w, `a pulled-in card graded hard should not grow past its interval, got ${hard}`);
+  if (good !== 53) err(w, `a 53-day card reviewed 3 days ago, pulled in and passed (good) should keep its 53 days, got ${good}`);
+  if (hard !== 53) err(w, `a pulled-in card graded hard should keep its interval, got ${hard}`);
+  const lapse = review(card(60, 60), 'again');
+  if (lapse.interval !== 12) err(w, `a 60-day card that lapses should come back in 12 days, got ${lapse.interval}`);
+  if (review(lapse, 'again').ease < 1.3) err(w, 'ease never drops below 1.3');
+  // One slip never lowers ease, and always moves the card on by at least a day.
+  let slips = card(1, 1);
+  for (let k = 0; k < 6; k++) slips = { ...review(slips, 'hard'), last: addDays(t, -review(slips, 'hard').interval), due: t };
+  if (slips.ease !== 2.5) err(w, `"hard" should leave ease alone, got ${slips.ease}`);
+  if (slips.interval < 7) err(w, `six "hard" reviews in a row should reach a week, got ${slips.interval} days`);
+  const first = review({ due: t, interval: 1, ease: 2.5, reps: 0, lapses: 0, last: addDays(t, -1) }, 'good');
+  const second = review({ ...first, due: t, last: addDays(t, -2) }, 'good');
+  if (first.interval !== 2 || second.interval !== 4) err(w, `a new card passed twice should get 2 then 4 days, got ${first.interval} then ${second.interval}`);
+  if (review(card(53, 53), 'good', { cap: 20 }).interval !== 20) err(w, 'a cap (an interview date) limits the interval');
   const sameDay = review(card(23, 0), 'good').interval;
   if (sameDay > 23) err(w, `a card reviewed again on the day it was reviewed should not grow, got ${sameDay}`);
   const due = review(card(53, 53), 'good').interval;
@@ -579,7 +613,46 @@ function checkChoices() {
   if (bad.size > 40) err(w, `…and ${bad.size - 40} more`);
 }
 
+/**
+ * Clue words (src/content/cues.ts): each pattern has 6 to 9, short enough for a card, each naming
+ * real problems of its own unit, and no two patterns claim the same wording unless they say so
+ * (`also`), because the drill offers the other patterns as wrong answers.
+ */
+function checkCues() {
+  const seen = new Map<string, CategoryId>();
+  const plain = (t: string) => t.replace(/[*`"“”']/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  for (const c of CATEGORIES) {
+    const w = `cues/${c.id}`;
+    const cues = CUES[c.id] ?? [];
+    if (cues.length < 6 || cues.length > 9) err(w, `needs 6 to 9 clue words, has ${cues.length}`);
+    cues.forEach((cue, k) => {
+      const cw = `${w}[${k}]`;
+      nonEmpty(cw, 'see', cue.see);
+      nonEmpty(cw, 'use', cue.use);
+      checkMarkdown(cw, cue.see);
+      checkMarkdown(cw, cue.use);
+      if (plain(cue.see).length > 90) err(cw, `"see" is ${plain(cue.see).length} characters, at most 90: ${cue.see}`);
+      if (plain(cue.use).length > 70) err(cw, `"use" is ${plain(cue.use).length} characters, at most 70: ${cue.use}`);
+      if (new RegExp(`\\b${c.name.split(/[ /&]+/)[0]}\\b`, 'i').test(plain(cue.see)) && c.id !== 'trees' && c.id !== 'intervals' && c.id !== 'graphs')
+        warn(cw, `"see" names the pattern itself (${c.name}): the drill asks which pattern it is`);
+      for (const a of cue.also ?? []) {
+        if (!CATEGORY_BY_ID[a]) err(cw, `"also" names an unknown pattern: ${a}`);
+        if (a === c.id) err(cw, '"also" names its own pattern');
+      }
+      for (const id of cue.problems ?? []) {
+        if (!c.problemIds.includes(id)) err(cw, `"problems" names ${id}, which is not a problem of this unit`);
+      }
+      const key = plain(cue.see);
+      const other = seen.get(key);
+      if (other && other !== c.id && !(cue.also ?? []).includes(other)) err(cw, `the same wording is a clue of ${other}: name it in "also" on both, or reword`);
+      if (other === c.id) err(cw, `the wording is repeated in this pattern: ${cue.see}`);
+      seen.set(key, c.id);
+    });
+  }
+}
+
 for (const c of CATEGORIES) if (wantAll || args.includes(c.id)) checkCategory(c.id);
+if (wantAll || args.includes('cues')) checkCues();
 checkScheduler();
 if (wantAll || args.includes('foundations')) checkFoundations();
 checkTypingKit();

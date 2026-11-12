@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  CircleCheck,
   Clock,
   CodeXml,
   Copy,
@@ -22,16 +23,20 @@ import {
   RotateCcw,
   ScanSearch,
   Star,
+  Terminal,
+  Timer,
   TriangleAlert,
 } from 'lucide-react';
+import { pythonEnabled } from '../lib/python';
+import { MemoSteps, problemSteps } from '../components/Memorize';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, PROBLEMS, problemsFor } from '../content/index';
 import { friendlyDue } from '../lib/date';
 import { highlightLine } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { parseSolution, type ParsedSolution } from '../lib/parseSolution';
-import { problemInput } from '../lib/input';
-import { CROWN_LABELS, crowns, isDue } from '../lib/srs';
+import { mastery, problemInput } from '../lib/input';
+import { CROWN_LABELS, isDue } from '../lib/srs';
 import { useProgress } from '../lib/store';
 import { ProblemPrompt } from '../components/interact';
 import { INPUT_ICON } from '../components/InputSwitch';
@@ -50,7 +55,7 @@ export function ProblemDetail() {
   const pp = progress.problems[p.id];
   const learned = !!pp?.learnedAt;
   const due = learned && !!pp?.srs && isDue(pp.srs);
-  const n = learned ? crowns(pp?.srs) : 0;
+  const n = learned ? mastery(pp) : 0;
   const parsed = parseSolution(p.solution);
   const idx = PROBLEMS.findIndex((q) => q.id === p.id);
   const prev = PROBLEMS[idx - 1];
@@ -72,6 +77,15 @@ export function ProblemDetail() {
       Code from memory
     </Link>
   );
+
+  // Solve it yourself: a blank file run against the tests. Before the lesson, passing them adds the
+  // problem to the reviews without it; after, it is the proof that the code can be produced unaided.
+  const solveBtn = pythonEnabled() ? (
+    <Link to={`/p/${p.id}/solve`} className="btn btn-secondary">
+      <Terminal aria-hidden="true" />
+      {pp?.solvedAt ? 'Solve it again' : 'Solve it yourself'}
+    </Link>
+  ) : null;
 
   return (
     // Keyed by problem: moving to the previous/next problem closes every disclosure
@@ -110,7 +124,8 @@ export function ProblemDetail() {
           {/* The primary action always comes first, so it never changes place. */}
           <div className="problem-detail-actions">
             {learned ? rebuildBtn : lessonBtn}
-            {learned ? lessonBtn : rebuildBtn}
+            {solveBtn ?? (learned ? null : rebuildBtn)}
+            {learned && lessonBtn}
             <a className="btn btn-quiet problem-detail-external" href={p.premium ? freeMirrorUrl(p.id) : leetcodeUrl(p.id)} target="_blank" rel="noreferrer">
               {p.premium ? 'Practice free' : 'LeetCode'}
               <ExternalLink aria-hidden="true" />
@@ -279,7 +294,9 @@ export function ProblemDetail() {
               <Crowns n={n} />
               <div className="grow">
                 <div className="problem-detail-mastery-label">{learned ? CROWN_LABELS[n] : 'Not started'}</div>
-                <div className="text-xs text-tertiary">Mastery {n} of 5</div>
+                <div className="text-xs text-tertiary">
+                  Mastery {n} of 5{n === 4 && (pp?.srs?.interval ?? 0) >= 60 ? '. Write it from scratch, or pass its tests with your own code, to reach Mastered.' : ''}
+                </div>
               </div>
             </div>
             {learned ? (
@@ -337,7 +354,26 @@ export function ProblemDetail() {
                 </div>
               </>
             ) : (
-              <p className="problem-detail-status-note">Finish the guided lesson to add this problem to your daily review, timed for just before you would forget it.</p>
+              <p className="problem-detail-status-note">
+                Finish the guided lesson to add this problem to your daily review, timed for just before you would forget it.
+                {solveBtn && ' Already know it? Solve it yourself: passing the tests adds it without the lesson.'}
+              </p>
+            )}
+            {(pp?.solvedAt || pp?.mock) && (
+              <ul className="problem-detail-proof">
+                {pp?.solvedAt && (
+                  <li>
+                    <CircleCheck aria-hidden="true" />
+                    Your own code passed every test
+                  </li>
+                )}
+                {pp?.mock && (
+                  <li className={pp.mock.passed ? '' : 'is-miss'}>
+                    {pp.mock.passed ? <CircleCheck aria-hidden="true" /> : <Timer aria-hidden="true" />}
+                    Mock interview: {pp.mock.passed ? 'passed' : 'not passed'} in {Math.floor(pp.mock.seconds / 60)}:{String(pp.mock.seconds % 60).padStart(2, '0')}
+                  </li>
+                )}
+              </ul>
             )}
             {learned && (
               <Link to={`/p/${p.id}/rebuild?mode=scratch`} className="btn btn-secondary btn-block problem-detail-scratch">
@@ -345,6 +381,10 @@ export function ProblemDetail() {
                 Write it from scratch
               </Link>
             )}
+          </section>
+
+          <section className="card problem-detail-card problem-detail-memo" aria-labelledby="problem-detail-memo">
+            <MemoSteps id="problem-detail-memo" title="Memorize this solution" steps={problemSteps(progress, p)} />
           </section>
 
           <section className="card problem-detail-card problem-detail-pattern" aria-labelledby="problem-detail-pattern">

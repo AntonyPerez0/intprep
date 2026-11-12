@@ -9,7 +9,9 @@ Every child is itself the root of a smaller tree (a **subtree**). That makes tre
 
 The trick is to *trust* the recursion. When you write \`left = height(node.left)\`, do not trace the call in your head. Assume it already returns the right answer for that subtree, and only ask: *given my children's answers, what is mine?*
 
-This is **depth-first search (DFS)**. Where you do the work names the order: **pre-order** (the node before its children — good for passing information *down*), **in-order** (left, node, right — sorted order in a BST) and **post-order** (children first — good when a node needs its children's answers, like a height). When a problem talks about **levels** or rows, switch to **breadth-first search (BFS)**: a queue that visits the tree one level at a time.`,
+This is **depth-first search (DFS)**. Where you do the work names the order: **pre-order** (the node before its children — good for passing information *down*), **in-order** (left, node, right — sorted order in a BST) and **post-order** (children first — good when a node needs its children's answers, like a height). When a problem talks about **levels** or rows, switch to **breadth-first search (BFS)**: a queue that visits the tree one level at a time.
+
+A DFS can also be written as a **loop with your own stack** instead of recursion. The one you will meet in this unit is the in-order walk: push nodes while stepping left, pop one (that is the visit), then step to its right child. Because it is a plain loop, you can stop the moment you have the answer (Kth Smallest Element in a BST).`,
     analogy:
       'A tree is a company org chart. To count all the staff, the boss does not walk the building. She asks each of her two direct reports for their team size, adds the two numbers, and adds 1 for herself. Every manager does the same with their own reports, all the way down to people with no reports, who simply answer "just me: 1".',
     whenToUse: [
@@ -17,7 +19,7 @@ This is **depth-first search (DFS)**. Where you do the work names the order: **p
       'You need a fact about the whole tree (height, size, balanced?) → **post-order DFS**: the children answer first, the node combines',
       'The best path can bend at any node (diameter, max path sum) → **return a height, update a global best** on the side',
       'A rule depends on the path from the root (allowed range, biggest value so far) → **pass it down as a parameter**',
-      'It is a **BST** and you need sorted order or the kth value → **in-order** traversal',
+      'It is a **BST** and you need sorted order or the kth value → **in-order** traversal (as a loop with a stack when you want to stop early)',
       'The problem says *level*, *row*, or *what you see from one side* → **BFS with a queue**',
     ],
     template: py`
@@ -318,7 +320,7 @@ class Solution:
       hints: [
         'To check one node you need the heights of both of its subtrees. Which order gives you the children before the parent?',
         'Calling a separate height function at every node repeats work. Could one height function do the checking too?',
-        'Post-order height: after getting `left` and `right`, set a `balanced` flag to False if `abs(left - right) > 1`. Return `1 + max(left, right)`.',
+        'Post-order height: after getting `left` and `right`, set a `balanced` flag to False if they differ by more than 1 (`abs(left - right) > 1`, where `abs` drops the sign). Return `1 + max(left, right)`.',
       ],
       brute:
         'At every node, call a separate height function on both children and compare. Each call is O(n), so the total is **O(n²)** for a chain-shaped tree.',
@@ -347,7 +349,7 @@ class Solution:
             #@ Post-order: heights of both children first.
             left = height(node.left)
             right = height(node.right)
-            #@ A gap bigger than 1 breaks the rule at this node.
+            #@ abs(x) drops the sign of x, so abs(left - right) is the gap between the two heights, whichever side is taller. A gap bigger than 1 breaks the rule at this node.
             if abs(left - right) > 1:  #!
                 balanced = False
             #@ Pass this node's height up to its parent.
@@ -729,7 +731,7 @@ class Solution:
         def dfs(node, max_so_far):
             if not node:
                 return 0
-            #@ Good if nothing above it was bigger (ties are fine).
+            #@ Good if nothing above it was bigger (ties are fine). "a if cond else b" picks one of two values in one line: good is 1 for a good node, else 0.
             good = 1 if node.val >= max_so_far else 0  #!
             #@ Update the path maximum before going deeper.
             max_so_far = max(max_so_far, node.val)  #!
@@ -745,7 +747,7 @@ class Solution:
       pitfalls: [
         'Using `>` instead of `>=`: a node equal to the path maximum is still good.',
         "Keeping one shared maximum for the whole tree: values from the left branch would leak into the right branch. Pass it down as a parameter so each path has its own.",
-        'Starting the max at 0 breaks when values are negative; start at `root.val` (or `float("-inf")`).',
+        'Starting the max at 0 breaks when values are negative; start at `root.val` (or `float("-inf")`, minus infinity, which is smaller than every number).',
       ],
     },
     {
@@ -791,13 +793,13 @@ class Solution:
             #@ An empty subtree breaks no rules.
             if not node:
                 return True
-            #@ Outside its allowed range? Then this is not a BST.
+            #@ low < node.val < high checks both comparisons at once. Outside its allowed range? Then this is not a BST.
             if not (low < node.val < high):  #!
                 return False
             #@ Going left caps the high bound; going right lifts the low bound.
             return valid(node.left, low, node.val) and valid(node.right, node.val, high)  #!
 
-        #@ The root may hold any value: start with infinite bounds.
+        #@ The root may hold any value: start with infinite bounds. float('-inf') and float('inf') are minus and plus infinity, so every number lies strictly between them.
         return valid(root, float('-inf'), float('inf'))`,
       time: 'O(n)',
       space: 'O(h)',
@@ -830,7 +832,7 @@ class Solution:
       hints: [
         'Which traversal order visits the values of a BST from smallest to largest?',
         'In-order: left subtree, node, right subtree. Count the nodes as you visit them.',
-        'Do in-order with a stack: push nodes while going left, pop one, count down k, then move to its right child. Stop when k reaches 0.',
+        'A recursive in-order walk works, but stopping it halfway is awkward. Write it as a loop with your own stack instead: push nodes while going left, pop one, count down k, then move to its right child. Stop when k reaches 0.',
       ],
       brute:
         'Collect every value into a list, sort it, and return the item at index `k - 1`: **O(n log n)** time and O(n) space. It also ignores that the BST is already in order.',
@@ -847,21 +849,21 @@ class Solution:
       solution: py`
 class Solution:
     def kthSmallest(self, root: Optional[TreeNode], k: int) -> int:
-        #@ In-order with our own stack: it visits BST values from smallest to largest.
+        #@ In-order (left, node, right) visits BST values from smallest to largest. We write it as a loop with our own stack instead of recursion, so we can stop the moment we reach the kth value. The stack remembers the nodes we walked past and still have to visit. Keep going while there is a node to explore or one waiting on the stack.
         stack = []
         node = root
         while stack or node:
-            #@ Slide as far left as possible, saving each node to come back to.
+            #@ Slide as far left as possible, saving each node to come back to. Everything in a node's left subtree is smaller than it, so all of that must be visited first.
             while node:  #!
                 stack.append(node)
                 node = node.left
-            #@ The top of the stack holds the next smallest value.
+            #@ node is None now: nothing smaller is left on this path. The top of the stack holds the next smallest value. Pop it (this is the "visit") and count it.
             node = stack.pop()  #!
             k -= 1
             #@ Counted down to zero? This is the kth smallest.
             if k == 0:  #!
                 return node.val
-            #@ Next come the values just bigger than this one: its right subtree.
+            #@ Next come the values just bigger than this one: its right subtree. If it has none, node becomes None and the next round pops the node waiting on top of the stack.
             node = node.right`,
       time: 'O(h + k)',
       space: 'O(h)',
@@ -916,7 +918,7 @@ class Solution:
       solution: py`
 class Solution:
     def buildTree(self, preorder: List[int], inorder: List[int]) -> Optional[TreeNode]:
-        #@ Map each value to its position in inorder, for O(1) lookups.
+        #@ Map each value to its position in inorder, for O(1) lookups. This is a dict comprehension, a loop written inside the braces: for every index i and value val in inorder, it stores the entry val: i.
         index_of = {val: i for i, val in enumerate(inorder)}  #!
         #@ Preorder lists every root before its subtrees; walk through it with a pointer.
         pre_i = 0
@@ -1014,7 +1016,7 @@ class Solution:
       complexityWhy:
         'Every node is visited once with O(1) work. The recursion stack is as deep as the tree height h.',
       pitfalls: [
-        'Starting `best` at 0: when every value is negative the answer is negative. Start at `root.val` (or `float("-inf")`).',
+        'Starting `best` at 0: when every value is negative the answer is negative. Start at `root.val` (or `float("-inf")`, minus infinity).',
         'Returning `left + val + right` to the parent — a path cannot fork, so only one side can continue upward.',
         'Not clipping negative gains at 0: a branch that lowers the sum should simply be left out.',
       ],

@@ -9,7 +9,39 @@ Picture a **decision tree**. The root is an empty answer. Each branch is one cho
 
 Every backtracking step repeats the same three moves: **choose** an option (append it to the path), **explore** (recurse to make the next choice), **un-choose** (pop it off so the path is clean for the next option).
 
-**Pruning** is what keeps it fast enough: when a partial path already breaks the rules (the sum is too big, two queens attack), stop right there instead of growing it further. One early \`continue\` can cut off a whole subtree.`,
+**Pruning** is what keeps it fast enough: when a partial path already breaks the rules (the sum is too big, two queens attack), stop right there instead of growing it further. One early \`continue\` can cut off a whole subtree.
+
+**Three shapes, one idea.** The template below is the **loop** shape: "which item comes next?", with \`for i in range(start, ...)\`. Most problems in this unit use it. Two other shapes do the same choose, explore, un-choose.
+
+**Include or exclude.** Walk the items by index and make one yes/no decision for each: take \`nums[i]\`, or leave it out. No loop, just two recursive calls. Here it is for Subsets:
+
+\`\`\`
+def backtrack(i):
+    if i == len(nums):       # decided every item
+        res.append(path[:])
+        return
+    path.append(nums[i])     # include nums[i]
+    backtrack(i + 1)
+    path.pop()               # exclude nums[i]
+    backtrack(i + 1)
+\`\`\`
+
+Remember this one. It is the recursion behind House Robber, Partition Equal Subset Sum, Longest Common Subsequence and Coin Change II, so you will meet it again in dynamic programming.
+
+**Find one answer.** When the question is "is there any way?", the function returns \`True\` or \`False\` instead of collecting paths, and stops at the first success. Word Search works like this:
+
+\`\`\`
+def search(state):
+    if is_goal(state):
+        return True
+    for option in options(state):
+        choose(option)
+        found = search(next_state)
+        un_choose(option)
+        if found:
+            return True      # one answer is enough
+    return False
+\`\`\``,
     analogy:
       'Exploring a maze with a ball of string. At each fork you pick a corridor and unroll string as you walk. Dead end? Wind the string back to the last fork and try the next corridor. The string is your `path`; winding it back is the un-choose step.',
     whenToUse: [
@@ -19,6 +51,7 @@ Every backtracking step repeats the same three moves: **choose** an option (appe
       'Small input limits (n ≤ 10–20) hint that exponential time is expected',
       'Placing things under rules (queens, letters along a grid path) → **try, check, undo**',
       'Duplicates in the input but the answer must not repeat → **sort, then skip equal values at the same level**',
+      'A yes/no question, "is there **any** way to…?" → the same search, but **return `True` at the first success** (Word Search)',
     ],
     template: py`
 def solve(choices):
@@ -39,10 +72,10 @@ def solve(choices):
     backtrack(0)
     return res`,
     templateNotes: [
+      'This template is the **loop** shape. The pattern summary shows the other two: **include or exclude** at index `i` (two recursive calls instead of a loop) and **find one answer** (return `True` or `False` and stop at the first success, as Word Search does).',
       'Save `path[:]` (a copy). Saving `path` itself stores a reference to one list that later pops will empty.',
       '`start` stops you from picking earlier items again, so `[1, 2]` and `[2, 1]` are not both produced. Permutations drop `start` and use a `used` array instead, because there order matters.',
-      'Every `append` needs a matching `pop` after the recursive call. That un-choose step resets the path for the next option.',
-      'Recurse with `i + 1` when each item may be used once, and with `i` when an item may be reused (Combination Sum).',
+      'Every `append` needs a matching `pop` after the recursive call: that un-choose step resets the path for the next option. The call between them is `backtrack(i + 1)` when each item may be used once, and `backtrack(i)` when an item may be reused (Combination Sum).',
       'Duplicates? Sort first and skip `nums[i]` when `i > start and nums[i] == nums[i - 1]`: equal values at the same level would grow identical subtrees.',
     ],
     complexity:
@@ -159,6 +192,75 @@ class Solution:
         'Saving `path` instead of `path[:]`: every stored subset is the same list, which ends up empty.',
         'Recursing with `i` instead of `i + 1` picks the same number again and again, forever.',
         'The empty subset counts. Saving on entry includes it automatically.',
+        'The include-or-exclude shape from the pattern summary solves this too: at index `i`, recurse once with `nums[i]` in the path and once without it, and save when `i == len(nums)`. Same subsets, different order.',
+      ],
+    },
+    {
+      id: 'generate-parentheses',
+      num: 22,
+      title: 'Generate Parentheses',
+      difficulty: 'Medium',
+      category: 'backtracking',
+      pattern: 'Backtracking with open/close counts',
+      prompt:
+        'Given `n` pairs of parentheses, return **every** string of length 2n made of `(` and `)` that is **well-formed**: each bracket is opened before it is closed, and nothing is left open. Any order is fine.',
+      examples: [
+        { input: 'n = 2', output: '["(())", "()()"]', note: 'With two pairs there are exactly two valid strings.' },
+      ],
+      signals: ['"generate all" valid combinations', 'build a string one character at a time, following rules', 'small n, so an exponential number of answers is expected'],
+      hints: [
+        'Build the string one character at a time. When is it legal to add `(`? When is it legal to add `)`?',
+        'You may add `(` while fewer than n have been used. You may add `)` only while fewer `)` than `(` have been used.',
+        'Write a recursive function that takes the open and close counts. Append a character to the string being built, recurse, then remove it again to try the other option.',
+      ],
+      brute:
+        'Generate all 2^(2n) strings of `(` and `)` and keep the valid ones, checking each in O(n) — **O(2^(2n) · n)**. Most of those strings are invalid and never needed to be built.',
+      insight:
+        'Only build strings that can still become valid: add `(` if `open_count < n`, and add `)` if `close_count < open_count`. Make a choice, explore everything that can follow it, then undo it and try the other one (**backtracking**); when both counts reach n, the string is complete.',
+      mnemonic: 'Open if you can; close only what is open.',
+      steps: [
+        'Keep a list of the characters chosen so far (the path) and a list of results.',
+        'Write a recursive function that takes the open and close counts.',
+        'If both counts equal n, join the path into a string and save it.',
+        'If open < n, append "(", recurse with open + 1, then pop it off again.',
+        'If close < open, append ")", recurse with close + 1, then pop it off again.',
+        'Call the function with 0 opens and 0 closes, then return the results.',
+      ],
+      solution: py`
+class Solution:
+    def generateParenthesis(self, n: int) -> List[str]:
+        #@ path holds the characters of the string being built; res collects the finished strings.
+        path = []
+        res = []
+
+        #@ open_count and close_count say how many of each bracket we have used so far.
+        def backtrack(open_count, close_count):
+            #@ Used n of each? The string is complete and valid. Join the characters into a string and save it.
+            if open_count == close_count == n:
+                res.append("".join(path))
+                return
+            #@ We may add "(" as long as we have not used all n of them. Choose it, explore every string that starts this way, then pop it off so the next choice starts clean.
+            if open_count < n:  #!
+                path.append("(")
+                backtrack(open_count + 1, close_count)
+                path.pop()
+            #@ We may add ")" only if it closes something: fewer closes than opens so far. Same three moves: choose, explore, undo.
+            if close_count < open_count:  #!
+                path.append(")")
+                backtrack(open_count, close_count + 1)
+                path.pop()
+
+        #@ Start from an empty string with nothing used.
+        backtrack(0, 0)
+        return res`,
+      time: 'O(4^n / √n)',
+      space: 'O(n)',
+      complexityWhy:
+        'The number of valid strings is the n-th Catalan number, roughly 4^n / (n√n), and each one takes O(n) to build. The recursion is at most 2n calls deep (not counting the output).',
+      pitfalls: [
+        'Allowing `)` whenever `close_count < n` (instead of `< open_count`) builds invalid strings like `")("`.',
+        'Forgetting `path.pop()` after a recursive call leaves extra characters behind for the next branch.',
+        'Save `"".join(path)`, not the list itself: the list keeps changing after you save it.',
       ],
     },
     {
@@ -492,7 +594,7 @@ class Solution:
       brute:
         'List every path in the grid and compare its letters to the word: exponential in the size of the grid, roughly **O(4^(m·n))**. Backtracking only follows a path while its letters keep matching.',
       insight:
-        'Start a DFS from every cell. Each step must land on the next letter of the word. Mark the cell as used while you explore its neighbors, and **restore it on the way back** so other paths may use it.',
+        'Start a DFS from every cell. Each step must land on the next letter of the word. Mark the cell as used while you explore its neighbors, and **restore it on the way back** so other paths may use it. The question is yes/no, so this is the **find one answer** shape: the search returns `True` or `False` instead of collecting paths, and stops at the first success.',
       mnemonic: 'Match, mark, search four ways, unmark.',
       steps: [
         'In dfs(r, c, k), return True once k equals the length of the word.',
@@ -518,7 +620,7 @@ class Solution:
                 return False
             #@ Choose: mark this cell as used for the rest of this path.
             board[r][c] = "*"  #!
-            #@ Explore: look for the next letter in the four neighbors.
+            #@ Explore: look for the next letter in the four neighbors. The chain of or stops at the first direction that returns True, so the rest are not searched.
             found = (dfs(r + 1, c, k + 1) or dfs(r - 1, c, k + 1) or
                      dfs(r, c + 1, k + 1) or dfs(r, c - 1, k + 1))
             #@ Un-choose: put the letter back so other paths can use this cell.
@@ -589,7 +691,7 @@ class Solution:
             #@ Try every possible end for the next piece.
             for end in range(start, len(s)):
                 piece = s[start:end + 1]
-                #@ Only palindromes are allowed; otherwise prune this branch.
+                #@ Only palindromes are allowed; otherwise prune this branch. piece[::-1] is the piece backwards, so a palindrome equals it.
                 if piece != piece[::-1]:  #!
                     continue
                 #@ Choose the piece, partition the rest, then un-choose.
@@ -632,7 +734,7 @@ class Solution:
       brute:
         'Write one nested loop per digit. That only works if you know how many digits there will be. Recursion is a nested loop of any depth. Either way there are up to 4ⁿ strings, so **O(n · 4ⁿ)** is unavoidable.',
       insight:
-        'Recursion acts like a variable number of nested loops: level `i` loops over the letters of `digits[i]`. When every digit has a letter, join the path into one answer.',
+        'Recursion acts like a variable number of nested loops: level `i` loops over the letters of `digits[i]`. This is the simplest decision tree in the unit: every level is one digit, and every branch is one of its letters. Unlike Subsets, only a full path (one letter per digit) is an answer, so you save at the bottom of the tree, not on entry.',
       mnemonic: 'One level per digit, one branch per letter.',
       steps: [
         'Return an empty list right away if digits is empty.',
@@ -656,7 +758,7 @@ class Solution:
 
         #@ i is the digit we are choosing a letter for.
         def backtrack(i):
-            #@ A letter for every digit: join the path into one string.
+            #@ A letter for every digit: join the path into one string. A string is a fresh copy, so no path[:] is needed here.
             if i == len(digits):  #!
                 res.append("".join(path))
                 return

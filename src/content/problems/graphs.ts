@@ -9,7 +9,9 @@ We usually store a graph as an **adjacency list**: for each node, the list of it
 
 To explore, use **DFS** (go deep down one path, with recursion or a stack) or **BFS** (spread outward ring by ring, with a queue). Both need a **visited** set so no node is processed twice; without it, a cycle makes you loop forever. BFS has a bonus: the first time it reaches a node is along a **shortest path** (fewest edges).
 
-Two more tools complete the unit. **Topological sort** orders tasks so every prerequisite comes first, and spots impossible cycles. **Union-find** keeps track of which nodes are already connected while edges arrive one by one.`,
+Two more tools complete the unit. **Topological sort** orders tasks so every prerequisite comes first, and spots impossible cycles. **Union-find** keeps track of which nodes are already connected while edges arrive one by one.
+
+**What to learn now.** The first seven problems need only DFS and BFS, mostly on grids. Learn those two first. Topological sort is not used until Course Schedule II, and union-find not until Number of Connected Components, so a first read of those is enough for now. Come back to them when you get there.`,
     analogy:
       'Exploring a city with a map and a highlighter. You start at one corner, walk to every corner you can reach, and highlight each one so you never walk the same block twice. DFS is following one road as far as it goes before turning back; BFS is the ripple from a stone dropped in a pond.',
     whenToUse: [
@@ -76,14 +78,14 @@ def union(a, b):
     parent[root_a] = root_b
     return True`,
     templateNotes: [
+      'The template has five parts, and you do not need them all at once. **Learn parts 2 and 3 now** (BFS and grid DFS): they carry the first seven problems. Come back to part 1 (the adjacency list) at Course Schedule, part 4 (topological sort) at Course Schedule II, and part 5 (union-find) at Number of Connected Components.',
       'Mark a node visited when you **add** it to the queue, not when you pop it. Otherwise the same node can be queued many times.',
-      'Grids need no adjacency list: the neighbors of `(r, c)` come from the four direction pairs. Always bounds-check before reading `grid[r][c]`.',
-      'Recursive DFS is the shortest to write, but a huge grid can exceed Python recursion depth. BFS or an explicit stack is the safe swap.',
-      "Kahn's algorithm repeatedly takes a node with no remaining prerequisites. Nodes that never reach in-degree 0 sit on a cycle.",
+      'Grids need no adjacency list: the neighbors of `(r, c)` come from the four direction pairs. Always bounds-check before reading `grid[r][c]`. Recursive DFS is the shortest to write, but a huge grid can exceed Python recursion depth; BFS or an explicit stack is the safe swap.',
+      "Kahn's algorithm (part 4) repeatedly takes a node with no remaining prerequisites. Nodes that never reach in-degree 0 sit on a cycle, or wait behind one. In its `deque(...)` line, `i for i in range(n) if indegree[i] == 0` is a generator expression: a list comprehension without the brackets, handing `deque` every node whose in-degree is 0.",
       '`union` returns `False` when both ends already share a leader: that edge closes a cycle. Counting successful unions counts merges between components.',
     ],
     complexity:
-      'O(V + E) time for BFS, DFS and topological sort (O(rows · cols) on a grid), with O(V) extra space for the visited set and the queue or stack. Union-find costs nearly O(1) per operation.',
+      'O(V + E) time for BFS, DFS and topological sort (O(rows · cols) on a grid), with O(V) extra space for the visited set and the queue or stack. Union-find with path compression costs at most O(log n) per operation averaged over a run, and close to O(1) in practice.',
     quiz: [
       {
         q: 'Which traversal finds the **fewest steps** between two nodes when every edge costs the same?',
@@ -740,12 +742,12 @@ class Solution:
       hints: [
         'Which courses can you take right now, on day one?',
         'Taking a course removes one requirement from every course that depends on it. Some of those may become free to take.',
-        "Kahn's algorithm: count each course's prerequisites (its in-degree), queue the ones at 0, then repeatedly pop one into the order and lower the counts of its dependents. If the order is shorter than numCourses, there was a cycle.",
+        "Kahn's algorithm (part 4 of the unit template): count each course's prerequisites (its in-degree), queue the ones at 0, then repeatedly pop one into the order and lower the counts of its dependents. If the order is shorter than numCourses, there was a cycle.",
       ],
       brute:
         'Repeatedly scan all courses for one whose prerequisites are all taken: **O(V · (V + E))**. Keeping a count of remaining prerequisites per course removes the rescanning.',
       insight:
-        "**Topological sort with Kahn's algorithm.** A course is ready when its number of untaken prerequisites (its in-degree) is 0. Take ready courses one by one; each one taken may make its dependents ready. Courses stuck on a cycle never reach 0.",
+        "**Topological sort with Kahn's algorithm.** A course is ready when its number of untaken prerequisites (its in-degree) is 0. Take ready courses one by one; each one taken may make its dependents ready. Courses stuck on a cycle never reach 0, so this also answers Course Schedule's yes/no question, with a queue instead of recursion.",
       mnemonic: 'Take what has zero prerequisites; unlock its dependents.',
       steps: [
         'Build a list of dependents for each course and count the prerequisites of every course.',
@@ -764,7 +766,7 @@ class Solution:
         for course, pre in prerequisites:
             unlocks[pre].append(course)
             indegree[course] += 1
-        #@ Courses with no prerequisites can be taken right away.
+        #@ Courses with no prerequisites can be taken right away. Inside deque(...) is a generator expression: a list comprehension without the brackets. It hands the deque every course c whose indegree is 0.
         queue = collections.deque(c for c in range(numCourses) if indegree[c] == 0)  #!
         #@ Repeatedly take a ready course and add it to the order.
         order = []
@@ -881,12 +883,12 @@ class Solution:
       hints: [
         'Start by assuming every node is its own group: n groups. What can one edge do to that number?',
         'An edge between two *different* groups merges them, so the count drops by 1. An edge inside one group changes nothing.',
-        'Union-find: find(x) returns the leader of x. For each edge, if the two leaders differ, link one under the other and subtract 1 from the count.',
+        'Union-find (part 5 of the unit template; now is the time to learn it): find(x) returns the leader of x. For each edge, if the two leaders differ, link one under the other and subtract 1 from the count.',
       ],
       brute:
         'For each pair of nodes, run a search to check whether they are connected, then group them: **O(n² · (n + E))**. One BFS or DFS per unvisited node already gets O(n + E); union-find is just as fast and also works when edges arrive one at a time.',
       insight:
-        '**Union-find**: start with n separate groups. Every edge that joins two *different* groups merges them and lowers the count by one. Path compression keeps `find` close to O(1).',
+        '**Union-find**: start with n separate groups. Every edge that joins two *different* groups merges them and lowers the count by one. Path compression keeps `find` fast: each time it climbs, it shortens the chain for next time.',
       mnemonic: 'Start with n groups; each real merge subtracts one.',
       steps: [
         'Give every node itself as parent, so there are n groups.',
@@ -901,7 +903,7 @@ class Solution:
         #@ Every node starts as the leader of its own group.
         parent = list(range(n))
 
-        #@ Follow parent links up to the leader, pointing nodes closer to it as we go, then return the leader.
+        #@ find(x): follow parent links up until a node is its own parent. That node is the leader, so return it. On the way, point each node at its grandparent (path compression), so the chain is shorter next time.
         def find(x):
             while parent[x] != x:
                 parent[x] = parent[parent[x]]  #!
@@ -920,7 +922,7 @@ class Solution:
       time: 'O(n + E · log n)',
       space: 'O(n)',
       complexityWhy:
-        'Each edge does two finds. With path compression a find costs O(log n) at worst on average, and in practice it is almost constant. The parent list holds n entries.',
+        'Each edge does two finds. Path compression keeps the chains short: averaged over all the calls, a find takes at most O(log n) steps, and in practice only one or two. The parent list holds n entries.',
       pitfalls: [
         'Linking `parent[a] = b` instead of linking the **leaders** `parent[root_a] = root_b` can break existing groups apart.',
         'Lowering the count for every edge: only edges that join two different groups reduce it.',
@@ -943,9 +945,9 @@ class Solution:
           note: '2, 3 and 4 are already joined by a path, so the edge 2–4 closes a loop.',
         },
         {
-          input: 'edges = [[1, 3], [3, 2], [2, 1], [1, 4]]',
-          output: '[2, 1]',
-          note: 'The cycle is 1–3–2–1, and [2, 1] is the last of its edges in the list.',
+          input: 'edges = [[1, 3], [2, 3], [1, 2], [1, 4]]',
+          output: '[1, 2]',
+          note: 'The cycle is 1–3–2–1, and [1, 2] is the last of its edges in the list.',
         },
       ],
       signals: ['"a tree with one extra edge"', 'find the edge that creates a cycle', 'edges given in order; "return the last one"'],
@@ -990,7 +992,7 @@ class Solution:
       time: 'O(n log n)',
       space: 'O(n)',
       complexityWhy:
-        'Each of the n edges does two finds, and path compression keeps them cheap (O(log n) at worst on average, nearly constant in practice). The parent list holds n + 1 entries.',
+        'Each of the n edges does two finds. Path compression keeps the chains short: averaged over all the calls, a find takes at most O(log n) steps, and in practice only one or two. The parent list holds n + 1 entries.',
       pitfalls: [
         'Nodes start at 1, so the parent list needs `n + 1` slots.',
         'Comparing `a` and `b` themselves instead of their leaders `find(a)` and `find(b)`.',

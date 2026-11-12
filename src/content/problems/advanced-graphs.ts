@@ -5,13 +5,14 @@ const content: CategoryContent = {
     category: 'advanced-graphs',
     summary: `In the Graphs unit every edge was equal, so BFS found shortest paths just by counting hops. Real maps have **weighted** edges: one road takes 5 minutes, another takes 40. Counting hops stops working, because two cheap edges can beat one expensive edge.
 
-**Dijkstra's algorithm** is the workhorse. Keep a **min-heap** of \`(distance so far, node)\`. Pop the closest node: the first time a node is popped, its distance is final. Then push each neighbor with \`distance + edge weight\`. It is BFS where the queue is swapped for a heap that always serves the nearest node next.
+**This unit is five algorithms, not one.** The template below is Dijkstra, because it is the one you will write most and two of the others are small changes to it. Here is which problem uses which:
+- **Dijkstra** (shortest paths from one start): Network Delay Time, and Swim in Rising Water with \`max\` in place of \`+\`.
+- **Prim's MST** (connect every node as cheaply as possible): Min Cost to Connect All Points. The same heap loop, but you push only the edge weight.
+- **Topological sort** (an order where every edge points forward): Alien Dictionary. It is Kahn's algorithm from Course Schedule II, unchanged.
+- **Bellman-Ford** (relax every edge, round after round): Cheapest Flights Within K Stops. Slower, but it handles "at most k edges" limits and negative weights.
+- **Hierholzer's algorithm** (a path that uses every edge exactly once): Reconstruct Itinerary.
 
-A few cousins reuse the same ideas:
-- **Prim's MST**: the same heap loop, but you push only the edge weight. It connects every node as cheaply as possible.
-- **Bellman-Ford**: relax every edge, round after round. Slower, but it handles negative weights and "at most k edges" limits.
-- **Topological sort**: order nodes so every edge points forward (you met it in Course Schedule).
-- **Hierholzer's algorithm**: walk a path that uses every edge exactly once.`,
+**Dijkstra's algorithm** is the workhorse. Keep a **min-heap** of \`(distance so far, node)\`. Pop the closest node: the first time a node is popped, its distance is final. Then push each neighbor with \`distance + edge weight\`. It is BFS where the queue is swapped for a heap that always serves the nearest node next.`,
     analogy:
       'Dijkstra is water poured into a network of pipes. It reaches the nearest junctions first and spreads outward in order of distance, so the first moment water arrives at a junction is the fastest way to get there.',
     whenToUse: [
@@ -46,12 +47,12 @@ def dijkstra(edges, start):
     return dist`,
     templateNotes: [
       'The heap compares tuples by their first item, so `(distance, node)` always pops the **closest** node. Put the distance first!',
-      'A node can sit in the heap several times with different distances. The `if node in dist: continue` check skips the stale, longer copies. This is called **lazy deletion**.',
+      'A node can sit in the heap several times with different distances, because a later push can offer it a shorter one. So finalize a node when it is **popped**, not when it is pushed (BFS marks nodes as it queues them; Dijkstra must not). The `if node in dist: continue` check then skips the stale, longer copies. This is called **lazy deletion**.',
       'Dijkstra needs **non-negative** weights. With a negative edge, a node that was already popped could later get cheaper, which breaks the "first pop is final" rule.',
       "**Prim's MST** is the same loop: push `(w, nxt)` instead of `(d + w, nxt)` and add each popped weight to a running total.",
-      '**Bellman-Ford**: repeat "for every edge u → v, try `dist[u] + w`" for n − 1 rounds (or k + 1 rounds for "at most k stops"). **Topological sort**: DFS, add each node after all its neighbors (post-order), then reverse.',
+      'The other three algorithms have no heap. **Bellman-Ford**: repeat "for every edge u → v, try `dist[u] + w`" for n − 1 rounds (or k + 1 rounds for "at most k stops"). **Topological sort**: Kahn\'s algorithm from the Graphs unit (count incoming edges, queue the nodes at zero). **Hierholzer**: a DFS that uses up edges and writes a node down once it has none left, then reverses the list.',
     ],
-    complexity: 'Dijkstra and Prim: O(E log V) time, O(V + E) space. Bellman-Ford: O(V · E) time.',
+    complexity: 'Dijkstra and Prim: O(E log V) time, O(V + E) space. Bellman-Ford: O(V · E) time. Topological sort: O(V + E). Hierholzer: O(E log E), for sorting the edges.',
     quiz: [
       {
         q: 'Why does Dijkstra use a **min-heap** instead of a plain queue?',
@@ -78,11 +79,11 @@ def dijkstra(edges, start):
           'Nodes come off the heap in order of distance. Any other route would have to pass through a node that is at least as far away, so it cannot be shorter (with non-negative weights).',
       },
       {
-        q: 'A problem asks for the cheapest route using **at most k** flights. Which tool fits best?',
+        q: 'A problem asks for the cheapest route with **at most k stops** between the start and the destination. Which tool fits best?',
         options: ['Plain BFS', 'Unmodified Dijkstra', 'Bellman-Ford for k + 1 rounds', 'Topological sort'],
         answer: 2,
         explain:
-          'Each Bellman-Ford round extends routes by one more edge, so k + 1 rounds give the cheapest price using at most k + 1 flights.',
+          'At most k stops in between means at most k + 1 flights. Each Bellman-Ford round extends routes by one more flight, so k + 1 rounds give the cheapest price using at most k + 1 flights. Unmodified Dijkstra ignores the limit.',
       },
       {
         q: "What is the key change that turns the Dijkstra template into **Prim's** minimum spanning tree?",
@@ -151,7 +152,7 @@ class Solution:
         graph = collections.defaultdict(list)
         for u, v, w in times:
             graph[u].append((v, w))
-        #@ Min-heap of (arrival time, node). The signal starts at k at time 0.
+        #@ Min-heap of (arrival time, node). Tuples compare by their first item, so the smallest time pops first. The signal starts at k at time 0.
         heap = [(0, k)]
         arrival = {}
         #@ Pop the node the signal reaches soonest. Already finalized? This is a stale copy, so skip it.
@@ -205,49 +206,52 @@ class Solution:
         '"smallest lexical order" among all valid answers',
       ],
       hints: [
-        'Always taking the alphabetically smallest ticket can strand you at a dead end too early. What if dead ends were simply placed at the *end* of the trip?',
-        'Do a DFS that keeps using tickets. Add an airport to the answer only after all its outgoing tickets are used up (post-order).',
-        'Sort the tickets so the smallest destination is tried first, record airports in post-order, then reverse the list.',
+        'Always taking the alphabetically smallest ticket can strand you at a dead end too early (ATL in the first example). But think about where in a finished trip a dead end is allowed to be.',
+        'An airport with no tickets left can only be the **last** stop: anywhere earlier, you would need a ticket to leave it. So when the search gets stuck at an airport, its place is settled. Write it down, step back, and carry on with the tickets that are left.',
+        'Sort so the smallest destination is tried first. DFS: while the airport has unused tickets, use one and recurse; once it has none, append it. Airports are appended from the end of the trip toward the start, so reverse the list.',
       ],
       brute:
         'Backtracking: try destinations in sorted order, undo a ticket when you get stuck, and stop at the first route that uses every ticket. Correct, but it can re-explore large parts of the graph: **exponential** in the worst case.',
-      insight:
-        "This is an **Euler path**. In Hierholzer's algorithm an airport is written down only when it has no tickets left, so any dead end automatically lands at the end of the trip. Reversing that post-order gives the itinerary.",
-      mnemonic: 'Smallest ticket first, write on the way back, then reverse.',
+      insight: `This is an **Euler path**: a walk that uses every edge exactly once. The key fact is about getting **stuck**. An airport with no unused tickets can only be the trip's **last stop**, because anywhere earlier you would need a ticket to fly out of it. So keep flying until you are stuck, and write that airport down first: its place at the end is certain.
+
+Now step back one airport. Either it still has tickets, and those form a loop that must be flown *before* the final leg (fly it now), or it is stuck too, which makes it the last stop of everything that is left. Each airport is written down at the moment it gets stuck, so the list is the trip **backwards**. Reverse it. Trying the smallest destination first keeps the result alphabetically smallest.
+
+In the first example: JFK → ATL gets stuck, so write ATL. Back at JFK, the loop JFK → BOS → JFK is still unflown; fly it and write JFK, BOS, JFK on the way back. Reversed: JFK, BOS, JFK, ATL.`,
+      mnemonic: 'Stuck means last: write stops as you get stuck, then reverse.',
       steps: [
         'Build an adjacency list where each list of destinations pops the smallest first.',
         'Start a DFS at "JFK".',
         'While the current airport has unused tickets, remove the smallest one and DFS into its destination.',
-        'When an airport has no tickets left, append it to the route.',
+        'When an airport has no tickets left, it is stuck: append it to the route.',
         'Reverse the route to get the itinerary.',
       ],
       solution: py`
 class Solution:
     def findItinerary(self, tickets: List[List[str]]) -> List[str]:
-        #@ Sort tickets in reverse, so popping from the END of each list gives the smallest destination.
+        #@ Sort tickets in reverse, so popping from the END of each list gives the smallest destination. route will collect the stops, last stop first.
         graph = collections.defaultdict(list)
         for src, dst in sorted(tickets, reverse=True):
             graph[src].append(dst)  #!
         route = []
-        #@ DFS: keep using up the smallest unused ticket out of this airport.
+        #@ DFS: keep using up the smallest unused ticket out of this airport. A ticket is never put back. The loop runs again after each call returns, because a leg that got stuck leaves other tickets here to fly first.
         def dfs(airport):
             while graph[airport]:
                 dfs(graph[airport].pop())  #!
-            #@ No tickets left here, so this airport is finished: record it in post-order.
+            #@ No tickets left here: we are stuck. A stuck airport can only be the last stop of what is still unwritten, so write it down now.
             route.append(airport)  #!
         #@ The trip always starts at JFK.
         dfs("JFK")
-        #@ Post-order wrote the trip backwards, so reverse it.
+        #@ Stops were written from the end of the trip back to the start, so reverse the list. route[::-1] is the list backwards.
         return route[::-1]  #!`,
       time: 'O(E log E)',
       space: 'O(E)',
       complexityWhy:
         'Sorting the E tickets costs O(E log E); the DFS then uses each ticket exactly once. The graph, the route and the recursion stack hold O(E) items.',
       pitfalls: [
-        'Appending the airport **before** exploring (pre-order) gives a wrong trip when there is a dead end. It must be post-order.',
-        'Forgetting to **reverse** at the end: post-order builds the trip backwards.',
-        '`pop(0)` from the front of a list is O(n). Sorting in reverse and popping from the end is O(1).',
-        'The same flight can appear twice, so store destinations in a list, not a set.',
+        'Appending the airport **before** exploring (when you arrive) gives a wrong trip when there is a dead end: the first example would come out as JFK, ATL, BOS, JFK. Append only when the airport has no tickets left.',
+        'Expecting the search to undo a bad choice, like backtracking does. It never puts a ticket back. The leg that got stuck stays in the answer as the **end** of the trip, and the tickets still unused are flown before it.',
+        'Forgetting to **reverse** at the end: stops are written last stop first.',
+        'The same flight can appear twice, so store destinations in a list, not a set. Sort in reverse and `pop()` from the end: `pop(0)` from the front of a list is O(n).',
       ],
     },
     {
@@ -356,48 +360,52 @@ class Solution:
       hints: [
         'Pick any one path. At what time can you swim all of it? Think about its highest cell.',
         'You want the path whose highest cell is as low as possible. Dijkstra works when a path costs its max instead of its sum.',
-        'Min-heap of (highest so far, r, c). Pop the lowest, push neighbors with `max(current, neighbor height)`, and return as soon as you pop the bottom-right cell.',
+        'Min-heap of (highest so far, r, c). Pop the lowest, skip it if that cell was already popped, push its neighbors with `max(current, neighbor height)`, and return as soon as you pop the bottom-right cell.',
       ],
       brute:
         'Try every time t from 0 upward and run a BFS through cells of height ≤ t. That is **O(n⁴)**. Binary searching on t brings it down to O(n² log n) and is a fair alternative.',
       insight:
-        'A path can be swum at time = its **highest** cell. Run Dijkstra where a path costs the `max` of its heights: always extend the path with the lowest peak, and the first time you pop the corner, that peak is the answer.',
+        'A path can be swum at time = its **highest** cell. Run the Dijkstra template where a path costs the `max` of its heights instead of their sum: always extend the path with the lowest peak, finalize a cell the first time it is popped, and the first time you pop the corner, that peak is the answer.',
       mnemonic: 'Lowest-peak path first; pop the corner and you are done.',
       steps: [
-        'Push (grid[0][0], 0, 0) onto a min-heap and mark the start visited.',
+        'Push (grid[0][0], 0, 0) onto a min-heap and create an empty visited set.',
         'Pop the cell whose path has the lowest peak so far.',
+        'If that cell is already visited, skip it; otherwise mark it visited.',
         'If it is the bottom-right cell, return that peak.',
-        'Look at each in-bounds neighbor that has not been visited and mark it visited.',
-        'Push the neighbor with the max of the current peak and its own height.',
+        'Push each in-bounds, unvisited neighbor with the max of the current peak and its own height.',
       ],
       solution: py`
 class Solution:
     def swimInWater(self, grid: List[List[int]]) -> int:
-        #@ Min-heap of (highest height on the path so far, row, col). You must wait for the start cell too.
+        #@ Min-heap of (highest height on the path so far, row, col). You must wait for the start cell too. visited holds the cells whose answer is final.
         n = len(grid)
         heap = [(grid[0][0], 0, 0)]
-        visited = {(0, 0)}
+        visited = set()
         #@ Always extend the path whose highest cell is lowest.
         while heap:
             t, r, c = heapq.heappop(heap)  #!
+            #@ Same rule as the Dijkstra template: the first pop of a cell is final. A later copy of it is stale, so skip it.
+            if (r, c) in visited:
+                continue
+            visited.add((r, c))
             #@ The first time the corner is popped, t is the smallest possible wait.
             if r == n - 1 and c == n - 1:
                 return t  #!
-            #@ Try the four neighbors that are inside the grid and not visited yet.
+            #@ Try the four neighbors that are inside the grid and not finalized yet.
             for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < n and 0 <= nc < n and (nr, nc) not in visited:
                     #@ The new path's cost is its highest cell: max, not sum.
-                    visited.add((nr, nc))
                     heapq.heappush(heap, (max(t, grid[nr][nc]), nr, nc))  #!`,
       time: 'O(n² log n)',
       space: 'O(n²)',
       complexityWhy:
-        'Each of the n² cells is pushed once, and each heap operation costs O(log n²) = O(log n). The heap and the visited set hold up to n² cells.',
+        'Each of the n² cells is finalized once and pushed at most four times, once from each neighbor. Each heap operation costs O(log n²) = O(log n). The heap and the visited set hold O(n²) entries.',
       pitfalls: [
         'Starting the heap at time 0 instead of `grid[0][0]`: you have to wait for your starting cell too.',
         'Adding heights (`t + grid[nr][nc]`) instead of taking the `max`. Only the highest cell on the path matters.',
-        'Not tracking visited cells, so the same cell is pushed again and again.',
+        'Marking a cell visited when you **push** it, the way BFS does. It happens to give the right answer here, but the same habit breaks ordinary Dijkstra such as Network Delay Time, where a later push can be cheaper. Mark at pop time, as the template does.',
+        'No visited set at all: a cell is expanded again from every stale copy, and the heap fills up with repeats.',
       ],
     },
     {
@@ -407,7 +415,7 @@ class Solution:
       difficulty: 'Hard',
       category: 'advanced-graphs',
       premium: true,
-      pattern: 'Topological sort (DFS post-order with cycle check)',
+      pattern: "Topological sort (Kahn's algorithm on letters)",
       alsoAccept: ['graphs'],
       prompt:
         'An alien language uses lowercase English letters, but in an unknown order. You get a list of `words` that is already **sorted** in the alien order. Return a string with every letter that appears, in an order that fits the list. If no order fits, return `""`. If several orders fit, any one is fine.',
@@ -436,69 +444,60 @@ class Solution:
       hints: [
         'Compare two neighboring words in the list. Which single position tells you something about the letter order?',
         'The first position where they differ gives one rule: the letter in word 1 comes before the letter in word 2. The rules form a directed graph.',
-        'Topologically sort that graph (DFS post-order, then reverse). A cycle, or a longer word sitting before its own prefix, means return "".',
+        'That is Course Schedule II with letters for courses. Run Kahn\'s algorithm: count the letters that must come before each letter, queue the ones at zero, and unlock the rest. A cycle (the order comes out too short), or a longer word sitting before its own prefix, means return "".',
       ],
       brute:
         'Try every ordering of the distinct letters and check whether it sorts the words correctly: up to **26!** orderings. Hopeless.',
       insight:
-        'Each pair of neighboring words gives at most one rule, from the **first letters that differ**. The rules form a directed graph, and any **topological order** of that graph is a valid alphabet.',
-      mnemonic: 'First difference makes an edge; topo-sort the letters.',
+        'Each pair of neighboring words gives at most one rule, from the **first letters that differ**: "this letter comes before that one". Those rules are exactly the prerequisites of Course Schedule II, with letters for courses. So the second half is **Kahn\'s algorithm**, which you already know: any order it produces is a valid alphabet, and a cycle leaves it too short.',
+      mnemonic: 'First difference makes an edge; then Course Schedule II on letters.',
       steps: [
-        'Create a graph node for every letter that appears in any word.',
+        'Create a graph node and an in-degree of 0 for every letter that appears in any word.',
         'For each pair of neighboring words, return "" if the first is longer and starts with the second.',
-        'Otherwise add an edge from the first differing letter of word 1 to the matching letter of word 2.',
-        'DFS from each letter, marking it as on the path; meeting an on-the-path letter again means a cycle.',
-        'After all its neighbors are explored, mark the letter done and append it.',
-        'Reverse the appended letters and join them into the answer.',
+        'Otherwise add an edge from the first differing letter of word 1 to the matching letter of word 2, and raise that second letter\'s in-degree.',
+        'Queue every letter whose in-degree is 0.',
+        'Pop a letter, append it to the order, and lower the in-degree of each letter after it, queuing any that reach 0.',
+        'Join the order into a string if it holds every letter; otherwise return "".',
       ],
       solution: py`
 class Solution:
     def alienOrder(self, words: List[str]) -> str:
-        #@ Every letter that appears is a node, even if no rule mentions it.
-        graph = {ch: set() for word in words for ch in word}
+        #@ Every letter that appears is a node, even if no rule mentions it (the dict comprehension loops over every word, then every letter in it). graph[a] lists the letters that must come after a; indegree[b] counts the rules that put a letter before b.
+        graph = {ch: [] for word in words for ch in word}
+        indegree = {ch: 0 for ch in graph}
         #@ Compare neighbors. A word before its own prefix (like "abc" before "ab") is impossible.
         for w1, w2 in zip(words, words[1:]):
             if len(w1) > len(w2) and w1.startswith(w2):
                 return ""  #!
-            #@ Only the FIRST differing letter tells us something: a comes before b.
+            #@ Only the FIRST differing letter tells us something: a comes before b. Record that edge and stop reading this pair.
             for a, b in zip(w1, w2):
                 if a != b:
-                    graph[a].add(b)  #!
+                    graph[a].append(b)  #!
+                    indegree[b] += 1
                     break
-        #@ A letter is unseen, on the current DFS path (visiting), or finished (done).
-        visiting, done = set(), set()
+        #@ From here on it is Kahn's algorithm from Course Schedule II. Letters with nothing before them are ready. (The generator expression inside deque hands over each such letter.)
+        queue = collections.deque(ch for ch in graph if indegree[ch] == 0)
         order = []
-        #@ DFS returns True if it finds a cycle: a letter that is already on the current path.
-        def has_cycle(ch):
-            if ch in visiting:
-                return True  #!
-            if ch in done:
-                return False
-            visiting.add(ch)
-            #@ Explore every letter that must come after ch.
+        #@ Take a ready letter and add it to the alphabet.
+        while queue:
+            ch = queue.popleft()
+            order.append(ch)
+            #@ Each letter after it has one fewer rule to wait for. At zero, that letter is ready too.
             for nxt in graph[ch]:
-                if has_cycle(nxt):
-                    return True
-            #@ Everything after ch is handled, so ch is finished. Record it in post-order.
-            visiting.remove(ch)
-            done.add(ch)
-            order.append(ch)  #!
-            return False
-        #@ Start a DFS from every letter; any cycle means there is no valid alphabet.
-        for ch in graph:
-            if has_cycle(ch):
-                return ""
-        #@ Post-order lists each letter after the letters that follow it, so reverse.
-        return "".join(reversed(order))`,
+                indegree[nxt] -= 1  #!
+                if indegree[nxt] == 0:
+                    queue.append(nxt)
+        #@ Letters on a cycle wait for each other forever and never enter the queue, so the order comes out too short: no valid alphabet.
+        return "".join(order) if len(order) == len(graph) else ""  #!`,
       time: 'O(C)',
-      space: 'O(1)',
+      space: 'O(V + E)',
       complexityWhy:
-        'Comparing neighboring words touches each of the C total characters a constant number of times. The graph has at most 26 nodes and 26² edges, so its size is constant.',
+        'C is the total number of characters. Comparing neighboring words touches each character a constant number of times, and Kahn\'s algorithm visits each letter and each rule once. The graph holds V letters (at most 26) and E rules (at most one per pair of neighboring words).',
       pitfalls: [
         'Only the **first** differing letter tells you anything. Letters after it say nothing, so `break` right after adding the edge.',
         'Forgetting the prefix case: `["abc", "ab"]` is invalid even though no letters differ.',
-        'Letters that never appear in a rule still belong in the answer, so create a node for every letter first.',
-        'You need three states (unseen / on the path / done). With only one visited set you cannot tell a cycle apart from reaching a letter that is already finished.',
+        'Letters that never appear in a rule still belong in the answer, so create a node (and an in-degree of 0) for every letter first.',
+        'The same rule can show up twice, from two different pairs of words. Here each copy is stored and counted, so the counts still reach zero. If you store edges in a set instead, raise the in-degree only when the edge is new.',
       ],
     },
     {
@@ -550,12 +549,12 @@ class Solution:
       solution: py`
 class Solution:
     def findCheapestPrice(self, n: int, flights: List[List[int]], src: int, dst: int, k: int) -> int:
-        #@ prices[city] = cheapest cost found so far. Only the start city is free.
+        #@ prices[city] = cheapest cost found so far. float("inf") is infinity, bigger than any real price: it means "not reached yet". Only the start city is free.
         prices = [float("inf")] * n
         prices[src] = 0
         #@ k stops means at most k + 1 flights, so run k + 1 rounds.
         for _ in range(k + 1):  #!
-            #@ Write into a copy, so every route grows by only ONE flight this round.
+            #@ Write into a copy (prices[:] is a new list with the same values), so every route grows by only ONE flight this round.
             new_prices = prices[:]  #!
             #@ Relax: is flying u -> v cheaper than the best price for v so far?
             for u, v, cost in flights:

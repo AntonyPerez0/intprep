@@ -31,10 +31,13 @@ function buildDeck(mode: Mode): { ids: string[]; deck: DrillCardSpec[] } {
   if (mode.kind === 'unit') {
     ids = shuffle(CATEGORY_BY_ID[mode.cat].problemIds.filter((id) => p.problems[id]?.learnedAt)).slice(0, MAX_UNIT);
   } else {
-    const due = dueProblemIds(p);
+    // Ids that are no longer problems (content changed since they were learned) never take a
+    // session's places.
+    const due = dueProblemIds(p).filter((id) => PROBLEM_BY_ID[id]);
     if (mode.kind === 'due' && due.length) ids = due.slice(0, MAX_DUE);
     else
       ids = learnedIds(p)
+        .filter((id) => PROBLEM_BY_ID[id])
         .sort((a, b) => (p.problems[a].srs!.due < p.problems[b].srs!.due ? -1 : 1))
         .slice(0, MAX_AHEAD);
   }
@@ -43,9 +46,11 @@ function buildDeck(mode: Mode): { ids: string[]; deck: DrillCardSpec[] } {
   const deck = orderDeck(
     shuffle(ids).map((id) => {
       const pp = p.problems[id];
-      // The coding cards follow the problem's schedule; each review rotates to other lines. In
-      // "Pick first, then type", a problem whose code is still new is picked (problemInput).
-      return cardsForProblem(PROBLEM_BY_ID[id], { srs: pp?.srs, round: pp?.reviews ?? 0, input: problemInput(p.settings.typingMode, pp) });
+      // The coding cards follow the problem's schedule; each review rotates to other lines. The
+      // lesson's final check was instance 0, so the first review is instance 1: other gaps, where
+      // the solution has them. In "Pick first, then type", a problem whose code is still new is
+      // picked (problemInput).
+      return cardsForProblem(PROBLEM_BY_ID[id], { srs: pp?.srs, round: (pp?.reviews ?? 0) + 1, input: problemInput(p.settings.typingMode, pp) });
     }),
   );
   return { ids, deck };
@@ -246,8 +251,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
     const perfect = acc === 100;
     const wrote = code.total > 0;
     const codeLine = wrote ? ` You wrote ${code.correct} of ${code.total} lines of code right on the first check.` : '';
-    // Only problems that were due move on the schedule: practice ahead (and unit practice on
-    // problems not due) leaves it as it was.
+    // Problems that were due move on the schedule. Practice ahead (and unit practice on problems
+    // not due) moves a problem only when its review was nearly due and it was passed (`reviewProblem`).
     const dueCount = ids.filter((id) => dueAtStart.has(id)).length;
     const schedule =
       dueCount === ids.length
@@ -256,8 +261,8 @@ function ReviewSession({ mode }: { mode: Mode }) {
           : ' Missed problems come back sooner, so they stick.'
         : dueCount === 0
           ? perfect
-            ? ' Practice doesn’t change your schedule.'
-            : ' Missed cards came back in this session. Practice doesn’t change your schedule.'
+            ? ' Practice ahead of schedule moves a problem on only when its review was nearly due.'
+            : ' Missed cards came back in this session. A miss in practice never sets a problem back.'
           : perfect
             ? ' The ones that were due now move further out on your schedule.'
             : ' Missed problems that were due come back sooner, so they stick.';

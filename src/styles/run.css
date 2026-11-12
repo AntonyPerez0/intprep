@@ -1,0 +1,235 @@
+/* "Run my code": the test report under an editor (components/RunResults.tsx). */
+
+.run-report {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  display: grid;
+  gap: 10px;
+}
+.run-report.is-good {
+  border-color: var(--success-border);
+  background: var(--success-subtle);
+}
+.run-report.is-bad {
+  border-color: var(--danger-border);
+}
+.run-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: var(--fs-base);
+}
+.run-summary svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.run-report.is-good .run-summary {
+  color: var(--success-text);
+}
+.run-report.is-bad .run-summary {
+  color: var(--danger-text);
+}
+.run-tests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.run-test {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  min-width: 0;
+}
+.run-test-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+.run-test-head svg {
+  width: 15px;
+  height: 15px;
+  color: var(--danger);
+  flex: none;
+}
+.run-test-head code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.run-row {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+}
+.run-row-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.run-row-label svg {
+  width: 13px;
+  height: 13px;
+}
+.run-row-value {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.run-row-value.is-bad {
+  color: var(--danger-text);
+}
+.run-row-value.is-good {
+  color: var(--success-text);
+}
+.run-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--danger-text);
+  overflow-wrap: anywhere;
+}
+.run-error-line {
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: var(--r-full);
+  background: var(--danger-subtle);
+  border: 1px solid var(--danger-border);
+  white-space: nowrap;
+}
+.run-note {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.run-work {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.run-work svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--warning);
+}
+.run-stdout {
+  display: grid;
+  gap: 4px;
+}
+.run-stdout pre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.run-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.run-loading svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.spin {
+  animation: run-spin 0.9s linear infinite;
+}
+@keyframes run-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
+@media (max-width: 480px) {
+  .run-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* "Why is it wrong?" (components/WhyWrong.tsx): inside a feedback bar or under a code window. */
+.why-btn {
+  justify-self: start;
+  margin-top: 4px;
+}
+.why-btn svg,
+.why-note svg {
+  width: 15px;
+  height: 15px;
+}
+.why-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.why {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+.why-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.why-input {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  overflow-wrap: anywhere;
+}
+.why-help {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.why-help code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}

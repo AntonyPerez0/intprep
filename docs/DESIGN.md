@@ -69,16 +69,21 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
 | Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
 | Picking code | The pick kit whenever the learner chooses code rather than typing it (new code in "Pick first, then type", or "Always pick"): `<PickGapsWindow>` + `usePickGaps` (Pick the gaps, Pick the key line), `<ArrangeWindow>` + `useArrange` (Arrange a part), `<CodeOptions>` (one line from options), `<InputSwitch>` ("Type instead" / "Pick instead"); distractors from `lib/choices.ts`. Never `<Choices>` for code. See **Pick first, then type** |
+| Running code | Whenever a whole solution is run against a problem's tests (Code from memory's From scratch, Solve it yourself, the mock interview): `useTestRun(problem)` (`{ phase, result, progress, busy, loadingPython, run(code, mode), reset }`; `run` resolves to null when Python cannot be used, and the caller falls back to comparing code), `runLabel(run, idle)` for the Check button ("Starting Python…", "Running 3/12…"), `<TestReport result max>` (the test report), `<PyErrorLine error>` and `<PythonLoading show>` from `components/RunResults.tsx`; `<WhyWrong p code>` (`components/WhyWrong.tsx`) for "Why is it wrong? Run it" after a miss. Styles in `styles/run.css`. Never hand-build a result list or call the worker directly. See **Running code** below |
+| Traces | `<TraceView p trace onStep>` + `useTrace(p)` (`components/TraceView.tsx`, `lib/traces.ts`, `styles/trace.css`): a solution stepped through on one input. See **Trace view** below |
 | Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (Enter runs the primary action, except while a modal dialog is open; re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; Ctrl/⌘ + Enter runs the primary action from anywhere but a link, even from a button, while plain Enter on a button or a `<summary>` is that control's own; when a check from the keyboard removes the focused input or editor, focus moves to the primary button; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
 | Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` (stat values share a bottom line even when a label wraps on a narrow phone) |
+| Plan | `<PlanCard p>` (`components/PlanCard.tsx`, numbers from `buildPlan` in `lib/plan.ts`; styles `.home-plan…` in `styles/pages/home.css`): the dashboard's "Your plan" card. See the Dashboard blueprint |
+| Crash screen | `<Crash>` (`components/Crash.tsx`, styles `.crash…` in `styles/shell.css`): the router's `errorElement`, shown instead of a blank page when a screen throws while rendering. A warning `IconTile`, the `h1` "This screen ran into a problem", one sentence ("Your progress is saved. Reloading usually fixes it…"), the error message in a `pre.crash-detail`, and three actions: **Reload** (primary), **Dashboard** (a full load of `#/`, so nothing of the broken screen is kept) and **Download a backup** (quiet; the same file as Profile's export) |
 | Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener; `.modal-actions` wrap, and stack full width with the primary on top below 360px), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
 | App chrome | Desktop top bar: streak and gem `.pill-stat`s + avatar; the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
 
 ## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
 
 Use it wherever the learner types code: Code from memory (part by part, filling the gaps, or the whole solution
-from scratch), the template drill (filling the gaps, or from memory), beginner "Your turn" slides of 1–5 lines,
+from scratch), Solve it yourself and the mock interview (a `<CodeEditor>` in a `TyperWindow`, with the test report
+under it instead of a diff), the template drill (filling the gaps, or from memory), beginner "Your turn" slides,
 and Pattern Blitz's Key lines game (a one-gap `<CodeGaps>` in a `TyperWindow`).
 For choosing between given lines of code, use the pick kit (**Pick first, then type**): `<CodeOptions>`,
 `<PickGapsWindow>`, `<ArrangeWindow>`; `<Choices>` stays for non-code answers.
@@ -93,16 +98,26 @@ steps back down ("Fill the gaps first"). In Code from memory the gaps rung is na
 (`modeInfo` in `Rebuild.tsx`): "Next: Pick the gaps" and "Pick the gaps first" while it picks. Code from memory is
 optional practice: it counts as the spaced review
 only for a problem that is due (`reviewProblem(id, grade, { lapse: false })`), so a weak run never resets the
-schedule of a problem that is not.
+schedule of a problem that is not. A run that passes also counts for a problem that is nearly due (three quarters
+of its interval have passed, for intervals of 4 days or more; `nearlyDue` in `reviewProblem`).
 
 **Grading** — `gradeCode(typed, expected, { anchor })` is pure. Blank and comment-only lines are ignored on both
-sides; lines compare with `normalizeCode`: spacing around operators and punctuation, quote style (curly quotes from a
-phone's smart punctuation, `‘a’` / `“a”`, count as straight ones: `straightQuotes`), trailing comments,
-trailing commas and the case of hex digits do not matter, but string contents do (`" "` is not `""`) and so does
-the space between two words (`for n in`, not `forn in`). Typed and expected lines are aligned by a
+sides; lines compare with `normalizeCode` (through `lineKey`): spacing around operators and punctuation, quote
+style (curly quotes from a phone's smart punctuation, `‘a’` / `“a”`, count as straight ones: `straightQuotes`),
+trailing comments and the case of hex digits do not matter, but string contents do (`" "` is not `""`) and so does
+the space between two words (`for n in`, not `forn in`). An operator typed with a space inside it (`< =`, `= =`,
+`+ =`, `* *`, `/ /`, `! =`, `- >`) is a syntax error in Python and never matches the real one. A trailing comma
+that changes nothing does not matter (before a closing bracket, or after an item on its own line in a list written
+over several lines); the comma that ends an assignment or a `return` does: `x = 1,` is a tuple, not `1`.
+Neighboring lines that can trade places (`swapRuns` in `lib/order.ts`: `left += 1` next to `right -= 1`) are
+right in either order: when the typed code has the same lines side by side, the expected run is put in the
+learner's order before the comparison (`orderLike`). Typed and expected lines are then aligned by a
 longest-common-subsequence diff, so one extra or missing line does not mark every following line wrong. A matched
-line is only correct if its indentation matches: without `anchor`, *relative to the snippet's base* (anchored on
-the outermost matched line, so a whole solution or template may sit at any consistent depth); with `anchor` (the
+line is only correct if its indentation matches, and indentation is compared by depth, not by column (`depths`:
+0 at the base, one more for every block still open above the line, Python's own rule), so a body indented two
+spaces under its `for` is as right as one indented four, as long as the typing is consistent; a line that dedents
+to a column no open block has matches nothing. The base: without `anchor`, *the snippet's own* (anchored on the
+outermost matched line, so a whole solution or template may sit at any consistent depth); with `anchor` (the
 editor's start column, when the editor sits under given lines the answer must line up with: a Part by part part,
 a "Your turn" answer), typed column 0 is that column, so a line typed one level too deep is a wrong indent.
 `baseIndent(lines)` is that column (the answer's least indented code line). It returns `rows` in diff
@@ -113,7 +128,9 @@ not written; a changed line is a `del` + `add` pair with `paired: true`), plus `
 matches whatever their indentation (`correct + wrongIndent`, so a body typed flush-left stays an indentation slip
 on the answer it copies), then the higher score, then fewer extra lines, then the earliest. Pass clean code as `expected`
 (e.g. chunk lines or `parseSolution(...).code`); `#!` key markers are dropped. Leave read-only lines (the class /
-def header) out of `expected` and show them as `given`.
+def header) out of `expected` and show them as `given`. `withGiven(given, typed, indent)` is the reverse, for
+running the code: the typed lines as a whole file under the given lines, at the body's indentation, whatever column
+the learner started from.
 
 **Editor** — `<CodeEditor value onChange label given start firstLine indent minRows autoFocus placeholder
 disabled>`: read-only `given` lines (highlighted, numbered), a numbered gutter and a borderless `textarea.input.code-input`
@@ -152,10 +169,10 @@ desktop keyboard hint while typing, then "Compared line by line" and the summary
 the `step` prop changing with each check (e.g. `` `${round}:${checks}` ``) so the double-click guard re-arms.
 Every typing screen words it the same way: the first check's feedback says the first check sets the score (or
 the tally); a right fix is titled **"All gaps right now"** (gaps), **"All lines right now"** (a part, a template,
-a whole solution) or **"Right now"** (one line), and its body says the first check still counts. "Show answer"
-always means "reveal it, counted as a miss"; "Peek" (guided lesson) goes back to the code without revealing a
-diff. A miss that returns later says so: "It comes back later in this session" (reviews) or "Not quite — it will
-come back later" (lessons).
+a whole solution; **"All tests pass now"** when From scratch was run) or **"Right now"** (one line), and its body
+says the first check still counts. "Show answer" always means "reveal it, counted as a miss"; "Peek" (guided
+lesson) goes back to the code without revealing a diff. A miss that returns later says so: "It comes back later
+in this session" (reviews) or "Not quite — it will come back later" (lessons).
 
 **Phones** — no autofocus on coarse pointers: an editor or gap focuses on mount only with `(pointer: fine)`, so
 the keyboard never covers the task on arrival; it opens when the learner taps the code, and "Fix and check again"
@@ -212,7 +229,8 @@ gap row focuses its input.
 
 **Grading and result** — `gradeGaps(values, expectedLines, swaps = [])` returns `{ results: { got, exp, ok, empty }[],
 correct, total, perfect, score }`, one gap to one line, compared with the kit's `lineKey` (whitespace, quote style,
-trailing comments and commas do not matter). `swaps` (`gapSwaps(lines, gaps)`) groups gaps on neighboring lines
+trailing comments and a trailing comma that changes nothing do not matter). `swaps` (`gapSwaps(lines, gaps)`)
+groups gaps on neighboring lines
 whose order does not matter (`left += 1` / `right -= 1`; `swapRuns` in `lib/order.ts`): within a group, the lines
 in any order are right. `useGaps`, `CodeGaps`, `GapsWindow` and the pick twins pass it. Once `revealed`, a right
 gap shows the typed line with the check; a wrong one
@@ -227,8 +245,9 @@ keeps the text and locks the right gaps, `fresh()` ("New gaps") moves to the nex
 ### Review deck (`pages/Review.tsx`, `lib/drills.ts`, `components/Drills.tsx`)
 
 Daily review, Practice ahead and Unit practice are code-first. Each problem brings three cards: **one
-recognition card first** (Spot the pattern about 70% of the time, otherwise Recall the key insight, Name the
-technique, Know the complexity or Put the steps in order), then **two coding cards** picked by the problem's
+recognition card first** (Spot the pattern about 45% of the time, Read the clue words about 25%: the problem's
+`signals` alone, without its statement; otherwise Recall the key insight, Name the technique, Know the complexity
+or Put the steps in order), then **two coding cards** picked by the problem's
 stage (`codeStage(srs)`) and input (`problemInput`; see **Pick first, then type** for the table): new code is
 picked (Arrange a part + Pick the gaps; code still new after its first review gets the picked twins of its stage's
 cards, usually Pick the key line + Pick the gaps), then a fill stage (interval under 10 days) gets Write the key
@@ -239,11 +258,15 @@ A missed card comes back once at the end of the session ("Try again" badge, half
 a fresh instance with the same input (`retryCard`: other gaps and options, another key line, another part). The problem's review grade is
 `gradeFrom` over the first try of its three cards, coding cards counting like the others. Practice ahead and unit
 practice are optional: a problem that was not due when the session started is reviewed with `{ lapse: false }`,
-so a miss never resets its schedule. Session sizes live in `SESSION_PROBLEMS` (`lib/drills.ts`).
+so a miss never resets its schedule; a pass moves it only when it is nearly due (`nearlyDue` in `reviewProblem`:
+three quarters of an interval of 4 days or more have passed), so a learner can work a day ahead. Session sizes
+live in `SESSION_PROBLEMS` (`lib/drills.ts`).
 
 - **Fill the gaps** (`gaps`, `GapsDrill`): the whole solution in a `GapsWindow`, header given, 2 gaps (6 code
   lines or fewer) or 3, always a key line among them (`reviewGaps(p, seed)`; the seed moves with the problem's
-  review count, so each session blanks other lines).
+  review count, so each session blanks other lines). The deck's round is the review count plus one
+  (`buildDeck` in `pages/Review.tsx`): the lesson's final check was instance 0, so the first review already asks
+  other gaps, where the solution has them.
 - **Fill the gaps**: a retry (seed `2r + 1`) never blanks the set of the card it retries, and a session (seed `2r`)
   never repeats the last session's set (`2r − 2`), whenever the solution has other lines to blank; a key line stays.
 - **Write a part** (`part`, `PartDrill`): one part, split as the guided lesson splits it (`reviewParts` /
@@ -291,8 +314,9 @@ code from memory."; Always pick: "…then pick its code from choices."). Every c
 and streak, answers, each problem's schedule once its three cards are done), so a
 close keeps the work; the reward toasts are held (`holdToasts`) and shown at the end or after the close, so none
 covers a card. A problem pulled into today by a Pattern Blitz miss is reviewed as early (`review()` counts only
-the days that passed), so a miss never pushes it further out than getting it right would. A problem learned or
-lapsed today is never pulled in (`flagForReview`): it stays due tomorrow.
+the days that passed, and a pass keeps the interval the problem had), so a miss in the game never collapses a
+mature problem's schedule. A problem learned or lapsed today is never pulled in (`flagForReview`): it keeps its
+own due day. A learned problem that a mock interview did not solve is pulled in the same way.
 
 Input (`lib/input.ts`): each problem's coding cards take the input `problemInput(settings.typingMode, progress)`
 gives when the session starts (see **Pick first, then type**).
@@ -312,7 +336,7 @@ Route for Pick first, then type; Keyboard for Always type; ListChecks for Always
 |---|---|---|
 | `auto` (default) | **Pick first, then type** (Recommended) | New code is picked; typing takes over once it is known |
 | `type` | **Always type** | Every exercise typed (old saves holding 'type' land here) |
-| `tap` | **Always pick** | Every exercise with a pick version is picked, no "Type instead". The rest stay typed: Code from memory's From scratch, Template practice's From memory, and Foundations "Your turn" slides without authored options (43 of 82) |
+| `tap` | **Always pick** | Every exercise with a pick version is picked, no "Type instead". The rest stay typed: Code from memory's From scratch, Solve it yourself and the mock interview, Template practice's From memory, and Foundations "Your turn" slides without authored options (58 of 113) |
 
 The description follows the selected option (`CODE_PRACTICE_DESC` in `pages/Profile.tsx`): auto "New code starts
 as choices until you know it. To type sooner, use “Type instead”."; type "You type all code, even code you have
@@ -610,6 +634,118 @@ again" the part card says how to fix it ("Select a line to send it back, then ad
 `.plesson[data-input]` (`pick` / `type`). Below 380px, with "Type instead" beside it, Peek shows its icon only (named
 for screen readers), so "Type instead" keeps its words.
 
+## Running code (`lib/python.ts`, `lib/pyWorker.ts`, `components/RunResults.tsx`, `components/WhyWrong.tsx`)
+
+The learner's Python is run in the browser: Pyodide in a web worker, with the judge (`src/judge/judge.py`) loaded
+into it. Running is always an addition to the typing kit, never a separate look: the same windows, the same
+action bar, a report under the code.
+
+**When code is run** — a whole solution written from a blank file (Code from memory's From scratch, Solve it
+yourself, the mock interview) is run against the problem's tests: any correct code passes. A beginner "Your turn"
+answer that is not line for line an accepted answer is run when the slide has an `output` or a `check`. In a guided
+lesson, "Why is it wrong?" runs the solution with the learner's version in place, on request. Parts, gaps and key
+lines are still compared line by line: they are lines of one known solution.
+
+**Loading and the setting** — nothing is downloaded until a screen asks: `warmPython()` on arrival at a screen
+where code will be run, or the first run. The first time, Pyodide comes from the site's own `pyodide/` folder
+(about 7 MB over the wire) and the service worker keeps it in its own cache, so later runs are instant and work
+offline. While it loads, `<PythonLoading>` shows one line under the editor ("Starting Python. The first time it
+downloads about 7 MB; after that it is instant and works offline.") and the Check button reads "Starting
+Python…", then "Running…" or "Running 3/12…" (`runLabel`). Profile, Practice, **"Run my code"** (`settings.runCode`,
+on by default) turns it all off; `pythonEnabled()` is the test every screen uses.
+
+**Fallbacks** — every screen works without Python (the setting off, an old browser, offline before the first use):
+From scratch and the beginner slides compare the code line by line as the typing kit always did (a beginner slide
+waits at most 8 seconds for Python before it does); "Why is it wrong?" is not shown with the setting off, and
+says "The code could not be run here." when Python cannot load; with the setting off, the guided lesson's first
+step links out to the problem instead of "Try it yourself first", its completion offers "Solve it on LeetCode",
+and the problem page shows no "Solve it yourself" button. Solve it yourself and the mock interview need Python:
+with the setting off they show "Running code is turned off" with a link to the profile.
+
+**Code that never ends** — the judge counts the lines it runs and stops a runaway loop itself ("it ran for too
+long and was stopped: look for a loop that never ends, or a much slower approach"). What it cannot see is caught by
+a watchdog in `lib/python.ts`: a request with no sign of life for 12 seconds ends the worker, and the next request
+starts a fresh one.
+
+**The test report** (`<TestReport result max>`, `role="status"`) — one box under the code, green or red like the
+typing window's frame:
+- All passed: "All 12 tests passed". When the code did 12 times the work of the taught solution or more on a test
+  (counted in executed lines), a note follows: "Correct, but it did about 40× the work of the taught solution on
+  the largest test. An interviewer will ask for the faster approach."
+- Some failed: "9 of 12 tests passed", then the first `max` failing tests (2 by default; "Show 3 more failing
+  tests" opens the rest). Each is named as the learner knows it ("Example 1", "Test 4"; a design class adds the
+  call that went wrong) and shows rows in the code font: **Input**, **Expected**, then **Your code** (what it
+  returned) or the error with its line (`<PyErrorLine>`: "IndexError: list index out of range", "line 7"). Under
+  them, when they apply: "Also right: any order that takes every prerequisite first." for answers with more than
+  one right form, a hint ("Your function returned None: is a return missing on some path?"), and "It printed" with
+  what the code printed during the test.
+- The code did not load or was stopped: "Your code did not run" or "Your code did not finish", with the error.
+The report never shows the solution. Passing tests are not listed.
+
+**Beginner slides** show the result in their own words (`RunFeedback` in `pages/LessonPlayer.tsx`, `.lplayer-run`):
+"Python stopped with an error" with the error line and a plain-language explanation of that kind of error
+(`errorHelp`: twelve of them, from `NameError` to `RecursionError`); "Your code ran, but printed something else"
+with "It printed" and "Expected"; "Your code ran, but it does not do the job yet" with the check that failed; or
+"It prints the right thing, another way" when the output is right but the code does not use what the exercise is
+about. While the code is wrong, the action bar says "Read what Python says about your code, fix it and check
+again."; the slide's explanation, which describes the answer, waits until the learner has it right or asks for
+the answer. Code that works though it differs from the answer is titled **"It works"**, with "Your code does the job.
+Here is how we wrote it:" and the answer under it (`.lplayer-works`). Code that was run is not marked line by line:
+the editor shows it as written.
+
+**"Why is it wrong?"** (`<WhyWrong p code>`) — a quiet button in the feedback of a missed part or a missed final
+check in the guided lesson: "Why is it wrong? Run it" (CircleHelp). `code` is the whole solution with the
+learner's lines where the answer's would be; mount it with a `key` that changes with the attempt. It says
+"Running the code with your version…", then one of: "With your version, the solution breaks on this input", the
+input, and "It returns 3; the right answer is 4." (or the error and its explanation); "With your version, Python
+cannot run the code at all"; or "Your version passes every test here", since it may be another way to write the
+line and the lesson asks for the line it taught.
+
+## Trace view (`components/TraceView.tsx`, `lib/traces.ts`, `styles/trace.css`)
+
+"Watch it run": a solution stepped through on one small input. The traces are built ahead of time
+(`scripts/build-traces.py` writes `src/content/traces/<unit>.json`, loaded a unit at a time by `loadTrace`), so
+the view works offline and needs no Python in the browser. `useTrace(p)` gives `undefined` while loading
+("Loading the run…") and `null` when there is no trace to show ("This run is not available offline yet. Trace
+the first example by hand instead…").
+
+- **Input** on top, in the code font.
+- **Controls:** Back, a range slider ("Step", announced as "Step 4 of 31") and **Next step** (primary; **Replay**
+  once the last step is reached). Left and Right arrow keys step from anywhere on the screen except a text field.
+- **Code** on the left: the whole solution with line numbers and the line about to run marked (`.trace-line.is-on`,
+  an arrow in the gutter, `aria-current="step"`). The pane scrolls itself to keep that line in view; the page
+  never scrolls.
+- **State** on the right, in a polite live region: "Step 4 of 31 · line 12 runs next"; for recursion, the call
+  stack ("3 calls deep: dfs → dfs → dfs") and, on the line that ends a call, "This call ends here and hands back
+  2"; the variables of the running call as a two-column table, the ones that are new or changed on this step
+  standing out (`.is-new`); the explanation of the part the line belongs to; and on the last step **Returns** with
+  the result ("It carries on the same way and returns" when the run was longer than the trace).
+
+Stored steps hold only what changed since the call's last step; `expandTrace` replays them into full frames.
+
+## Clue words and the memorize steps (`pages/ClueDrill.tsx`, `lib/clues.ts`, `components/Memorize.tsx`, `content/cues.ts`, `styles/pages/clues.css`)
+
+**Clue words** are "see this, reach for that" pairs, 6 to 9 per pattern. They appear in four places, always as
+the same pair (`.clue-list`: wording left, arrow, what to reach for in semibold; stacked with a leading arrow on
+phones): the pattern intro (a "Clue words" slide and one generated question), the unit page, the pattern guide
+(searchable), and the drill.
+
+- **The drill** (`/clues`, `/clues?cat=<pattern>`) is a focus session of 12 cards on the drill kit (`.drill`,
+  `Choices`, `ActionBar`). Three kinds of card: *wording to pattern* (one clue's wording as a `.clue-phrase` card,
+  four patterns to choose from), a problem's clue phrases without its statement (the same, with two to four
+  phrases), and *pattern to wording* (the pattern named in the title, four wordings as options, one per pattern).
+  Wrong patterns come from the ones easy to confuse (`CONFUSABLE`) and from the patterns the learner has started;
+  a pattern in a clue's `also` counts as right and is never offered. Feedback shows the pattern, then the pair
+  ("wording → what to reach for"). A missed card comes back once at the end. Without `?cat`, the session asks
+  about the patterns the learner has started, weakest first (all of them when none is started). Reward toasts are
+  held until the summary, which lists each pattern's score for the round and whether its clue words are known
+  (`CLUES_KNOWN` = four right in a row, kept per pattern in `progress.clues`).
+- **The memorize steps** (`MemoSteps`) are an ordered list: a green check for a step that is done, a filled brand
+  number and a primary button for the first step that is not, plain numbers for the rest, and a quiet "Again" on
+  done steps. "Memorize this pattern" sits on the unit page beside the clue words; "Memorize this solution" is a
+  card on the problem page. Every step reads state the app already keeps (`patternSteps`, `problemSteps`): the
+  pattern intro, the clue words, Template practice, Code from memory, the review schedule.
+
 ## Page blueprints
 
 - **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
@@ -620,15 +756,33 @@ for screen readers), so "Type instead" keeps its words.
   patterns as a curriculum grid; "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
   (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof. The copy describes the
   default "Pick first, then type": new code is picked from choices, typed once known (the hero lead, How it
-  works, the features, and the FAQ "Do I have to type all the code?").
+  works, the features, and the FAQ "Do I have to type all the code?"). The features include "Write it, run it"
+  (the code is run against tests in the browser) and "Against the clock" (the mock interview, with Pattern Blitz
+  as its quick version); the FAQ answers "Does it run my code?" (yes, in the browser, nothing is sent anywhere,
+  about 7 MB once) and gives "How long does it take?" from the content (the count of Easy and Medium problems at
+  two a day).
 - **Onboarding (`/onboarding`)** — centered, focused, step indicator; welcome + name → experience (radio cards with
-  icons) → daily goal (radio cards) → plan summary (starting point (MapPin icon), daily goal, daily review, "Code
-  practice" with the setting's label and line from `CODE_PRACTICE` and its icon from `CODE_PRACTICE_ICON`, streak)
-  → **"Start learning"**.
+  icons) → daily goal (radio cards; each says what a day at that goal is, from `DAILY_GOALS`: "About 20 min:
+  reviews and one new problem"; under them an optional date field, "Do you have an interview date?", tomorrow at
+  the earliest) → plan summary (starting point (MapPin icon), daily goal, "Pace" (CalendarClock icon: the new
+  problems a day `buildPlan` works out and where they lead, or, with a date, "Interview 40 days away: 3 new
+  problems a day"; it says so when the date asks for more than the chosen goal has room for, or when not every
+  core problem fits), daily review, "Code practice" with the setting's label and line from `CODE_PRACTICE` and its
+  icon from `CODE_PRACTICE_ICON`, streak) → **"Start learning"**.
 - **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card (a beginner lesson shows its minutes
   and how many code exercises it has, picked ones included; a pattern intro reads "Read it, then fill in the
   template"; a problem whose code will be picked adds "You build the code from choices", ListChecks icon); a
-  "Today" panel (goal ring, streak, reviews due); the Daily review card says what a session is, in the learner's
+  "Today" panel (goal ring, streak, reviews due); **"Your plan"** (`<PlanCard>`, shown once the learner has
+  earned XP or set an interview date): in the head, "Interview in 40 days · Mon 14 Dec", or a quiet "Set an
+  interview date" link to Profile's Plan group; three tiles, "Reviews due" ("Do these first" / "All caught up"),
+  "New today" (learned today against the day's target, "2/3", "1 to go" / "Done for today"; "Reviews only" when
+  the target is zero) and "Core problems left" ("21 Hard after them"; "Problems left" in unit-by-unit order); then
+  one sentence saying where the pace leads ("At 1 new problem a day you finish the core by Mon 14 Dec and all 150
+  by…"; with a date, whether the pace finishes the core in time and how many days it keeps for review and mock
+  interviews, or how many core problems fit; "Do the 14 reviews first, then today's new problems."; "31 reviews
+  are waiting, so nothing new today."), and a warning line with a link when the daily goal is too small for the
+  pace the date needs. With more than 12 reviews due (`REVIEWS_FIRST`), "Start review" becomes the primary button
+  and "Continue learning" the secondary one. The Daily review card says what a session is, in the learner's
   Code practice setting ("Spot each pattern, then recall its code: pick it while it's new, type it once you know
   it."; Always type: "…then write the code from memory…"; Always pick: "…then pick its code from choices…"). Its
   Code from memory row (one learned problem) says "Write Two Sum from memory" (Keyboard icon), or "Practice Two
@@ -636,20 +790,33 @@ for screen readers), so "Type instead" keeps its words.
   line first, then type it once you know it." (picking) or "You have not written it from memory yet. Start part
   by part." (typing), and picked bests add "Picked so far: parts 83% · gaps 100%."; KPI row (learned /150, strong, "Practice accuracy" = first-try answers in reviews and Blitz,
   level); activity heatmap; roadmap progress by unit; quick actions ("Key lines" once 3 problems are learned,
-  else "Pattern Blitz").
+  else "Pattern Blitz"; "Mock interview" once a problem is learned, with "3 of 5 passed" once one was taken). With
+  nothing learned yet, the review card's button is "Continue learning" (the next lesson), not a game about patterns
+  the learner has not met. "Continue learning" follows `nextStep` (`lib/path.ts`): the beginner lessons only for a
+  learner who said they are new to coding, then each unit's pattern intro and its Easy and Medium problems, then
+  the Hard ones in a second pass ("Path order" in the profile switches to unit by unit).
 - **Learning path / Unit** — structured curriculum (vertical timeline/stepper), units with icon tiles, progress
   and status; problem rows with status, mastery and difficulty. Unit page: header, progress, CTAs, pattern summary,
-  template, problems list.
+  template, problems list. "Up next" is the unit's next problem in the path's order (`unitNext`): in the default
+  order a Hard problem that is not next carries a quiet badge, "After the core" while the unit still has Easy or
+  Medium problems to learn, then "Second pass"; it can still be opened.
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar. Desktop may
   use two columns where it helps (e.g. code + explanation). Foundation lessons mix in "Your turn" slides (`kind:
   'type'`): the task, a `<CodeTyper>` with the starter as `given`, then Check → the diff and the explanation; a miss
   offers "Try again" (the primary: keeps the text) and, left of it in the action bar, "Show answer" (the answer,
   then Continue; the slide comes back once at the end of the lesson). Before a check, the idle secondary is "Hint"
   while unused, then "Show answer" (right away on a slide with no hint), so a beginner who cannot start is never
-  stuck; it counts as a miss the same way. **Pick the right code** (`PickSlideStep`): a "Your turn" slide with
-  authored wrong options (`pick`, the first exercise on each new idea: 39 of the 82; a later typed slide in the same
-  lesson or the next types the idea again, and a lesson's last "Your turn" is typed) is picked first in "Pick first,
-  then type" and "Always pick", typed in "Always type". The other 43 are typed in every setting. Same eyebrow ("Your
+  stuck; it counts as a miss the same way. Code that is not line for line an accepted answer is run when the slide
+  has an `output` or a `check` (Check reads "Running…" meanwhile): working code is right ("It works", our version
+  shown under it), and wrong code shows what Python said in place of the diff (see **Running code**, Beginner
+  slides); the answer stays hidden until "Show answer". A lesson left part-way (a reload, a closed tab) opens on the
+  slide the learner was on, with its queue of missed slides and its first-try tally, and a toast says so ("Picked up
+  where you left off", "Slide 9 of 24"); the place is kept in this browser for two weeks and dropped when the
+  lesson is finished or its slides change (`lib/resume.ts`). Pattern intros resume the same way. **Pick the right
+  code** (`PickSlideStep`): a "Your turn" slide with authored wrong options (`pick`, the first exercise on each new
+  idea: 55 of the 113; a later typed slide in the same lesson or the next types the idea again, and a lesson's last
+  "Your turn" is typed) is picked first in "Pick first, then type" and "Always pick", typed in "Always type". The
+  other 58 are typed in every setting. Same eyebrow ("Your
   turn · 2 of 8", ListChecks icon), title and task; the typing window holds the starter as `given` and a dashed slot
   at the answer's column ("Pick the 2 lines below"; a tap brings the options into view), with the expected output
   and the status bar ("2 lines to pick", "Ready to check"); under it `<CodeOptions block>` "Pick the right code":
@@ -661,9 +828,23 @@ for screen readers), so "Type instead" keeps its words.
   comes back once at the end ("Missed earlier", reshuffled). After a miss, "Fix and check again" (left of Continue)
   re-opens the options with the last pick focused; a right fix is "Right now". Before the first check, "Type
   instead" ('auto' only) turns the slide into its typed view for the rest of the lesson (its comeback is typed too).
-- **Guided problem lesson (`/p/:id/learn`)** — ten steps, "Step 7 of 10 · Write the code" in the eyebrow: read,
-  guess (pattern choice), hints, brute force, insight, plan, **Write the code**, complexity (choice), traps, **Final
-  check**. Write the code goes through every part of the solution except the class / def header (always given;
+- **Guided problem lesson (`/p/:id/learn`)** — eleven steps, "Step 7 of 11 · Write the code" in the eyebrow: read,
+  guess (pattern choice), hints, brute force, insight, plan, **Write the code**, **Watch it run**, complexity
+  (choice), traps, **Final check**. The step reached survives a reload (`lib/resume.ts`; the work inside a step
+  starts over). **Read** shows the number, the difficulty and the statement, but not the pattern's name or chip:
+  the next step asks the learner to guess it. Its "Before you continue" callout offers **"Try it yourself first"**
+  (a link to Solve it yourself: "your code is run against the tests, and passing them skips this lesson"); where
+  code cannot be run it links out to the problem instead. **Hints** ends with an optional field, "Your idea, in a
+  sentence" ("Optional, not checked"; nothing is kept): with text in it the primary reads "Compare with the
+  answer" (else "Skip to the answer" or "Show me the solution"). **Brute force**, for the dynamic-programming
+  problems, adds a card under the naive approach, "From brute force to the answer, one change at a time" ("The
+  brute force as code" when there is one stage; `Derivation`, the stages of `src/content/derivations.ts`): a
+  numbered list with one stage open at a time, each with its title, its complexity, a note, the code in a
+  `CodeWindow` (`stage_2.py`) and "Next: Add a cache"; the last says the lesson's solution is the next step from
+  here. **Watch it run** is the `<TraceView>` of the solution on a small input ("Step through the solution on a
+  small input. Before each step, say what the marked line will change, then check yourself."), with Continue
+  always enabled. Write the code goes through every part of the solution except
+  the class / def header (always given;
   so are class lines and class-level `def` signatures that open or close a part, as in design problems, while
   nested helpers such as `def dfs(r, c):` are typed):
   **Look** (the part's explanation in a card, its code highlighted under the earlier parts, key lines with a gold
@@ -680,7 +861,11 @@ for screen readers), so "Type instead" keeps its words.
   with the same code, is a gap); with nothing typed the primary reads "Show answers", so nobody is stuck. The
   completion shows "Parts written" ("Parts built" when picked, "Parts right" when both), "Final check" (first check)
   and "XP earned", with the next review in the subtitle and "Code from memory" as the primary action (its icon and
-  tip follow how Code from memory will take the code: see **Pick first, then type**, Guided lesson). While the
+  tip follow how Code from memory will take the code: see **Pick first, then type**, Guided lesson). Its secondary
+  action, "Next: …", follows the learning path (`nextStep`): this unit's next problem, the next unit's pattern
+  intro, or, once the core of every pattern is learned, the next Hard problem; the quiet third action is "Solve it
+  yourself, from a blank file" ("Solve it on LeetCode" where code cannot be run). After a miss on a part or on the
+  final check, the feedback offers **"Why is it wrong? Run it"** (see **Running code**). While the
   code is new, the code step is "Build the code" and the final check "Pick the gaps" (see **Pick first, then
   type**, Guided lesson).
 - **Pattern intro (`/unit/:cat/intro`)** — the guide as slides (`guideSlides()` in `LessonPlayer.tsx`): the
@@ -722,10 +907,19 @@ for screen readers), so "Type instead" keeps its words.
   check again" and the part's first check keeps its score), **Fill the gaps** (the problem, the given class / def
   header and the solution with about 30% of its lines blank, key lines first, in a `GapsWindow`; Enter moves to the
   next gap and checks on the last once every gap has text; "New gaps" while idle) and **From scratch** (the whole
-  body in one blank editor under the given signature; the sub names the solution's own names, since it is compared
-  line by line with the solution the learner studied; "Show outline" reveals the parts' cues as numbered comments
-  and caps the XP, also for a draft kept across a free switch). Part by part counts extra lines against the score,
-  as the other modes do. Without `?mode=` it follows the ladder (`ladderMode(pp, input, setting)`): From scratch
+  body in one blank editor under the given signature; "Show outline" reveals the parts' cues as numbered comments
+  and caps the XP, also for a draft kept across a free switch). From scratch is **run**, where code can be run (see
+  **Running code**): the sub says "Your code is run against the tests, so any correct solution passes." Code that
+  matches the solution line for line needs no run; anything else is run on every test, and the window shows the
+  code as written with the `<TestReport>` under it instead of a diff. A pass says "It passed all 12 tests. It is
+  not line for line the solution you studied, and it does not need to be."; a failing run says "Use the failing
+  test to find the bug, or continue.", and a quiet **"Compare with the solution, line by line"** under the report
+  brings the diff. The score is 100% for a pass; otherwise the larger of the matching lines and 80% of the share of
+  tests passed, so only a full pass or a full match counts as proof. The header chip and the completion count
+  tests ("9/12", "Tests passed") in place of lines, and the completion's first stat is "Score". A pass is recorded
+  as the learner's own code passing (`recordSolved`), which is typed proof. Where code cannot be run, the sub names
+  the solution's own names, since the code is then compared line by line with the solution the learner studied.
+  Part by part counts extra lines against the score, as the other modes do. Without `?mode=` it follows the ladder (`ladderMode(pp, input, setting)`): From scratch
   once the fill-the-gaps best is 80% or more (or there is a scratch score), else Fill the gaps once the part-by-part
   best is 80% or more, else Part by part; with typed proof (`hasTypedProof`) it keeps that typed rung outside Always
   pick. The first Check sets the score; "Fix and check again" re-grades without raising it (in Fill the gaps it
@@ -757,6 +951,38 @@ for screen readers), so "Type instead" keeps its words.
   gaps to **"Now type the gaps"** (the same gaps, typed), never to From scratch (Always pick: "Try new gaps"); a
   weak gaps run offers "Pick it part by part" (typed: "Write it part by part"), and a weak From scratch run "Pick
   the gaps first" while the visit picks ("Fill the gaps first" typed). `.rebuild[data-input]` says which.
+- **Solve it yourself (`/p/:id/solve`)** — a session screen (`pages/Solve.tsx`, `styles/pages/solve.css`) with one
+  job: write working code in a blank file. Kicker ("Before the lesson", or "Two Pointers · from a blank file" for
+  a learned problem), the title with its difficulty, one sentence, the problem statement (`ProblemPrompt`), then a
+  `TyperWindow` (`solution.py`, "Your solution") holding a `CodeEditor` under the given signature (placeholder
+  "Write the body of twoSum"; footer "3 lines written" and "Tab to indent · Ctrl/⌘ + Enter to submit"). The action
+  bar has **Run examples** (secondary: runs the examples only, as often as the learner likes; "The 2 examples
+  pass. Submit to run every test.") and **Submit** (primary: every test). The `<TestReport>` sits under the
+  editor. A quiet button under it gives the way out: "I am stuck: take the lesson" before the lesson, "Stop here"
+  after it. When every test passes, the window turns green, the bar says "Every test passed" and Continue leads
+  to the completion: "Solved without the lesson" (before the lesson: the problem joins the review deck a week out,
+  `learnProblem(…, { testedOut: true })`, with the problem's XP) or "Solved from a blank file" (after it), with
+  Time, Submissions and XP earned, "Back to dashboard", the guided lesson ("Take the guided lesson anyway") and
+  the taught solution in a closed disclosure ("Compare with the taught solution"). The draft is kept for the
+  tab's lifetime (`sessionStorage`), so a reload does not lose the code. With "Run my code" off the page says so
+  and offers the profile and Code from memory. Entry points: the guided lesson's first step ("Try it yourself
+  first") and completion, and the problem page ("Solve it yourself", "Solve it again" once solved).
+- **Mock interview (`/mock`, then `/p/:id/solve?mock=1`)** — an app page (`pages/Mock.tsx`, in the sidebar under
+  Practice, Timer icon) and the Solve screen against a clock. The lobby has two cards. **"What should it draw
+  from?"**: two radio cards with a count each, "A problem you have learned" (one not tested lately) and "A new
+  problem from patterns you know" (unlearned problems of units the learner has started; Hard ones once half the
+  unit is learned), an empty one disabled with the reason; three rules with icons (15 minutes for an Easy
+  problem, 25 for a Medium, 40 for a Hard; say your approach out loud before you type; run the examples as often
+  as you like, Submit runs every test); and **"Start the interview"**. **"Your interviews"**: "3 of 5 passed" and
+  the last six, each with a pass or fail icon, the problem, its difficulty and the time. Empty states: "Learn a
+  problem first" (Continue learning) and "Running code is turned off" (Open profile). The interview itself is the
+  Solve screen with the session title "Mock interview", the kicker "Mock interview · no hints, no pattern name", a
+  clock in the header (`.solve-clock`, `role="timer"`; it and the linear progress bar turn red in the last two
+  minutes) and "End the interview" as the way out; there is no link to the lesson until it ends. The clock
+  survives a reload. It ends in one of three completions: "Interview passed" (Trophy; "with 6:40 left on the
+  clock"), "Time is up" or "Interview ended" (Hourglass; a learned problem goes back into today's review, an
+  unlearned one leads to its lesson), each with "Another mock interview", the lesson and the solution in a closed
+  disclosure.
 - **Template drill (`/patterns/:cat/type?mode=pick|gaps|memory`)** — "Template practice" in the session header (as
   its entry points say), the unit's guide template, in three rungs under a `.seg` switch (full names with icons;
   names only below 460px; "Pick / Fill / Memory" below 380px, the full name staying the accessible name): **Pick the
@@ -793,10 +1019,14 @@ for screen readers), so "Type instead" keeps its words.
   (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
   card is a quiet dashed one with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
   lesson, and the pattern game is selected. Personal best and games played below the choice are the chosen game's
-  (each game keeps its own timed best: `stats.blitzBest`, `stats.blitzCodeBest`; Zen rounds set no best). Both
+  (each game keeps its own timed best: `stats.blitzBest`, `stats.blitzCodeBest`; Zen rounds set no best). Spot
+  the pattern's "Questions" setting opens on "Units I've started" (units with the pattern intro done or a problem
+  learned) once those hold 8 problems, since naming a pattern never taught is a guess; before that it is all 150,
+  and the line under it says why ("You have not started a pattern yet, so most of these are guesses: learn a
+  pattern first and the game will ask about it." / "Start another unit to narrow it to yours."). Both
   games share the HUD (score, streak, ×1–×4 multiplier, clock or Zen ring), 10 points × multiplier a hit, and send
   misses on learned problems to today's review (`flagForReview`), except a problem learned or lapsed today, which
-  stays due tomorrow; the lobby and the pattern game's misses say they "join your next review".
+  keeps its own due day; the lobby and the pattern game's misses say they "join your next review".
   **Key lines round** (`lib/blitzLines.ts` picks the line, `<CodeGaps>` shows it): kicker "Type the missing line",
   "Round N" (Zen "Round N of 10"), the problem title (`h1`) with its difficulty, and a `TyperWindow` with a short
   window of the solution (up to 6 lines before, 3 after, trimmed of blank edges), the enclosing `def` / `class`
@@ -814,7 +1044,7 @@ for screen readers), so "Type instead" keeps its words.
   "Fixed" and no points. Results: Score, Accuracy, Best, XP earned, then "Lines to practice", one card per miss
   (problem, pattern and line number, your line and the right one as diff rows, and "Code from memory" for that
   problem, with a Keyboard or ListChecks icon as `problemInput` will type or pick it). Its sub says when they come
-  back ("These problems join today's review." or, when one stays due tomorrow, "…join your next review.") and the
+  back ("These problems join today's review." or, when one keeps a later due day, "…join your next review.") and the
   next step: "Write one from memory to lock it in." when every missed problem will be typed, else "Practice one
   from memory to lock it in.". Actions on both games' results: Play again, Back to dashboard, Choose a game
   (back to the lobby).
@@ -836,18 +1066,34 @@ for screen readers), so "Type instead" keeps its words.
   picked; results add "N picked from choices, M typed." and label a
   picked miss "picked".
 - **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
-  main column + meta sidebar on desktop.
+  main column + meta sidebar on desktop. The problem page's actions keep the primary first: the guided lesson
+  (Code from memory once learned), then **"Solve it yourself"** (Terminal icon; "Solve it again" once the
+  learner's code has passed; not shown where code cannot be run), then the lesson again for a learned problem.
+  Its status card lists the proof the learner has (`.problem-detail-proof`): "Your own code passed every test"
+  and the last mock interview ("Mock interview: passed in 12:40").
 - **Profile** — identity header + level progress, stats grid (eight cards, two rows of four from 600px: streaks,
   XP, learned, mastered, practice accuracy, "Pattern Blitz best", "Key lines best" (typed lines' points only)),
   activity heatmap, achievements (icon medallions, locked state), streak-freeze shop, settings form, data management.
+  Settings: the Practice group holds the daily goal (its description is the goal's line from `DAILY_GOALS`), Code
+  practice and the **"Run my code"** toggle; a **Plan** group (`#plan`, where the dashboard's "Set an interview
+  date" lands) holds the optional **Interview date** (a date field from tomorrow on, with Clear) and **Path
+  order**, a two-option `.seg`: "Core first" (the default: the Easy and Medium problems of every pattern, then
+  the Hard ones) and "Unit by unit".
+- **Storage notices** — toasts with the warning tone, from `lib/store.ts`: "Saved progress could not be read"
+  (the save is kept aside in this browser and the app starts fresh) and "Progress could not be saved" (storage
+  full or blocked: export a backup before closing the tab), each shown once. A screen that throws shows the
+  crash screen (`<Crash>`, in the components table).
 
 ## Copy & tone
 
 Sentence case everywhere ("Start review", not "START REVIEW"). American English spelling everywhere, UI and
 content alike (practice, color, behavior, neighbor, optimize, math). Short, specific, encouraging, adult. Avoid
 exclamation marks except on genuine celebrations ("Problem learned" is enough). No emoji. Name things
-consistently: Dashboard, Learning path, Daily review, Pattern Blitz, Problem library, Pattern guide, Code from
-memory, Learning science.
+consistently: Dashboard, Learning path, Daily review, Pattern Blitz, Mock interview, Problem library, Pattern guide,
+Code from memory, Solve it yourself, Your plan, Run my code, Learning science. Running code has its own verbs:
+code is "run" against "tests" and "passes" them; "Submit" runs every test and "Run examples" only the examples.
+A level-up toast names a title only when it is new ("New title: Hash Hero."); otherwise it says how far the next
+level is.
 
 ## Test contract (do not break)
 

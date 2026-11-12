@@ -7,7 +7,7 @@
 // A line whose code is in its solution more than once has an entry per line: `lineKey@index`.
 
 /** Parts of two code lines that get no Arrange distractor (`problemId:chunk`): the review does not deal them as Arrange a part. */
-export const NO_DISTRACTOR_PARTS: readonly string[] = ["add-two-numbers:5", "lru-cache:0", "invert-binary-tree:3", "serialize-and-deserialize-binary-tree:4", "letter-combinations-of-a-phone-number:2", "best-time-to-buy-and-sell-stock-with-cooldown:1", "target-sum:1", "interleaving-string:2", "longest-increasing-path-in-a-matrix:2", "burst-balloons:2", "regular-expression-matching:1", "sum-of-two-integers:1"];
+export const NO_DISTRACTOR_PARTS: readonly string[] = ["add-two-numbers:5", "lru-cache:0", "invert-binary-tree:3", "serialize-and-deserialize-binary-tree:4", "letter-combinations-of-a-phone-number:2", "target-sum:1", "best-time-to-buy-and-sell-stock-with-cooldown:1", "interleaving-string:2", "longest-increasing-path-in-a-matrix:2", "burst-balloons:2", "regular-expression-matching:1", "sum-of-two-integers:1"];
 
 export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
   // 3sum
@@ -26,9 +26,10 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "l2=l2.next if l2 else None": ["l2=l2.next if l2 else 0"],
   },
   // alien-dictionary
-  "sxmj0l": {
-    "if ch in done:": ["if ch in order:"],
-    "return True@20": ["return\"\"", "return\"\".join(reversed(order))"],
+  "zfhk5a": {
+    "ch=queue.popleft()": ["ch=queue.pop()"],
+    "queue.append(nxt)": ["queue.appendleft(nxt)"],
+    "return\"\".join(order)if len(order)==len(graph)else\"\"": ["return\"\".join(order)if len(order)==len(indegree)else\"\"", "return\"\".join(order)if not len(order)!=len(graph)else\"\""],
   },
   // balanced-binary-tree
   "11auco": {
@@ -196,11 +197,11 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "tank=0@5": ["tank=start"],
   },
   // generate-parentheses
-  "1len3jr": {
+  "akzgbd": {
     "if open_count<n:": ["if open_count<=n:"],
-    "res.append(\"\".join(stack))": ["res.insert(0,\"\".join(stack))"],
+    "path.pop()@15": ["return path.pop()"],
+    "res.append(\"\".join(path))": ["res.insert(0,\"\".join(path))"],
     "return": ["pass", "return False", "return True", "return close_count", "return open_count", "return res"],
-    "stack.pop()@15": ["return stack.pop()"],
   },
   // graph-valid-tree
   "1v0thee": {
@@ -209,9 +210,8 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "stack.append(nb)": ["stack.insert(0,nb)"],
   },
   // group-anagrams
-  "3lnh8k": {
-    "count=[0]*26": ["count=[0]*27", "count=[1]*26", "count=[1]*27"],
-    "count[ord(ch)-ord(\"a\")]+=1": ["count[ord(ch)-ord(\"a\")-1]+=1", "count[ord(ch)-ord(\"a\")]+=2", "count[ord(ch)-ord(\"a\")]-=1", "count[ord(ch)-ord(\"a\")]-=2"],
+  "ge388e": {
+    "key=\"\".join(sorted(word))": ["key=\"\".join(sorted(word,reverse=True))"],
   },
   // hand-of-straights
   "mcd98w": {
@@ -250,10 +250,6 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "1j6x81v": {
     "if not root:": ["if root is None:"],
     "return None": ["return root"],
-  },
-  // jump-game
-  "91i6sw": {
-    "for i in range(len(nums)-2,-1,-1):": ["for i in range(len(nums)-1,-1,-1):"],
   },
   // jump-game-ii
   "11pitza": {
@@ -315,11 +311,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "while left>=0 and right<len(s)and s[left]==s[right]:": ["while left>=0 and right<=len(s)-1 and s[left]==s[right]:"],
   },
   // longest-repeating-character-replacement
-  "kyjgpd": {
-    "best=0": ["best=-1", "best=1", "best=float(\"-inf\")", "best=l", "best=max_count"],
-    "l=0": ["l=max_count"],
-    "max_count=0": ["max_count=-1", "max_count=1", "max_count=float(\"-inf\")", "max_count=k"],
-    "while(r-l+1)-max_count>k:": ["if(r-k+1)-max_count>l:", "if(r-l+1)-k>max_count:", "if(r-l+1)-max_count>k:", "if(r-max_count+1)-l>k:", "while(r-k+1)-max_count>l:", "while(r-l)-max_count>=k:", "while(r-l+1)-k>max_count:", "while(r-max_count+1)-l>k:"],
+  "cnsnat": {
+    "best=0": ["best=-1", "best=1", "best=float(\"-inf\")", "best=l"],
+    "while(r-l+1)-max(count.values())>k:": ["if(r-k+1)-max(count.values())>l:", "if(r-l+1)-max(count.values())>k:", "while(r-k+1)-max(count.values())>l:", "while(r-l)-max(count.values())>=k:"],
   },
   // longest-substring-without-repeating-characters
   "11le4ld": {
@@ -369,17 +363,15 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "while l<=r:": ["while half<=total:", "while half>=r:", "while l<=half:", "while l<=total:", "while l<half:", "while l<total:", "while total>=r:", "while total>r:"],
   },
   // meeting-rooms
-  "1jefckr": {
+  "1hb388o": {
     "if intervals[i][0]<intervals[i-1][1]:": ["if intervals[i][-2]<intervals[i-1][1]:", "if intervals[i][0]<intervals[i-1][-1]:"],
-    "intervals.sort(key=lambda iv:iv[0])": ["intervals.sort(key=lambda iv:iv[-2])"],
   },
   // meeting-rooms-ii
-  "17dph11": {
+  "1uw4e4q": {
     "heapq.heappop(ends)": ["ends.pop(0)"],
-    "intervals.sort(key=lambda iv:iv[0])": ["intervals.sort(key=lambda iv:iv[-2])"],
   },
   // merge-intervals
-  "1y6m70e": {
+  "1ktlt3t": {
     "if start<=last[1]:": ["if start<=last[-1]:"],
     "last[1]=max(last[1],end)": ["last[-1]=max(last[-1],end)", "last[-1]=max(last[1],end)"],
   },
@@ -442,8 +434,7 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "if nxt not in arrival:": ["if n not in heap:", "if node in arrival:", "if node not in heap:", "if nxt not in heap:", "if time not in heap:", "if w not in heap:"],
   },
   // non-overlapping-intervals
-  "gtzaxh": {
-    "intervals.sort(key=lambda iv:iv[0])": ["intervals.sort(key=lambda iv:iv[-2])"],
+  "1a8wzf8": {
     "prev_end=intervals[0][1]": ["prev_end=intervals[0][-1]"],
   },
   // number-of-connected-components-in-an-undirected-graph
@@ -523,8 +514,9 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
   "17wzzjs": {
     "parent=list(range(len(edges)+1))": ["parent=list(range(len(edges)+2))"],
     "parent[root_a]=root_b": ["parent[root_a]=b", "parent[root_b]=root_a"],
-    "parent[x]=parent[parent[x]]": ["x=parent[x]"],
+    "parent[x]=parent[parent[x]]": ["parent[x-1]=parent[parent[x]]", "x=parent[x]"],
     "root_a,root_b=find(a),find(b)": ["root_b,root_a=find(a),find(b)"],
+    "while parent[x]!=x:": ["if parent[x]!=x:"],
   },
   // regular-expression-matching
   "1wlxoo0": {
@@ -643,10 +635,12 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
   // swim-in-rising-water
-  "2ohgub": {
+  "259zxo": {
+    "continue": ["pass"],
     "for dr,dc in((1,0),(-1,0),(0,1),(0,-1)):": ["for dr,dc in((1,0),(-1,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-1,0),(0,1),(1,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-1)):", "for dr,dc in((1,0),(-1,1),(0,1),(0,-2)):", "for dr,dc in((1,0),(-1,1),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-1)):", "for dr,dc in((1,0),(-2,0),(0,1),(0,-2)):", "for dr,dc in((1,0),(-2,0),(0,1),(1,-1)):", "for dr,dc in((1,0),(-2,1),(0,1),(0,-1)):"],
+    "if 0<=nr<n and 0<=nc<n and(nr,nc)not in visited:": ["if 0<=nr<n and 0<=nc<n and(nc,nr)not in visited:"],
     "if r==n-1 and c==n-1:": ["if c==n-1 and r==n-1:"],
-    "visited.add((nr,nc))": ["visited.add((nr,c))", "visited.add((r,c))", "visited.add((r,nc))"],
+    "if(r,c)in visited:": ["if(c,r)in grid:", "if(c,r)in heap:", "if(n,c)in grid:", "if(n,c)in heap:", "if(n,c)in visited:", "if(n,t)in visited:", "if(r,c)in grid:", "if(r,c)in heap:", "if(r,n)in grid:", "if(r,n)in heap:", "if(r,n)in visited:", "if(r,t)in grid:", "if(r,t)in heap:", "if(t,c)in grid:", "if(t,c)in heap:", "if(t,n)in visited:"],
     "while heap:": ["while grid:"],
   },
   // task-scheduler
@@ -731,11 +725,11 @@ export const DISTRACTOR_DENY: Readonly<Record<string, Readonly<Record<string, re
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
   // word-search-ii
-  "10ivt2z": {
+  "1frnlrf": {
     "for nr,nc in((r+1,c),(r-1,c),(r,c+1),(r,c-1)):": ["for nr,nc in((r+1,c),(r-1,c),(r,c-1),(r,c+1)):", "for nr,nc in((r-1,c),(r+1,c),(r,c+1),(r,c-1)):"],
     "found.append(node.word)": ["found.insert(0,node.word)"],
     "if not node.children and node.word is None:": ["if node is None:", "if node.children and node.word is not None:", "if node.word is not None:", "if not node.children and node.word is not None:", "if not node.children and root.word is None:", "if not node.children and root.word is not None:", "if not node.children or node.word is not None:", "if not root.children and node.word is None:", "if not root.children and node.word is not None:"],
-    "return": ["return False", "return True", "return cols", "return found", "return parent"],
+    "return": ["return False", "return True", "return ch", "return found", "return node", "return parent"],
     "rows,cols=len(board),len(board[0])": ["rows,cols=len(board),len(board[-1])"],
   },
 };

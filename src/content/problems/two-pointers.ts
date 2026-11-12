@@ -97,7 +97,7 @@ def solve(nums, target):
       hints: [
         'A palindrome matches its first character with its last, its second with its second-to-last, and so on.',
         'Put one pointer at each end and walk them toward each other.',
-        'Before comparing, move each pointer past characters where `isalnum()` is False, and compare with `.lower()`.',
+        'Before comparing, move each pointer past characters that are not letters or digits (`ch.isalnum()` is True for a letter or a digit), and compare the lowercase versions (`ch.lower()`).',
       ],
       brute:
         'Build a cleaned, lowercased copy and compare it with its reverse: `t == t[::-1]`. That is **O(n)** time too, but it needs **O(n)** extra memory for the copies. Two pointers need only O(1).',
@@ -119,12 +119,12 @@ class Solution:
         left, right = 0, len(s) - 1
         #@ Keep going until the pointers meet in the middle.
         while left < right:
-            #@ Skip anything that is not a letter or digit, on both sides.
+            #@ Skip anything that is not a letter or digit, on both sides. s[left].isalnum() is True when that character is a letter or a digit ("alphanumeric"). The left < right check stops a pointer from running past the other one.
             while left < right and not s[left].isalnum():  #!
                 left += 1
             while left < right and not s[right].isalnum():
                 right -= 1
-            #@ Compare the two characters, ignoring upper/lower case.
+            #@ Compare the two characters, ignoring upper/lower case: .lower() gives the lowercase version of a character, so "T" and "t" count as equal.
             if s[left].lower() != s[right].lower():  #!
                 return False
             #@ They match, so step both pointers inward.
@@ -365,7 +365,7 @@ class Solution:
       hints: [
         'Water above bar i = min(tallest bar on its left, tallest bar on its right) − height[i].',
         'You could precompute "tallest so far from the left" and "tallest so far from the right" arrays. Can two pointers avoid storing them?',
-        'Move inward from the side whose max is smaller. That max is the true water level there, because the other side is guaranteed to be at least as tall.',
+        'Keep `left_max` and `right_max`, the tallest bar seen so far from each end. Move inward from the side whose max is smaller. That max is the true water level there, because the other side is guaranteed to have a bar at least as tall.',
       ],
       brute:
         'For every bar, scan left and right for the tallest bar on each side — **O(n²)**. Precomputing `max_left` and `max_right` arrays brings it to **O(n)** time, but **O(n)** extra space.',
@@ -389,7 +389,7 @@ class Solution:
         water = 0
         #@ Work inward until the pointers meet.
         while left < right:
-            #@ The left max is lower, so it is the real limit here: the right side is at least that tall.
+            #@ left_max is the lower one. A bar as tall as right_max stands somewhere to the right, so the left side alone decides the water level at the next spot on the left, whatever the bars in between look like. Step inward, update left_max with that bar, and add the water above it: left_max minus its height (0 when the bar itself is the new tallest).
             if left_max < right_max:  #!
                 left += 1
                 left_max = max(left_max, height[left])

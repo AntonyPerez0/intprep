@@ -1,0 +1,174 @@
+/* "Watch it run" (components/TraceView.tsx): the solution with the running line marked, the
+   variables of the running call, and the step controls. */
+
+.trace {
+  display: grid;
+  gap: 12px;
+}
+.trace-io,
+.trace-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: var(--fs-sm);
+}
+.trace-io-label {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.trace-io code,
+.trace-result code,
+.trace-return code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+.trace-main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 12px;
+  align-items: start;
+}
+.trace-code {
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--code-border);
+  border-radius: var(--r-lg);
+  padding: 10px 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  max-height: 420px;
+  overflow: auto;
+  scrollbar-color: var(--code-scrollbar) transparent;
+}
+.trace-line {
+  display: grid;
+  grid-template-columns: 34px 16px max-content;
+  white-space: pre;
+  padding-right: 14px;
+  min-width: max-content;
+}
+.trace-line.is-on {
+  background: rgba(227, 179, 65, 0.16);
+  box-shadow: inset 2px 0 0 var(--code-key);
+}
+.trace-ln {
+  text-align: right;
+  padding-right: 8px;
+  color: var(--code-gutter);
+  user-select: none;
+}
+.trace-arrow {
+  color: var(--code-key);
+  font-size: 9px;
+  line-height: 21px;
+}
+.trace-side {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  min-width: 0;
+}
+.trace-step {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.trace-step-line {
+  font-weight: 450;
+  color: var(--text-secondary);
+}
+.trace-stack,
+.trace-return {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.trace-stack svg,
+.trace-return svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-top: 2px;
+}
+.trace-return {
+  color: var(--brand-text);
+}
+.trace-vars {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+.trace-vars th,
+.trace-vars td {
+  padding: 5px 8px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.trace-vars tr:first-child th,
+.trace-vars tr:first-child td {
+  border-top: 0;
+}
+.trace-vars th {
+  width: 34%;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.trace-vars tr.is-new td,
+.trace-vars tr.is-new th {
+  background: var(--warning-subtle);
+  color: var(--text);
+}
+.trace-none {
+  font-family: var(--font-sans);
+  color: var(--text-tertiary);
+}
+.trace-explain {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.trace-result {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.trace-result code {
+  font-weight: 600;
+  color: var(--success-text);
+}
+.trace-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.trace-range {
+  flex: 1;
+  /* A range input has a wide default size: let the row decide. */
+  width: 0;
+  min-width: 48px;
+  accent-color: var(--brand);
+}
+.trace-controls .btn svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 760px) {
+  .trace-main {
+    grid-template-columns: 1fr;
+  }
+  .trace-code {
+    max-height: 260px;
+  }
+}

@@ -26,7 +26,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { CATEGORY_BY_ID } from '../content/categories';
-import { PROBLEM_BY_ID, problemsFor } from '../content/index';
+import { PROBLEM_BY_ID } from '../content/index';
 import type { CategoryId, Problem } from '../content/types';
 import { arrangeBlocks, gradeArrange, type ArrangeGrade } from '../lib/arrange';
 import { gapChoices, isGivenLine, isRealPick, type GapChoice } from '../lib/choices';
@@ -40,23 +40,32 @@ import { highlightLine } from '../lib/highlight';
 import { problemInput, type CodeInput } from '../lib/input';
 import { inline, Md } from '../lib/markdown';
 import { lessonParts as bodyParts, parseSolution } from '../lib/parseSolution';
+import { nextStep } from '../lib/path';
 import { sfx } from '../lib/sound';
+import { pythonEnabled } from '../lib/python';
+import { clearResume, loadResume, saveResume } from '../lib/resume';
+import { DERIVATIONS } from '../content/derivations';
+import { HighlightedCode } from '../lib/highlight';
 import { getProgress, learnProblem, useProgress } from '../lib/store';
-import { ActionBar, Choices, ProblemPrompt, type CheckStatus } from '../components/interact';
+import { ActionBar, Choices, CodeWindow, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { ArrangeWindow, type ArrangeHandle } from '../components/Arrange';
 import { CheckedAction, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
 import { GapsWindow, lineAbove, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { ComplexityDrill } from '../components/Drills';
 import { INPUT_ICON, InputSwitch } from '../components/InputSwitch';
 import { SessionShell } from '../components/Shell';
-import { CATEGORY_ICON, CategoryIcon, IconTile } from '../components/icons';
+import { TraceView, useTrace } from '../components/TraceView';
+import { WhyWrong } from '../components/WhyWrong';
+import { CategoryIcon, IconTile } from '../components/icons';
 import { Badge, Completion, DifficultyChip, freeMirrorUrl, leetcodeUrl } from '../components/ui';
 import type { RebuildState } from './Rebuild';
 
-// The guided lesson for one problem (/p/:id/learn), ten steps: understand it, guess the pattern,
-// hints, brute force, the insight, the plan, then the code part by part (look, cover, build or
-// write, check), the cost, the traps, and a final check over the gaps of the whole solution.
-// Finishing it adds the problem to the review deck.
+// The guided lesson for one problem (/p/:id/learn), eleven steps: understand it (or solve it
+// unaided first, which skips the lesson), guess the pattern, hints, brute force (for dynamic
+// programming: the recursion, its cached version and the table, as code), the insight, the plan,
+// then the code part by part (look, cover, build or write, check), a step-by-step run of it on an
+// example, the cost, the traps, and a final check over the gaps of the whole solution. Finishing
+// it adds the problem to the review deck. The step reached survives a reload (lib/resume.ts).
 //
 // "Pick first, then type" (docs/DESIGN.md): the lesson decides its input once, when it opens
 // (`problemInput`). A problem whose code is new is picked: each part is built from choices (its
@@ -65,7 +74,7 @@ import type { RebuildState } from './Rebuild';
 // shown as given and not counted. Otherwise it is typed. "Type instead" (in "Pick first, then
 // type" only) types the rest.
 
-const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'complexity', 'pitfalls', 'gaps'] as const;
+const STEPS = ['read', 'guess', 'hints', 'brute', 'insight', 'plan', 'code', 'trace', 'complexity', 'pitfalls', 'gaps'] as const;
 type Step = (typeof STEPS)[number];
 
 const STEP_NAME: Record<Step, string> = {
@@ -76,6 +85,7 @@ const STEP_NAME: Record<Step, string> = {
   insight: 'The key insight',
   plan: 'The plan',
   code: 'Write the code',
+  trace: 'Watch it run',
   complexity: 'Check the cost',
   pitfalls: 'Avoid the traps',
   gaps: 'Final check',
@@ -115,12 +125,23 @@ function ProblemLesson({ p }: { p: Problem }) {
   const [mode] = useState(() => getProgress().settings.typingMode);
   const [input, setInput] = useState<CodeInput>(() => problemInput(mode, getProgress().problems[p.id]));
   const typeInstead = mode === 'auto' && input === 'pick' ? () => setInput('type') : undefined;
-  const [i, setI] = useState(0);
+  // The step reached, kept across a reload (the work inside a step starts over).
+  const resumeKey = `p:${p.id}`;
+  const partCount = useMemo(() => bodyParts(parseSolution(p.solution)).length, [p]);
+  const resumeShape = `${STEPS.length}:${partCount}`;
+  const [resumed] = useState(() => {
+    const r = loadResume<{ i: number; records: PartRecord[] }>(resumeKey, resumeShape);
+    return r && Number.isInteger(r.i) && r.i > 0 && r.i < STEPS.length && Array.isArray(r.records) && r.records.length === partCount ? r : null;
+  });
+  const [i, setI] = useState(resumed?.i ?? 0);
   const [done, setDone] = useState(false);
   const [xp, setXp] = useState(0);
   // How the learner did, for the progress bar and the completion screen.
-  const partCount = useMemo(() => bodyParts(parseSolution(p.solution)).length, [p]);
-  const [records, setRecords] = useState<PartRecord[]>(() => Array.from({ length: partCount }, () => ({ ...NO_RECORD })));
+  const [records, setRecords] = useState<PartRecord[]>(() => resumed?.records ?? Array.from({ length: partCount }, () => ({ ...NO_RECORD })));
+  useEffect(() => {
+    if (done) clearResume(resumeKey);
+    else if (i > 0) saveResume(resumeKey, resumeShape, { i, records });
+  }, [i, done, records]); // eslint-disable-line react-hooks/exhaustive-deps
   const [final, setFinal] = useState<GapsGrade | null>(null);
   const step = STEPS[i];
 
@@ -176,6 +197,7 @@ function ProblemLesson({ p }: { p: Problem }) {
               <CardHead icon={<IconTile icon={Hammer} size="sm" color="var(--text-tertiary)" />} title="The naive approach" sub="Correct, but too slow to stop there" />
               <Md text={p.brute} className="plesson-prose" />
             </section>
+            <Derivation p={p} />
           </TextStep>
         )}
         {step === 'insight' && (
@@ -217,6 +239,7 @@ function ProblemLesson({ p }: { p: Problem }) {
         )}
         {step === 'plan' && <PlanStep p={p} onNext={next} />}
         {step === 'code' && <CodeStep p={p} records={records} onRecord={record} onNext={next} input={input} onTypeInstead={typeInstead} />}
+        {step === 'trace' && <TraceStep p={p} onNext={next} />}
         {DRILL_STEPS.includes(step) && <h1 className="sr-only">{`${p.title}: ${STEP_NAME[step]}`}</h1>}
         {step === 'complexity' && <ComplexityDrill problem={p} onDone={next} kicker={stepLabel('complexity')} />}
         {step === 'pitfalls' && (
@@ -331,19 +354,15 @@ function TextStep({
 // ── Steps ───────────────────────────────────────────────────────────────────
 
 function ReadStep({ p, onNext }: { p: Problem; onNext: () => void }) {
-  const cat = CATEGORY_BY_ID[p.category];
-  const CatIcon = CATEGORY_ICON[p.category];
   const link = practiceLink(p);
+  const canRun = pythonEnabled();
   return (
     <>
       <StepHeader step="read" title={p.title}>
+        {/* No pattern name here: the next step asks the learner to guess it. */}
         <div className="plesson-meta">
           <span className="plesson-num">#{p.num}</span>
           <DifficultyChip d={p.difficulty} />
-          <span className="chip plesson-cat" style={{ ['--c' as string]: cat.color }}>
-            <CatIcon strokeWidth={2} />
-            {cat.name}
-          </span>
           {p.premium && <Badge tone="warning">LeetCode Premium</Badge>}
         </div>
       </StepHeader>
@@ -354,18 +373,98 @@ function ReadStep({ p, onNext }: { p: Problem; onNext: () => void }) {
           <div className="grow">
             <div className="plesson-callout-title">Before you continue</div>
             <p>Restate the problem in your own words and trace the first example by hand.</p>
-            <p className="plesson-tryfirst-alt">
-              Want a real challenge? Try solving it first on{' '}
-              <a href={link.href} target="_blank" rel="noreferrer">
-                {link.site}
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
-              . Struggling first makes the lesson stick.
-            </p>
+            {canRun ? (
+              <p className="plesson-tryfirst-alt">
+                Think you can solve it already? <Link to={`/p/${p.id}/solve`}>Try it yourself first</Link>: your code is run against the tests, and passing them
+                skips this lesson. An honest attempt makes the lesson stick even when it fails.
+              </p>
+            ) : (
+              <p className="plesson-tryfirst-alt">
+                Want a real challenge? Try solving it first on{' '}
+                <a href={link.href} target="_blank" rel="noreferrer">
+                  {link.site}
+                  <ExternalLink size={12} aria-hidden="true" />
+                </a>
+                . Struggling first makes the lesson stick.
+              </p>
+            )}
           </div>
         </div>
       </div>
       <ActionBar status="idle" onContinue={onNext} continueLabel="I understand it" />
+    </>
+  );
+}
+
+/**
+ * The way from the obvious solution to the taught one, as runnable code (src/content/derivations.ts):
+ * for dynamic programming, the plain recursion, the same recursion with a cache, then the table.
+ * One stage open at a time, so the learner reads them in order and sees what each one changes.
+ */
+function Derivation({ p }: { p: Problem }) {
+  const stages = DERIVATIONS[p.id];
+  const [open, setOpen] = useState(0);
+  if (!stages?.length) return null;
+  return (
+    <section className="card plesson-card plesson-derive" aria-label="From the obvious solution to the answer">
+      <CardHead
+        icon={<IconTile icon={RefreshCw} size="sm" />}
+        title={stages.length > 1 ? 'From brute force to the answer, one change at a time' : 'The brute force as code'}
+        sub={stages.length > 1 ? 'Each version works. Read what changes between them: that is how you derive a solution you have not seen.' : 'It works, and it is too slow. The lesson builds the fast version next.'}
+      />
+      <ol className="plesson-stages">
+        {stages.map((st, k) => (
+          <li key={k} className={`plesson-stage ${k === open ? 'is-open' : ''}`}>
+            <button type="button" className="plesson-stage-head" aria-expanded={k === open} onClick={() => setOpen(k === open ? -1 : k)}>
+              <span className="plesson-stage-num">{k + 1}</span>
+              <span className="plesson-stage-title">{st.title}</span>
+              {st.time && <span className="plesson-stage-time tabular">{st.time}</span>}
+            </button>
+            {k === open && (
+              <div className="plesson-stage-body">
+                <Md text={st.note} className="plesson-prose" />
+                <CodeWindow filename={`stage_${k + 1}.py`} meta={plural(st.code.split('\n').length, 'line')}>
+                  <HighlightedCode code={st.code} />
+                </CodeWindow>
+                {k + 1 < stages.length ? (
+                  <button type="button" className="btn btn-secondary btn-sm plesson-stage-next" onClick={() => setOpen(k + 1)}>
+                    Next: {stages[k + 1].title}
+                    <ArrowRight aria-hidden="true" />
+                  </button>
+                ) : (
+                  <p className="plesson-stage-end">The lesson’s solution is the next step from here.</p>
+                )}
+              </div>
+            )}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** The solution run on one small input, a line at a time (components/TraceView.tsx). */
+function TraceStep({ p, onNext }: { p: Problem; onNext: () => void }) {
+  const trace = useTrace(p);
+  return (
+    <>
+      <StepHeader
+        step="trace"
+        title="Watch it run"
+        sub="Step through the solution on a small input. Before each step, say what the marked line will change, then check yourself."
+      />
+      <div className="plesson-stack">
+        {trace === undefined ? (
+          <p className="plesson-sub" role="status">
+            Loading the run…
+          </p>
+        ) : trace ? (
+          <TraceView p={p} trace={trace} />
+        ) : (
+          <p className="plesson-sub">This run is not available offline yet. Trace the first example by hand instead: write down each variable after every line.</p>
+        )}
+      </div>
+      <ActionBar status="idle" onContinue={onNext} />
     </>
   );
 }
@@ -428,6 +527,9 @@ function GuessStep({ p, onNext }: { p: Problem; onNext: () => void }) {
 
 function HintsStep({ p, onNext }: { p: Problem; onNext: () => void }) {
   const [shown, setShown] = useState(0);
+  // Putting the idea into words before seeing the answer is what makes the answer stick; the note
+  // is the learner's own and is not checked or kept.
+  const [idea, setIdea] = useState('');
   const total = p.hints.length;
   const reveal = () => setShown((s) => Math.min(s + 1, total));
   return (
@@ -467,11 +569,23 @@ function HintsStep({ p, onNext }: { p: Problem; onNext: () => void }) {
             ),
           )}
         </ol>
+        <label className="plesson-idea">
+          <span className="plesson-idea-label">
+            Your idea, in a sentence <span className="plesson-idea-optional">Optional, not checked</span>
+          </span>
+          <textarea
+            className="input"
+            rows={2}
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            placeholder="For example: remember what I have seen so far, and check each new number against it."
+          />
+        </label>
       </div>
       <ActionBar
         status="idle"
         onContinue={onNext}
-        continueLabel={shown === 0 ? 'Skip to the answer' : 'Show me the solution'}
+        continueLabel={idea.trim() ? 'Compare with the answer' : shown === 0 ? 'Skip to the answer' : 'Show me the solution'}
         secondary={
           shown < total ? (
             <button type="button" className="btn btn-secondary btn-lg plesson-hint-btn" onClick={reveal}>
@@ -883,6 +997,23 @@ function CodeStep({
   );
   const windowProps = { filename: 'solution.py', meta: `Part ${n} of ${total}`, className: 'plesson-codewin' };
 
+  // The whole solution with this part as the learner built it, to run when they ask why it is wrong.
+  const attempt = () => {
+    const mine =
+      kind === 'type'
+        ? text.replace(/\t/g, '    ').split('\n').map((l) => (l.trim() ? ' '.repeat(indent) + l : l))
+        : kind === 'arrange'
+          ? placedBlocks.map((b) => ' '.repeat(set.base) + b.text)
+          : body.map((l, j) => {
+              const m = choice.gaps.indexOf(j);
+              return m >= 0 && sels[m] ? sels[m] : l;
+            });
+    // Lines of this part after its body (a signature that opens the next part, as in LRU Cache).
+    const tail = part.chunk.lines.slice(lead.length + body.length);
+    const after = parsed.lines.filter((l) => l.chunk > part.ci).map((l) => l.text);
+    return [...before, ...lead, ...mine, ...tail, ...after].join('\n');
+  };
+
   let fbTitle: string | undefined;
   let fbBody = '';
   if (result) {
@@ -1104,6 +1235,7 @@ function CodeStep({
                 Part {n} of {total}
               </span>
               <span>{fbBody}</span>
+              {!result.perfect && <WhyWrong key={`${k}:${tries}`} p={p} code={attempt()} />}
             </div>
           )
         }
@@ -1126,6 +1258,17 @@ function CodeStep({
 }
 
 // ── Final check: the gaps of the whole solution ─────────────────────────────
+
+/** The solution with the learner's lines in its gaps (each at the gap's own indentation; an empty gap keeps the answer). */
+function withGaps(lines: readonly string[], gaps: readonly number[], values: readonly string[]): string {
+  return lines
+    .map((l, i) => {
+      const m = gaps.indexOf(i);
+      const v = m >= 0 ? (values[m] ?? '').trim() : '';
+      return v ? l.slice(0, l.length - l.trimStart().length) + v : l;
+    })
+    .join('\n');
+}
 
 /**
  * Fewest gaps so every key line is one: the key lines, and any other line with the same code
@@ -1237,6 +1380,7 @@ function TypeGapsStep({ p, onDone }: { p: Problem; onDone: (first: GapsGrade) =>
             <div className="plesson-fb">
               <span className="plesson-fb-label">{checks === 1 ? 'First check' : `Check ${checks}`}</span>
               <span>{fb.body}</span>
+              {!g.perfect && ex.values.some((v) => v.trim()) && <WhyWrong key={checks} p={p} code={withGaps(src.lines, ex.gaps, ex.values)} />}
             </div>
           )
         }
@@ -1337,6 +1481,7 @@ function PickGapsStep({ p, onTypeInstead, onDone }: { p: Problem; onTypeInstead?
             <div className="plesson-fb">
               <span className="plesson-fb-label">{checks === 1 ? 'First check' : `Check ${checks}`}</span>
               <span>{fb.body}</span>
+              {!g.perfect && ex.values.some((v) => v.trim()) && <WhyWrong key={checks} p={p} code={withGaps(src.lines, ex.gaps, ex.values)} />}
             </div>
           )
         }
@@ -1375,8 +1520,10 @@ function Complete({
   const memInput: CodeInput = carry ? 'type' : memNext;
   const MemIcon = INPUT_ICON[memInput];
   const memState: RebuildState | undefined = carry ? { input: 'type' } : undefined;
-  const siblings = problemsFor(p.category);
-  const nextInUnit = siblings.find((q) => !progress.problems[q.id]?.learnedAt && q.id !== p.id);
+  // Where the learning path goes from here (lib/path.ts): this unit's next problem, the next unit's
+  // pattern intro, or, once the core of every pattern is learned, the next Hard problem.
+  const step = nextStep(progress);
+  const upNext = step.kind === 'done' || (step.kind === 'problem' && step.problem.id === p.id) ? null : step;
   const link = practiceLink(p);
   const due = card ? friendlyDue(card.due) : null;
   const right = records.filter((r) => r.right).length;
@@ -1417,9 +1564,9 @@ function Complete({
           <p className="plesson-done-tip">
             {memInput === 'pick' ? 'Practice it again now, while it is fresh, to make it stick.' : 'Write it again now, while it is fresh, to make it stick.'}
           </p>
-          {nextInUnit ? (
-            <Link to={`/p/${nextInUnit.id}/learn`} className="btn btn-secondary btn-lg btn-block">
-              <span className="truncate">Next: {nextInUnit.title}</span>
+          {upNext ? (
+            <Link to={upNext.href} className="btn btn-secondary btn-lg btn-block">
+              <span className="truncate">Next: {upNext.title}</span>
               <ArrowRight />
             </Link>
           ) : (
@@ -1428,10 +1575,17 @@ function Complete({
               <ArrowRight />
             </Link>
           )}
-          <a className="btn btn-quiet btn-block" href={link.href} target="_blank" rel="noreferrer">
-            Solve it on {link.site}
-            <ExternalLink />
-          </a>
+          {pythonEnabled() ? (
+            <Link to={`/p/${p.id}/solve`} className="btn btn-quiet btn-block" title="A blank file, run against the tests: the proof that you can write it unaided. Best after a break.">
+              <PencilLine aria-hidden="true" />
+              Solve it yourself, from a blank file
+            </Link>
+          ) : (
+            <a className="btn btn-quiet btn-block" href={link.href} target="_blank" rel="noreferrer">
+              Solve it on {link.site}
+              <ExternalLink />
+            </a>
+          )}
         </Completion>
       </div>
     </SessionShell>

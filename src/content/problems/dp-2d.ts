@@ -3,13 +3,15 @@ import { py, type CategoryContent } from '../types';
 const content: CategoryContent = {
   guide: {
     category: 'dp-2d',
-    summary: `In **1-D DP** the answer depended on one changing thing: "the best answer from index \`i\` onward". In **2-D DP**, **two things change independently**, so the state is a pair \`(i, j)\` and your memo becomes a **grid**.
+    summary: `In **1-D DP** the answer depended on one changing thing, usually "the answer for the first \`i\` items", and you filled a list from left to right. In **2-D DP**, **two things change independently**, so the state is a pair \`(i, j)\` and your memo becomes a **grid**.
 
 Common pairs: a position in each of two strings, a row and a column, an index and an amount still to make, or a day and a "mode" (holding a stock or not).
 
 **Draw the grid.** Each cell \`dp[i][j]\` is one small subproblem. The recurrence says which neighboring cells it is built from (below, right, diagonal...), and the final answer sits in a corner.
 
-There are two ways to fill it. **Top-down:** write the recursive function \`dp(i, j)\` and put \`@cache\` on it, so each cell is computed only once. **Bottom-up:** make a 2-D list and fill it with two loops, in an order where every cell the formula reads is already filled.`,
+There are two ways to fill it. **Top-down:** write the recursive function \`dp(i, j)\` and put \`@cache\` on it, so each cell is computed only once. (\`@cache\` is the \`memo\` dict from the beginner lessons, kept for you by Python.) **Bottom-up:** make a 2-D list and fill it with two loops, in an order where every cell the formula reads is already filled. Every problem in this unit shows you the recursion and its cached version before the solution, so you can see where each table comes from.
+
+**Why some tables here are filled backwards.** The table is the recursion written out, nothing more. In the two-string problems, \`dp(i, j)\` means "the answer for the **suffixes** that start at \`i\` and \`j\`", and its recursive calls move forward to \`i + 1\` and \`j + 1\`. So each cell depends on the cells **below** it and to its **right**, and those must be filled first: start at the bottom-right corner and loop backwards. When a cell depends on the cells above and to the left instead (Unique Paths), you fill forwards, as in 1-D DP.`,
     analogy:
       'A 2-D DP table is a spreadsheet where every cell holds a formula pointing at its neighbors. Fill the cells in an order where the neighbors are already done, and the corner cell holds your answer.',
     whenToUse: [
@@ -43,7 +45,7 @@ def solve_table(a, b):
     return dp[0][0]`,
     templateNotes: [
       'Say the state out loud before coding: "`dp(i, j)` is the answer for `a[i:]` and `b[j:]`". If you cannot finish that sentence, you do not have a state yet.',
-      '`@cache` remembers the result for every `(i, j)`, so each of the m × n states is computed once. LeetCode pre-imports it; in your own files write `from functools import cache`.',
+      '`@cache` remembers the result for every `(i, j)`, so each of the m × n states is computed once. It is the memo dict you wrote by hand in the beginner lessons (`if key in memo: return memo[key]`, then `memo[key] = answer`), done for you, with the function arguments as the key. LeetCode pre-imports it; in your own files write `from functools import cache`.',
       '**Iteration order:** look at which cells the recurrence reads. Reads row `i + 1`? Loop `i` from the bottom up. Reads row `i - 1`? Loop from the top down. Interval problems loop by gap **length**, short gaps first.',
       'The extra row and column (an `(m + 1) × (n + 1)` grid) hold the base cases such as "one string is empty", so the main loops need no special cases.',
       'If each row only reads the row next to it, keep one or two rows instead of the whole grid: O(n) space instead of O(m · n).',
@@ -122,9 +124,9 @@ def solve_table(a, b):
         '`ways(r, c) = ways(r - 1, c) + ways(r, c - 1)`. You only need the previous row, so keep one row and update it in place.',
       ],
       brute:
-        'Recursively try both moves from every cell and count the routes that reach the corner. Every route has m + n − 2 moves with 2 choices each, so this is about **O(2^(m+n))**.',
+        'Plain recursion on the last move (down from the cell above, or right from the cell on the left), with no memory: about **O(2^(m+n))**.',
       insight:
-        'The number of routes to a cell = routes to the cell **above** + routes to the cell on the **left**. Fill the grid row by row; one row of memory is enough.',
+        'The number of routes to a cell = routes to the cell **above** + routes to the cell on the **left**. The table you just saw fills the grid row by row, and each row reads only the row above it, so one row of memory is enough.',
       mnemonic: 'Routes here = routes from above + routes from the left.',
       steps: [
         'Create a row of n ones: every top-row cell has exactly one route.',
@@ -135,7 +137,7 @@ def solve_table(a, b):
       solution: py`
 class Solution:
     def uniquePaths(self, m: int, n: int) -> int:
-        #@ row[c] = number of routes to column c of the current row. In the top row there is exactly one route to each cell: keep moving right.
+        #@ Keep one row of the table. row[c] = number of routes to column c of the current row. In the top row there is exactly one route to each cell: keep moving right.
         row = [1] * n
         #@ Build the remaining m - 1 rows one at a time, reusing the same list.
         for _ in range(1, m):
@@ -174,12 +176,12 @@ class Solution:
       hints: [
         'Look at the first character of each string. What can you do if they are equal? What if they differ?',
         'If they are equal, it is safe to pair them and move on in both. If not, at least one of them is not in the answer, so try dropping each.',
-        '`dp[i][j] = 1 + dp[i + 1][j + 1]` when the characters match, otherwise `max(dp[i + 1][j], dp[i][j + 1])`. Fill from the bottom-right.',
+        '`dp[i][j] = 1 + dp[i + 1][j + 1]` when the characters match, otherwise `max(dp[i + 1][j], dp[i][j + 1])`. Every cell reads cells below it or to its right, so fill from the bottom-right.',
       ],
       brute:
-        'Generate every subsequence of `text1` (2^m of them) and check each one against `text2`. That is **O(2^m · n)**, hopeless beyond about 20 characters.',
+        'The first idea is to generate every subsequence of `text1` (2^m of them) and check each one against `text2`: **O(2^m · n)**, hopeless beyond about 20 characters. The recursion below is the first step toward the answer. It never builds a subsequence: it compares one character of each string at a time.',
       insight:
-        'Compare the first characters of the two remaining suffixes. If they match, pair them: **1 + the answer for the rest of both**. If not, one of them is unused: **take the better of skipping either one**. Every `(i, j)` pair is one cell in a grid.',
+        'Compare the first characters of the two remaining suffixes. If they match, pair them: **1 + the answer for the rest of both**. If not, one of them is unused: **take the better of skipping either one**. The table below is the cache of the recursion you just read, written as a grid: one cell for every `(i, j)` pair.',
       mnemonic: 'Match: 1 + diagonal. No match: max of below and right.',
       steps: [
         'Make an (m + 1) × (n + 1) grid of zeros; the extra row and column mean "empty suffix".',
@@ -191,10 +193,10 @@ class Solution:
       solution: py`
 class Solution:
     def longestCommonSubsequence(self, text1: str, text2: str) -> int:
-        #@ dp[i][j] = LCS length of the suffixes text1[i:] and text2[j:]. The extra last row and column stand for an empty suffix, whose LCS is 0.
+        #@ dp[i][j] = LCS length of the suffixes text1[i:] and text2[j:], the same meaning as dp(i, j) in the recursion. The extra last row and column stand for an empty suffix, whose LCS is 0: the base case.
         m, n = len(text1), len(text2)
         dp = [[0] * (n + 1) for _ in range(m + 1)]
-        #@ Each cell reads the cells below and to the right, so fill from the bottom-right corner backwards.
+        #@ Every call of the recursion dp(i, j) asked for i + 1 or j + 1, so each cell depends on cells below it and to its right. Fill those first: loop backwards from the bottom-right corner.
         for i in range(m - 1, -1, -1):
             for j in range(n - 1, -1, -1):
                 #@ Same character: pair them up, then solve the rest of both strings (the diagonal cell).
@@ -247,7 +249,7 @@ class Solution:
       brute:
         'Try every choice (buy, sell or rest) on every day: roughly **O(2^n)** branches, far too slow for thousands of days.',
       insight:
-        'Each day you are in one of two states, **able to buy** or **holding a share**, and you either act or rest. Selling jumps you **two** days ahead because of the cooldown. Caching the pair `(day, state)` leaves only 2n subproblems.',
+        'Each day you are in one of two states, **able to buy** or **holding a share**, and you either act or rest. Selling jumps you **two** days ahead because of the cooldown. The solution is the recursion you just read plus `@cache`: caching the pair `(day, state)` leaves only 2n subproblems.',
       mnemonic: 'Buy, sell, or wait; selling skips a day.',
       steps: [
         'Define dfs(i, buying) as the best profit from day i onward in that state, and cache it.',
@@ -284,7 +286,7 @@ class Solution:
       pitfalls: [
         'Selling must jump to `i + 2`, not `i + 1`: that single character is the cooldown.',
         'The base case must be `i >= len(prices)`, not `==`, because `i + 2` can step past the end.',
-        'Thousands of days means thousands of nested calls. If you hit a recursion limit, use the O(1)-space state machine: keep `hold`, `sold` and `rest` profits and update all three each day.',
+        'Thousands of days means thousands of nested calls. If you hit a recursion limit, use the table version shown before the insight: two lists, `can_buy` and `holding`, filled from the last day backwards.',
       ],
     },
     {
@@ -315,7 +317,7 @@ class Solution:
       brute:
         'Recursively decide how many of each coin to take. With many coins and a large amount the branches explode: **exponential** time.',
       insight:
-        'Picture a grid: rows = coins allowed so far, columns = amounts. A cell either **skips the new coin** (the value from the row above) or **uses it once more** (the value `coin` columns to the left in the same row). Each row only needs itself and the row above, so one list updated in place is enough.',
+        'Picture the grid you just saw: rows = coins allowed so far, columns = amounts. A cell either **skips the new coin** (the value from the row above) or **uses it once more** (the value `coin` columns to the left in the same row). Each row only needs itself and the row above, so one list updated in place is enough.',
       mnemonic: 'Coins outside, amounts inside: ways[a] += ways[a − coin].',
       steps: [
         'Make a list ways of size amount + 1 filled with 0, and set ways[0] = 1.',
@@ -326,7 +328,7 @@ class Solution:
       solution: py`
 class Solution:
     def change(self, amount: int, coins: List[int]) -> int:
-        #@ ways[a] = number of combinations that make amount a with the coins allowed so far. There is exactly one way to make 0: take nothing.
+        #@ One row of the grid is all we keep. ways[a] = number of combinations that make amount a with the coins allowed so far. There is exactly one way to make 0: take nothing.
         ways = [0] * (amount + 1)
         ways[0] = 1
         #@ Coins go in the OUTER loop. Each coin joins the toolbox once, so every combination is built in one fixed coin order and never counted twice.
@@ -366,13 +368,13 @@ class Solution:
       ],
       hints: [
         'The brute force is a decision tree: at each number, go + or −. How big does it get?',
-        'Many branches arrive at the same index with the same running total. Do they need to be solved separately?',
+        'That tree is plain backtracking. Many of its branches arrive at the same index with the same running total. Do they need to be solved separately?',
         'Memoize `count(i, total)` = number of ways to finish from index `i` when the sum so far is `total`.',
       ],
       brute:
-        'Try all 2^n sign patterns: **O(2^n)**. With 20 numbers that is a million paths, many repeating the same work.',
+        'Try all 2^n sign patterns, one by one: **O(2^n)**.',
       insight:
-        'What happens next depends only on **where you are** (`i`) and **the sum so far** (`total`). Cache that pair and the exponential tree collapses to at most n × (number of possible totals) states.',
+        '**This is backtracking with a memory.** The recursion you just read is the decision tree from the Backtracking unit: at each number choose + or −, and count the paths that end on `target`. That alone is 2^n paths. But what happens next depends only on **where you are** (`i`) and **the sum so far** (`total`), not on which signs got you there. Two branches that arrive at the same `(i, total)` have the same answer, so solve it once and cache it: the solution is that same recursion plus `@cache`. The tree collapses to at most n × (number of possible totals) states. Every memoized DP is built this way: a backtracking function that **returns** the answer for its state, plus a cache on that state.',
       mnemonic: 'Plus or minus each; cache (index, total); add the ways.',
       steps: [
         'Define a cached count(i, total).',
@@ -383,7 +385,7 @@ class Solution:
       solution: py`
 class Solution:
     def findTargetSumWays(self, nums: List[int], target: int) -> int:
-        #@ State = (index i, running total so far). count(i, total) = number of ways to finish from here and land exactly on target.
+        #@ State = (index i, running total so far). count(i, total) = number of ways to finish from here and land exactly on target. @cache is the memo dict from the beginner lessons, kept by Python: it stores each (i, total) answer and returns it when the same state comes up again.
         @cache
         def count(i, total):
             #@ Every number has a sign: this path counts only if the total hit the target.
@@ -399,9 +401,9 @@ class Solution:
         'S is the sum of all the numbers, so the running total is always between −S and S. That gives at most n × (2S + 1) cached states, each O(1).',
       pitfalls: [
         'The base case must check `total == target`; returning 1 for every finished path just counts all 2^n patterns.',
-        'Without `@cache` this is plain backtracking and times out.',
-        'A 0 in `nums` doubles the count (+0 and −0 are different choices). The recursion handles this automatically.',
-        'Faster trick: the plus-numbers must sum to `(sum(nums) + target) / 2`, turning this into a 1-D counting subset-sum.',
+        'Without `@cache` this is plain backtracking: correct, but it walks all 2^n paths and times out. The cache is the only difference between the two.',
+        'The cache works because `count` **returns** its answer and depends only on its arguments. A backtracking function that builds a shared `path` list has nothing to cache.',
+        'A 0 in `nums` doubles the count (+0 and −0 are different choices). The recursion handles this automatically. Faster trick, good to know: the plus-numbers must sum to `(sum(nums) + target) / 2`, turning this into a 1-D counting subset-sum.',
       ],
     },
     {
@@ -433,9 +435,9 @@ class Solution:
         'Memoize `can(i, j)`: the next letter is `s3[i + j]`; try taking it from s1 or from s2.',
       ],
       brute:
-        'At every step, branch on taking the next letter from s1 or from s2: up to **O(2^(m+n))** paths, re-exploring the same positions over and over.',
+        'Plain recursion that takes the next letter from s1 or from s2, with no memory: up to **O(2^(m+n))** paths.',
       insight:
-        'Once you know how many letters you have taken from each string (`i` and `j`), your position in `s3` is fixed at `i + j`. So the whole situation is just the pair `(i, j)`: memoize it.',
+        'Once you know how many letters you have taken from each string (`i` and `j`), your position in `s3` is fixed at `i + j`. So the whole situation is just the pair `(i, j)`: put `@cache` on the recursion you just read, and each pair is solved once.',
       mnemonic: 'Next letter is s3[i + j]: take it from s1 or s2.',
       steps: [
         'If len(s1) + len(s2) is not len(s3), return False.',
@@ -509,7 +511,7 @@ class Solution:
       brute:
         'Run a fresh DFS from every cell that explores every increasing path. Paths overlap heavily, so the same cells are explored again and again: **exponential** in the worst case.',
       insight:
-        'Every step goes strictly **uphill**, so a path can never loop back. That makes `longest(r, c)` a fixed number with no visited set needed. Cache it and each cell is solved exactly once.',
+        'Every step goes strictly **uphill**, so a path can never loop back. That makes `longest(r, c)` a fixed number with no visited set needed. Put `@cache` on the recursion you just read and each cell is solved exactly once.',
       mnemonic: "Only climb uphill; remember each cell's best climb.",
       steps: [
         'Define a cached longest(r, c): the longest increasing path that starts at cell (r, c).',
@@ -535,7 +537,7 @@ class Solution:
                 if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] > matrix[r][c]:  #!
                     best = max(best, 1 + longest(nr, nc))  #!
             return best
-        #@ The best path could start anywhere, so try every cell.
+        #@ The best path could start anywhere, so try every cell: the generator expression inside max calls longest for each (r, c).
         return max(longest(r, c) for r in range(rows) for c in range(cols))`,
       time: 'O(m · n)',
       space: 'O(m · n)',
@@ -572,9 +574,9 @@ class Solution:
         '`dp[i][j] = dp[i + 1][j]` (skip) plus `dp[i + 1][j + 1]` when `s[i] == t[j]` (use). An empty `t` can be spelled in exactly 1 way.',
       ],
       brute:
-        'Generate all 2^n subsequences of `s` and count the ones equal to `t`: **O(2^n · m)**.',
+        'The first idea is to generate all 2^m subsequences of `s` (m letters) and count the ones equal to `t` (n letters): **O(2^m · n)**. The recursion below is the first step toward the answer. It makes the same skip-or-use decision one letter of `s` at a time, which is what a cache needs.',
       insight:
-        'At every letter of `s` you either **skip it** or, if it matches the next letter you need in `t`, **use it**. The number of ways is the sum of both choices, and it depends only on `(i, j)`: a grid just like LCS, but adding instead of taking a max.',
+        'At every letter of `s` you either **skip it** or, if it matches the next letter you need in `t`, **use it**. The number of ways is the sum of both choices, and it depends only on `(i, j)`. The table below is the cache of the recursion you just read: a grid just like LCS, but adding instead of taking a max.',
       mnemonic: 'Always skip; if letters match, also use. Add both.',
       steps: [
         'Make an (m + 1) × (n + 1) grid of zeros, where m = len(s) and n = len(t).',
@@ -590,10 +592,10 @@ class Solution:
         #@ dp[i][j] = number of ways to spell t[j:] using letters from s[i:]. The extra row and column stand for "no letters left".
         m, n = len(s), len(t)
         dp = [[0] * (n + 1) for _ in range(m + 1)]
-        #@ Base case: once all of t is spelled (j == n) that is exactly one way, whatever is left of s.
+        #@ Base case, as in the recursion: once all of t is spelled (j == n) that is exactly one way, whatever is left of s.
         for i in range(m + 1):
             dp[i][n] = 1
-        #@ Each cell reads the row below, so fill from the bottom up (and right to left).
+        #@ As in LCS, every call of the recursion dp(i, j) asked for row i + 1, so each cell depends on the row below it. Fill that first: loop i from the bottom up, and j from right to left.
         for i in range(m - 1, -1, -1):
             for j in range(n - 1, -1, -1):
                 #@ Choice 1: skip s[i]. This is always allowed.
@@ -633,13 +635,13 @@ class Solution:
       ],
       hints: [
         'Compare the first characters. If they are equal, do you need to touch them?',
-        'If they differ, each edit shrinks the problem: delete moves on in word1, insert moves on in word2, replace moves on in both.',
+        'If they differ, each edit shrinks the problem. Delete `word1[i]`: move on in word1. Insert a copy of `word2[j]` in front of `word1[i]`: that letter of word2 is now matched, so move on in word2 only. Replace `word1[i]` with `word2[j]`: move on in both.',
         '`dp[i][j] = dp[i + 1][j + 1]` on a match, otherwise `1 + min(dp[i + 1][j], dp[i][j + 1], dp[i + 1][j + 1])`. When one word is used up, the cost is the number of letters left in the other.',
       ],
       brute:
-        'Recursively try all three edits whenever the characters differ: about **O(3^(m+n))**.',
+        'Plain recursion that tries all three edits at every mismatch, with no memory: about **O(3^(m+n))**.',
       insight:
-        'Look at `word1[i]` and `word2[j]`. Equal? Free: move on in both. Different? Pay 1 for the cheapest of **delete** (`i + 1`), **insert** (`j + 1`) or **replace** (both + 1). Each cell depends on its lower, right and diagonal neighbors.',
+        'Look at `word1[i]` and `word2[j]`. Equal? Free: move on in both. Different? Pay 1 for the cheapest of three edits, each of which leaves a smaller problem. **Delete** `word1[i]`: word1 moves on, `word2[j]` is still waiting (`i + 1, j`). **Insert** a copy of `word2[j]`: that letter is now matched, but `word1[i]` is still waiting (`i, j + 1`). **Replace** `word1[i]` with `word2[j]`: both move on (`i + 1, j + 1`). The table below is the cache of the recursion you just read, so each cell depends on the cell below it, the cell to its right and the diagonal one.',
       mnemonic: 'Match is free; else 1 + min(delete, insert, replace).',
       steps: [
         'Make an (m + 1) × (n + 1) grid.',
@@ -652,21 +654,21 @@ class Solution:
       solution: py`
 class Solution:
     def minDistance(self, word1: str, word2: str) -> int:
-        #@ dp[i][j] = fewest edits to turn word1[i:] into word2[j:].
+        #@ dp[i][j] = fewest edits to turn word1[i:] into word2[j:], the same meaning as dp(i, j) in the recursion.
         m, n = len(word1), len(word2)
         dp = [[0] * (n + 1) for _ in range(m + 1)]
-        #@ Edges: if word2 is used up, delete the m - i letters left in word1; if word1 is used up, insert the n - j letters left of word2.
+        #@ Edges, which are the recursion's base cases: if word2 is used up, delete the m - i letters left in word1; if word1 is used up, insert the n - j letters left of word2.
         for i in range(m + 1):
             dp[i][n] = m - i
         for j in range(n + 1):
             dp[m][j] = n - j
-        #@ Each cell reads below, right and diagonal, so fill from the bottom-right corner backwards.
+        #@ Every call of the recursion dp(i, j) asked for i + 1 or j + 1, so each cell depends on the cells below, to the right and on the diagonal. Fill those first: loop backwards from the bottom-right corner.
         for i in range(m - 1, -1, -1):
             for j in range(n - 1, -1, -1):
                 #@ The letters already match: no edit needed, move on in both words.
                 if word1[i] == word2[j]:
                     dp[i][j] = dp[i + 1][j + 1]  #!
-                #@ Otherwise pay 1 for the cheapest edit: delete word1[i] (below), insert word2[j] (right), or replace one with the other (diagonal).
+                #@ Otherwise pay 1 for the cheapest of three edits. Delete word1[i]: word1 moves on and word2[j] still waits, the cell below, dp[i + 1][j]. Insert a copy of word2[j]: that letter is now matched and word1[i] still waits, the cell to the right, dp[i][j + 1]. Replace word1[i] with word2[j]: both move on, the diagonal cell, dp[i + 1][j + 1].
                 else:
                     dp[i][j] = 1 + min(dp[i + 1][j], dp[i][j + 1], dp[i + 1][j + 1])  #!
         #@ The answer for the two full words.
@@ -677,6 +679,7 @@ class Solution:
       pitfalls: [
         'Forgetting the edge base cases (cost = letters left over) makes answers too small.',
         'All three edits must be in the `min`; dropping one (say, replace) can only make answers worse.',
+        'Mixing up which neighbor is which edit. Insert does **not** move on in word1: the letter you inserted matches `word2[j]`, so only `j` advances (the cell to the right). Delete only advances `i` (the cell below).',
         "An empty word is valid input: the answer is then the other word's length, which the edges already handle.",
       ],
     },
@@ -703,9 +706,9 @@ class Solution:
         'Flip it: choose which balloon bursts LAST between two walls. When it finally pops, who are its neighbors?',
         'Pad with 1s and memoize `best(l, r)` = the max over k of `best(l, k) + a[l] * a[k] * a[r] + best(k, r)`.',
       ],
-      brute: 'Try every order of bursting: **O(n!)** orders.',
+      brute: 'Try every order of bursting, picking the first balloon each time: n! orders, and copying the row at every step makes it **O(n · n!)**.',
       insight:
-        'Choose which balloon `k` bursts **last** in the gap between `l` and `r`. Everything else in the gap is gone by then, so its neighbors are exactly `l` and `r`, and `k` splits the gap into two **independent** smaller gaps.',
+        'The brute force you just read picks the balloon to burst **first**, and that is why no cache can save it: once that balloon is gone its two neighbors touch, so what the left side earns depends on what is still standing on the right. The two sides never become separate subproblems. The recursion turns it around and picks the balloon `k` that bursts **last** in the gap between `l` and `r`. Everything else in the gap is gone by then, so its neighbors are exactly `l` and `r`: its coins are known. And because `k` stands until the end, nothing on its left ever touches anything on its right, so `k` splits the gap into two **independent** smaller gaps. Put `@cache` on that recursion and each gap is solved once. A state that is a range, with a loop over where to split it, is called **interval DP**.',
       mnemonic: 'Pick the last to pop; its neighbors are the walls.',
       steps: [
         'Add a 1 to both ends of nums.',
@@ -737,9 +740,9 @@ class Solution:
       space: 'O(n²)',
       complexityWhy: 'There are about n²/2 gaps (l, r), and each one tries up to n choices of k.',
       pitfalls: [
-        'Choosing the FIRST balloon to burst does not split the problem: its neighbors later depend on what else is gone.',
+        'Choosing the FIRST balloon to burst does not split the problem: after it pops, its left and right neighbors touch, so the two sides keep affecting each other.',
         'Forgetting the padding 1s makes the edge balloons awkward to score.',
-        'O(n³) is slow in Python. A bottom-up table filled by gap length (short gaps first) runs faster than recursion for n = 300.',
+        'O(n³) is slow in Python. The table version shown before the insight, filled by gap width (narrow gaps first), runs faster than the recursion for n = 300.',
       ],
     },
     {
@@ -767,9 +770,9 @@ class Solution:
         'Memoize `match(i, j)`: with a star, `match(i, j + 2) or (first and match(i + 1, j))`; otherwise `first and match(i + 1, j + 1)`.',
       ],
       brute:
-        'Plain recursion tries every way to use every `*`, which is **exponential** on patterns like `a*a*a*a*b`.',
+        'Plain recursion with no memory tries every way to share the letters among the stars: **exponential** on patterns like `a*a*a*a*b`.',
       insight:
-        'A pattern element is either one character or a character followed by `*`. A starred element can be **skipped** (`j + 2`), or, if the current characters match, it can **eat one character** (`i + 1`) and stay on the same element. The state is just `(i, j)`, so cache it.',
+        'A pattern element is either one character or a character followed by `*`. A starred element can be **skipped** (`j + 2`), or, if the current characters match, it can **eat one character** (`i + 1`) and stay on the same element. The state is just `(i, j)`, so the solution is the recursion you just read plus `@cache`.',
       mnemonic: 'Star: skip the pair, or eat one and stay.',
       steps: [
         'Define a cached match(i, j): does s[i:] match p[j:]?',

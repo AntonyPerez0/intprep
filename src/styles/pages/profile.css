@@ -1264,3 +1264,16 @@
   font-size: var(--fs-md);
   line-height: 1.55;
 }
+
+/* Plan settings: the interview date with its Clear button; #plan is a link target */
+.profile-anchor {
+  scroll-margin-top: calc(var(--topbar-h) + 16px);
+}
+.profile-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.profile-date .input {
+  width: 180px;
+}

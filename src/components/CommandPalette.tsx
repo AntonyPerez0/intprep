@@ -27,6 +27,8 @@ const PAGES: { label: string; to: string; icon: LucideIcon; hint?: string }[] = 
   { label: 'Pattern Blitz', to: '/blitz', icon: ICONS.blitz },
   // Pattern Blitz's typing game (the lobby explains the lock until 3 problems are learned).
   { label: 'Key lines', to: '/blitz?game=lines', icon: ICONS.keyboard, hint: 'Pattern Blitz' },
+  { label: 'Clue words', to: '/clues', icon: ICONS.search, hint: 'Wording to pattern' },
+  { label: 'Mock interview', to: '/mock', icon: ICONS.timer },
   { label: 'Problem library', to: '/problems', icon: ICONS.list },
   { label: 'Pattern guide', to: '/patterns', icon: ICONS.book },
   { label: 'Profile & settings', to: '/profile', icon: ICONS.user },

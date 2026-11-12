@@ -1,0 +1,218 @@
+/* ==========================================================================
+   Solve it yourself and Mock interview — src/pages/Solve.tsx (/p/:id/solve),
+   src/pages/Mock.tsx (/mock). A problem, a blank editor (src/styles/typer.css)
+   and the test report (src/styles/run.css).
+   ========================================================================== */
+
+.solve {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.solve-head h1 {
+  font-size: var(--fs-2xl);
+  margin: 0;
+}
+.solve-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.solve-sub {
+  margin: 10px 0 0;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+.solve-report .run-report {
+  margin-top: 0;
+}
+.solve-stuck {
+  display: flex;
+  justify-content: center;
+}
+.solve-run svg {
+  width: 16px;
+  height: 16px;
+}
+.solve-clock {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.solve-clock svg {
+  width: 14px;
+  height: 14px;
+}
+.solve-clock.is-low {
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+  background: var(--danger-subtle);
+}
+.solve-done {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.solve-solution {
+  width: 100%;
+}
+.solve-off {
+  max-width: 520px;
+  margin: 48px auto 0;
+  text-align: center;
+  display: grid;
+  gap: 14px;
+}
+.solve-off p {
+  color: var(--text-secondary);
+}
+.solve-off-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+@media (max-width: 480px) {
+  /* Run examples and Submit share the bar: the label goes, the icon stays. */
+  .solve-run span {
+    display: none;
+  }
+}
+
+/* ── Mock interview lobby ───────────────────────────────────────────────── */
+.mock-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .mock-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.mock-setup,
+.mock-history {
+  display: grid;
+  gap: 16px;
+}
+.mock-options {
+  display: grid;
+  gap: 10px;
+}
+.mock-option {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--dur-fast), background var(--dur-fast);
+}
+.mock-option:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.mock-option:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.mock-option.is-on {
+  border-color: var(--brand);
+  background: var(--brand-subtle);
+}
+.mock-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.mock-option-title {
+  font-weight: 600;
+}
+.mock-option-body {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.mock-option-count {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.mock-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.mock-rules li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.mock-rules svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+}
+.mock-start {
+  justify-self: start;
+}
+.mock-history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mock-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.mock-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.mock-list li:first-child {
+  border-top: 0;
+}
+.mock-list svg {
+  width: 16px;
+  height: 16px;
+}
+.mock-list .is-pass {
+  color: var(--success);
+}
+.mock-list .is-fail {
+  color: var(--danger);
+}
+.mock-list-title {
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+}
+.mock-list-title:hover {
+  text-decoration: underline;
+}

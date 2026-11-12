@@ -1,0 +1,47 @@
+// Extra tests for this unit's problems: inputs written like each problem's examples. See ./index.ts.
+const tests: Record<string, string[]> = {
+  'implement-trie-prefix-tree': [
+    'Trie(), insert("apple"), search("apple"), search("app"), startsWith("app"), insert("app"), search("app")',
+    'Trie(), search("a"), startsWith("a")',
+    'Trie(), insert("a"), search("a"), startsWith("a"), search("ab"), startsWith("ab")',
+    'Trie(), insert("car"), insert("card"), search("car"), search("card"), search("ca"), startsWith("card"), startsWith("cards")',
+    'Trie(), insert("moon"), insert("moon"), search("moon"), startsWith("moon"), search("moo"), startsWith("mo")',
+    'Trie(), insert("bat"), insert("bad"), insert("bag"), search("ba"), startsWith("ba"), search("bad"), search("bax"), startsWith("bax")',
+    'Trie(), insert("dog"), insert("cat"), startsWith("d"), startsWith("c"), startsWith("o"), search("og"), startsWith("at")',
+    'Trie(), insert("z"), search("z"), startsWith("z"), search("zz"), startsWith("zz")',
+    'Trie(), insert("aaaa"), search("aaa"), startsWith("aaa"), search("aaaa"), search("aaaaa"), startsWith("aaaaa")',
+    'Trie(), startsWith("te"), insert("tea"), startsWith("te"), search("te"), insert("te"), search("te"), search("tea"), search("team"), insert("team"), search("team")',
+    'Trie(), insert("ab"), insert("ba"), search("a"), search("b"), startsWith("a"), startsWith("b"), search("abba"), startsWith("bab")',
+    'Trie(), insert("ab"), startsWith("cab"), search("abc"), startsWith("cabs"), search("zebra"), startsWith("cabs"), search("dot"), startsWith("a"), startsWith("dote"), insert("bab"), search("cabs"), startsWith("dote"), insert("bab"), startsWith("abd"), startsWith("dote"), search("zeb"), search("dote"), startsWith("cabs"), startsWith("dot"), insert("cabs"), search("b"), search("abc"), search("dot"), search("zebra"), search("zebra"), startsWith("ba"), search("do"), startsWith("a"), search("dot"), search("abd"), search("zebra"), search("cabs"), search("cabs"), startsWith("b"), insert("cabs"), insert("abc"), insert("zebra"), search("dot"), search("zebra"), insert("abcd"), startsWith("bab"), search("do"), insert("dot"), search("b"), search("dote"), startsWith("dot"), startsWith("abc"), insert("ba"), startsWith("abc"), search("zeb"), search("cabs"), search("zeb"), startsWith("zeb"), search("dot"), search("cabs"), startsWith("do"), startsWith("dote"), insert("ab"), search("a"), search("cab"), startsWith("zeb"), startsWith("do"), startsWith("zeb"), startsWith("abd"), insert("do"), search("cab"), search("do"), startsWith("abc"), startsWith("zeb"), startsWith("cab"), search("dote"), search("dote"), startsWith("zeb"), insert("abd"), insert("zeb"), search("cab"), insert("ab"), search("cab"), startsWith("abcd"), insert("ba"), insert("ab"), startsWith("b"), insert("abc"), startsWith("bab"), search("zebra"), startsWith("a"), search("zebra"), startsWith("abd"), startsWith("zebra"), insert("ba"), insert("abcd"), insert("ab"), search("ba"), startsWith("ab"), startsWith("abc"), search("zebra"), insert("abd"), search("ab"), startsWith("b"), startsWith("abcd")',
+  ],
+  'design-add-and-search-words-data-structure': [
+    'WordDictionary(), addWord("bad"), addWord("dad"), addWord("mad"), search("pad"), search("bad"), search(".ad"), search("b..")',
+    'WordDictionary(), search("a"), search(".")',
+    'WordDictionary(), addWord("a"), search("."), search("a"), search(".."), search("b"), search("aa")',
+    'WordDictionary(), addWord("at"), addWord("and"), addWord("an"), addWord("add"), search("a"), search(".at"), addWord("bat"), search(".at"), search("an."), search("a.d."), search("b."), search("a.d"), search(".")',
+    'WordDictionary(), addWord("abc"), search("ab"), search("ab."), search("a.c"), search("..c"), search("abc."), search("ab.d"), search(".bc")',
+    'WordDictionary(), addWord("a"), addWord("ab"), search("a"), search("a."), search("ab"), search(".a"), search(".b"), search("..")',
+    'WordDictionary(), addWord("xay"), addWord("xbz"), search("x.z"), search("x.y"), search(".bz"), search(".ay"), search("x.x"), search(".b.")',
+    'WordDictionary(), addWord("hi"), search(".."), search("."), search("h."), search(".i"), search(".h"), search("hi")',
+    'WordDictionary(), search("cat"), search("c.t"), addWord("cat"), search("cat"), search("c.t"), search("ca"), search("cats"), search("..t")',
+    'WordDictionary(), addWord("see"), addWord("see"), addWord("sea"), search("se."), search("s.e"), search("s.a"), search("s.."), search("sea"), search("seas")',
+    'WordDictionary(), addWord("run"), addWord("runner"), search("run"), search("runne."), search("run..r"), search("runn"), search("r.n"), search("runners")',
+    'WordDictionary(), search("ab."), search("a"), search("a"), addWord("daze"), search("bad"), search("made"), search("a."), search("dad."), search(".z"), search("z"), search(".ab"), search("b.d"), search("maze"), search("bad"), search(".a."), search("abd"), search(".b"), addWord("bbc"), addWord("mad"), search("bbc"), search(".ab"), search(".a."), search("made"), addWord("a"), search("bad"), search("ab."), search("pad"), search("ab."), search("ma.e"), addWord("mad"), search("mad"), search("a.c"), search("maze"), addWord("mad"), search("bad"), addWord("z"), addWord("a"), search("da."), search(".bc"), search("a.c"), search("pad"), addWord("ab"), search("a.."), addWord("daze"), search(".dad"), search("a"), addWord("z"), addWord("abc"), search("b.d"), search("bbc"), search("daze"), addWord("daze"), search("daze"), search("dad."), search("..d"), search("z"), search("abc"), search("..d"), addWord("daze"), search(".b"), search("m..e"), addWord("mad"), search("a"), addWord("maze"), search(".b"), search("made"), search("ma.e"), search("abc"), search(".a"), search("z"), addWord("abc"), addWord("pad"), search(".z"), search("maze"), search(".bc"), addWord("ab"), search("made"), addWord("abd"), search("a.."), search(".z"), addWord("daze"), search("a.c"), addWord("maze"), search("x."), addWord("abd"), search("maze"), search("ab"), search("."), search(".bc"), search("."), addWord("made"), addWord("bbc"), search(".bc"), search(".ad"), search("b.d"), search("a"), search("a."), addWord("ab"), search("ma.e"), search("ab.")',
+  ],
+  'word-search-ii': [
+    'board = [["o", "a", "a", "n"], ["e", "t", "a", "e"], ["i", "h", "k", "r"], ["i", "f", "l", "v"]], words = ["oath", "pea", "eat", "rain"]',
+    'board = [["a"]], words = ["a"]',
+    'board = [["a"]], words = ["aa", "a"]',
+    'board = [["a", "b"], ["b", "a"]], words = ["ab", "ba", "aba", "abab", "ababa"]',
+    'board = [["o", "a", "b", "n"], ["o", "t", "a", "e"], ["a", "h", "k", "r"], ["a", "f", "l", "v"]], words = ["oa", "oaa", "oaab", "oat", "oath"]',
+    'board = [["a", "b", "c"], ["f", "e", "d"], ["g", "h", "i"]], words = ["abcdefghi", "abcdefghij", "ihg", "aei", "cde", "beh", "adg", "gfa"]',
+    'board = [["a", "b", "c", "d", "e"]], words = ["abc", "edc", "ace", "e", "bcd", "abcdef", "dcba"]',
+    'board = [["t"], ["i"], ["n"]], words = ["tin", "nit", "tn", "ti", "int", "tint"]',
+    'board = [["a", "a", "a"], ["a", "a", "a"], ["a", "a", "a"]], words = ["a", "aa", "aaa", "aaaaaaaaa", "aaaaaaaaaa", "ab"]',
+    'board = [["a", "b"], ["c", "d"]], words = ["xyz", "zyx", "q", "abcd", "dcba", "aa"]',
+    'board = [["a", "c", "b", "b", "d"], ["b", "a", "c", "c", "d"], ["b", "c", "e", "c", "c"], ["a", "d", "b", "a", "b"], ["a", "b", "d", "a", "b"]], words = ["cebedee", "cdbdbe", "aebaae", "aaadd", "ceb", "aeeb", "bdbdd", "dcccba", "abeccbb", "badbdab", "eba", "cbddcceb", "ecba", "dce"]',
+    'board = [["h", "f", "e", "d", "h", "b", "c"], ["g", "d", "g", "a", "d", "b", "d"], ["f", "b", "f", "e", "b", "f", "f"], ["a", "f", "c", "c", "b", "h", "c"], ["h", "d", "f", "f", "c", "h", "c"], ["d", "d", "e", "c", "a", "f", "c"]], words = ["bfaf", "gadfhdbhab", "cccf", "bffd", "fhhbccfdd", "dadhbbdc", "cccfdbbc", "ffbbcf", "ebfc", "hhe", "aheeadbgb", "bdcbh", "cfhbghffg", "ccfb", "hddefdf", "daafcbf", "chhcace", "bagag", "cchcaf", "fcc"]',
+  ],
+};
+
+export default tests;

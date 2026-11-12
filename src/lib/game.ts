@@ -1,7 +1,7 @@
 // Game rules: XP values, levels, daily goals and achievements.
 
 import type { Progress } from './store';
-import { crowns } from './srs';
+import { mastery } from './input';
 import { CATEGORIES } from '../content/categories';
 import { FOUNDATIONS } from '../content/foundations';
 import type { Difficulty } from '../content/types';
@@ -53,11 +53,16 @@ export const GEMS = {
   maxFreezes: 2,
 };
 
+/**
+ * The daily goals. `blurb` says honestly what a day at that goal is (a guided problem is 20 to 45
+ * XP and takes 10 to 20 minutes the first time; a review of one problem is about 20 XP);
+ * `minutes` and `newPerDay` are what the plan (lib/plan.ts) assumes for it.
+ */
 export const DAILY_GOALS = [
-  { xp: 20, label: 'Casual', blurb: '≈ 5 min a day' },
-  { xp: 50, label: 'Regular', blurb: '≈ 10 min a day' },
-  { xp: 100, label: 'Serious', blurb: '≈ 20 min a day' },
-  { xp: 160, label: 'Intense', blurb: '≈ 30+ min a day' },
+  { xp: 20, label: 'Casual', blurb: 'About 10 min: your reviews, and a new problem most days', minutes: 10, newPerDay: 1 },
+  { xp: 50, label: 'Regular', blurb: 'About 20 min: reviews and one new problem', minutes: 20, newPerDay: 1 },
+  { xp: 100, label: 'Serious', blurb: 'About 40 min: reviews and 2 new problems', minutes: 40, newPerDay: 2 },
+  { xp: 160, label: 'Intense', blurb: 'An hour or more: reviews and 3 to 4 new problems', minutes: 60, newPerDay: 4 },
 ];
 
 // Level n → n+1 costs 60 + 40·(n−1) XP, so early levels come fast.
@@ -106,7 +111,7 @@ export interface Achievement {
 
 const learnedCount = (p: Progress) => Object.values(p.problems).filter((x) => x.learnedAt).length;
 const masteredCount = (p: Progress, min = 5) =>
-  Object.values(p.problems).filter((x) => x.srs && crowns(x.srs) >= min).length;
+  Object.values(p.problems).filter((x) => x.srs && mastery(x) >= min).length;
 
 export const ACHIEVEMENTS: Achievement[] = [
   { id: 'first-lesson', icon: 'grad', title: 'First Steps', desc: 'Finish any lesson', gems: 5, test: (p) => Object.keys(p.lessonsDone).length > 0 },
@@ -149,6 +154,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'blitz-150', icon: 'timer', title: 'Speed Reader', desc: 'Score 150 in Spot the pattern', gems: 10, test: (p) => p.stats.blitzBest >= 150 },
   { id: 'blitz-400', icon: 'rocket', title: 'Pattern Radar', desc: 'Score 400 in Spot the pattern', gems: 30, test: (p) => p.stats.blitzBest >= 400 },
   { id: 'rebuild-perfect', icon: 'keyboard', title: 'From Memory', desc: 'Type a solution from memory with no misses', gems: 15, test: (p) => p.stats.perfectRebuilds >= 1 },
+  { id: 'first-solve', icon: 'play', title: 'It Runs', desc: 'Pass every test of a problem with your own code', gems: 15, test: (p) => p.stats.solved >= 1 },
+  { id: 'solve-25', icon: 'rocket', title: 'Your Own Words', desc: 'Pass the tests of 25 problems with your own code', gems: 40, test: (p) => p.stats.solved >= 25 },
+  { id: 'mock-pass', icon: 'clock', title: 'Under Pressure', desc: 'Pass a mock interview', gems: 20, test: (p) => p.stats.mocksPassed >= 1 },
+  { id: 'mock-10', icon: 'trophy', title: 'Interview Ready', desc: 'Pass 10 mock interviews', gems: 50, test: (p) => p.stats.mocksPassed >= 10 },
   { id: 'mastered-5', icon: 'star', title: 'Crowned', desc: 'Get 5 problems to Mastered', gems: 30, test: (p) => masteredCount(p) >= 5 },
   { id: 'level-10', icon: 'award', title: 'Rising Star', desc: 'Reach level 10', gems: 25, test: (p) => levelInfo(p.xp).level >= 10 },
 ];

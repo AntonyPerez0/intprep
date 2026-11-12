@@ -802,3 +802,28 @@
     width: 2ch;
   }
 }
+
+/* Your progress: proof beyond the review schedule (own code passed the tests, a mock interview) */
+.problem-detail-proof {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.problem-detail-proof li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.problem-detail-proof svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--success);
+}
+.problem-detail-proof .is-miss svg {
+  color: var(--text-tertiary);
+}

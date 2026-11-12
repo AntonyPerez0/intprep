@@ -253,6 +253,14 @@ const toneFor = (zen: boolean, timeLeft: number): Tone => (zen ? 'calm' : timeLe
 
 // ── Page ────────────────────────────────────────────────────────────────────
 
+/** Fewest problems for a "Units I've started" round. */
+const STARTED_MIN = 8;
+
+/** The problems of the units a learner has started: its pattern intro done, or a problem learned. */
+function startedProblems(progress: Progress): Problem[] {
+  return PROBLEMS.filter((p) => progress.lessonsDone[`g:${p.category}`] || unitProgress(progress, p.category).learned > 0);
+}
+
 export function Blitz() {
   const progress = useProgress();
   const [params] = useSearchParams();
@@ -266,7 +274,9 @@ export function Blitz() {
   // Key lines needs a few learned problems; until then the pattern game is the one on offer.
   const game: Game = picked === 'lines' && linesOpen ? 'lines' : 'pattern';
   const [zen, setZen] = useState(false);
-  const [scope, setScope] = useState<'started' | 'all'>('all');
+  // A learner who has started some units is asked about those by default: naming a pattern you
+  // have never been taught is a guess, and a miss on it teaches little.
+  const [scope, setScope] = useState<'started' | 'all'>(() => (startedProblems(getProgress()).length >= STARTED_MIN ? 'started' : 'all'));
   // 0: the lobby; each new game gets a new number, so "Play again" starts from a clean slate.
   const [run, setRun] = useState(0);
   const [gamePool, setGamePool] = useState<KeyLineEntry[]>([]);
@@ -326,8 +336,8 @@ function Lobby({
   const progress = useProgress();
   const nav = useNavigate();
   const lines = game === 'lines';
-  const startedUnits = PROBLEMS.filter((p) => unitProgress(progress, p.category).learned > 0);
-  const startedLocked = startedUnits.length < 8;
+  const startedUnits = startedProblems(progress);
+  const startedLocked = startedUnits.length < STARTED_MIN;
   const linesOpen = pool.length >= KEY_LINES_MIN;
   const need = KEY_LINES_MIN - pool.length;
   const lineCount = pool.reduce((n, e) => n + e.lines.length, 0);
@@ -490,7 +500,9 @@ function Lobby({
                   {scope === 'started' && !startedLocked
                     ? `${startedUnits.length} problems from units you've started.`
                     : startedLocked
-                      ? `All ${PROBLEMS.length} problems for now. Learn a few more to narrow it to your units.`
+                      ? startedUnits.length === 0
+                        ? `All ${PROBLEMS.length} problems. You have not started a pattern yet, so most of these are guesses: learn a pattern first and the game will ask about it.`
+                        : `All ${PROBLEMS.length} problems for now. Start another unit to narrow it to yours.`
                       : `All ${PROBLEMS.length} problems, every pattern mixed.`}
                 </div>
               </div>
@@ -585,8 +597,8 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
   const nav = useNavigate();
   const [phase, setPhase] = useState<'play' | 'over'>('play');
   const [queue] = useState<Problem[]>(() => {
-    const started = PROBLEMS.filter((p) => unitProgress(progress, p.category).learned > 0);
-    return shuffle(scope === 'started' && started.length >= 8 ? started : PROBLEMS);
+    const started = startedProblems(progress);
+    return shuffle(scope === 'started' && started.length >= STARTED_MIN ? started : PROBLEMS);
   });
   const [qi, setQi] = useState(0);
   const [options, setOptions] = useState<CategoryId[]>(() => patternChoices(queue[0]).options);

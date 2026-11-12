@@ -17,6 +17,7 @@ import {
   Minus,
   PencilLine,
   Plus,
+  Quote,
   ScanSearch,
   TextCursorInput,
   Wrench,
@@ -106,6 +107,7 @@ interface DrillProps {
 
 const KIND_ICON: Record<DrillKind, LucideIcon> = {
   pattern: ScanSearch,
+  clues: Quote,
   technique: Wrench,
   insight: Lightbulb,
   order: ListOrdered,
@@ -297,6 +299,84 @@ export function PatternDrill({ problem: p, onDone, kicker, combo = 0, badge, met
               </span>
             </div>
             <Clues p={p} />
+          </div>
+        }
+      />
+    </section>
+  );
+}
+
+/**
+ * A problem's clue words on their own (`signals`: the wording that should trigger the pattern),
+ * without the statement that would give the problem away: which pattern do they point to? The
+ * answer names the problem and what to reach for.
+ */
+export function CluePhrases({ phrases }: { phrases: readonly string[] }) {
+  return (
+    <ul className="clue-phrases" aria-label="Clue words">
+      {phrases.map((s, i) => (
+        <li key={i} className="clue-phrase">
+          {inline(s)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function CluesDrill({ problem: p, onDone, kicker, combo = 0, badge, meta }: DrillProps) {
+  const { options } = useMemo(() => patternChoices(p), [p]);
+  const accepted = acceptedCategories(p);
+  const [sel, setSel] = useState<string | null>(null);
+  const { status, resolve } = useCheck();
+  const ok = sel !== null && accepted.includes(sel as CategoryId);
+  const cat = CATEGORY_BY_ID[p.category];
+  return (
+    <section className="drill" data-drill="clues" data-problem={p.id}>
+      <DrillHead
+        kind="clues"
+        kicker={kicker}
+        badge={badge}
+        meta={meta}
+        title="A problem says this. Which pattern do you reach for?"
+        sub="Only the clue words, not the whole problem: this is the wording to watch for."
+      />
+      <CluePhrases phrases={p.signals} />
+      <div>
+        <AnswerLabel keys={options.length}>Choose a pattern</AnswerLabel>
+        <Choices
+          options={options.map((c) => ({
+            key: c,
+            label: catLabel(c),
+            icon: <CategoryIcon id={c} color={CATEGORY_BY_ID[c].color} size="sm" />,
+          }))}
+          selected={sel}
+          onSelect={(k) => {
+            setSel(k);
+            sfx('tap');
+          }}
+          answer={accepted}
+          revealed={status !== 'idle'}
+          twoCol
+        />
+      </div>
+      <ActionBar
+        status={status}
+        canCheck={sel !== null}
+        onCheck={() => resolve(ok, combo)}
+        onContinue={() => onDone({ kind: 'clues', correct: ok })}
+        feedback={
+          <div className="drill-fb">
+            <div className="drill-fb-answer">
+              <CategoryIcon id={p.category} color={cat.color} size="sm" />
+              <span>
+                <strong>{cat.name}</strong>
+                <span className="drill-fb-sep">·</span>
+                {p.pattern}
+              </span>
+            </div>
+            <div>
+              These are the clue words of <strong>{p.title}</strong>.
+            </div>
           </div>
         }
       />
@@ -1616,6 +1696,8 @@ export function Drill(props: DrillProps & { kind: DrillKind }) {
   switch (kind) {
     case 'pattern':
       return <PatternDrill {...rest} />;
+    case 'clues':
+      return <CluesDrill {...rest} />;
     case 'technique':
       return <TechniqueDrill {...rest} />;
     case 'insight':

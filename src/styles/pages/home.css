@@ -1238,3 +1238,91 @@ a.home-aside-link {
   font-weight: 500;
   color: var(--brand-text);
 }
+
+/* ── Your plan (components/PlanCard.tsx) ──────────────────────────────────── */
+@container home (min-width: 900px) {
+  .home-plan {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  .home-start {
+    grid-row: 4;
+  }
+}
+.home-plan {
+  display: grid;
+  gap: 14px;
+}
+.home-plan-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--brand-text);
+  text-decoration: none;
+}
+.home-plan-set:hover {
+  text-decoration: underline;
+}
+.home-plan-set svg {
+  width: 15px;
+  height: 15px;
+}
+.home-plan-tiles {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.home-plan-tile {
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  min-width: 0;
+}
+.home-plan-tile dt {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.home-plan-tile dd {
+  margin: 4px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.home-plan-value {
+  font-size: var(--fs-xl);
+  font-weight: 650;
+  color: var(--text);
+}
+.home-plan-tile.is-due .home-plan-value {
+  color: var(--streak);
+}
+.home-plan-tile.is-done .home-plan-value {
+  color: var(--success-text);
+}
+.home-plan-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.home-plan-note {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  max-width: 78ch;
+}
+@container home (max-width: 520px) {
+  .home-plan-tiles {
+    grid-template-columns: 1fr;
+  }
+}
+.home-plan-warn {
+  color: var(--warning-text);
+}
+.home-plan-warn a {
+  color: inherit;
+  font-weight: 600;
+}

@@ -1,14 +1,16 @@
 import '../styles/pages/onboarding.css';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CodeXml, Flame, MapPin, Repeat2, Rocket, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarClock, Check, CodeXml, Flame, MapPin, Repeat2, Rocket, Sprout, Target, UserRound, type LucideIcon } from 'lucide-react';
 import { CATEGORIES, FOUNDATIONS, PROBLEMS } from '../content/index';
 import { IconTile } from '../components/icons';
 import { CODE_PRACTICE_ICON } from '../components/InputSwitch';
 import { Logo, Ring } from '../components/ui';
+import { addDays, today } from '../lib/date';
 import { DAILY_GOALS, GEMS } from '../lib/game';
+import { buildPlan, planDate } from '../lib/plan';
 import { CODE_PRACTICE } from '../lib/input';
-import { finishOnboarding, useProgress, type Experience } from '../lib/store';
+import { finishOnboarding, useProgress, type Experience, type Progress } from '../lib/store';
 import { sfx } from '../lib/sound';
 
 const LEVELS: { id: Experience; icon: LucideIcon; title: string; blurb: string }[] = [
@@ -21,9 +23,29 @@ const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
 const MAX_GOAL = DAILY_GOALS[DAILY_GOALS.length - 1].xp;
 const DEFAULT_GOAL = 50;
 
-/** "≈ 10 min a day" → "About 10 min a day"; "≈ 30+ min a day" → "30+ min a day". */
-function goalTime(blurb: string): string {
-  return blurb.includes('+') ? blurb.replace('≈', '').trim() : blurb.replace('≈', 'About');
+/** What the plan will ask for with these answers: the pace, and where it leads. */
+function paceLine(p: Progress, exp: Experience, goal: number, interviewDate: string | null): { value: string; detail: string } {
+  const plan = buildPlan({ ...p, settings: { ...p.settings, experience: exp, dailyGoal: goal, interviewDate } });
+  const perDay = `${plan.perDay} new problem${plan.perDay === 1 ? '' : 's'} a day`;
+  const lessons = plan.lessonsLeft ? `After the beginner lessons (about ${Math.max(1, Math.round(plan.lessonMinutes / 60))} hours), ` : '';
+  if (plan.interview) {
+    const days = `${plan.interview.daysLeft} day${plan.interview.daysLeft === 1 ? '' : 's'} away`;
+    // The date asks for more than the chosen goal has room for: say so here, where it can be changed.
+    const tight = plan.perDay > plan.goalPerDay ? ` Your daily goal has room for about ${plan.goalPerDay} a day, so pick a bigger goal to keep this pace.` : '';
+    return plan.feasible
+      ? {
+          value: `Interview ${days}: ${perDay}`,
+          detail: `${lessons}${lessons ? 'that' : 'That'} pace covers the Easy and Medium problems of every pattern and keeps the last ${plan.interview.reviewDays} days for review and mock interviews.${tight}`,
+        }
+      : {
+          value: `Interview ${days}: ${perDay}`,
+          detail: `${lessons}${lessons ? 'there' : 'There'} is not time for every problem, so the path takes the patterns in order of usefulness: about ${plan.coreReachable} of the ${plan.coreLeft} core problems fit.${tight}`,
+        };
+  }
+  return {
+    value: `About ${perDay}`,
+    detail: `${lessons}${lessons ? 'that' : 'That'} pace learns the Easy and Medium problems of every pattern by ${plan.coreDone ? planDate(plan.coreDone) : 'then'}${plan.allDone ? `, and the Hard ones by ${planDate(plan.allDone)}` : ''}. Set an interview date and the plan works back from it.`,
+  };
 }
 
 /** Where each experience level begins (navigation itself happens in `done`). */
@@ -38,12 +60,16 @@ function startingPoint(exp: Experience): string {
 
 export function OnboardingPage() {
   const nav = useNavigate();
-  const { gems, streak, settings } = useProgress();
+  const progress = useProgress();
+  const { gems, streak, settings } = progress;
   const practice = CODE_PRACTICE.find((c) => c.id === settings.typingMode) ?? CODE_PRACTICE[0];
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
   const [exp, setExp] = useState<Experience>('some');
   const [goal, setGoal] = useState(DEFAULT_GOAL);
+  const [interview, setInterview] = useState('');
+  const minDate = addDays(today(), 1);
+  const interviewDate = interview && interview >= minDate ? interview : null;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const shownStep = useRef(step);
 
@@ -60,7 +86,7 @@ export function OnboardingPage() {
   }, [step]);
 
   const done = () => {
-    finishOnboarding({ name: name.trim(), experience: exp, dailyGoal: goal });
+    finishOnboarding({ name: name.trim(), experience: exp, dailyGoal: goal, interviewDate });
     sfx('complete');
     nav(exp === 'none' ? '/foundations/how-to-learn' : '/learn');
   };
@@ -196,7 +222,7 @@ export function OnboardingPage() {
                           />
                           <span className="ob-option-text">
                             <span className="ob-option-title">{g.label}</span>
-                            <span className="ob-option-desc">{goalTime(g.blurb)}</span>
+                            <span className="ob-option-desc">{g.blurb}</span>
                           </span>
                           <span className="ob-goal-xp">{g.xp} XP</span>
                           <span className="ob-radio" aria-hidden="true" />
@@ -204,6 +230,13 @@ export function OnboardingPage() {
                       );
                     })}
                   </div>
+                  <label className="ob-date">
+                    <span className="ob-date-label">
+                      Do you have an interview date? <span className="ob-optional">Optional</span>
+                    </span>
+                    <span className="ob-date-help">With a date, your plan works back from it: how many new problems a day, and a last stretch for review.</span>
+                    <input type="date" className="input" value={interview} min={minDate} onChange={(e) => setInterview(e.target.value)} />
+                  </label>
                 </fieldset>
               )}
 
@@ -219,10 +252,11 @@ export function OnboardingPage() {
                       icon={Target}
                       label="Daily goal"
                       value={`${goalInfo.label} · ${goalInfo.xp} XP a day`}
-                      detail={`${goalTime(goalInfo.blurb)}. Each day you reach it earns ${GEMS.dailyGoal} gems.`}
+                      detail={`${goalInfo.blurb}. Each day you reach it earns ${GEMS.dailyGoal} gems.`}
                       onChange={() => setStep(2)}
                       changeLabel="Edit daily goal"
                     />
+                    <PlanRow icon={CalendarClock} label="Pace" {...paceLine(progress, exp, goal, interviewDate)} onChange={() => setStep(2)} changeLabel="Edit interview date" />
                     <PlanRow
                       icon={Repeat2}
                       label="Daily review"

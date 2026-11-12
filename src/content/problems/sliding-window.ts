@@ -79,7 +79,7 @@ def longest_valid_window(s):
       difficulty: 'Easy',
       category: 'sliding-window',
       pattern: 'Track the minimum price so far',
-      alsoAccept: ['greedy'],
+      alsoAccept: ['two-pointers', 'greedy', 'dp-1d'],
       prompt:
         '`prices[i]` is the price of a stock on day `i`. You may buy once and then sell once on a **later** day. Return the biggest profit you can make, or `0` if no trade makes money.',
       examples: [
@@ -95,7 +95,7 @@ def longest_valid_window(s):
       brute:
         'Try every buy day `i` with every later sell day `j` and keep the largest `prices[j] - prices[i]` — **O(n²)** time.',
       insight:
-        'For any selling day, the best buying day is the **cheapest day before it**. Keep that minimum as you scan. It is the left edge of the window, and it jumps forward whenever a new low appears.',
+        'For any selling day, the best buying day is the **cheapest day before it**, so one pass that remembers the lowest price so far is enough. Strictly, this is a **running minimum** (a one-pass greedy scan), not a real window: nothing inside a range is counted. It is filed under Sliding Window because the buy day and the sell day behave like a left and a right pointer that only move forward: the sell day steps on, and the buy day jumps to each new low.',
       mnemonic: 'Remember the cheapest day; sell today against it.',
       steps: [
         'Set min_price to the first price and best to 0.',
@@ -203,48 +203,46 @@ class Solution:
       signals: ['"at most k replacements / changes"', 'longest substring of one repeated letter', 'uppercase letters only, so at most 26 counts'],
       hints: [
         'Inside one window, which letter should you keep, and how many characters must you change?',
-        'Keep the most common letter. You must change `window length - max count` characters.',
-        'Grow the window. Whenever `window length - max count > k`, shrink it from the left.',
+        'Keep the most common letter. You must change `window length - count of that letter` characters.',
+        'Grow the window. Whenever `window length - top count > k`, shrink it from the left. With at most 26 letters, `max(count.values())` finds the top count cheaply.',
       ],
       brute:
-        'For every substring, count its letters and check whether `length - max count <= k` — **O(n²)** substrings, each needing counts.',
+        'For every substring, count its letters and check whether `length - top count <= k` — **O(n²)** substrings, each needing counts.',
       insight:
-        'A window can be fixed when **window length − count of its most common letter ≤ k**: those other letters are exactly the ones you must change. Slide a window that keeps this rule true.',
+        'A window can be fixed when **window length − count of its most common letter ≤ k**: the other letters are exactly the ones you must change. Slide a window that keeps this rule true.',
       mnemonic: 'Length minus top count must not exceed k.',
       steps: [
-        'Keep a count of each letter in the window and the highest count seen, max_count.',
-        'Move r forward, count s[r] and update max_count.',
-        'While the window length minus max_count is more than k, uncount s[l] and move l right.',
+        'Keep a count of each letter inside the window.',
+        'Move r forward and count s[r].',
+        'While the window length minus the highest count is more than k, uncount s[l] and move l right.',
         'Record the window length if it is the best so far.',
         'Return the best length.',
       ],
       solution: py`
 class Solution:
     def characterReplacement(self, s: str, k: int) -> int:
-        #@ count = letters inside the window; max_count = the most copies of one letter we have seen.
+        #@ count holds how many of each letter are inside the window s[l..r].
         count = {}
-        max_count = 0
         l = 0
         best = 0
-        #@ Grow the window: add s[r] to the counts and update max_count.
+        #@ Grow the window: bring s[r] in and count it.
         for r in range(len(s)):
             count[s[r]] = count.get(s[r], 0) + 1
-            max_count = max(max_count, count[s[r]])  #!
-            #@ Letters other than the most common one must be changed. More than k of them? Shrink from the left.
-            while (r - l + 1) - max_count > k:  #!
+            #@ max(count.values()) is the count of the most common letter in the window. Keep that letter and change all the others. More than k others? The window cannot be fixed: drop letters from the left until it can.
+            while (r - l + 1) - max(count.values()) > k:  #!
                 count[s[l]] -= 1
                 l += 1
-            #@ The window is fixable now, so keep the longest one, and return it after the loop.
+            #@ Now at most k letters need changing, so this window can be fixed. Keep the longest one, and return it after the loop.
             best = max(best, r - l + 1)
         return best`,
       time: 'O(n)',
       space: 'O(1)',
       complexityWhy:
-        'Each letter enters and leaves the window at most once. The count dict holds at most 26 uppercase letters.',
+        'Each letter enters and leaves the window at most once. Finding the top count looks at up to 26 uppercase letters, a constant, so the scan stays O(n) and the count dict stays constant size.',
       pitfalls: [
-        'The number of changes is `length - max_count`, not `length - k` or the count of one fixed letter.',
-        '`max_count` is never lowered when the window shrinks. That is safe: the answer can only grow when some letter beats the old `max_count`. If that feels uneasy, use `max(count.values())` — only 26 letters, still O(n).',
+        'The number of changes is `length - top count`, not `length - k` or the count of one fixed letter.',
         'Decrease `count[s[l]]` *before* moving `l` forward, or you uncount the wrong letter.',
+        'A common speed-up keeps one `max_count` variable, raised when a letter is added and **never lowered** when the window shrinks. The window it holds is then not always fixable (for `s = "BBC"`, `k = 0` it records "BC"), but its **length** is still a correct answer: if some window once held `max_count` copies of a letter, a window of length `max_count + k` around those copies (or the whole string, if that is shorter) can be fixed. Learn this plain version first.',
       ],
     },
     {
@@ -255,7 +253,7 @@ class Solution:
       category: 'sliding-window',
       pattern: 'Fixed-size window with a "missing" counter',
       prompt:
-        'Given two strings `s1` and `s2`, return `True` if some substring of `s2` is a **rearrangement** of `s1` (same letters, same counts). Otherwise return `False`.',
+        'Given two strings `s1` and `s2` made of **lowercase English letters**, return `True` if some substring of `s2` is a **rearrangement** of `s1` (same letters, same counts). Otherwise return `False`.',
       examples: [
         { input: 's1 = "cat", s2 = "doactg"', output: 'True', note: '"act" (positions 2 to 4) uses the same letters as "cat".' },
         { input: 's1 = "ab", s2 = "axxb"', output: 'False' },
@@ -281,7 +279,7 @@ class Solution:
       solution: py`
 class Solution:
     def checkInclusion(self, s1: str, s2: str) -> bool:
-        #@ need[c] = how many more c's the window still lacks; missing = total letters still lacking.
+        #@ need[c] = how many more c's the window still lacks; missing = total letters still lacking. collections.Counter(s1) counts the letters of s1, and it answers 0 (no error) for a letter it has never seen.
         need = collections.Counter(s1)
         missing = len(s1)
         #@ Slide r across s2 and add the new letter. If s1 still needed it, one fewer letter is missing.
@@ -303,7 +301,7 @@ class Solution:
       time: 'O(n)',
       space: 'O(1)',
       complexityWhy:
-        'One pass over s2 (plus counting s1) with O(1) work per step. The counter holds at most 26 lowercase letters.',
+        'One pass over s2 (plus counting s1) with O(1) work per step. The prompt promises lowercase English letters, so the counter holds at most 26 keys.',
       pitfalls: [
         'Off-by-one on the left edge: the letter leaving is `s2[r - len(s1)]`, and only once `r >= len(s1)`.',
         '`need` can go negative — that just means the window has extra copies. Only change `missing` when a count crosses zero.',
@@ -318,7 +316,7 @@ class Solution:
       category: 'sliding-window',
       pattern: 'Variable window: expand to valid, shrink while valid',
       prompt:
-        'Given strings `s` and `t`, return the **shortest substring of s** that contains every character of `t`, including repeats. If there is none, return `""`. When an answer exists it is unique.',
+        'Given strings `s` and `t` made of **English letters** (uppercase and lowercase are different characters), return the **shortest substring of s** that contains every character of `t`, including repeats. If there is none, return `""`. When an answer exists it is unique.',
       examples: [
         { input: 's = "CBDACB", t = "ABC"', output: '"ACB"', note: 'Other windows like "CBDA" also cover A, B and C, but are longer.' },
         { input: 's = "xyz", t = "xx"', output: '""', note: 's has only one x.' },
@@ -344,7 +342,7 @@ class Solution:
       solution: py`
 class Solution:
     def minWindow(self, s: str, t: str) -> str:
-        #@ need[c] = how many more c's the window still lacks; missing = total letters still lacking.
+        #@ need[c] = how many more c's the window still lacks; missing = total letters still lacking. best_len starts at float("inf"), which is infinity: any real window is shorter, so the first one found always replaces it.
         need = collections.Counter(t)
         missing = len(t)
         l = 0
@@ -363,7 +361,7 @@ class Solution:
                 if need[s[l]] > 0:  #!
                     missing += 1
                 l += 1
-        #@ Return the best window, or "" if no window ever covered t.
+        #@ best_len still infinity means no window ever covered t: return "". Otherwise return the best window, cut out of s with a slice.
         if best_len == float("inf"):
             return ""
         return s[best_start:best_start + best_len]`,

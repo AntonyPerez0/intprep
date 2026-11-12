@@ -246,7 +246,7 @@ class Solution:
     def setZeroes(self, matrix: List[List[int]]) -> None:
         #@ Grab the number of rows and columns.
         rows, cols = len(matrix), len(matrix[0])
-        #@ Row 0 and column 0 will hold our marks, so first note whether they contain a real zero.
+        #@ Row 0 and column 0 will hold our marks, so first note whether they contain a real zero. any(...) is True if at least one of the checks inside it is True; the checks come from a loop written inside the parentheses (a generator expression).
         first_row_zero = any(matrix[0][c] == 0 for c in range(cols))
         first_col_zero = any(matrix[r][0] == 0 for r in range(rows))
         #@ For each zero in the inner grid, mark its row (in column 0) and its column (in row 0).
@@ -498,7 +498,7 @@ class Solution:
                 total = result[i + j + 1] + product  #!
                 result[i + j + 1] = total % 10
                 result[i + j] += total // 10  #!
-        #@ The first slot may be an unused 0. Skip it, then glue the digits into a string.
+        #@ The first slot may be an unused 0. Skip it, then glue the digits into a string. join needs text, so str(d) turns each digit d into a character first.
         start = 1 if result[0] == 0 else 0
         return "".join(str(d) for d in result[start:])`,
       time: 'O(m · n)',

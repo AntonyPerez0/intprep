@@ -5,7 +5,8 @@ import { Check, ChevronDown, FilterX, Layers, RotateCcw, Search, SearchX, X } fr
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEMS } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
-import { CROWN_LABELS, crowns, isDue } from '../lib/srs';
+import { mastery } from '../lib/input';
+import { CROWN_LABELS, isDue } from '../lib/srs';
 import { useProgress } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CATEGORY_ICON, CategoryIcon } from '../components/icons';
@@ -76,7 +77,7 @@ export function Problems() {
     const pp = p.problems[x.id];
     return pp?.learnedAt && pp.srs && isDue(pp.srs);
   }).length;
-  const strongCount = PROBLEMS.filter((x) => p.problems[x.id]?.learnedAt && crowns(p.problems[x.id]?.srs) >= 4).length;
+  const strongCount = PROBLEMS.filter((x) => p.problems[x.id]?.learnedAt && mastery(p.problems[x.id]) >= 4).length;
 
   const searching = q.trim() !== '';
   const narrowed = cat !== 'all' || diff !== 'all' || status !== 'all';
@@ -222,7 +223,7 @@ export function Problems() {
               {rows.map((x) => {
                 const { pp, learned, due } = statusOf(x.id);
                 const c = CATEGORY_BY_ID[x.category];
-                const n = learned ? crowns(pp?.srs) : 0;
+                const n = learned ? mastery(pp) : 0;
                 const statusLabel = due ? 'Due for review' : learned ? 'Learned' : 'Not started';
                 return (
                   <li key={x.id}>

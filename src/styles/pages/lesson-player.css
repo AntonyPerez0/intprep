@@ -446,3 +446,66 @@
     display: inline;
   }
 }
+
+/* ── "Your turn", run with real Python ──────────────────────────────────────
+   What Python said about code that is not right yet (an error with its line, the
+   wrong output, a failed check), and our version next to code that works. */
+.lplayer-run,
+.lplayer-works {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--danger-border);
+  background: var(--surface);
+  display: grid;
+  gap: 8px;
+}
+.lplayer-works {
+  border-color: var(--success-border);
+  background: var(--success-subtle);
+}
+.lplayer-run-label,
+.lplayer-works-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--danger-text);
+}
+.lplayer-works-label {
+  color: var(--success-text);
+}
+.lplayer-run-help {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.lplayer-run-help p {
+  margin: 0;
+}
+.lplayer-run-out {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.lplayer-run-out pre,
+.lplayer-works-code {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--code-bg);
+  color: var(--code-text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  overflow-x: auto;
+  white-space: pre;
+}
+@media (max-width: 480px) {
+  .lplayer-run-out {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

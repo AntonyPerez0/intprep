@@ -5,13 +5,13 @@ const content: CategoryContent = {
     category: 'intervals',
     summary: `An **interval** is a pair \`[start, end]\`: a meeting from 9 to 11, a hotel booking, a range of numbers. Interval problems ask which ones overlap, how to merge them, or how many are happening at once.
 
-Unsorted intervals are a mess: an overlap could be hiding anywhere in the list. So the first move is almost always to **sort by start time**. After sorting, an interval can only overlap the ones just before it.
+Unsorted intervals are a mess: an overlap could be hiding anywhere in the list. So the first move is almost always to **sort by start time**. After sorting, intervals that overlap come in one unbroken run. So a new interval can only overlap the **block you are currently building**, never an older one.
 
-Then walk the list once and compare each interval with the **last one you kept**. In general, two intervals overlap when each one starts before the other ends: \`a.start <= b.end and b.start <= a.end\`. After sorting, half of that is automatic, so you only check \`new.start <= last.end\`.
+Then walk the list once and compare each interval with the **last one you kept**, using that one's end. Do not compare with the previous *input* interval: in \`[1, 10], [2, 3], [4, 5]\` the third does not overlap its neighbor \`[2, 3]\`, but it does overlap \`[1, 10]\`. In general, two intervals overlap when each one starts before the other ends: \`a.start <= b.end and b.start <= a.end\`. After sorting, half of that is automatic, so you only check \`new.start <= last.end\`.
 
 If they overlap, merge them (stretch the end) or count a clash. If not, the new interval starts a fresh group. When you need to know how many intervals are active **at the same time**, add a **min-heap of end times**.`,
     analogy:
-      'Think of a paper calendar. If you write every appointment in order of start time, you can spot a double-booking by looking at each appointment and the one right before it. You never need to compare every pair.',
+      'Think of a paper calendar. If you write every appointment in order of start time, you only have to remember one thing as you read down the page: when the appointments so far end. A new appointment that starts before that time is a double-booking. You never need to compare every pair.',
     whenToUse: [
       'The input is a list of `[start, end]` pairs (meetings, bookings, ranges) → **sort by start** first',
       'You must **merge**, **insert** or **remove** overlapping ranges → sort, then compare with the last kept interval',
@@ -33,8 +33,8 @@ def merge_sweep(intervals):
     templateNotes: [
       'Sorting costs O(n log n) and is usually the slowest step. The sweep after it is a single O(n) pass.',
       'Decide whether touching intervals like `[1, 3]` and `[3, 5]` overlap. Merge Intervals says yes (use `<=`); meeting problems usually say no (use `<`).',
-      '`intervals.sort()` with no key also works: lists compare by first element, then second.',
-      'Compare against `merged[-1]` (the last *kept* interval), not the previous input interval: the last kept one may have been stretched.',
+      'The template spells the sort out: `lambda iv: iv[0]` is a tiny function that takes one interval and returns its start, and `key=` tells `sort` to order by that. Plain `intervals.sort()` gives the same result here, because lists compare by first element, then second. The problems in this unit use the plain form.',
+      'Compare against `merged[-1]` (the last *kept* interval), not the previous input interval: the last kept one may have been stretched. With `[1, 10], [2, 3], [4, 5]`, comparing `[4, 5]` with `[2, 3]` finds no overlap and wrongly starts a new block.',
     ],
     complexity: 'O(n log n) time for the sort, then O(n) for the sweep. O(n) space for the output.',
     quiz: [
@@ -48,12 +48,12 @@ def merge_sweep(intervals):
         q: 'Why do most interval solutions begin by sorting by start time?',
         options: [
           'It makes the output look tidy',
-          'Overlapping intervals end up next to each other, so one pass finds them all',
+          'Each group of overlapping intervals ends up in one unbroken run, so one pass finds them all',
           'It lets you use binary search on the ends',
           'Python can only compare sorted lists',
         ],
         answer: 1,
-        explain: 'Once sorted, an interval can only overlap its neighbors, so you never need to compare every pair.',
+        explain: 'Once sorted, anything that overlaps the block you are building comes right after it, before any gap. So you compare each interval with the end of that block and never need to compare every pair.',
       },
       {
         q: 'You are assigning meetings to rooms and want the room that frees up soonest. What should you keep?',
@@ -113,7 +113,7 @@ class Solution:
         while i < n and intervals[i][1] < newInterval[0]:  #!
             result.append(intervals[i])
             i += 1
-        #@ Phase 2: every interval that starts before the new one ends overlaps it. Swallow each one by stretching the new interval.
+        #@ Phase 2: every interval that starts before the new one ends overlaps it. Swallow each one by stretching the new interval, the same move as in Merge Intervals.
         start, end = newInterval
         while i < n and intervals[i][0] <= end:  #!
             start = min(start, intervals[i][0])
@@ -156,7 +156,7 @@ class Solution:
       brute:
         'Compare every interval with every other one and merge overlapping pairs, repeating until nothing changes. That is at least **O(n²)** and fiddly to get right.',
       insight:
-        'Sort by start time. Then overlapping intervals sit **next to each other**, and you only ever compare the current interval with the **last merged one**.',
+        'Sort by start time. Then an interval can only overlap the **merged interval you are currently building**, so compare its start with the **last merged end**, not with the previous input interval. In `[1, 10], [2, 3], [4, 5]` the third overlaps the first, not its neighbor.',
       mnemonic: 'Sort by start. Overlaps the last? Stretch it. Else append.',
       steps: [
         'Sort the intervals by start time.',
@@ -168,11 +168,11 @@ class Solution:
       solution: py`
 class Solution:
     def merge(self, intervals: List[List[int]]) -> List[List[int]]:
-        #@ Sort by start time so any overlapping intervals end up side by side.
-        intervals.sort(key=lambda iv: iv[0])  #!
+        #@ Sort by start time (lists compare by their first item, then the second). Now an interval can only overlap the merged block we are building, never an older one.
+        intervals.sort()  #!
         #@ The first interval starts our answer list.
         merged = [intervals[0]]
-        #@ Compare each remaining interval with the last one we kept.
+        #@ Compare each remaining interval with the last one we kept, which may already have been stretched.
         for start, end in intervals[1:]:
             last = merged[-1]
             #@ It starts before (or exactly when) the last one ends: they overlap, so stretch the last one. Use max in case it was already longer.
@@ -188,7 +188,8 @@ class Solution:
       complexityWhy: 'Sorting is O(n log n) and the merge pass is O(n). The merged list can hold all n intervals.',
       pitfalls: [
         'Writing `last[1] = end` instead of `max(last[1], end)` breaks when one interval sits inside another, like `[1, 10]` and `[2, 3]`.',
-        'Forgetting to sort first: overlapping intervals might not be neighbors.',
+        'Comparing with the previous **input** interval instead of `merged[-1]`: in `[1, 10], [2, 3], [4, 5]`, `[4, 5]` does not overlap `[2, 3]`, but it sits inside `[1, 10]`.',
+        'Forgetting to sort first: an interval could then overlap a block you finished long ago.',
         'Using `<` instead of `<=` fails to merge touching intervals like `[1, 3]` and `[3, 4]`.',
       ],
     },
@@ -228,8 +229,8 @@ class Solution:
       solution: py`
 class Solution:
     def eraseOverlapIntervals(self, intervals: List[List[int]]) -> int:
-        #@ Sort by start so clashes show up next to each other.
-        intervals.sort(key=lambda iv: iv[0])
+        #@ Sort by start. Now a new interval can only clash with the last interval we kept, so one end time is all we need to remember.
+        intervals.sort()
         #@ removed counts deletions. prev_end is where the last kept interval ends.
         removed = 0
         prev_end = intervals[0][1]
@@ -270,12 +271,12 @@ class Solution:
       signals: ['"attend all meetings"', 'yes/no: is there any overlap at all?', 'list of start and end times'],
       hints: [
         'Comparing every pair works but is slow. Is there an order that makes clashes easy to spot?',
-        'After sorting by start time, a meeting can only clash with the one right before it.',
+        'Sort by start time. If any two meetings clash, then some meeting also clashes with the one right before it, so checking neighbors is enough.',
         'Sort, then return False if any meeting starts before the previous one ends.',
       ],
       brute: 'Compare every pair of meetings to see if they overlap: **O(n²)**.',
       insight:
-        'Sort by start time. Then you only need to compare **neighbors**: if any meeting starts before the previous one ends, there is a clash.',
+        'Sort by start time. Then a yes/no answer only needs **neighbors**. Say meetings A and C clash, with A first. Every meeting between them in the sorted list also starts before A ends, so the meeting right after A clashes with A too. If no meeting starts before the previous one ends, nothing clashes.',
       mnemonic: 'Sort by start; any start before the previous end? Clash.',
       steps: [
         'Sort the meetings by start time.',
@@ -286,8 +287,8 @@ class Solution:
       solution: py`
 class Solution:
     def canAttendMeetings(self, intervals: List[List[int]]) -> bool:
-        #@ Sort meetings by start time so we only need to compare neighbors.
-        intervals.sort(key=lambda iv: iv[0])  #!
+        #@ Sort the meetings by start time. Plain sort() does it: lists compare by their first item, then the second. Now any clash shows up between two neighbors.
+        intervals.sort()  #!
         #@ Check each meeting against the one right before it.
         for i in range(1, len(intervals)):
             #@ Starting before the previous meeting ends means being in two places at once.
@@ -302,6 +303,7 @@ class Solution:
         'Using `<=` wrongly rejects back-to-back meetings like `[1, 3]` and `[3, 5]`.',
         'Forgetting to sort: in the original order, two clashing meetings may be far apart in the list.',
         'An empty list or a single meeting is always fine. The loop simply does not run.',
+        'Neighbors are enough only for this yes/no question. A meeting can also clash with one further back (`[1, 10], [2, 3], [4, 5]`), so to merge or count you compare with the end of what you have kept so far. Merge Intervals does that next.',
       ],
     },
     {
@@ -342,7 +344,7 @@ class Solution:
 class Solution:
     def minMeetingRooms(self, intervals: List[List[int]]) -> int:
         #@ Handle meetings in the order they start.
-        intervals.sort(key=lambda iv: iv[0])
+        intervals.sort()
         #@ A min-heap of end times: one entry per room, with the room that frees up soonest on top.
         ends = []
         #@ Place each meeting in turn.

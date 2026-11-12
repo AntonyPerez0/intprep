@@ -697,3 +697,101 @@ div.plesson-locked {
     opacity: 0;
   }
 }
+
+/* ── Brute force: the stages toward the answer (derivations.ts) ───────────── */
+.plesson-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.plesson-stage {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  min-width: 0;
+}
+.plesson-stage.is-open {
+  border-color: var(--brand-border);
+}
+.plesson-stage-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--r-md);
+}
+.plesson-stage-head:hover {
+  background: var(--surface-hover);
+}
+.plesson-stage-head:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+.plesson-stage-num {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+.plesson-stage.is-open .plesson-stage-num {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+.plesson-stage-title {
+  flex: 1;
+  min-width: 0;
+}
+.plesson-stage-time {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  color: var(--text-tertiary);
+}
+.plesson-stage-body {
+  display: grid;
+  gap: 12px;
+  padding: 2px 12px 14px;
+  min-width: 0;
+}
+.plesson-stage-next {
+  justify-self: start;
+}
+.plesson-stage-end {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+/* Think it through: the learner's own idea, in a sentence, before the answer */
+.plesson-idea {
+  display: grid;
+  gap: 6px;
+}
+.plesson-idea-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.plesson-idea-optional {
+  margin-left: 4px;
+  font-weight: 450;
+  color: var(--text-tertiary);
+}
+.plesson-idea textarea {
+  resize: vertical;
+}

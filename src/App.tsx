@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
 import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation, useParams } from 'react-router-dom';
+import { Crash } from './components/Crash';
 import { AppShell } from './components/Shell';
 import { Toaster } from './components/ui';
-import { reconcileStreak, useProgress } from './lib/store';
+import { reconcileStreak, storageNotice, useProgress } from './lib/store';
 import { Blitz } from './pages/Blitz';
+import { ClueDrillRoute } from './pages/ClueDrill';
 import { Home } from './pages/Home';
 import { Landing } from './pages/Landing';
 import { OnboardingPage } from './pages/Onboarding';
 import { Learn } from './pages/Learn';
 import { LessonPlayer } from './pages/LessonPlayer';
+import { Mock } from './pages/Mock';
 import { Patterns } from './pages/Patterns';
 import { ProblemDetail } from './pages/ProblemDetail';
 import { ProblemLessonRoute } from './pages/ProblemLesson';
@@ -17,6 +20,7 @@ import { Profile } from './pages/Profile';
 import { RebuildRoute } from './pages/Rebuild';
 import { Review } from './pages/Review';
 import { Science } from './pages/Science';
+import { SolveRoute } from './pages/Solve';
 import { TemplateDrillRoute } from './pages/TemplateDrill';
 import { Unit } from './pages/Unit';
 
@@ -40,6 +44,7 @@ function Root() {
     else el.setAttribute('data-theme', theme);
   }, [theme]);
   useEffect(() => {
+    storageNotice();
     reconcileStreak();
     const onVis = () => document.visibilityState === 'visible' && reconcileStreak();
     document.addEventListener('visibilitychange', onVis);
@@ -58,6 +63,8 @@ function Root() {
 const router = createHashRouter([
   {
     element: <Root />,
+    // A screen that throws shows this instead of a blank page.
+    errorElement: <Crash />,
     children: [
       {
         element: <AppShell />,
@@ -70,6 +77,7 @@ const router = createHashRouter([
           { path: '/problems', element: <Problems /> },
           { path: '/profile', element: <Profile /> },
           { path: '/science', element: <Science /> },
+          { path: '/mock', element: <Mock /> },
         ],
       },
       // Marketing + onboarding (no app chrome).
@@ -80,9 +88,11 @@ const router = createHashRouter([
       { path: '/unit/:cat/intro', element: <GuideRoute /> },
       { path: '/p/:id/learn', element: <ProblemLessonRoute /> },
       { path: '/p/:id/rebuild', element: <RebuildRoute /> },
+      { path: '/p/:id/solve', element: <SolveRoute /> },
       { path: '/patterns/:cat/type', element: <TemplateDrillRoute /> },
       { path: '/review', element: <Review /> },
       { path: '/blitz', element: <Blitz /> },
+      { path: '/clues', element: <ClueDrillRoute /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

@@ -49,6 +49,7 @@ def reverse(head):
       'Always save `curr.next` **before** you overwrite it. Once that arrow changes, the rest of the list is unreachable.',
       'With a dummy node, "the node before the head" always exists, so deleting or inserting at the front needs no special case. Return `dummy.next`, not `head`.',
       '`while fast and fast.next` protects both jumps: fast moves two steps, so both of those nodes must exist.',
+      'Starting `fast` at `head.next` instead of `head` makes `slow` stop one node earlier on an even-length list: on the **last node of the first half**. Use that start when you need to cut the list in two after `slow` (Reorder List).',
       'Draw boxes and arrows on paper and update them line by line. Most linked-list bugs are an arrow changed one step too early.',
     ],
     complexity: 'Usually O(n) time and O(1) extra space, because you rewire existing nodes instead of copying them.',
@@ -198,7 +199,7 @@ class Solution:
                 list2 = list2.next
             #@ Move tail onto the node we just attached.
             tail = tail.next
-        #@ One list ran out. The other is already sorted, so attach all of it in one step.
+        #@ One list ran out. The other is already sorted, so attach all of it in one step. "list1 or list2" gives list1 if it still has nodes (it is not None), otherwise list2.
         tail.next = list1 or list2  #!
         #@ Skip the dummy and return the real head.
         return dummy.next`,
@@ -295,7 +296,7 @@ class Solution:
         'The result is just the first half woven together with the **reversed** second half. Combine three basic moves: find the middle, reverse, merge alternately.',
       mnemonic: 'Split at the middle, reverse the back, zip together.',
       steps: [
-        'Use slow and fast pointers to find the end of the first half.',
+        'Use slow and fast pointers (fast starting one node ahead) to find the last node of the first half.',
         'Cut the list after slow so the two halves are separate.',
         'Reverse the second half.',
         'Weave: link a node from the first half, then one from the reversed second half, and repeat.',
@@ -303,7 +304,7 @@ class Solution:
       solution: py`
 class Solution:
     def reorderList(self, head: Optional[ListNode]) -> None:
-        #@ Find the middle. When fast stops, slow sits on the last node of the first half.
+        #@ Find the middle with slow and fast. fast starts one node ahead (head.next, where the guide template starts both at head). That makes slow stop on the LAST node of the first half, also when the length is even, which is exactly the node to cut after.
         slow, fast = head, head.next
         while fast and fast.next:
             slow = slow.next
@@ -332,7 +333,7 @@ class Solution:
       pitfalls: [
         'Forgetting `slow.next = None` leaves the halves connected, which creates a cycle while weaving.',
         'Losing nodes while weaving: save both `first.next` and `second.next` before relinking.',
-        'Starting fast at `head.next` makes the first half equal to or one longer than the second, so the weave can stop when the second half runs out.',
+        'Starting `fast` at `head` (as in the template) stops `slow` one node later on an even-length list. With `head.next` the first half is equal to or one longer than the second, so the weave can stop when the second half runs out.',
       ],
     },
     {
@@ -506,7 +507,7 @@ class Solution:
         carry = 0
         #@ Keep going while either list has digits OR a carry is still waiting to be written.
         while l1 or l2 or carry:  #!
-            #@ A list that has run out counts as the digit 0.
+            #@ A list that has run out counts as the digit 0. "a if cond else b" picks one of two values in one line: l1.val if the node l1 exists, else 0.
             v1 = l1.val if l1 else 0
             v2 = l2.val if l2 else 0
             #@ Add the column like on paper: write the ones digit, carry the tens.
@@ -514,7 +515,7 @@ class Solution:
             carry = total // 10  #!
             tail.next = ListNode(total % 10)  #!
             tail = tail.next
-            #@ Move to the next column in each list, if it has one.
+            #@ Move to the next column in each list, if it has one. The same one-line if/else keeps a finished list at None.
             l1 = l1.next if l1 else None
             l2 = l2.next if l2 else None
         #@ Skip the dummy to return the ones digit of the sum.
@@ -549,14 +550,14 @@ class Solution:
         'every value is also a valid index',
       ],
       hints: [
-        'Every value is a valid index. Think of `i → nums[i]` as an arrow from one index to another.',
-        'If two indices hold the same value, two arrows point into the same spot. What shape does that create?',
-        'It is a linked list with a cycle, and the duplicate is where the cycle starts. Use Floyd: meet inside the cycle, then restart one pointer at 0 and move both 1 step at a time until they meet.',
+        'Every value is between 1 and n, so every value is also a valid index. Start at index 0, read the value there, jump to that index, and repeat. What can happen if you keep jumping?',
+        'Read `i → nums[i]` as a `next` pointer: the array is a linked list in disguise, with index 0 as its head. Two positions that hold the same value point at the same node. What shape does a list have when two arrows lead into one node?',
+        'A cycle, and the duplicate is the node where the path from the head joins it (the entrance). Find a meeting point inside the cycle with slow and fast, as in Linked List Cycle. Then start one more pointer at index 0 and move it and slow one step at a time: they meet at the entrance.',
       ],
       brute:
         'A hash set finds it in **O(n)** time but needs **O(n)** space; sorting takes **O(n log n)** and changes the array. Both break the rules. (Binary search on the value range, counting values, works in **O(n log n)** time and O(1) space.)',
       insight:
-        'Read the array as a linked list where index `i` points to index `nums[i]`. The duplicate value has two arrows pointing into it, so it is exactly the **entrance of a cycle**, and Floyd finds a cycle entrance in O(1) space.',
+        'Read the array as a linked list where index `i` points to index `nums[i]`. Two positions hold the duplicate value, so two arrows lead into that index: it is the **entrance of a cycle**, where the path from index 0 joins the loop. After slow and fast meet inside the loop, the start and the meeting point are the same number of steps away from the entrance (give or take whole laps), so two pointers walking from those two spots, one step at a time, meet exactly there.',
       mnemonic: 'Values are arrows; the duplicate is where the loop begins.',
       steps: [
         'Treat each index i as a node whose next is nums[i], starting from index 0.',
@@ -570,18 +571,18 @@ class Solution:
     def findDuplicate(self, nums: List[int]) -> int:
         #@ Treat index i as a node whose next pointer is nums[i]. Both runners start at index 0.
         slow, fast = 0, 0
-        #@ Phase 1: slow moves 1 step, fast moves 2, until they meet somewhere inside the cycle.
+        #@ Phase 1: slow moves 1 step, fast moves 2, until they meet somewhere inside the cycle. "while True" repeats until the break. We cannot test slow == fast at the top of the loop: both start at index 0, so it would look as if they had already met.
         while True:
             slow = nums[slow]
             fast = nums[nums[fast]]  #!
             if slow == fast:
                 break
-        #@ Phase 2: a new runner starts at index 0. Moving both 1 step at a time, they meet at the cycle entrance.
+        #@ Phase 2: why a restart from index 0 finds the entrance. Call the distance from index 0 to the entrance a. When the runners met, fast had walked exactly twice as far as slow and stood on the same node, so the extra distance, which equals slow's whole walk, is a whole number of laps. slow's walk was a steps to the entrance plus the rest inside the loop. If slow now walks a more steps, its steps inside the loop add up to whole laps: it is back at the entrance. A new runner from index 0 needs those same a steps to get there. So start finder at 0 and move both 1 step at a time: they meet at the entrance.
         finder = 0
         while finder != slow:
             finder = nums[finder]  #!
             slow = nums[slow]
-        #@ Two indices point to the entrance, so the entrance is the duplicate value.
+        #@ The entrance has two arrows into it: one from the path leading in and one from the end of the loop. Two positions hold its number, so the entrance is the duplicate value.
         return finder`,
       time: 'O(n)',
       space: 'O(1)',
@@ -589,7 +590,7 @@ class Solution:
         'Each phase takes at most a few trips around n + 1 indices. Only three integers are stored.',
       pitfalls: [
         'Starting at index 0 matters: no value is 0, so nothing points back to index 0, which keeps it outside the cycle.',
-        'In phase 2, move **both** pointers one step at a time. If one still moved two steps, they would not meet at the entrance.',
+        'In phase 2, move **both** pointers one step at a time. The distance argument (both are the same number of steps from the entrance) only holds at equal speed.',
         'Writing `fast = nums[fast]` (one step) instead of `nums[nums[fast]]` means fast never gains on slow, and the meeting point is wrong.',
       ],
     },
@@ -616,25 +617,25 @@ class Solution:
       ],
       signals: ['"least recently used" eviction', 'get and put must both be O(1)', 'need fast lookup **and** a usage order'],
       hints: [
-        'A dict gives O(1) lookup, but how would you know which key is the oldest?',
-        'You need an order where you can move any item to the "newest" end and drop the "oldest" end, all in O(1).',
-        'A doubly linked list does that if you can find each node instantly: store key → node in a dict. Add two sentinel nodes, `left` (oldest side) and `right` (newest side).',
+        'A dict gives O(1) lookup by key, but lookup is not enough here. What else must the cache know to decide which key to evict, and when does that change?',
+        'It must keep the keys in order of last use. Every `get` or `put` takes one key out of the **middle** of that order and moves it to the newest end. In a Python list that removal shifts everything behind it: O(n). Which structure can cut an item out of the middle by changing a few pointers?',
+        'A linked list, if each node knows **both** neighbors (`prev` and `next`: a doubly linked list) and you can jump straight to it: keep a dict of key → node. Put a dummy node at each end, `left` before the oldest and `right` after the newest, so every real node always has two neighbors and no case needs a `None` check.',
       ],
       brute:
         'Keep the keys in a Python list ordered by use. Finding a key to move it to the end needs `list.remove`, which is **O(n)** per operation.',
       insight:
-        'A dict maps each key to its node in a **doubly linked list** ordered from least to most recently used. The dict finds the node in O(1), and its prev/next links let you unlink it and move it to the recent end in O(1).',
+        "Use two structures that cover each other: a dict finds a key's node in O(1), and a **doubly linked list** keeps the nodes in order of use, oldest first. A node that knows both neighbors can be unlinked from the middle and re-added at the newest end in O(1). A dummy node at each end means there is always a neighbor on both sides, so the empty list and the two ends need no special cases.",
       mnemonic: 'The dict finds the node; the list keeps the order.',
       steps: [
-        'Store the capacity, a dict of key to node, and left/right sentinel nodes linked to each other.',
+        'Store the capacity, a dict of key to node, and left/right dummy nodes linked to each other.',
         'Write remove(node) to unlink a node from its two neighbors.',
-        'Write insert(node) to add a node just before the right sentinel (most recent).',
+        'Write insert(node) to add a node just before the right dummy (most recent).',
         'get: if the key exists, move its node to the right end and return its value; otherwise return -1.',
         'put: remove any old node for the key, then insert a new node and store it in the dict.',
         'If the dict is over capacity, remove the node right after left and delete its key from the dict.',
       ],
       solution: py`
-#@ LeetCode gives no node class here, so we write a tiny one. It stores its key so eviction can delete it from the dict.
+#@ LeetCode gives no node class here, so we write a tiny one. Each node knows both of its neighbors (prev and next: a doubly linked list), which is what lets us cut it out of the middle of the list in O(1). It also stores its key, so eviction can delete it from the dict.
 class Node:
     def __init__(self, key, val):
         self.key, self.val = key, val
@@ -642,19 +643,19 @@ class Node:
 
 
 class LRUCache:
-    #@ The dict maps key to node. left and right are sentinels: left.next is the oldest, right.prev the newest.
+    #@ cache maps key to node, so any node is found in O(1). left and right are two dummy nodes (sentinels) that never hold real data. The real nodes live between them in order of use: left.next is the oldest, right.prev the newest. An empty cache is just left and right linked to each other.
     def __init__(self, capacity: int):
         self.cap = capacity
         self.cache = {}
         self.left, self.right = Node(0, 0), Node(0, 0)
         self.left.next, self.right.prev = self.right, self.left
 
-    #@ Helper: unlink a node by connecting its two neighbors to each other.
+    #@ Helper: unlink a node by connecting its two neighbors to each other. Thanks to the dummies, both neighbors always exist, even for the oldest or the newest node, so no None checks are needed.
     def remove(self, node):
         prev, nxt = node.prev, node.next
         prev.next, nxt.prev = nxt, prev  #!
 
-    #@ Helper: insert a node just before right, marking it the most recently used.
+    #@ Helper: add a node at the newest end, just before right. prev is the node that was newest until now. The new node goes between prev and right, so four links change: two pointing at it, two pointing out of it.
     def insert(self, node):
         prev, nxt = self.right.prev, self.right
         prev.next = nxt.prev = node
@@ -686,7 +687,7 @@ class LRUCache:
       pitfalls: [
         'Each node must store its **key**: when you evict the oldest node, you need the key to delete it from the dict.',
         'Forgetting to move a node to the recent end on `get`: reading counts as using.',
-        'Sentinels remove every `None` check: there is always a real node on both sides of anything you unlink or insert.',
+        'The two dummy nodes remove every `None` check: there is always a node on both sides of anything you unlink or insert. Without them, the first insert and removing the oldest or newest node would each need their own branch.',
         'In Python, `collections.OrderedDict` with `move_to_end` does the same job, but interviewers usually want you to build the list yourself.',
       ],
     },
@@ -732,7 +733,7 @@ class Solution:
         #@ Each round merges the lists in pairs, halving how many are left.
         while len(lists) > 1:
             merged = []
-            #@ Take lists two at a time. An odd one out is merged with None, which leaves it unchanged.
+            #@ Take lists two at a time. The one-line if/else gives l2 the partner list if there is one, else None. An odd one out is merged with None, which leaves it unchanged.
             for i in range(0, len(lists), 2):
                 l1 = lists[i]
                 l2 = lists[i + 1] if i + 1 < len(lists) else None
@@ -754,7 +755,7 @@ class Solution:
                 tail.next = l2
                 l2 = l2.next
             tail = tail.next
-        #@ Attach whatever is left and skip the dummy.
+        #@ Attach whatever is left (l1 or l2 is whichever list still has nodes) and skip the dummy.
         tail.next = l1 or l2
         return dummy.next`,
       time: 'O(N log k)',
@@ -783,20 +784,20 @@ class Solution:
       signals: ['reverse in fixed-size groups', 'a leftover partial group stays as it is', 'O(1) extra memory'],
       hints: [
         'Can you reverse just one group of k nodes and reconnect it to the rest of the list?',
-        'Before reversing a group, check that k nodes really remain. Keep a pointer to the node just before the group.',
-        'Reverse the group with prev starting at the node after the group, so the old first node automatically links onward. Then point the node before the group at the old k-th node.',
+        'Before reversing a group, check that k nodes really remain. To reconnect the group afterwards you need its two neighbors: the node just before it and the node just after it.',
+        'Call them `group_prev` and `group_next`. Reverse the group with `prev` starting at `group_next` (not `None`), so the old first node, which ends up last, already links onward. Then point `group_prev` at the old k-th node, which is now first.',
       ],
       brute:
         'Copy the values into an array, reverse each block of k, and write them back: **O(n)** time but **O(n)** extra space, and it swaps values instead of relinking nodes.',
       insight:
-        'It is ordinary reversal, done one group at a time. A dummy node plus a `group_prev` pointer (the node before the current group) turns reconnecting each reversed group into a two-line job.',
+        "It is ordinary reversal, done one group at a time; the only new work is joining each group to its neighbors. Name them: `group_prev` is the node before the group (a dummy for the first group) and `group_next` the node after it. Start the reversal's `prev` at `group_next` so the group's new last node already points onward, then point `group_prev` at the group's new first node.",
       mnemonic: 'Find the kth, reverse the group, reconnect, slide on.',
       steps: [
         'Create a dummy node before head and set group_prev to it.',
         'Find the k-th node after group_prev; if it does not exist, stop.',
         'Remember group_next, the node right after the group.',
         'Reverse the group, starting prev at group_next.',
-        'Point group_prev.next at the k-th node, then move group_prev to the old first node.',
+        'Point group_prev.next at the k-th node, then move group_prev to the old first node (now the last of its group).',
         'Return dummy.next.',
       ],
       solution: py`
@@ -805,26 +806,26 @@ class Solution:
         #@ group_prev always sits just before the next group. It starts on a dummy in front of head.
         dummy = ListNode(0, head)
         group_prev = dummy
-        #@ Find the k-th node of this group. Fewer than k nodes left? Leave them as they are.
+        #@ "while True" repeats until the break. Each round handles one group: kth is its last node, k steps after group_prev. If fewer than k nodes are left, kth is None: leave them as they are and stop. group_next names the first node AFTER the group, so we know where the group ends.
         while True:
             kth = self.get_kth(group_prev, k)
             if not kth:  #!
                 break
             group_next = kth.next
-            #@ Reverse the group. Starting prev at group_next makes the old first node link onward.
+            #@ Reverse the group with the usual prev / curr walk, with two changes. curr starts on the group's first node (group_prev.next), and prev starts at group_next instead of None, so the first node, which ends up last, points straight on to the rest of the list. Stop when curr reaches group_next: every node of the group has been flipped.
             prev, curr = group_next, group_prev.next  #!
             while curr is not group_next:
                 nxt = curr.next
                 curr.next = prev
                 prev, curr = curr, nxt
-            #@ Reconnect: the node before the group now points at kth. The old first node is the new group_prev.
+            #@ Before the reversal the chain was group_prev, first, ..., kth, group_next. Now the group runs kth, ..., first, group_next, but group_prev still points at the old first node. Save that node as old_first, point group_prev at kth (the group's new first node), then move group_prev onto old_first: it is now the node just before the next group.
             old_first = group_prev.next
             group_prev.next = kth  #!
             group_prev = old_first
         #@ The dummy still points at the head of the rearranged list.
         return dummy.next
 
-    #@ Helper: walk k steps from curr. Returns None if the list runs out first.
+    #@ Helper: walk k steps from curr and return the node reached. Returns None if the list runs out first.
     def get_kth(self, curr, k):
         while curr and k > 0:
             curr = curr.next

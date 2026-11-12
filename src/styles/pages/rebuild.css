@@ -374,3 +374,8 @@ details.disclosure.rebuild-solution > .code {
   border-top: 1px solid var(--border);
   border-radius: 0;
 }
+
+/* From scratch: after a failed run, the solution diff is one click away, not shown by default. */
+.rebuild-compare {
+  margin-top: 10px;
+}

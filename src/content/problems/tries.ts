@@ -43,7 +43,7 @@ def walk(root, s):
     templateNotes: [
       'The root is an empty node that stands for the empty prefix "". Letters live on the edges: they are the keys of `children`.',
       '`is_end` separates a whole word from a mere prefix: after inserting only "cart", "car" is a prefix but not a word.',
-      'A dict for `children` works for any alphabet. A list of 26 slots indexed by `ord(ch) - ord("a")` also works for lowercase letters.',
+      'A dict for `children` works for any alphabet. A list of 26 slots indexed by `ord(ch) - ord("a")` also works for lowercase letters (`ord` gives a character its number, so this is 0 for "a" and 25 for "z").',
       'Insert and lookup cost O(L) for a word of length L, however many words are stored.',
     ],
     complexity: 'O(L) time per insert or lookup (L = word length) and O(total letters) space.',
@@ -267,14 +267,14 @@ class WordDictionary:
       ],
       signals: ['find **many** words in one grid', 'paths through neighboring cells, no cell reused', 'the words share prefixes'],
       hints: [
-        'Searching the grid separately for every word repeats a lot of work. What do "cat" and "cats" have in common?',
-        'Put all the words in a trie. Then one DFS from each cell can follow the trie and look for every word at once.',
-        'In the DFS, stop the moment the path so far is not a prefix in the trie. Store each whole word at its end node so you can record it on arrival.',
+        'Start with one word. From a starting cell you would trace it letter by letter: step to a neighbor that holds the next letter, and when you get stuck, step back and try another neighbor. What must you remember so a path never uses the same cell twice?',
+        'Doing that separately for every word repeats work: "cat" and "cats" walk the same first three cells. Put all the words in a trie. Then one walk from each cell can follow the trie and look for every word at once.',
+        'Write `dfs(r, c, parent)`: look up the letter of cell (r, c) among the children of the trie node `parent`. No such child means no word continues this way, so stop. Otherwise mark the cell as used (overwrite it with `"*"`), try the four neighbors from the child node, then put the letter back. Store each whole word at its last trie node so you can record it on arrival.',
       ],
       brute:
-        'Run the single-word grid search (Word Search) once per word — roughly **O(w · m · n · 3^L)** for w words. The same prefixes get explored again and again.',
+        'Search for each word on its own: from every cell, try to trace the word letter by letter, stepping to a neighboring cell each time and turning back when the next letter does not match. One word costs up to **O(m · n · 3^L)** (every start cell, then up to 3 ways onward for each of its L letters), so w words cost roughly **O(w · m · n · 3^L)**. Words that begin the same way make the search walk the same cells again and again.',
       insight:
-        'Build **one trie from all the words** and walk it while you DFS the grid. Each step moves one letter down the trie, so a path that does not start any word is cut off at once, and every word is searched for at the same time.',
+        "Build **one trie from all the words** and walk it in step with the grid: every move to a neighboring cell is also one move down the trie. If the trie has no child for the cell's letter, no word starts this way, so that path is dropped at once, and all the words are searched for in the same walk.",
       mnemonic: 'The trie steers the grid walk; dead prefix, turn back.',
       steps: [
         'Insert every word into a trie, storing the whole word at its last node.',
@@ -286,47 +286,49 @@ class WordDictionary:
       ],
       solution: py`
 class TrieNode:
-    #@ Each node keeps its children by letter, and the whole word if one ends here.
+    #@ The trie node from this unit, with one change: instead of an is_end flag it stores the whole word that ends here (None if no word does). When the search arrives at such a node, it can record the word straight away.
     def __init__(self):
         self.children = {}
         self.word = None
 
 
-#@ First put every word into one trie, so a single walk over the grid can look for all of them.
+#@ Remember the grid size, keep a list for the words we find, and start an empty trie.
 class Solution:
     def findWords(self, board: List[List[str]], words: List[str]) -> List[str]:
+        rows, cols = len(board), len(board[0])
+        found = []
         root = TrieNode()
+        #@ Put every word into that one trie, so a single walk over the grid can look for all of them. It is the usual insert: follow the letters from the root, create any missing node, and store the word itself at the last node.
         for w in words:
             node = root
             for ch in w:
-                node = node.children.setdefault(ch, TrieNode())
+                if ch not in node.children:
+                    node.children[ch] = TrieNode()
+                node = node.children[ch]
             node.word = w
-        #@ Remember the grid size, and keep a list of the words we find.
-        rows, cols = len(board), len(board[0])
-        found = []
 
-        #@ dfs(r, c, parent) tries to extend the current path with the letter at (r, c).
+        #@ dfs(r, c, parent) asks: the path so far ends at trie node parent; can it continue onto cell (r, c)? DFS (depth-first search) follows one path as far as it goes before trying the next. Read the cell's letter and look for that child of parent. .get(ch) gives None when there is none.
         def dfs(r, c, parent):
             ch = board[r][c]
             node = parent.children.get(ch)
-            #@ No child for this letter: no word continues this way, so stop early.
+            #@ No child for this letter: no word continues this way, so stop at once. This is what the trie buys us.
             if node is None:  #!
                 return
-            #@ A word ends here: record it, then clear it so it is never added twice.
+            #@ A word ends at this node, so the path we walked spells it: record it. Then clear it, so reaching the same word along another path does not add it twice.
             if node.word is not None:
                 found.append(node.word)
                 node.word = None
-            #@ Mark the cell as used, explore the four neighbors, then put the letter back.
+            #@ Mark this cell as used by overwriting its letter with "*", so the path cannot step back onto it. Try each of the four neighbors that is inside the grid and not marked. When they are all done, put the letter back: other paths must find the board unchanged. Mark, explore, restore is called backtracking.
             board[r][c] = "*"  #!
             for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
                 if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != "*":
                     dfs(nr, nc, node)
             board[r][c] = ch  #!
-            #@ Prune: a node with no children and no word left can never help again.
+            #@ Prune: if this trie node now has no children and no word, nothing can be found through it any more. Delete it from its parent, so later walks stop one step earlier.
             if not node.children and node.word is None:
                 del parent.children[ch]
 
-        #@ Start a search from every cell, then return the words found.
+        #@ Any cell can be the first letter of a word, so start a search from every cell at the trie root. Then return the words found.
         for r in range(rows):
             for c in range(cols):
                 dfs(r, c, root)
@@ -337,7 +339,7 @@ class Solution:
         'From each of the m · n cells the DFS can go 4 ways first, then at most 3 (never back onto a used cell), for at most L letters (the longest word). The trie holds W letters in total.',
       pitfalls: [
         'Clear `node.word` after recording it, or the same word gets added again from another path.',
-        'Restore the letter after exploring (that is the backtracking step), or later searches see a damaged board.',
+        'Put the letter back after exploring the neighbors (the "restore" half of backtracking), or later paths find `"*"` where a letter should be.',
         'Without pruning used-up trie branches, big boards with many words can run too slowly on LeetCode.',
         'Check the grid bounds before reading `board[nr][nc]`.',
       ],

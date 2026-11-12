@@ -466,3 +466,21 @@
     min-width: 0;
   }
 }
+
+/* Daily goal step: the optional interview date under the goals */
+.ob-date {
+  display: grid;
+  gap: 6px;
+  margin-top: 18px;
+}
+.ob-date-label {
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.ob-date-help {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.ob-date .input {
+  max-width: 220px;
+}

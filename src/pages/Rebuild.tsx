@@ -44,20 +44,22 @@ import type { Problem } from '../content/types';
 import { confetti } from '../lib/confetti';
 import { gapChoices, isGivenLine, isRealPick, sameCode, type GapChoice } from '../lib/drills';
 import { XP } from '../lib/game';
-import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade } from '../lib/codegrade';
+import { baseIndent, codeLines, gradeCode, gradeSummary, indentOf, isIgnorable, reindent, type Grade, withGiven } from '../lib/codegrade';
 import { gapSource, gapsSummary, type GapsGrade } from '../lib/gaps';
 import { highlightLine } from '../lib/highlight';
 import { hasTypedProof, problemInput, type CodeInput, type InputMode } from '../lib/input';
 import { inline } from '../lib/markdown';
 import { swapRuns } from '../lib/order';
 import { definedNames, lessonParts, parseSolution } from '../lib/parseSolution';
+import { pythonEnabled, warmPython, type JudgeResult } from '../lib/python';
 import { sfx } from '../lib/sound';
-import { awardXp, getProgress, recordRebuild, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
+import { awardXp, getProgress, recordRebuild, recordSolved, reviewProblem, useProgress, type ProblemProgress } from '../lib/store';
 import { ActionBar, CodeView, ProblemPrompt, type CheckStatus } from '../components/interact';
 import { CheckedAction, CodeDiff, CodeEditor, CodeLine, CodePane, CodeTyper, GivenLines, TyperFooter, TyperWindow } from '../components/CodeTyper';
 import { GapsWindow, lineAbove, PickGaps, PickGapsWindow, useGaps, usePickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
 import { INPUT_ICON, InputSwitch } from '../components/InputSwitch';
 import { CATEGORY_ICON, IconTile } from '../components/icons';
+import { PythonLoading, runLabel, TestReport, useTestRun } from '../components/RunResults';
 import { SessionShell } from '../components/Shell';
 import { Completion, DifficultyChip, Modal } from '../components/ui';
 
@@ -358,10 +360,10 @@ function PromptPanel({ p, show }: { p: Problem; show: boolean }) {
 }
 
 /** "4/6" lines (or gaps) right on the first check, in the session header; "+2" for extra lines typed. */
-function ScoreChip({ correct, total, extra = 0, unit = 'lines' }: { correct: number; total: number; extra?: number; unit?: 'lines' | 'gaps' }) {
+function ScoreChip({ correct, total, extra = 0, unit = 'lines' }: { correct: number; total: number; extra?: number; unit?: 'lines' | 'gaps' | 'tests' }) {
   const extraText = extra > 0 ? `, plus ${extra} extra line${extra === 1 ? '' : 's'}` : '';
   return (
-    <span className="rebuild-score" title={`${unit === 'gaps' ? 'Gaps' : 'Lines'} right on the first try${extraText}`}>
+    <span className="rebuild-score" title={unit === 'tests' ? 'Tests passed on the first check' : `${unit === 'gaps' ? 'Gaps' : 'Lines'} right on the first try${extraText}`}>
       <Check strokeWidth={2.4} aria-hidden="true" />
       <span aria-hidden="true">
         {correct}/{total}
@@ -1434,8 +1436,18 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
     setTextState(v);
   };
   const [grade, setGrade] = useState<Grade | null>(null);
-  // The score is the first check; later checks show the diff again but never raise it.
-  const [first, setFirst] = useState<{ grade: Grade; outline: boolean } | null>(null);
+  // With Python available the code is run against the problem's tests, so any correct solution
+  // passes, not only the lines of the one taught. `judged` is that run (null when the code matched
+  // line for line, or Python could not run: then the line-by-line grade stands alone).
+  const runner = useTestRun(p);
+  const [judged, setJudged] = useState<JudgeResult | null>(null);
+  const [compare, setCompare] = useState(false);
+  const canRun = pythonEnabled();
+  useEffect(() => {
+    warmPython();
+  }, []);
+  // The score is the first check; later checks show the result again but never raise it.
+  const [first, setFirst] = useState<{ grade: Grade; outline: boolean; score: number; run: JudgeResult | null } | null>(null);
   const [attempt, setAttempt] = useState(1);
   // A draft written with the outline keeps it (and its XP cap) across a free mode switch.
   const [outline, setOutline] = useState(draft.current.outline);
@@ -1485,6 +1497,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
 
   if (done) {
     const g = first!.grade;
+    const ran = first!.run;
     const pct = Math.round(done.acc * 100);
     const strong = done.acc >= READY;
     const look = doneLook(done.acc);
@@ -1499,15 +1512,27 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
             title={done.acc >= 1 ? 'Flawless from scratch' : strong ? 'Nearly perfect' : done.acc >= 0.5 ? 'Getting there' : 'Good effort'}
             subtitle={
               <>
-                You wrote {g.correct} of {g.total} lines of {p.title} from a blank file on your first check
-                {g.extra > 0 ? `, plus ${g.extra} extra line${g.extra === 1 ? '' : 's'}.` : '.'}
+                {ran && ran.status === 'done' ? (
+                  ran.passed === ran.total ? (
+                    <>Your {p.title} passed all {ran.total} tests on your first check, written from a blank file.</>
+                  ) : (
+                    <>
+                      Your {p.title} passed {ran.passed} of {ran.total} tests on your first check.
+                    </>
+                  )
+                ) : (
+                  <>
+                    You wrote {g.correct} of {g.total} lines of {p.title} from a blank file on your first check
+                    {g.extra > 0 ? `, plus ${g.extra} extra line${g.extra === 1 ? '' : 's'}.` : '.'}
+                  </>
+                )}
                 {first!.outline && ` You used the outline, so XP was capped at ${XP.rebuildMax + 5}.`}
                 {!strong && (input === 'pick' ? ' Picking the gaps first will firm it up.' : ' Filling the gaps first will firm it up.')}
               </>
             }
             stats={[
-              { label: 'Accuracy', value: `${pct}%` },
-              { label: 'Lines correct', value: `${g.correct}/${g.total}` },
+              { label: 'Score', value: `${pct}%` },
+              ran && ran.status === 'done' ? { label: 'Tests passed', value: `${ran.passed}/${ran.total}` } : { label: 'Lines correct', value: `${g.correct}/${g.total}` },
               { label: 'XP earned', value: `+${done.xp}` },
             ]}
           >
@@ -1545,27 +1570,44 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
     );
   }
 
-  const status: CheckStatus = grade ? (grade.perfect ? 'correct' : 'wrong') : 'idle';
+  // Right when the tests pass (any correct code) or, without a run, when it matches line for line.
+  const passed = judged ? judged.status === 'done' && judged.total > 0 && judged.passed === judged.total : !!grade?.perfect;
+  const status: CheckStatus = grade ? (passed ? 'correct' : 'wrong') : 'idle';
   const written = codeLines(text).length;
 
-  const check = () => {
+  const check = async () => {
+    if (runner.busy) return;
     const g = gradeCode(text, body);
+    // Code that matches the solution line for line needs no run. Anything else is run: it may be
+    // another correct solution, and when it is not, the failing test says more than a diff.
+    const ran = g.perfect ? null : await runner.run(withGiven(given, text, indent));
+    const ok = ran ? ran.status === 'done' && ran.total > 0 && ran.passed === ran.total : g.perfect;
+    setJudged(ran);
+    setCompare(!ran);
     setGrade(g);
+    if (ok && ran) recordSolved(p.id, p.difficulty);
     if (!first) {
-      setFirst({ grade: g, outline: outlineUsed });
+      // Partial credit: the lines that match, or the share of tests that pass (never the full
+      // score: only passing them all, or matching every line, is proof).
+      const partial = ran && ran.status === 'done' && ran.total > 0 ? (0.8 * ran.passed) / ran.total : 0;
+      setFirst({ grade: g, outline: outlineUsed, score: ok ? 1 : Math.max(g.score, partial), run: ran });
       onChecked();
     }
-    sfx(g.perfect ? 'correct' : 'wrong');
+    sfx(ok ? 'correct' : 'wrong');
   };
   const fix = () => {
     if (!grade) return;
-    caret.current = fixCaret(text, grade);
+    // With a test report the learner decides where to look; with a diff, start at the first line to fix.
+    caret.current = compare ? fixCaret(text, grade) : text.length;
     setGrade(null);
+    setJudged(null);
+    setCompare(false);
+    runner.reset();
     setAttempt((a) => a + 1);
   };
   const finish = () => {
     if (!first) return;
-    const acc = first.grade.score;
+    const acc = first.score;
     recordRebuild(p.id, acc, 'scratch');
     const xp = Math.round((first.outline ? XP.rebuildMax : XP.scratchMax) * acc) + 5;
     awardXp(xp, 'rebuild');
@@ -1601,19 +1643,24 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
   ) : null;
   const firstLine = given.length + 1 + (outline ? parts.length : 0);
 
-  const pctFirst = first ? Math.round(first.grade.score * 100) : 0;
+  const pctFirst = first ? Math.round(first.score * 100) : 0;
   const isFirst = attempt === 1;
+  const ranDone = judged && judged.status === 'done' ? judged : null;
   let fbTitle: string | undefined;
   let fbBody: ReactNode;
   if (grade && isFirst) {
-    fbBody = grade.perfect
-      ? `All ${grade.total} lines right, from a blank file.`
-      : 'Your first check sets the score. Fix the marked lines to practice, or continue.';
+    fbBody = passed
+      ? ranDone
+        ? `It passed all ${ranDone.total} tests. It is not line for line the solution you studied, and it does not need to be.`
+        : `All ${grade.total} lines right, from a blank file.`
+      : judged
+        ? 'Your first check sets the score. Use the failing test to find the bug, or continue.'
+        : 'Your first check sets the score. Fix the marked lines to practice, or continue.';
   } else if (grade) {
-    fbTitle = grade.perfect ? 'All lines right now' : undefined;
-    fbBody = grade.perfect
+    fbTitle = passed ? (ranDone ? 'All tests pass now' : 'All lines right now') : undefined;
+    fbBody = passed
       ? `Your score stays at ${pctFirst}% from the first check, and the fix still counts as practice.`
-      : `${gradeSummary(grade)}. Your score stays at ${pctFirst}% from the first check.`;
+      : `${ranDone ? `${ranDone.passed} of ${ranDone.total} tests pass` : gradeSummary(grade)}. Your score stays at ${pctFirst}% from the first check.`;
   }
 
   const note = grade
@@ -1629,7 +1676,7 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
       progress={grade ? 1 : Math.min(1, written / Math.max(1, total))}
       onClose={() => nav(`/p/${p.id}`)}
       title="Code from memory"
-      right={first ? <ScoreChip correct={first.grade.correct} total={first.grade.total} /> : undefined}
+      right={first ? first.run && first.run.status === 'done' ? <ScoreChip correct={first.run.passed} total={first.run.total} unit="tests" /> : <ScoreChip correct={first.grade.correct} total={first.grade.total} /> : undefined}
     >
       <div ref={rootRef} className="rebuild rebuild-scratch">
         <h1 className="sr-only">Code from memory</h1>
@@ -1639,8 +1686,10 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
           meta={`${total} lines`}
           sub={
             <>
-              Write the solution you studied in a blank file, then check it line by line.
-              {names.length > 0 && (
+              {canRun
+                ? 'Write the solution in a blank file, then check it. Your code is run against the tests, so any correct solution passes.'
+                : 'Write the solution you studied in a blank file, then check it line by line.'}
+              {!canRun && names.length > 0 && (
                 <>
                   {' '}
                   It is compared with that solution, so use the same names:{' '}
@@ -1664,7 +1713,8 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
         <CodeTyper
           value={text}
           onChange={setText}
-          grade={grade}
+          grade={compare ? grade : null}
+          status={status}
           label="Your solution"
           given={given}
           firstLine={firstLine}
@@ -1680,12 +1730,25 @@ function ScratchSession({ p, modes, onChecked, onRestart, input, draft }: Sessio
         >
           {outlineRows}
         </CodeTyper>
+        <PythonLoading show={runner.loadingPython} />
+        {grade && judged && (
+          <>
+            <TestReport result={judged} />
+            {!passed && !compare && (
+              <button type="button" className="btn btn-quiet btn-sm rebuild-compare" onClick={() => setCompare(true)}>
+                <CodeXml aria-hidden="true" />
+                Compare with the solution, line by line
+              </button>
+            )}
+          </>
+        )}
 
         <ActionBar
           status={status}
           step={attempt}
-          canCheck={text.trim().length > 0}
-          onCheck={check}
+          canCheck={text.trim().length > 0 && !runner.busy}
+          checkLabel={runLabel(runner)}
+          onCheck={() => void check()}
           onContinue={finish}
           title={fbTitle}
           feedback={

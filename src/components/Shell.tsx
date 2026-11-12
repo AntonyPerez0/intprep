@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Quote, Search, X } from 'lucide-react';
 import { levelInfo, levelTitle } from '../lib/game';
 import { dueProblemIds, practicedToday, useProgress, xpToday } from '../lib/store';
 import { CommandPalette, openCommandPalette } from './CommandPalette';
@@ -25,7 +25,9 @@ const NAV: { label: string; items: NavItem[] }[] = [
     label: 'Practice',
     items: [
       { to: '/review', icon: ICONS.review, label: 'Daily review', badge: 'due' },
+      { to: '/clues', icon: Quote, label: 'Clue words' },
       { to: '/blitz', icon: ICONS.blitz, label: 'Pattern Blitz' },
+      { to: '/mock', icon: ICONS.timer, label: 'Mock interview' },
     ],
   },
   {

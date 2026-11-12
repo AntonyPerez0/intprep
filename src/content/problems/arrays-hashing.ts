@@ -7,7 +7,11 @@ const content: CategoryContent = {
 
 A **hash map** (\`dict\` in Python) and a **hash set** (\`set\`) fix that. They answer "have I seen this?" or "what is stored under this key?" in **O(1)** on average.
 
-The whole pattern is one trade: **spend O(n) extra memory to turn repeated O(n) searches into O(1) lookups.** That usually turns an O(n²) brute force into O(n).`,
+The whole pattern is one trade: **spend O(n) extra memory to turn repeated O(n) searches into O(1) lookups.** That usually turns an O(n²) brute force into O(n).
+
+The trade comes in three shapes. **Lookup**: remember what you have seen (a set, or a dict of value → index) and check it before you add to it. **Counting**: a dict of key → count, filled with \`count[x] = count.get(x, 0) + 1\` and read afterwards. **Grouping**: a dict of key → list, where every item that shares a key lands in the same list.
+
+Two problems in this unit use none of the three. They are here because they are core array and string skills: *Product of Array Except Self* (a running product from the left and one from the right) and *Encode and Decode Strings* (write each string's length in front of it).`,
     analogy:
       'A hash map is a coat check. Instead of searching every hanger for your coat, you hand over a ticket number and get your coat back instantly.',
     whenToUse: [
@@ -31,6 +35,7 @@ def solve(nums):
       'Check *before* you insert when an element must not pair with itself (Two Sum).',
       '`collections.Counter(s)` builds a frequency map in one line; `defaultdict(list)` makes grouping painless.',
       'A key must be hashable: use a `tuple`, not a `list`, when the key has several parts.',
+      'The template is the **lookup** shape (Contains Duplicate, Two Sum). **Counting** keeps the same loop but stores `count[x] = count.get(x, 0) + 1` and uses the counts after the loop (Valid Anagram, Top K Frequent Elements). **Grouping** stores `groups[key].append(x)` and returns the lists (Group Anagrams).',
     ],
     complexity: 'Usually O(n) time and O(n) extra space.',
     quiz: [
@@ -122,7 +127,7 @@ class Solution:
       category: 'arrays-hashing',
       pattern: 'Character frequency count',
       prompt:
-        'Given two strings `s` and `t`, return `True` if `t` uses **exactly the same letters, the same number of times**, as `s` (just rearranged). Otherwise return `False`.',
+        'Given two strings `s` and `t` made of **lowercase English letters**, return `True` if `t` uses **exactly the same letters, the same number of times**, as `s` (just rearranged). Otherwise return `False`.',
       examples: [
         { input: 's = "listen", t = "silent"', output: 'True' },
         { input: 's = "rat", t = "car"', output: 'False', note: '"t" is not in "car" and "c" is not in "rat".' },
@@ -160,7 +165,7 @@ class Solution:
       time: 'O(n)',
       space: 'O(1)',
       complexityWhy:
-        'One pass over the strings. The dicts hold at most 26 lowercase letters, so their size is constant.',
+        'One pass over the strings. The prompt promises lowercase English letters, so each dict holds at most 26 keys: a constant size, however long the strings are.',
       pitfalls: [
         'Forgetting the length check — it is a free early exit.',
         '`dict.get(key, 0)` avoids a KeyError the first time you see a letter.',
@@ -227,7 +232,7 @@ class Solution:
       title: 'Group Anagrams',
       difficulty: 'Medium',
       category: 'arrays-hashing',
-      pattern: 'Hash map keyed by letter counts',
+      pattern: 'Hash map keyed by sorted letters',
       prompt:
         'You get a list of lowercase words. Put words that are **anagrams of each other** (same letters, same counts) into the same group, and return the list of groups. The groups, and the words inside each group, can be in any order.',
       examples: [
@@ -243,44 +248,42 @@ class Solution:
       ],
       signals: ['"group" items that share a property', 'anagrams: same letters in a different order', 'return a list of lists, any order'],
       hints: [
-        'Two words are anagrams when their letter counts match. Can you turn those counts into one value that is identical for both words?',
-        'If every anagram produced the same "signature", you could use that signature as a dict key.',
-        'Count the 26 letters of each word, turn the counts into a tuple, and use the tuple as the key of a dict of lists.',
+        'Two anagrams look different, but they are built from the same letters. Can you turn each word into one value that comes out identical for every anagram of it?',
+        'If every anagram produced the same "signature", you could use that signature as a dict key and collect the words under it.',
+        'Sort the letters of each word: "tab" and "bat" both become "abt". Use that sorted string as the key of a dict of lists.',
       ],
       brute:
-        'Compare every word with every other word using the Valid Anagram check — **O(n² · k)** for n words of length k. Using the sorted word as the key is a good step up at **O(n · k log k)**.',
+        'Compare every word with every other word using the Valid Anagram check, and merge the ones that match — **O(n² · k)** for n words of length k.',
       insight:
-        'Anagrams share the same **letter counts**. Use those counts (as a tuple) as a dict key, and every word drops into its group in a single pass.',
-      mnemonic: 'Same counts, same key, same group.',
+        'Anagrams become **identical once you sort their letters**. Use the sorted word as a dict key, and every word drops into its group in a single pass.',
+      mnemonic: 'Sort the letters: same key, same group.',
       steps: [
-        'Create a dict that maps a signature to a list of words.',
-        'For each word, count how many times each of the 26 letters appears.',
-        'Turn the 26 counts into a tuple so it can be a dict key.',
-        'Append the word to the list stored under that tuple.',
+        'Create a dict that maps a key to a list of words.',
+        'Loop over each word.',
+        'Sort the letters of the word and join them into one string: its key.',
+        'Append the word to the list stored under that key.',
         'Return all the lists stored in the dict.',
       ],
       solution: py`
 class Solution:
     def groupAnagrams(self, strs: List[str]) -> List[List[str]]:
-        #@ Map each letter-count signature to the list of words that share it.
+        #@ Map each key to the list of words that share it. With defaultdict(list), a key that is not there yet starts as an empty list.
         groups = defaultdict(list)
-        #@ Build each word's signature: how many a's, b's, ... z's it contains.
+        #@ Sort the letters of each word. sorted(word) gives them as a list in alphabetical order, and "".join(...) glues that list back into one string. Anagrams have the same letters, so they all get the same key.
         for word in strs:
-            count = [0] * 26
-            for ch in word:
-                count[ord(ch) - ord("a")] += 1  #!
-            #@ Lists cannot be dict keys, so freeze the counts into a tuple. Anagrams get the same tuple.
-            groups[tuple(count)].append(word)  #!
+            key = "".join(sorted(word))  #!
+            #@ Drop the word into the group stored under its key.
+            groups[key].append(word)  #!
         #@ Each list in the dict is one finished group.
         return list(groups.values())`,
-      time: 'O(n · k)',
+      time: 'O(n · k log k)',
       space: 'O(n · k)',
       complexityWhy:
-        'Each of the n words is scanned once (k letters each), and turning 26 counts into a tuple is constant work. The dict stores every word once.',
+        'Each of the n words is sorted once, which costs O(k log k) for a word of k letters. The dict stores every word once, plus one key per group.',
       pitfalls: [
-        'A list cannot be a dict key because it can change. Convert the counts with `tuple(count)`.',
-        'Using `"".join(sorted(word))` as the key also works and is shorter, at O(k log k) per word.',
-        '`defaultdict(list)` saves you from checking whether a key exists before appending.',
+        '`sorted(word)` returns a **list** of letters, and a list cannot be a dict key because it can change. Join it into a string first (or use `tuple(sorted(word))`).',
+        '`defaultdict(list)` saves you from checking whether a key exists before appending. With a plain dict you would need `if key not in groups: groups[key] = []`.',
+        'A faster key, if the interviewer asks: count the 26 letters of each word in a list (`count[ord(ch) - ord("a")] += 1`, where `ord` turns a letter into its number) and use `tuple(count)` as the key. That is O(n · k), with no sorting.',
       ],
     },
     {
@@ -451,9 +454,9 @@ class Codec:
       ],
       signals: ['"product of all elements except" the current one', 'division is not allowed', 'O(n) time, ideally O(1) extra space'],
       hints: [
-        'The product of everything except `nums[i]` = (product of everything to its left) × (product of everything to its right).',
-        'You can get every "left product" in one pass from the left, and every "right product" in one pass from the right.',
-        'Store the left products in the answer list, then sweep from the right with a running product and multiply it in.',
+        'Without division you cannot "take `nums[i]` back out" of a total product. Look at one position instead: which numbers does its answer multiply together, and where do they sit relative to `i`?',
+        'They are everything to the **left** of `i` and everything to the **right** of `i`. So the answer at `i` is (product of the left part) × (product of the right part). Could a single pass give you the left product for every position?',
+        'Yes: a running product while walking left to right. Store those left products in the answer list, then walk right to left with a second running product and multiply it in.',
       ],
       brute:
         'For each index, multiply all the other elements with an inner loop — **O(n²)**. Multiplying everything once and dividing by `nums[i]` is O(n), but division is not allowed and it breaks when a value is 0.',
@@ -471,15 +474,15 @@ class Codec:
       solution: py`
 class Solution:
     def productExceptSelf(self, nums: List[int]) -> List[int]:
-        #@ The answer list doubles as storage, so the only extra memory is two running products.
+        #@ Start the answer as all 1s (multiplying by 1 changes nothing). It doubles as storage, so the only extra memory is two running products.
         n = len(nums)
         res = [1] * n
-        #@ Left-to-right pass: res[i] becomes the product of everything to the LEFT of i.
+        #@ Left-to-right pass: prefix is the product of everything before i. Write it into res[i] first, then let nums[i] join the product for the positions after it.
         prefix = 1
         for i in range(n):
             res[i] = prefix  #!
             prefix *= nums[i]
-        #@ Right-to-left pass: multiply in the product of everything to the RIGHT of i.
+        #@ Right-to-left pass, the mirror image: suffix is the product of everything after i. Multiply it into res[i], then let nums[i] join it. range(n - 1, -1, -1) counts from the last index down to 0.
         suffix = 1
         for i in range(n - 1, -1, -1):
             res[i] *= suffix  #!
@@ -550,7 +553,7 @@ class Solution:
                 val = board[r][c]
                 if val == ".":
                     continue
-                #@ Number the boxes 0-8: three boxes per band of rows, plus which band of columns.
+                #@ Number the boxes 0-8, row by row. r // 3 is the band of three rows (0, 1 or 2) and c // 3 the band of three columns. Each row band holds 3 boxes, so the box is row band * 3 + column band.
                 b = (r // 3) * 3 + c // 3  #!
                 #@ Already seen this digit in the same row, column or box? The board is invalid.
                 if val in rows[r] or val in cols[c] or val in boxes[b]:  #!

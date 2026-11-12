@@ -17,7 +17,6 @@ A powerful variation is the **monotonic stack**: keep the items in sorted order 
       'Evaluating expressions or undoing actions, where the **most recent** item is handled first',
       '"Next greater / next smaller element" or "how many days until warmer" → **monotonic stack**',
       'You need the min (or max) of a changing pile at every moment → store extra info with each item',
-      'Building something step by step and backing up when a choice fails (backtracking)',
     ],
     template: py`
 # Plain stack: check that brackets nest correctly
@@ -164,7 +163,7 @@ class Solution:
       hints: [
         'Keeping one `min` variable is not enough. What happens when you pop the minimum?',
         'What if every position in the stack remembered "the minimum of everything at or below me"?',
-        'Keep a second stack. On push, push `min(val, current minimum)` onto it; on pop, pop both stacks.',
+        'Keep a second stack. On push, push `min(val, current minimum)` onto it (just `val` when it is empty); on pop, pop both stacks.',
       ],
       brute: 'Store the values in a list and compute `min(stack)` whenever `getMin()` is called — **O(n)** per call.',
       insight:
@@ -184,7 +183,7 @@ class MinStack:
         self.stack = []
         self.min_stack = []
 
-    #@ Push the value, and also push the new minimum: the smaller of this value and the old minimum.
+    #@ Push the value, and also push the new minimum. "a if cond else b" picks one of two values in one line: the smaller of val and the old minimum if min_stack has anything in it, else just val (the very first push).
     def push(self, val: int) -> None:
         self.stack.append(val)
         new_min = min(val, self.min_stack[-1]) if self.min_stack else val  #!
@@ -279,75 +278,6 @@ class Solution:
         'Pop order matters: the **first** pop is the right operand. `a - b` and `a / b` give wrong answers the other way round.',
         'Python `//` rounds down toward minus infinity (`-7 // 2` is `-4`). Use `int(a / b)` to truncate toward zero (`-3`).',
         'Negative numbers like `"-7"` are numbers, not operators. Compare the whole token with the operator set instead of checking its first character.',
-      ],
-    },
-    {
-      id: 'generate-parentheses',
-      num: 22,
-      title: 'Generate Parentheses',
-      difficulty: 'Medium',
-      category: 'stack',
-      pattern: 'Backtracking with open/close counts',
-      alsoAccept: ['backtracking'],
-      prompt:
-        'Given `n` pairs of parentheses, return **every** string of length 2n made of `(` and `)` that is **well-formed**: each bracket is opened before it is closed, and nothing is left open. Any order is fine.',
-      examples: [
-        { input: 'n = 2', output: '["(())", "()()"]', note: 'With two pairs there are exactly two valid strings.' },
-      ],
-      signals: ['"generate all" valid combinations', 'build a string one character at a time, following rules', 'small n, so an exponential number of answers is expected'],
-      hints: [
-        'Build the string one character at a time. When is it legal to add `(`? When is it legal to add `)`?',
-        'You may add `(` while fewer than n have been used. You may add `)` only while fewer `)` than `(` have been used.',
-        'Write a recursive function that takes the open and close counts. Push a character, recurse, then pop it to try the other option.',
-      ],
-      brute:
-        'Generate all 2^(2n) strings of `(` and `)` and keep the valid ones, checking each in O(n) — **O(2^(2n) · n)**. Most of those strings are invalid and never needed to be built.',
-      insight:
-        'Only build strings that can still become valid: add `(` if `open_count < n`, and add `)` if `close_count < open_count`. When both counts reach n, the string is complete.',
-      mnemonic: 'Open if you can; close only what is open.',
-      steps: [
-        'Keep a stack of characters and a list of results.',
-        'Write a recursive function that takes the open and close counts.',
-        'If both counts equal n, join the stack into a string and save it.',
-        'If open < n, push "(", recurse with open + 1, then pop.',
-        'If close < open, push ")", recurse with close + 1, then pop.',
-        'Call the function with 0 opens and 0 closes, then return the results.',
-      ],
-      solution: py`
-class Solution:
-    def generateParenthesis(self, n: int) -> List[str]:
-        #@ stack holds the string being built; res collects the finished strings.
-        stack = []
-        res = []
-
-        #@ open_count and close_count say how many of each bracket we have used so far.
-        def backtrack(open_count, close_count):
-            #@ Used n of each? The string is complete and valid.
-            if open_count == close_count == n:
-                res.append("".join(stack))
-                return
-            #@ We may add "(" as long as we have not used all n of them.
-            if open_count < n:  #!
-                stack.append("(")
-                backtrack(open_count + 1, close_count)
-                stack.pop()
-            #@ We may add ")" only if it closes something: fewer closes than opens so far.
-            if close_count < open_count:  #!
-                stack.append(")")
-                backtrack(open_count, close_count + 1)
-                stack.pop()
-
-        #@ Start from an empty string with nothing used.
-        backtrack(0, 0)
-        return res`,
-      time: 'O(4^n / √n)',
-      space: 'O(n)',
-      complexityWhy:
-        'The number of valid strings is the n-th Catalan number, roughly 4^n / (n√n), and each one takes O(n) to build. The recursion is at most 2n calls deep (not counting the output).',
-      pitfalls: [
-        'Allowing `)` whenever `close_count < n` (instead of `< open_count`) builds invalid strings like `")("`.',
-        'Forgetting `stack.pop()` after a recursive call leaves extra characters behind for the next branch.',
-        'Save `"".join(stack)`, not the stack itself: the list keeps changing after you save it.',
       ],
     },
     {
@@ -454,7 +384,7 @@ class Solution:
       solution: py`
 class Solution:
     def carFleet(self, target: int, position: List[int], speed: List[int]) -> int:
-        #@ Pair each position with its speed, sorted so the car closest to the target comes first.
+        #@ zip(position, speed) pairs each position with its speed. Sorting the pairs with reverse=True puts the biggest position first: the car closest to the target.
         cars = sorted(zip(position, speed), reverse=True)  #!
         #@ The stack holds the arrival time of each fleet, the front fleet at the bottom.
         stack = []
@@ -518,11 +448,11 @@ class Solution:
         #@ Visit each bar. By default, a rectangle of this bar's height starts right here.
         for i, h in enumerate(heights):
             start = i
-            #@ A shorter bar ends every taller rectangle on top. Pop each one and measure it: it ran from its start up to i.
+            #@ stack[-1][1] is the height in the top pair. A shorter bar ends every taller rectangle on top. Pop each one and measure it: it ran from its start index up to (not including) i, so its width is i - index.
             while stack and stack[-1][1] > h:  #!
                 index, height = stack.pop()
                 best = max(best, height * (i - index))  #!
-                #@ The shorter bar can stretch back to where the popped bar started.
+                #@ Every bar from the popped bar's start up to here is taller than the current bar, so a rectangle of the current height can stretch back to that start.
                 start = index  #!
             #@ Push this bar with the earliest start it can reach.
             stack.append((start, h))

@@ -9,7 +9,9 @@ The catch: "best right now" is not always best overall. Paying 6 with coins wort
 
 So how do you know greedy is safe? Use an **exchange argument**. In plain words: *"Take any best answer. If it made a different choice here, I could swap in my greedy choice and the answer would be no worse."* If that holds at every step, greedy is optimal.
 
-Most problems in this unit share one template: **walk the input once, keep a running value** (a sum, the farthest reach, fuel in the tank), **reset it when it becomes useless**, and **remember the best** you have seen.`,
+**Greedy has no single template.** What the problems in this unit share is a move, not a code shape: at each step **take the option that is best right now, and have a reason why taking it can never hurt** the final answer. For each problem, find those two things: the greedy choice, and the one sentence that makes it safe.
+
+The template below is one common shape, a running value with a reset. It fits Maximum Subarray and Gas Station, and Partition Labels loosely. The other problems look different: Jump Game and Jump Game II track the farthest index you can reach, Hand of Straights sorts and lets the smallest card decide, Merge Triplets throws out the items that could only hurt, and Valid Parenthesis String tracks a range of possible counts.`,
     analogy:
       'A cashier making change hands over the biggest coin that fits, again and again. With everyday coins that always gives the fewest coins, but invent odd coins (1, 3, 4) and it breaks. Greedy is a great shortcut once you know the shortcut is safe.',
     whenToUse: [
@@ -31,10 +33,11 @@ def solve(nums):
         best = max(best, current)        # remember the best moment
     return best`,
     templateNotes: [
+      'This is **one** shape of greedy (walk once, keep a running value, reset it when it becomes useless, remember the best), not a template for the whole unit. Use it for Maximum Subarray and Gas Station; for the other problems, look for the greedy choice and the reason it is safe.',
       'Greedy looks at each element once and never backtracks, so it is usually **O(n)** time and **O(1)** space, plus O(n log n) if you sort first.',
       'Before trusting greedy, hunt for a tiny counter-example with 2–4 elements. If you find one, switch to DP.',
       'The **reset** is where the insight lives: Kadane drops a negative sum, Gas Station restarts after an empty tank, Partition Labels cuts when the current part closes.',
-      'Initialize `best` with care: starting at `0` makes an all-negative input wrongly return 0. Start from the first element or `-inf`.',
+      'Initialize `best` with care: starting at `0` makes an all-negative input wrongly return 0. Start from the first element or from `float("-inf")`, which is minus infinity: smaller than any number.',
     ],
     complexity: 'Usually O(n) time and O(1) extra space; O(n log n) when you sort first.',
     quiz: [
@@ -145,7 +148,7 @@ class Solution:
       title: 'Jump Game',
       difficulty: 'Medium',
       category: 'greedy',
-      pattern: 'Move the goal post backwards',
+      pattern: 'Track the farthest reach',
       prompt:
         'You start at index 0 of `nums`. From index `i` you may jump forward **up to** `nums[i]` steps. Return `True` if you can reach the last index, otherwise `False`.',
       examples: [
@@ -158,40 +161,44 @@ class Solution:
         'only a yes/no answer is needed',
       ],
       hints: [
-        'Work backwards: which indices can reach the last index in a single jump?',
-        'If index `i` can reach the goal, then reaching `i` is just as good as reaching the goal.',
-        'Walk from right to left; whenever `i + nums[i] >= goal`, move the goal to `i`. At the end, is the goal 0?',
+        'You do not need to know *how* to get somewhere, only *whether* you can. If you can reach index 5, which other indices can you certainly reach?',
+        'Every index before it, because jumps may be shorter. So the reachable indices are one block from 0 up to some farthest index. Track that single number.',
+        'Walk left to right keeping `farthest = max(farthest, i + nums[i])`. If you ever arrive at an `i` that is greater than `farthest`, you are stuck: return False.',
       ],
       brute:
         'Try every jump length from every index (DFS or DP): **O(n²)** with memoization, exponential without it.',
       insight:
-        'If index `i` can jump to the current goal, then `i` becomes the new goal: getting to `i` is enough. Sweep from right to left moving the goal post; you win if it reaches index 0.',
-      mnemonic: 'Can reach the goal? Then you are the new goal.',
+        'Keep one number: the **farthest index you can reach** so far. Jumps may be shorter than the maximum, so every index up to `farthest` is reachable, and each of them may push the reach out to `i + nums[i]`. Taking the largest reach never hurts, because a bigger reach includes everything a smaller one does. If the walk arrives at an index beyond `farthest`, nothing can get you there.',
+      mnemonic: 'Stretch the farthest reach; stuck if i passes it.',
       steps: [
-        'Set the goal to the last index.',
-        'Walk i from the second-to-last index down to 0.',
-        'If i + nums[i] reaches the goal, move the goal to i.',
-        'Return whether the goal ended at index 0.',
+        'Set farthest to 0: at the start only index 0 is reachable.',
+        'Walk i forward over every index.',
+        'If i is greater than farthest, index i cannot be reached: return False.',
+        'Otherwise stretch farthest to the larger of farthest and i + nums[i].',
+        'If the walk finishes, return True.',
       ],
       solution: py`
 class Solution:
     def canJump(self, nums: List[int]) -> bool:
-        #@ The goal starts at the last index.
-        goal = len(nums) - 1
-        #@ Walk backwards, starting just before the goal.
-        for i in range(len(nums) - 2, -1, -1):
-            #@ If index i can jump far enough to reach the goal, reaching i is as good as reaching the goal. Move the goal post back to i.
-            if i + nums[i] >= goal:  #!
-                goal = i  #!
-        #@ Success if the goal post made it all the way back to the start.
-        return goal == 0`,
+        #@ farthest = the farthest index we know we can reach. At the start that is index 0, where we stand.
+        farthest = 0
+        #@ Walk forward over the indices.
+        for i in range(len(nums)):
+            #@ Index i lies beyond everything we can reach, so we are stuck before it and the end is out of reach too.
+            if i > farthest:  #!
+                return False
+            #@ We can stand on i, so one jump from here reaches as far as i + nums[i]. Keep the larger reach.
+            farthest = max(farthest, i + nums[i])  #!
+        #@ We never got stuck, so every index was reachable, the last one included.
+        return True`,
       time: 'O(n)',
       space: 'O(1)',
-      complexityWhy: 'One backwards pass with a single variable.',
+      complexityWhy: 'One forward pass with a single variable.',
       pitfalls: [
-        'Jumps can be **shorter** than `nums[i]`, which is why the test is `>= goal`, not `== goal`.',
-        'A 0 is only a trap if nothing before it can jump over it.',
-        'Forward version, also O(n): keep `farthest = max(farthest, i + nums[i])`, and fail as soon as `i > farthest`.',
+        'Stretching `farthest` before checking `i > farthest` uses a jump from an index you cannot stand on. Check first, then stretch.',
+        'A 0 is only a trap if nothing before it can jump over it. That is why you track the best reach of all earlier indices, not just the last jump.',
+        'Jumps can be **shorter** than `nums[i]`, which is why everything up to `farthest` counts as reachable.',
+        'Backward version, also O(n): start with the goal at the last index and walk right to left; whenever `i + nums[i] >= goal`, move the goal to `i`. You win if the goal ends at 0.',
       ],
     },
     {
@@ -214,14 +221,14 @@ class Solution:
         'reaching the end is guaranteed',
       ],
       hints: [
-        'Which indices can you reach with 0 jumps? With exactly 1 jump? With 2?',
+        'Jump Game kept one number, the farthest reach. Now ask how many jumps each stretch of that reach costs. Which indices can you reach with 0 jumps? With exactly 1 jump? With 2?',
         'Each of those groups is a contiguous window, like the levels of a BFS.',
         'Keep a window `[l, r]`. The next window is `[r + 1, farthest]`, where farthest is the max of `i + nums[i]` inside the window. Count windows until `r` reaches the end.',
       ],
       brute:
         'DP: for each index, try every jump and keep the minimum, which is **O(n²)**. A real BFS over indices has O(n²) edges too.',
       insight:
-        'All the indices you can reach in exactly k jumps form one **contiguous window**. The next window ends at the farthest point any index in the current window can reach. Count the windows you pass through: BFS levels without a queue.',
+        'This is Jump Game with a counter. All the indices you can reach in exactly k jumps form one **contiguous window**. The next window ends at the farthest point any index in the current window can reach, the same `farthest = max(farthest, i + nums[i])` as before, now computed one window at a time. Count the windows you pass through: BFS levels without a queue.',
       mnemonic: 'Window by window: the farthest reach sets the next window.',
       steps: [
         'Start with jumps = 0 and the window l = r = 0.',
@@ -238,7 +245,7 @@ class Solution:
         l = r = 0
         #@ Keep going until the window covers the last index.
         while r < len(nums) - 1:
-            #@ From any index in the window, find the farthest index that one more jump can reach.
+            #@ From any index in the window, find the farthest index that one more jump can reach: the same line as in Jump Game.
             farthest = 0
             for i in range(l, r + 1):
                 farthest = max(farthest, i + nums[i])  #!
@@ -363,7 +370,7 @@ class Solution:
             return False
         #@ Count how many copies of each card value we hold.
         count = collections.Counter(hand)
-        #@ Visit values from smallest to largest. The smallest card still left can only be the START of a run.
+        #@ Visit values from smallest to largest: sorted(count) gives the distinct card values in increasing order. The smallest card still left can only be the START of a run.
         for start in sorted(count):  #!
             need = count[start]
             #@ All copies already used by earlier runs? Nothing starts here.

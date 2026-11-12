@@ -1,16 +1,18 @@
 import '../styles/pages/unit.css';
 import { useState, type CSSProperties } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, ListChecks, Lock, Map as MapIcon, Play, Repeat2, RotateCcw, TextCursorInput, Trophy } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, Gauge, GraduationCap, Info, Keyboard, Lightbulb, ListChecks, Lock, Map as MapIcon, Play, Quote, Repeat2, RotateCcw, TextCursorInput, Trophy } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { guideFor, problemsFor } from '../content/index';
 import type { CategoryId, Difficulty } from '../content/types';
 import { friendlyDue } from '../lib/date';
 import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
-import { nextStep, unitProgress, unitUnlocked } from '../lib/path';
-import { templateInput } from '../lib/input';
-import { crowns, isDue } from '../lib/srs';
+import { isLater, nextStep, unitNext, unitProgress, unitUnlocked } from '../lib/path';
+import { CUES } from '../content/cues';
+import { ClueList, MemoSteps, patternSteps } from '../components/Memorize';
+import { mastery, templateInput } from '../lib/input';
+import { isDue } from '../lib/srs';
 import { templateScore, useProgress, type TemplateMode } from '../lib/store';
 import { CategoryIcon, IconTile } from '../components/icons';
 import { CodeWindow } from '../components/interact';
@@ -47,7 +49,9 @@ export function Unit() {
   const problems = problemsFor(meta.id);
   const u = unitProgress(p, meta.id);
   const learnedHere = problems.filter((q) => p.problems[q.id]?.learnedAt).length;
-  const firstTodo = problems.find((q) => !p.problems[q.id]?.learnedAt);
+  // The unit's next problem in the path's order: the Hard ones wait for the second pass by default.
+  const firstTodo = unitNext(p, meta.id);
+  const corePending = problems.some((q) => !isLater(p, q) && !p.problems[q.id]?.learnedAt);
 
   const ci = CATEGORIES.findIndex((c) => c.id === meta.id);
   const prevUnit = CATEGORIES[ci - 1];
@@ -273,6 +277,26 @@ export function Unit() {
         </section>
       )}
 
+      {/* ── Memorize: the steps, and the wording that points to this pattern ── */}
+      <section className="unit-memo" aria-label="Memorize this pattern">
+        <div className="card unit-memo-card">
+          <MemoSteps id="unit-memo-title" title="Memorize this pattern" steps={patternSteps(p, meta.id)} />
+        </div>
+        {(CUES[meta.id] ?? []).length > 0 && (
+          <div className="card unit-memo-card">
+            <div className="memo-head">
+              <h3 className="card-title">Clue words</h3>
+              <Link to={`/clues?cat=${meta.id}`} className="btn btn-secondary btn-sm">
+                <Quote aria-hidden="true" />
+                Drill them
+              </Link>
+            </div>
+            <p className="unit-card-sub unit-memo-sub">When a problem says the left side, reach for the right side.</p>
+            <ClueList cat={meta.id} />
+          </div>
+        )}
+      </section>
+
       {/* ── Problems ───────────────────────────────────────────────────── */}
       <section className="unit-problems" aria-labelledby="unit-problems-title">
         <div className="unit-section-head">
@@ -312,6 +336,11 @@ export function Unit() {
                         <span className="unit-row-heading">
                           <span className="unit-row-title">{q.title}</span>
                           {isNext && <span className="badge badge-brand unit-row-flag">Up next</span>}
+                          {!learned && !isNext && isLater(p, q) && (
+                            <span className="badge unit-row-flag" title="The path comes back for the Hard problems once the core of every pattern is learned. You can still open it now.">
+                              {corePending ? 'After the core' : 'Second pass'}
+                            </span>
+                          )}
                         </span>
                         <span className="unit-row-meta">
                           <span className="tabular">#{q.num}</span>
@@ -332,7 +361,7 @@ export function Unit() {
                         )}
                       </span>
                       <span className={`unit-row-mastery unit-col-mastery${learned ? '' : ' is-empty'}`}>
-                        {learned ? <Crowns n={crowns(pp?.srs)} /> : <span className="unit-row-none" aria-hidden="true">—</span>}
+                        {learned ? <Crowns n={mastery(pp)} /> : <span className="unit-row-none" aria-hidden="true">—</span>}
                       </span>
                       <span className="unit-row-diff">
                         <DifficultyChip d={q.difficulty} />

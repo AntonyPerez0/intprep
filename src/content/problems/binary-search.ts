@@ -216,7 +216,7 @@ class Solution:
       hints: [
         'If speed `k` is fast enough, is speed `k + 1` also fast enough?',
         'So the speeds go: too slow, too slow, …, OK, OK. You want the first OK.',
-        'Binary search speeds from 1 to `max(piles)`. For a guess `k`, the hours are the sum of `ceil(pile / k)`.',
+        'Binary search speeds from 1 to `max(piles)`. For a guess `k`, each pile takes `pile / k` hours **rounded up** (`math.ceil`); add those up and compare with `h`.',
       ],
       brute:
         'Try speeds 1, 2, 3, … and stop at the first that finishes in time — **O(max(piles) · n)**. Far too slow when a pile can hold a billion bananas.',
@@ -240,7 +240,7 @@ class Solution:
         #@ Binary search over speeds, not over the list.
         while l <= r:
             k = (l + r) // 2
-            #@ Hours needed at speed k: each pile takes ceil(pile / k) hours.
+            #@ Hours needed at speed k. math.ceil(x) rounds x up to a whole number, so a pile takes math.ceil(p / k) hours. sum(... for p in piles) adds that up over every pile, like a loop with a running total.
             hours = sum(math.ceil(p / k) for p in piles)  #!
             #@ Fast enough? Remember k, then see if an even slower speed works.
             if hours <= h:  #!
@@ -255,7 +255,7 @@ class Solution:
       complexityWhy:
         'Binary search tries about log m speeds (m = the biggest pile), and checking one speed sums over all n piles.',
       pitfalls: [
-        'Each pile takes **ceil**(pile / k) hours, not pile / k — Koko cannot switch piles in the middle of an hour.',
+        'Each pile takes `math.ceil(pile / k)` hours (rounded **up**), not `pile / k` — Koko cannot switch piles in the middle of an hour. LeetCode has already imported `math`.',
         'The upper bound is `max(piles)`: at that speed every pile takes exactly one hour, and faster cannot do better.',
         'Save the answer *before* moving `r = k - 1`, or you lose the last speed that worked.',
       ],
@@ -332,14 +332,14 @@ class Solution:
       ],
       signals: ['"rotated sorted array"', '"must run in O(log n)"', 'return the index of a target'],
       hints: [
-        'Cut the list at the middle. Is at least one of the two halves guaranteed to be in sorted order?',
-        'Yes. Compare `nums[l]` with `nums[m]` to learn which half is sorted.',
+        'The values rise everywhere except at one spot, where they drop from the biggest value back to the smallest. Cut the list at the middle: how many of the two halves can contain that drop?',
+        'Only one, so the other half is plainly sorted. If `nums[l] <= nums[m]`, nothing dropped between them and the left half is the sorted one; otherwise the right half is.',
         'In the sorted half you can check whether the target fits inside its range. If it does, search there; if not, search the other half.',
       ],
       brute:
         'Scan every element — **O(n)**. Finding the rotation point first and then binary searching one run also works, but takes two passes.',
       insight:
-        'At any middle point, **one half is always sorted**. Check whether the target fits inside the range of that sorted half: if yes, go there; if not, it can only be in the other half.',
+        'A rotated list has only **one drop** (from its biggest value back to its smallest), and that drop cannot be on both sides of the middle, so **one half is always fully sorted**. In a sorted half the first and last values tell you whether the target is inside: if yes, go there; if not, it can only be in the other half.',
       mnemonic: 'Find the sorted half; is the target inside it?',
       steps: [
         'Set l and r to the two ends and compute the middle m.',
@@ -358,14 +358,14 @@ class Solution:
             #@ Lucky hit: the middle is the target.
             if nums[m] == target:
                 return m
-            #@ One half is always sorted. If nums[l] <= nums[m], it is the left half nums[l..m].
+            #@ The list drops only once, so the drop is in at most one half and the other half is sorted. nums[l] <= nums[m] means nothing dropped between l and m: the left half nums[l..m] is the sorted one.
             if nums[l] <= nums[m]:  #!
-                #@ Target inside the sorted left half? Search left. Otherwise it must be on the right.
+                #@ A sorted half holds exactly the values between its two ends, so one check tells whether the target is in it (a <= x < b tests both comparisons at once). Inside the left half? Search left. Otherwise it must be on the right.
                 if nums[l] <= target < nums[m]:  #!
                     r = m - 1
                 else:
                     l = m + 1
-            #@ Otherwise the right half nums[m..r] is sorted: same idea using its range.
+            #@ Otherwise the drop is on the left, so the right half nums[m..r] is the sorted one: same idea using its two ends.
             else:
                 if nums[m] < target <= nums[r]:  #!
                     l = m + 1
@@ -469,50 +469,52 @@ class TimeMap:
       ],
       signals: ['two **sorted** lists', '"O(log(m + n))"', 'a median splits everything into a smaller half and a bigger half'],
       hints: [
-        'The median splits all numbers into a left (smaller) half and a right (bigger) half. If the left half takes `i` numbers from the first list, how many must it take from the second?',
-        '`j = half - i`. The split is right when every left number is ≤ every right number — you only need to check the numbers next to each cut.',
-        'Binary search `i` on the **shorter** list. If `A[i - 1] > B[j]`, A gave too many; if `B[j - 1] > A[i]`, A gave too few.',
+        'The median splits all the numbers into a left (smaller) half and a right (bigger) half, as equal in size as possible. You do not need the merged list, only where that split falls in each list. If the left half takes `i` numbers from the first list, how many must it take from the second?',
+        '`j = half - i`, so choosing `i` decides everything. The split is right when every left number is ≤ every right number. Each list is already sorted, so you only need to compare the numbers right beside the two cuts, across the lists.',
+        'Call the **shorter** list A and the other one B, and binary search `i`, a **count** from 0 to `len(A)`. If `A[i - 1] > B[j]`, A gave too many, and every bigger `i` fails the same way, so go smaller. If `B[j - 1] > A[i]`, A gave too few, so go bigger.',
       ],
       brute:
         'Merge the two lists (like in merge sort) and pick the middle — **O(m + n)** time and space. Simple, but not logarithmic.',
       insight:
-        'Do not merge — **cut**. Choose how many numbers `i` the left half takes from the shorter list A; the rest, `j = half - i`, come from B. Binary search `i` until every left number is ≤ every right number. Then the median sits right at the cut.',
+        'Do not merge — **cut**. Choose how many numbers `i` the left half takes from the shorter list A (the other `half - i` come from B); the cut is right when every left number is ≤ every right number. A wrong cut says which way to go: if the last number A gave is bigger than the first number B kept, A gave too many, and giving even more only makes that worse, so every bigger `i` is ruled out too and you can binary search `i`.',
       mnemonic: 'Cut both lists; left maxes ≤ right mins; search the shorter.',
       steps: [
-        'Make A the shorter list and compute half = (total + 1) // 2.',
-        'Binary search i, how many numbers A gives to the left half, and set j = half - i.',
+        'Make A the shorter list.',
+        'Compute half = (total + 1) // 2, the size of the left half.',
+        'Binary search i, how many numbers A gives to the left half (0 to len(A)), and set j = half - i.',
         'Read the four numbers beside the two cuts, using minus and plus infinity past the ends.',
         'If both left numbers are <= both right numbers, compute the median from them.',
-        'If the left number in A is too big, move i left; otherwise move i right.',
+        'If the left number in A is too big, try smaller i; otherwise try bigger i.',
       ],
       solution: py`
 class Solution:
     def findMedianSortedArrays(self, nums1: List[int], nums2: List[int]) -> float:
-        #@ Binary search the shorter list A. The left half must hold half = (total + 1) // 2 numbers.
+        #@ Call the shorter list A. We search over A, so shorter is faster, and it also guarantees B always has enough numbers to fill the rest of the left half.
         A, B = nums1, nums2
         if len(A) > len(B):
             A, B = B, A
+        #@ The left half of all the numbers must hold half of them. (total + 1) // 2 rounds up, so with an odd count the left half gets the extra number, and the median is then the biggest number on the left.
         total = len(A) + len(B)
         half = (total + 1) // 2
-        #@ i = how many numbers A gives to the left half; B gives the rest.
+        #@ We search for a count, not an index: i = how many numbers A gives to the left half. That can be anything from 0 (none) to len(A) (all of them), so r starts at len(A), not len(A) - 1. Try the middle count; B must give the other j = half - i.
         l, r = 0, len(A)
         while l <= r:
             i = (l + r) // 2
             j = half - i  #!
-            #@ The numbers right beside each cut. Past either end, use -infinity or +infinity.
+            #@ A's cut falls between A[i - 1] (its last left number) and A[i] (its first right number); the same for B at j. "x if cond else y" picks one of two values in one line. When a cut sits at the very start or end of a list, that neighbor does not exist, so use float("-inf") or float("inf"): minus infinity is smaller than every number and plus infinity is bigger, so a missing neighbor can never make a check fail.
             a_left = A[i - 1] if i > 0 else float("-inf")
             a_right = A[i] if i < len(A) else float("inf")
             b_left = B[j - 1] if j > 0 else float("-inf")
             b_right = B[j] if j < len(B) else float("inf")
-            #@ Correct cut: every left number is <= every right number. Return the median from the cut: the middle number for an odd count, else the average of the two middle ones.
+            #@ Inside one sorted list, left numbers are already <= right numbers. So only the two cross checks remain: a_left <= b_right and b_left <= a_right. If both hold, every left number is <= every right number and the cut is correct. Return the median: the biggest left number for an odd count, else the average of the biggest left number and the smallest right number.
             if a_left <= b_right and b_left <= a_right:  #!
                 if total % 2 == 1:
                     return float(max(a_left, b_left))
                 return (max(a_left, b_left) + min(a_right, b_right)) / 2
-            #@ A gave too many numbers: move its cut left.
+            #@ a_left > b_right: a number on the left is bigger than one on the right, so A gave too many. Giving even more could only raise a_left and lower b_right, so every count above i fails too. Throw them all away: search the smaller counts.
             elif a_left > b_right:
                 r = i - 1
-            #@ A gave too few numbers: move its cut right.
+            #@ Otherwise b_left > a_right: B gave too many, which means A gave too few. By the same argument every smaller count fails too: search the bigger counts.
             else:
                 l = i + 1`,
       time: 'O(log(min(m, n)))',
@@ -520,9 +522,10 @@ class Solution:
       complexityWhy:
         'The binary search runs over the cut positions of the shorter list only, and each step does O(1) work.',
       pitfalls: [
-        'Binary search the **shorter** list. Otherwise `j` can go negative or past the end of B.',
+        'Binary search the **shorter** list. Otherwise `j = half - i` can go negative or past the end of B.',
+        '`l, r = 0, len(A)`, not `len(A) - 1`. The unit template searches **indexes** (0 to n - 1), but `i` is a **count** of numbers, and A may give all `len(A)` of them.',
         'Use minus/plus infinity for a missing neighbor when a cut is at the very start or end of a list.',
-        'With an odd total, the median is the bigger of the two left numbers. That is why `half` rounds up: `(total + 1) // 2`.',
+        'With an odd total, the median is the bigger of the two left numbers. That only works because `half` rounds up: `(total + 1) // 2` puts the extra number on the left.',
       ],
     },
   ],

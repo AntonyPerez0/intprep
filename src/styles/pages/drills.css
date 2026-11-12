@@ -637,3 +637,24 @@ details.disclosure.drill-prompt > .prompt-card {
 details.disclosure.drill-prompt > summary::after {
   margin-left: 4px;
 }
+
+/* ── Clue words: the wording that should trigger a pattern, shown as cards ── */
+.clue-phrases {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.clue-phrase {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--brand);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+.clue-phrase strong {
+  color: var(--brand-text);
+}

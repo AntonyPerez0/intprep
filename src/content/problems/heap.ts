@@ -243,7 +243,7 @@ class Solution:
         #@ A max-heap (negated distances) of the k closest points so far. The farthest of them is on top.
         heap = []
         for x, y in points:
-            #@ Squared distance is enough for comparing; no square root needed.
+            #@ Squared distance is enough for comparing; no square root needed. Push a tuple: the heap compares tuples by their first item, so it orders the points by -dist.
             dist = x * x + y * y  #!
             heapq.heappush(heap, (-dist, x, y))
             #@ More than k points? Throw out the farthest.
@@ -397,14 +397,14 @@ class Solution:
       ],
       signals: ['"10 most recent" from many sources', 'each user has their own time-ordered list', 'merge several sorted lists but only need the first few'],
       hints: [
-        "Each user's tweets are already in time order. Which earlier problem does getting the newest overall remind you of?",
-        'It is Merge K Sorted Lists, except you stop after 10 items.',
+        "Each user's tweets are already in time order, newest last. To find the newest tweet overall, which tweets do you actually have to compare?",
+        "Only one per user: that user's newest tweet not yet in the feed. The newest of those candidates goes into the feed next, and the same user's next-older tweet takes its place as a candidate. Merging several sorted lists by always taking the best front item is called a **k-way merge**.",
         "Put the newest tweet of every relevant user into a max-heap keyed on time. Pop the newest, then push that user's next-older tweet. Repeat up to 10 times.",
       ],
       brute:
         'Collect every tweet from the user and all followees, sort them all by time, and take 10: **O(T log T)** per feed request, where T is the number of those tweets.',
       insight:
-        "Every user's tweet list is already sorted by time, so the feed is a **k-way merge** that stops after 10 items. A **max-heap** holding one newest-unread tweet per user does exactly that.",
+        "Every user's tweet list is already sorted by time, so the feed is a **k-way merge** that stops after 10 items: keep one candidate per user (their newest tweet not yet taken), take the newest candidate, and replace it with that user's next-older tweet. A **max-heap** of the candidates hands you the newest one without sorting them all.",
       mnemonic: 'Newest tweet from each followee into a heap; pop ten.',
       steps: [
         'Keep a global clock, a dict of user to list of (time, tweetId), and a dict of user to set of followees.',
@@ -429,13 +429,13 @@ class Twitter:
         self.tweets[userId].append((self.time, tweetId))
         self.time += 1
 
-    #@ getNewsFeed: look at the user and everyone they follow, and find each one's newest tweet.
+    #@ getNewsFeed: look at the user and everyone they follow (the | joins the two sets), and find each one's newest tweet.
     def getNewsFeed(self, userId: int) -> List[int]:
         heap = []
         for uid in self.following[userId] | {userId}:
             if self.tweets[uid]:
                 idx = len(self.tweets[uid]) - 1
-                #@ Heap entries are (negated time, tweetId, user, index), so the newest tweet pops first.
+                #@ Heap entries are (negated time, tweetId, user, index). Tuples compare by their first item, so the newest tweet pops first. user and index say where to find that user's next-older tweet.
                 t, tid = self.tweets[uid][idx]
                 heap.append((-t, tid, uid, idx))  #!
         heapq.heapify(heap)

@@ -6,7 +6,8 @@ import { addDays, daysBetween, today } from './date';
 import { later, toast } from './events';
 import { ACHIEVEMENTS, GEMS, levelInfo, levelTitle } from './game';
 import { TEMPLATE_READY, TYPED_PROOF } from './input';
-import { newCard, review, type Grade, type SrsCard } from './srs';
+import { knownCard, newCard, review, type Grade, type SrsCard } from './srs';
+import { CATEGORIES } from '../content/categories';
 import type { Difficulty } from '../content/types';
 import { sfx } from './sound';
 
@@ -40,6 +41,12 @@ export interface ProblemProgress {
   typedAt?: number;
   /** When its review card last lapsed (a review graded 'again' that reset it). Optional: older saves do not have it. */
   lapsedAt?: number;
+  /** When the learner's own code last passed every test ("run my code"). Optional: older saves do not have it. */
+  solvedAt?: number;
+  /** Learned by solving it unaided before its lesson ("I know this one"), which skipped the lesson. */
+  testedOut?: boolean;
+  /** The last timed mock interview on this problem. */
+  mock?: { at: number; passed: boolean; seconds: number };
 }
 
 export interface TemplateProgress {
@@ -64,6 +71,18 @@ export interface TemplateProgress {
   pickReady?: boolean;
 }
 
+/** Clue words (lib/clues.ts): how well the wording that points to one pattern is known. */
+export interface ClueProgress {
+  /** Cards answered on this pattern's clues, and how many were right on the first try. */
+  seen: number;
+  right: number;
+  /** Right in a row now, and the longest such run so far. */
+  run: number;
+  best: number;
+  /** When it was last asked (ms). */
+  at: number;
+}
+
 /** How a template was practiced: its gaps picked from choices, its gaps typed, or the whole template typed from memory. */
 export type TemplateMode = 'pick' | 'gaps' | 'memory';
 
@@ -84,6 +103,15 @@ export interface Progress {
     typingMode: 'auto' | 'type' | 'tap';
     /** The last game picked in Pattern Blitz: spot the pattern, or type key lines. */
     blitzGame: 'pattern' | 'lines';
+    /** "Run my code": run typed code with real Python in the browser (lib/python.ts; downloads the runtime once). */
+    runCode: boolean;
+    /** The learner's interview day ("YYYY-MM-DD"), if they set one: it paces new problems and caps review intervals (lib/plan.ts). */
+    interviewDate: string | null;
+    /**
+     * The order "what next?" follows (lib/path.ts): 'core' = every unit's Easy and Medium problems
+     * first, then the Hard ones; 'unit' = each unit to its end before the next.
+     */
+    pathOrder: 'core' | 'unit';
   };
   xp: number;
   gems: number;
@@ -103,6 +131,8 @@ export interface Progress {
   problems: Record<string, ProblemProgress>;
   /** Template from memory, per unit (category id). Optional: older saves do not have it. */
   templates?: Record<string, TemplateProgress>;
+  /** Clue words, per pattern (category id). Optional: older saves do not have it. */
+  clues?: Record<string, ClueProgress>;
   achievements: Record<string, number>;
   stats: {
     sessions: number;
@@ -117,6 +147,10 @@ export interface Progress {
     blitzCodePlays: number;
     rebuilds: number;
     perfectRebuilds: number;
+    /** Problems whose tests the learner's own code passed, and timed mock interviews taken and passed. */
+    solved: number;
+    mocks: number;
+    mocksPassed: number;
   };
 }
 
@@ -136,6 +170,9 @@ function fresh(): Progress {
       theme: 'system',
       typingMode: 'auto',
       blitzGame: 'pattern',
+      runCode: true,
+      interviewDate: null,
+      pathOrder: 'core',
     },
     xp: 0,
     gems: 20,
@@ -157,66 +194,278 @@ function fresh(): Progress {
       blitzCodePlays: 0,
       rebuilds: 0,
       perfectRebuilds: 0,
+      solved: 0,
+      mocks: 0,
+      mocksPassed: 0,
     },
   };
 }
 
-/** Merge a stored object over defaults so older saves gain new fields. */
-function hydrate(raw: unknown): Progress {
-  const base = fresh();
-  if (!raw || typeof raw !== 'object') return base;
-  const r = raw as Partial<Progress>;
-  const settings = { ...base.settings, ...(r.settings ?? {}) };
-  // "Code practice": 'auto' (Pick first, then type), 'type' (Always type) or 'tap' (Always pick).
-  if (!['auto', 'type', 'tap'].includes(settings.typingMode)) settings.typingMode = 'auto';
-  // Saves from before cards kept the grade of the review that moved them: take the last grade
-  // given, once, so practice that does not move the card (which still sets `lastGrade`) can never
-  // flip it between picking and typing (`isNewCode`).
-  const problems: Record<string, ProblemProgress> = { ...(r.problems ?? {}) };
-  for (const [id, pp] of Object.entries(problems)) {
-    if (pp?.srs && pp.srs.reps >= 1 && !pp.srs.grade && pp.lastGrade) problems[id] = { ...pp, srs: { ...pp.srs, grade: pp.lastGrade } };
-  }
+// ── Reading saved progress safely ───────────────────────────────────────────
+// A save can come from an older version, a hand-edited backup, or be damaged. Everything read from
+// storage or from an imported file goes through `hydrate`, which keeps what is well-formed and
+// replaces the rest with defaults, so one bad field can never crash the app or corrupt the totals.
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const num = (v: unknown, fallback = 0, min = 0): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(min, v) : fallback);
+const day = (v: unknown): string | null => (typeof v === 'string' && DAY.test(v) ? v : null);
+const stamp = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : undefined);
+const score = (v: unknown): number | undefined => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : undefined);
+const GRADES: readonly Grade[] = ['again', 'hard', 'good', 'easy'];
+const grade = (v: unknown): Grade | undefined => (GRADES.includes(v as Grade) ? (v as Grade) : undefined);
+
+/** Every number in a record of counters (`xpByDay`, `lessonsDone`, `achievements`); entries that are not numbers are dropped. */
+function numbers(v: unknown, keyOk: (k: string) => boolean = () => true): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (isObj(v)) for (const [k, x] of Object.entries(v)) if (keyOk(k) && typeof x === 'number' && Number.isFinite(x)) out[k] = x;
+  return out;
+}
+
+function card(v: unknown): SrsCard | undefined {
+  if (!isObj(v)) return undefined;
+  const due = day(v.due);
+  const last = day(v.last);
+  if (!due || !last) return undefined;
+  const g = grade(v.grade);
+  const held = day(v.held);
   return {
-    ...base,
-    ...r,
-    settings,
-    streak: { ...base.streak, ...(r.streak ?? {}) },
-    stats: { ...base.stats, ...(r.stats ?? {}) },
-    xpByDay: r.xpByDay ?? {},
-    goalDays: r.goalDays ?? [],
-    lessonsDone: r.lessonsDone ?? {},
-    problems,
-    achievements: r.achievements ?? {},
+    ...(held ? { held } : {}),
+    due,
+    last,
+    interval: Math.round(num(v.interval, 1, 1)),
+    ease: Math.min(4, num(v.ease, 2.5, 1.3)),
+    reps: Math.round(num(v.reps)),
+    lapses: Math.round(num(v.lapses)),
+    ...(g ? { grade: g } : {}),
   };
 }
 
+function problemProgress(v: unknown): ProblemProgress | null {
+  if (!isObj(v)) return null;
+  const p: ProblemProgress = {
+    difficulty: (['Easy', 'Medium', 'Hard'] as const).find((d) => d === v.difficulty) ?? 'Medium',
+    reviews: Math.round(num(v.reviews)),
+  };
+  const learnedAt = stamp(v.learnedAt);
+  if (learnedAt) {
+    p.learnedAt = learnedAt;
+    // A learned problem always has a card: without one it would never come back for review.
+    p.srs = card(v.srs) ?? newCard();
+  }
+  const lastGrade = grade(v.lastGrade);
+  if (lastGrade) p.lastGrade = lastGrade;
+  for (const k of ['rebuildBest', 'scratchBest', 'gapsBest', 'rebuildPickBest', 'gapsPickBest'] as const) {
+    const x = score(v[k]);
+    if (x !== undefined) p[k] = x;
+  }
+  for (const k of ['rebuiltAt', 'typedAt', 'lapsedAt', 'solvedAt'] as const) {
+    const x = stamp(v[k]);
+    if (x) p[k] = x;
+  }
+  if (v.testedOut === true) p.testedOut = true;
+  if (isObj(v.mock) && stamp(v.mock.at)) p.mock = { at: stamp(v.mock.at)!, passed: v.mock.passed === true, seconds: Math.round(num(v.mock.seconds)) };
+  // Saves from before cards kept the grade of the review that moved them: take the last grade
+  // given, once, so practice that does not move the card (which still sets `lastGrade`) can never
+  // flip it between picking and typing (`isNewCode`).
+  if (p.srs && p.srs.reps >= 1 && !p.srs.grade && p.lastGrade) p.srs = { ...p.srs, grade: p.lastGrade };
+  return p;
+}
+
+function templateProgress(v: unknown): TemplateProgress | null {
+  if (!isObj(v)) return null;
+  const t: TemplateProgress = { best: score(v.best) ?? 0, tries: Math.round(num(v.tries)), at: stamp(v.at) ?? Date.now() };
+  const gapsBest = score(v.gapsBest);
+  const pickBest = score(v.pickBest);
+  if (gapsBest !== undefined) t.gapsBest = gapsBest;
+  if (pickBest !== undefined) t.pickBest = pickBest;
+  if (v.pickReady === true) t.pickReady = true;
+  return t;
+}
+
+/** Lesson ids that were split or renamed: a learner who finished the old lesson has finished these. */
+const LESSON_MOVES: Record<string, string[]> = {
+  'f:functions-and-classes': ['f:functions', 'f:classes-and-nodes'],
+};
+
+/** A stored object as a well-formed Progress: defaults for anything missing or malformed. */
+function hydrate(raw: unknown): Progress {
+  const base = fresh();
+  if (!isObj(raw)) return base;
+  const rs = isObj(raw.settings) ? raw.settings : {};
+  const pick = <T>(v: unknown, allowed: readonly T[], fallback: T): T => (allowed.includes(v as T) ? (v as T) : fallback);
+  const settings: Progress['settings'] = {
+    name: typeof rs.name === 'string' ? rs.name.slice(0, 60) : base.settings.name,
+    dailyGoal: num(rs.dailyGoal, base.settings.dailyGoal, 1),
+    experience: pick<Experience>(rs.experience, ['none', 'some', 'comfortable'], base.settings.experience),
+    sound: typeof rs.sound === 'boolean' ? rs.sound : base.settings.sound,
+    haptics: typeof rs.haptics === 'boolean' ? rs.haptics : base.settings.haptics,
+    theme: pick(rs.theme, ['system', 'light', 'dark'] as const, base.settings.theme),
+    // "Code practice": 'auto' (Pick first, then type), 'type' (Always type) or 'tap' (Always pick).
+    typingMode: pick(rs.typingMode, ['auto', 'type', 'tap'] as const, 'auto'),
+    blitzGame: pick(rs.blitzGame, ['pattern', 'lines'] as const, 'pattern'),
+    runCode: typeof rs.runCode === 'boolean' ? rs.runCode : true,
+    interviewDate: day(rs.interviewDate),
+    pathOrder: pick(rs.pathOrder, ['core', 'unit'] as const, 'core'),
+  };
+  const problems: Record<string, ProblemProgress> = {};
+  if (isObj(raw.problems))
+    for (const [id, v] of Object.entries(raw.problems)) {
+      const p = problemProgress(v);
+      if (p) problems[id] = p;
+    }
+  const templates: Record<string, TemplateProgress> = {};
+  if (isObj(raw.templates))
+    for (const [cat, v] of Object.entries(raw.templates)) {
+      const t = templateProgress(v);
+      if (t) templates[cat] = t;
+    }
+  const clues: Record<string, ClueProgress> = {};
+  if (isObj(raw.clues))
+    for (const [cat, v] of Object.entries(raw.clues)) {
+      if (!isObj(v)) continue;
+      const seen = Math.round(num(v.seen));
+      const run = Math.round(num(v.run));
+      clues[cat] = { seen, right: Math.min(seen, Math.round(num(v.right))), run, best: Math.max(run, Math.round(num(v.best))), at: stamp(v.at) ?? Date.now() };
+    }
+  const lessonsDone = numbers(raw.lessonsDone);
+  for (const [old, now] of Object.entries(LESSON_MOVES)) {
+    if (!lessonsDone[old]) continue;
+    for (const k of now) lessonsDone[k] ??= lessonsDone[old];
+    delete lessonsDone[old];
+  }
+  const st = isObj(raw.streak) ? raw.streak : {};
+  const lost = isObj(st.lost) && day(st.lost.lastDay) && day(st.lost.day) ? { value: Math.round(num(st.lost.value)), lastDay: day(st.lost.lastDay)!, day: day(st.lost.day)! } : null;
+  const current = Math.round(num(st.current));
+  const stats = { ...base.stats };
+  if (isObj(raw.stats)) for (const k of Object.keys(stats) as (keyof Progress['stats'])[]) stats[k] = num(raw.stats[k], stats[k]);
+  return {
+    version: 1,
+    createdAt: stamp(raw.createdAt) ?? base.createdAt,
+    onboarded: raw.onboarded === true,
+    settings,
+    xp: Math.round(num(raw.xp)),
+    gems: Math.round(num(raw.gems, base.gems)),
+    xpByDay: numbers(raw.xpByDay, (k) => DAY.test(k)),
+    goalDays: Array.isArray(raw.goalDays) ? [...new Set(raw.goalDays.filter((d): d is string => !!day(d)))] : [],
+    streak: {
+      current,
+      longest: Math.max(current, Math.round(num(st.longest))),
+      lastDay: day(st.lastDay),
+      freezes: Math.min(GEMS.maxFreezes, Math.round(num(st.freezes, base.streak.freezes))),
+      frozenDays: Array.isArray(st.frozenDays) ? st.frozenDays.filter((d): d is string => !!day(d)) : [],
+      lost,
+    },
+    lessonsDone,
+    problems,
+    ...(Object.keys(templates).length ? { templates } : {}),
+    ...(Object.keys(clues).length ? { clues } : {}),
+    achievements: numbers(raw.achievements),
+    stats,
+  };
+}
+
+/** Where a save that could not be read is kept, so it can still be recovered by hand (Profile → Export). */
+const CORRUPT_KEY = KEY + '.unreadable';
+/** The text last read from or written to storage: when storage holds something else, another tab wrote it. */
+let lastRaw: string | null = null;
+/** Set when the save could not be read at startup; the app says so once (see `storageNotice`). */
+let unreadable = false;
+
 function load(): Progress {
+  let raw: string | null = null;
   try {
-    const s = localStorage.getItem(KEY);
-    return hydrate(s ? JSON.parse(s) : null);
+    raw = localStorage.getItem(KEY);
   } catch {
+    return fresh(); // storage blocked: progress lives in memory for this visit
+  }
+  lastRaw = raw;
+  if (!raw) return fresh();
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isObj(parsed)) throw new Error('not an object');
+    return hydrate(parsed);
+  } catch {
+    // Never overwrite a save we could not read: keep a copy, then start fresh.
+    try {
+      localStorage.setItem(CORRUPT_KEY, raw);
+    } catch {
+      /* no room for the copy */
+    }
+    unreadable = true;
     return fresh();
   }
 }
 
 let state: Progress = load();
 const listeners = new Set<() => void>();
+let saveFailed = false;
 
 function save() {
+  const raw = JSON.stringify(state);
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    localStorage.setItem(KEY, raw);
+    lastRaw = raw;
+    saveFailed = false;
   } catch {
-    /* storage full or blocked — progress stays in memory for this visit */
+    // Storage is full or blocked: progress stays in memory for this visit. Say so once, so the
+    // learner can export a backup before closing the tab.
+    if (!saveFailed) {
+      saveFailed = true;
+      toast({
+        icon: 'warning',
+        title: 'Progress could not be saved',
+        body: 'This browser’s storage is full or blocked. Export a backup from your profile before closing this tab.',
+        tone: 'warn',
+      });
+    }
+  }
+}
+
+/**
+ * Pick up what another tab saved, in case its `storage` event has not arrived yet (or never does:
+ * a tab asleep in the background). Without this, a stale tab's next save would overwrite the newer
+ * progress.
+ */
+function refresh() {
+  let raw: string | null;
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch {
+    return;
+  }
+  if (raw === lastRaw || !raw) return;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (isObj(parsed)) {
+      state = hydrate(parsed);
+      lastRaw = raw;
+    }
+  } catch {
+    /* another tab is mid-write or wrote something unreadable: keep what we have */
   }
 }
 
 function update(fn: (draft: Progress) => void) {
+  refresh();
   const draft = structuredClone(state);
   fn(draft);
   checkAchievements(draft);
   state = draft;
   save();
   listeners.forEach((l) => l());
+}
+
+/** One-time notices about saved progress, for the app shell to show after it mounts. */
+export function storageNotice(): void {
+  if (!unreadable) return;
+  unreadable = false;
+  toast({
+    icon: 'warning',
+    title: 'Saved progress could not be read',
+    body: 'IntPrep started fresh. The old data was kept in this browser; import a backup from your profile to restore it.',
+    tone: 'warn',
+  });
 }
 
 export function getProgress(): Progress {
@@ -238,7 +487,7 @@ export function useProgress(): Progress {
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
     if (e.key === KEY) {
-      state = load();
+      refresh();
       listeners.forEach((l) => l());
     }
   });
@@ -247,38 +496,48 @@ if (typeof window !== 'undefined') {
 // ── Streaks ─────────────────────────────────────────────────────────────────
 
 /**
- * Run on app start (and when the tab regains focus). If days were missed,
- * spend streak freezes to cover them; if there are not enough, the streak resets.
+ * Days were missed since the last practice: spend streak freezes to cover them, or, without
+ * enough, end the streak (it stays repairable for 48 hours). Changes `d` in place; a no-op when
+ * nothing was missed, and when the device clock moved back (a trip west, a corrected clock), which
+ * must never cost a streak.
  */
-export function reconcileStreak() {
-  const s = state.streak;
+function settleStreak(d: Progress, t: string) {
+  const s = d.streak;
   if (!s.lastDay) return;
-  const t = today();
-  const gap = daysBetween(s.lastDay, t); // 1 = played yesterday
+  const gap = daysBetween(s.lastDay, t); // 1 = practiced yesterday
   if (gap <= 1) return;
   const missed = gap - 1;
-  update((d) => {
-    if (d.streak.current > 0 && d.streak.freezes >= missed) {
-      for (let i = 1; i <= missed; i++) d.streak.frozenDays.push(addDays(d.streak.lastDay!, i));
-      d.streak.freezes -= missed;
-      d.streak.lastDay = addDays(t, -1);
-      toast({
-        icon: 'snowflake',
-        title: missed === 1 ? 'Streak freeze used' : `${missed} streak freezes used`,
-        body: `Your ${d.streak.current}-day streak is safe. Practice today to keep it going!`,
-        tone: 'streak',
-      });
-    } else if (d.streak.current > 0) {
-      toast({
-        icon: 'sunrise',
-        title: 'Fresh start',
-        body: `Your ${d.streak.current}-day streak paused. You can repair it for the next 48 hours, or begin a new one with one lesson.`,
-        tone: 'warn',
-      });
-      d.streak.lost = { value: d.streak.current, lastDay: d.streak.lastDay!, day: t };
-      d.streak.current = 0;
-    }
-  });
+  if (s.current > 0 && s.freezes >= missed) {
+    for (let i = 1; i <= missed; i++) s.frozenDays.push(addDays(s.lastDay, i));
+    s.freezes -= missed;
+    s.lastDay = addDays(t, -1);
+    toast({
+      icon: 'snowflake',
+      title: missed === 1 ? 'Streak freeze used' : `${missed} streak freezes used`,
+      body: `Your ${s.current}-day streak is safe. Practice today to keep it going!`,
+      tone: 'streak',
+    });
+  } else if (s.current > 0) {
+    s.lost = { value: s.current, lastDay: s.lastDay, day: t };
+    const canRepair = repairableStreak(d) > 0;
+    toast({
+      icon: 'sunrise',
+      title: 'Fresh start',
+      body: canRepair
+        ? `Your ${s.current}-day streak paused. You can repair it for the next 48 hours, or begin a new one with one lesson.`
+        : `Your ${s.current}-day streak ended. Begin a new one with one lesson.`,
+      tone: 'warn',
+    });
+    s.current = 0;
+  }
+}
+
+/** Run on app start (and when the tab regains focus): settle any days missed since the last practice. */
+export function reconcileStreak() {
+  refresh();
+  const s = state.streak;
+  if (!s.lastDay || daysBetween(s.lastDay, today()) <= 1) return;
+  update((d) => settleStreak(d, today()));
 }
 
 // ── Rewards ─────────────────────────────────────────────────────────────────
@@ -293,9 +552,13 @@ export function awardXp(amount: number, reason?: string) {
     const before = d.xpByDay[t] ?? 0;
     d.xpByDay[t] = before + amount;
 
-    // Streak: any real practice today counts.
-    if (d.streak.lastDay !== t) {
-      const gap = d.streak.lastDay ? daysBetween(d.streak.lastDay, t) : Infinity;
+    // Streak: any real practice today counts. Days missed while the app stayed open (a tab left
+    // on screen overnight never runs `reconcileStreak`) are settled first, so a freeze is used or
+    // the streak becomes repairable instead of silently restarting. A clock that moved back (a
+    // last day in the future) leaves the streak as it is.
+    settleStreak(d, t);
+    const gap = d.streak.lastDay ? daysBetween(d.streak.lastDay, t) : Infinity;
+    if (gap > 0) {
       d.streak.current = gap === 1 ? d.streak.current + 1 : 1;
       d.streak.lastDay = t;
       d.streak.longest = Math.max(d.streak.longest, d.streak.current);
@@ -316,7 +579,10 @@ export function awardXp(amount: number, reason?: string) {
 
     const after = levelInfo(d.xp).level;
     if (after > beforeLevel) {
-      toast({ icon: 'star', title: `Level ${after}!`, body: `You are now a ${levelTitle(after)}.`, tone: 'success' });
+      // A title lasts two levels: name it only when it is new.
+      const title = levelTitle(after);
+      const body = title !== levelTitle(beforeLevel) ? `New title: ${title}.` : `${levelInfo(d.xp).cost - levelInfo(d.xp).into} XP to level ${after + 1}.`;
+      toast({ icon: 'star', title: `Level ${after}!`, body, tone: 'success' });
       later(() => sfx('level'));
     }
   });
@@ -330,11 +596,15 @@ function streakCheer(n: number): string {
   return 'Two days in a row — that is how habits start.';
 }
 
-/** Can a recently broken streak still be repaired? Returns its length or 0. */
+/**
+ * Can a recently broken streak still be repaired? Returns its length or 0. The 48 hours run from
+ * the first missed day (the day after the last practice), not from when the app was next opened:
+ * a streak that ended a month ago is gone.
+ */
 export function repairableStreak(p: Progress = state): number {
   const lost = p.streak.lost;
   if (!lost) return 0;
-  return daysBetween(lost.day, today()) <= 1 ? lost.value : 0;
+  return daysBetween(lost.lastDay, today()) <= 3 ? lost.value : 0;
 }
 
 export function repairStreak(): boolean {
@@ -410,7 +680,11 @@ export function completeLesson(key: string, xp: number) {
   awardXp(first ? xp : Math.round(xp / 3), 'lesson');
 }
 
-export function learnProblem(id: string, difficulty: Difficulty, xp: number) {
+/**
+ * A problem joins the review deck: at the end of its guided lesson, or (`testedOut`) because the
+ * learner solved it unaided first, in which case its card starts a week out instead of tomorrow.
+ */
+export function learnProblem(id: string, difficulty: Difficulty, xp: number, opts: { testedOut?: boolean } = {}) {
   const existing = state.problems[id];
   const first = !existing?.learnedAt;
   update((d) => {
@@ -418,12 +692,46 @@ export function learnProblem(id: string, difficulty: Difficulty, xp: number) {
     p.difficulty = difficulty;
     if (!p.learnedAt) {
       p.learnedAt = Date.now();
-      p.srs = newCard();
+      p.srs = opts.testedOut ? knownCard() : newCard();
+      if (opts.testedOut) p.testedOut = true;
       d.gems += GEMS.problem;
     }
     d.problems[id] = p;
   });
   awardXp(first ? xp : Math.round(xp / 4), 'problem');
+}
+
+/** The learner's own code passed every test of a problem ("run my code"). Returns true the first time. */
+export function recordSolved(id: string, difficulty: Difficulty): boolean {
+  const first = !state.problems[id]?.solvedAt;
+  update((d) => {
+    const p = d.problems[id] ?? { difficulty, reviews: 0 };
+    if (!p.solvedAt) d.stats.solved += 1;
+    p.solvedAt = Date.now();
+    // Code that passes the tests, written without the solution on screen, is typed proof (lib/input.ts).
+    if (p.learnedAt) p.typedAt = p.solvedAt;
+    d.problems[id] = p;
+  });
+  return first;
+}
+
+/** A finished timed mock interview on one problem. */
+export function recordMock(id: string, difficulty: Difficulty, passed: boolean, seconds: number) {
+  update((d) => {
+    const p = d.problems[id] ?? { difficulty, reviews: 0 };
+    p.mock = { at: Date.now(), passed, seconds: Math.round(seconds) };
+    d.problems[id] = p;
+    d.stats.mocks += 1;
+    if (passed) d.stats.mocksPassed += 1;
+  });
+}
+
+/** With an interview date set, the longest a review interval may be: every problem comes back before the day. */
+function intervalCap(d: Progress): number | undefined {
+  const date = d.settings.interviewDate;
+  if (!date) return undefined;
+  const left = daysBetween(today(), date);
+  return left > 0 ? Math.max(1, left - 2) : undefined;
 }
 
 /**
@@ -437,8 +745,11 @@ export function reviewProblem(id: string, grade: Grade, opts: { force?: boolean;
     if (!p?.srs) return;
     p.reviews += 1;
     p.lastGrade = grade;
-    if (opts.force || p.srs.due <= today() || (grade === 'again' && opts.lapse !== false)) {
-      p.srs = review(p.srs, grade);
+    // A card that is nearly due (three quarters of its interval have passed) moves too, so a
+    // learner can work a day ahead of a busy one; `review` grows it only for the time that passed.
+    const nearlyDue = p.srs.interval >= 4 && daysBetween(p.srs.last, today()) >= 0.75 * p.srs.interval;
+    if (opts.force || p.srs.due <= today() || (nearlyDue && grade !== 'again') || (grade === 'again' && opts.lapse !== false)) {
+      p.srs = review(p.srs, grade, { fuzz: Math.random(), cap: intervalCap(d) });
       // A lapse makes earlier typed proof stale: the code is picked again (lib/input.ts).
       if (grade === 'again') p.lapsedAt = Date.now();
     }
@@ -546,6 +857,16 @@ export function recordTemplate(cat: string, accuracy: number, mode: TemplateMode
   return best;
 }
 
+/** One Clue words card answered (first try only): the pattern it was about, and whether it was right. */
+export function recordClue(cat: string, ok: boolean) {
+  update((d) => {
+    const all = (d.clues ??= {});
+    const cur = all[cat] ?? { seen: 0, right: 0, run: 0, best: 0, at: 0 };
+    const run = ok ? cur.run + 1 : 0;
+    all[cat] = { seen: cur.seen + 1, right: cur.right + (ok ? 1 : 0), run, best: Math.max(cur.best, run), at: Date.now() };
+  });
+}
+
 /**
  * The template score to show next to "Practice the template": the highest rung practiced, so the
  * from-memory best once the template has been typed from memory, else the fill-the-gaps best,
@@ -560,9 +881,44 @@ export function templateScore(t: TemplateProgress | undefined): { mode: Template
 
 // ── Settings & data ─────────────────────────────────────────────────────────
 
+/**
+ * With an interview date, every learned problem comes back before the day: a review already
+ * scheduled past it is pulled into the last stretch before the interview, spread over those days
+ * so they do not all land on one. (Reviews made from now on are capped as they are scheduled: see
+ * `intervalCap`.)
+ */
+function pullInReviews(d: Progress) {
+  // Start from each problem's own schedule: a date that is changed or cleared gives back the due
+  // days an earlier date took (`held`), so moving the date never shortens a schedule for good.
+  for (const p of Object.values(d.problems)) {
+    if (!p.srs?.held) continue;
+    const { held, ...card } = p.srs;
+    p.srs = { ...card, due: held };
+  }
+  const date = d.settings.interviewDate;
+  const t = today();
+  if (!date) return;
+  const left = daysBetween(t, date);
+  if (left <= 1) return;
+  const last = addDays(date, -Math.min(2, left - 1)); // the latest day a review may fall on
+  const span = Math.max(1, Math.min(10, Math.round(left * 0.15), daysBetween(t, last)));
+  let k = 0;
+  for (const p of Object.values(d.problems)) {
+    if (!p.srs || p.srs.due <= last) continue;
+    p.srs = { ...p.srs, held: p.srs.due, due: addDays(last, -(k++ % span)) };
+  }
+}
+
 export function updateSettings(patch: Partial<Progress['settings']>) {
   update((d) => {
     d.settings = { ...d.settings, ...patch };
+    if ('interviewDate' in patch) pullInReviews(d);
+    // A goal lowered to what today already earned is a goal met: it counts, gems included.
+    const t = today();
+    if (patch.dailyGoal !== undefined && (d.xpByDay[t] ?? 0) >= d.settings.dailyGoal && !d.goalDays.includes(t)) {
+      d.goalDays.push(t);
+      d.gems += GEMS.dailyGoal;
+    }
   });
 }
 
@@ -579,8 +935,9 @@ export function exportProgress(): string {
 
 export function importProgress(json: string): boolean {
   try {
-    const parsed = JSON.parse(json);
-    if (!parsed || parsed.version !== 1) return false;
+    const parsed: unknown = JSON.parse(json);
+    // A backup is an export of this app: an object with its version and the parts every save has.
+    if (!isObj(parsed) || parsed.version !== 1 || !isObj(parsed.settings) || !isObj(parsed.problems)) return false;
     state = hydrate(parsed);
     save();
     listeners.forEach((l) => l());
@@ -598,16 +955,19 @@ export function resetProgress() {
 
 // ── Derived helpers ─────────────────────────────────────────────────────────
 
+/** Ids that are problems today: progress on one that content no longer has is kept, but never counted or asked. */
+const KNOWN = new Set(CATEGORIES.flatMap((c) => c.problemIds));
+
 export function dueProblemIds(p: Progress = state, day = today()): string[] {
   return Object.entries(p.problems)
-    .filter(([, x]) => x.srs && x.srs.due <= day)
+    .filter(([id, x]) => KNOWN.has(id) && x.srs && x.srs.due <= day)
     .sort((a, b) => (a[1].srs!.due < b[1].srs!.due ? -1 : 1))
     .map(([id]) => id);
 }
 
 export function learnedIds(p: Progress = state): string[] {
   return Object.entries(p.problems)
-    .filter(([, x]) => x.learnedAt)
+    .filter(([id, x]) => KNOWN.has(id) && x.learnedAt)
     .map(([id]) => id);
 }
 

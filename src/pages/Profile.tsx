@@ -1,6 +1,6 @@
 import '../styles/pages/profile.css';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   CalendarDays,
   Check,
@@ -27,8 +27,7 @@ import {
 import { PROBLEMS } from '../content/index';
 import { addDays, dayKey, lastNDays, parseDay, today } from '../lib/date';
 import { ACHIEVEMENTS, DAILY_GOALS, GEMS, levelInfo, levelTitle } from '../lib/game';
-import { CODE_PRACTICE, type InputMode } from '../lib/input';
-import { crowns } from '../lib/srs';
+import { CODE_PRACTICE, mastery, type InputMode } from '../lib/input';
 import {
   buyFreeze,
   exportProgress,
@@ -659,7 +658,7 @@ function CodePractice({ value }: { value: InputMode }) {
 export function Profile() {
   const p = useProgress();
   const learned = learnedIds(p).length;
-  const mastered = Object.values(p.problems).filter((x) => crowns(x.srs) >= 5).length;
+  const mastered = Object.values(p.problems).filter((x) => mastery(x) >= 5).length;
   const acc = p.stats.answered ? Math.round((p.stats.correct / p.stats.answered) * 100) : 0;
   const [confirmReset, setConfirmReset] = useState(false);
   const [importResult, setImportResult] = useState<'ok' | 'error' | null>(null);
@@ -680,6 +679,13 @@ export function Profile() {
   };
 
   const closeReset = () => setConfirmReset(false);
+
+  // A link to a setting (the dashboard's "Set an interview date" goes to #plan) lands on it.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'auto', block: 'start' });
+  }, [hash]);
 
   const editProfile = () => {
     settingsRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
@@ -778,7 +784,7 @@ export function Profile() {
           </SettingsGroup>
 
           <SettingsGroup title="Practice" desc="Set your daily target and how you practice code.">
-            <SettingRow label="Daily goal" desc={goal ? `XP per day, about ${goal.blurb.replace('≈', '').replace('a day', '').trim()} of practice.` : 'XP to earn each day.'}>
+            <SettingRow label="Daily goal" desc={goal ? `XP per day. ${goal.blurb}.` : 'XP to earn each day.'}>
               <div className="seg profile-seg profile-seg-4" role="radiogroup" aria-label="Daily goal">
                 {DAILY_GOALS.map((g) => (
                   <button
@@ -797,6 +803,71 @@ export function Profile() {
             </SettingRow>
             <SettingRow id="code-practice" stacked label="Code practice" desc={<CodePracticeDesc value={p.settings.typingMode} />}>
               <CodePractice value={p.settings.typingMode} />
+            </SettingRow>
+            <SettingRow
+              label="Run my code"
+              desc="Run the code you type with real Python in this browser, so any correct answer passes and a wrong one shows its error. The first run downloads Python once (about 7 MB); after that it works offline. Off, your code is compared with the answer line by line."
+              inline
+            >
+              <Toggle on={p.settings.runCode} onChange={(v) => updateSettings({ runCode: v })} label="Run my code" />
+            </SettingRow>
+          </SettingsGroup>
+
+          <div id="plan" className="profile-anchor" />
+          <SettingsGroup title="Plan" desc="Your interview date and the order of the learning path.">
+            <SettingRow
+              label="Interview date"
+              desc={
+                p.settings.interviewDate && p.settings.interviewDate <= today()
+                  ? 'That day has passed, so the plan no longer uses it. Clear it, or set your next one.'
+                  : p.settings.interviewDate
+                    ? 'Your plan works back from this day: new problems a day, a last stretch for review, and no review pushed past it.'
+                  : 'Optional. With a date, your plan works back from it and every learned problem is reviewed again before the day.'
+              }
+              htmlFor="profile-interview"
+            >
+              <div className="profile-date">
+                <input
+                  id="profile-interview"
+                  type="date"
+                  className="input"
+                  value={p.settings.interviewDate ?? ''}
+                  min={addDays(today(), 1)}
+                  // Saved once it is a whole date in the future: a date being typed passes through
+                  // others on the way, and each save reschedules reviews around it.
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) updateSettings({ interviewDate: null });
+                    else if (/^\d{4}-\d{2}-\d{2}$/.test(v) && v > today()) updateSettings({ interviewDate: v });
+                  }}
+                />
+                {p.settings.interviewDate && (
+                  <button type="button" className="btn btn-quiet btn-sm" onClick={() => updateSettings({ interviewDate: null })}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            </SettingRow>
+            <SettingRow
+              label="Path order"
+              desc={
+                p.settings.pathOrder === 'unit'
+                  ? 'Each pattern to its end, Hard problems included, before the next pattern.'
+                  : 'The Easy and Medium problems of every pattern first, then the Hard ones. You meet all 18 patterns sooner.'
+              }
+            >
+              <div className="seg profile-seg" role="radiogroup" aria-label="Path order">
+                {(
+                  [
+                    ['core', 'Core first'],
+                    ['unit', 'Unit by unit'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button key={id} type="button" role="radio" aria-checked={p.settings.pathOrder === id} className={p.settings.pathOrder === id ? 'on' : ''} onClick={() => updateSettings({ pathOrder: id })}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </SettingRow>
           </SettingsGroup>
 

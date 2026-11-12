@@ -13,6 +13,7 @@
 //           From memory and Foundations slides without options stay typed).
 
 import { dayKey } from './date';
+import { crowns } from './srs';
 import type { Progress, ProblemProgress, TemplateProgress } from './store';
 
 export type InputMode = Progress['settings']['typingMode'];
@@ -60,6 +61,16 @@ export function hasTypedProof(pp?: CodeProgress | null): boolean {
   if (!pp?.learnedAt || !pp.srs) return false;
   if (pp.typedAt !== undefined) return pp.typedAt > (pp.lapsedAt ?? 0);
   return pp.srs.lapses === 0 && ((pp.gapsBest ?? 0) >= TYPED_PROOF || (pp.scratchBest ?? 0) >= TYPED_PROOF);
+}
+
+/**
+ * A problem's mastery, 0–5 crowns (`crowns` in lib/srs.ts). "Mastered", the fifth, needs typed
+ * proof on top of a long review interval: a typed Code from memory run of `TYPED_PROOF` or more, or
+ * the learner's own code passing the tests. Picking code from choices for months shows it can be
+ * recognized; an interview asks for it to be written.
+ */
+export function mastery(pp?: CodeProgress | null): number {
+  return crowns(pp?.srs, hasTypedProof(pp));
 }
 
 /**

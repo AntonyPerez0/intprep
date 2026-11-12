@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Clue words — src/pages/ClueDrill.tsx (/clues). Cards built on the drill kit
+   (src/styles/pages/drills.css); this file adds the header counter, the
+   "wording → what to reach for" pair in the feedback, and the summary table.
+   The same pair lists a pattern's clue words in the pattern guide and the unit.
+   ========================================================================== */
+
+.clues-count {
+  flex: none;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.clues-count span {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+.clues-pattern {
+  color: var(--brand-text);
+}
+.clues-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+}
+.clues-pair svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  align-self: center;
+  color: var(--text-tertiary);
+}
+.clues-pair-see {
+  color: var(--text-secondary);
+}
+.clues-pair-use {
+  font-weight: 600;
+}
+.clues-fb-other {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.clues-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+.clues-hint svg {
+  width: 14px;
+  height: 14px;
+}
+.clues-done {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.clues-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.clues-table th,
+.clues-table td {
+  padding: 9px 8px;
+  text-align: left;
+  border-top: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.clues-table thead th {
+  border-top: 0;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+.clues-table tbody th {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.clues-table a {
+  color: var(--text);
+  text-decoration: none;
+}
+.clues-table a:hover {
+  text-decoration: underline;
+}
+
+/* ── A pattern's clue words as a list (pattern guide, unit page) ─────────── */
+.clue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.clue-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--fs-md);
+}
+.clue-list li:first-child {
+  border-top: 0;
+}
+.clue-list svg {
+  width: 14px;
+  height: 14px;
+  align-self: center;
+  color: var(--text-tertiary);
+}
+.clue-list-use {
+  font-weight: 600;
+}
+@media (max-width: 560px) {
+  .clue-list li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .clue-list svg {
+    display: none;
+  }
+  .clue-list-use::before {
+    content: '→ ';
+    color: var(--text-tertiary);
+    font-weight: 400;
+  }
+}
+
+/* ── "Memorize this pattern" / "Memorize this solution": the steps, in order ── */
+.memo-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.memo-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-top: 1px solid var(--border-subtle);
+}
+.memo-step:first-child {
+  border-top: 0;
+}
+.memo-step-mark {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
+}
+.memo-step.is-done .memo-step-mark {
+  background: var(--success);
+  color: var(--text-inverse);
+}
+.memo-step.is-next .memo-step-mark {
+  background: var(--brand);
+  color: var(--text-inverse);
+}
+.memo-step-mark svg {
+  width: 13px;
+  height: 13px;
+}
+.memo-step-title {
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.memo-step.is-done .memo-step-title {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.memo-step-note {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+.memo-step-go {
+  white-space: nowrap;
+}
+.memo-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.memo-count {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+}

@@ -4,7 +4,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, GraduationCap, Lock, Play, RotateCcw, Trophy } from 'lucide-react';import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor, problemsFor } from '../content/index';
 import { foundationsDone, nextStep, unitProgress, unitUnlocked, type NextStep } from '../lib/path';
-import { crowns, isDue } from '../lib/srs';
+import { mastery } from '../lib/input';
+import { isDue } from '../lib/srs';
 import { dueProblemIds, useProgress } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon, IconTile, LESSON_ICON, type LucideIcon } from '../components/icons';
@@ -539,7 +540,7 @@ export function Learn() {
                   state={due ? 'due' : learned ? 'done' : isNext ? 'next' : 'todo'}
                   marker={i + 1}
                   title={q.title}
-                  mastery={learned ? crowns(pp?.srs) : undefined}
+                  mastery={learned ? mastery(pp) : undefined}
                   end={<DifficultyChip d={q.difficulty} />}
                 />
               );
@@ -554,7 +555,11 @@ export function Learn() {
     <div className="learn">
       <PageHeader
         title="Learning path"
-        sub={`${totalProblems} problems across ${CATEGORIES.length} patterns, ordered so each one builds on the last. Follow it top to bottom or jump to any unit.`}
+        sub={`${totalProblems} problems across ${CATEGORIES.length} patterns, ordered so each one builds on the last. ${
+          p.settings.pathOrder === 'unit'
+            ? 'Follow it top to bottom or jump to any unit.'
+            : 'Your path takes the Easy and Medium problems of every pattern first, then comes back for the Hard ones. You can jump to anything.'
+        }`}
       />
 
       <div className="learn-overview-wrap">
