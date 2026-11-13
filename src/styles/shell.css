@@ -14,8 +14,10 @@
   top: calc(8px + env(safe-area-inset-top));
   left: 8px;
 }
+/* Hidden until focused. The move covers the whole `top`, status bar included: in the apps the
+   page runs under the status bar, so the inset is large and a fixed 24px left the link showing. */
 .skip-link:not(:focus) {
-  transform: translateY(calc(-100% - 24px));
+  transform: translateY(calc(-100% - 24px - env(safe-area-inset-top)));
 }
 #main:focus {
   outline: none; /* focused programmatically by the skip link */
