@@ -10,6 +10,7 @@ import { HighlightedCode } from '../lib/highlight';
 import { inline, Md } from '../lib/markdown';
 import { isLater, nextStep, unitNext, unitProgress, unitUnlocked } from '../lib/path';
 import { CUES } from '../content/cues';
+import { BeginnerNote } from '../components/BeginnerNote';
 import { ClueList, MemoSteps, patternSteps } from '../components/Memorize';
 import { mastery, templateInput } from '../lib/input';
 import { isDue } from '../lib/srs';
@@ -146,6 +147,7 @@ export function Unit() {
               Recommended after {listJoin(meta.prereqs.map((x) => CATEGORY_BY_ID[x].name))}. You can still jump in.
             </p>
           )}
+          <BeginnerNote p={p} what="This unit" />
           {ctas.some(Boolean) && <div className="unit-hero-actions">{ctas}</div>}
         </div>
 

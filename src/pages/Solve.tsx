@@ -111,6 +111,18 @@ function Solve({ p, mock }: { p: Problem; mock: boolean }) {
 
   const runner = useTestRun(p);
   const [report, setReport] = useState<{ result: JudgeResult; mode: 'examples' | 'submit' } | null>(null);
+  // The result lands under the editor, often below the screen: bring it into view after every run,
+  // or "Run examples" looks as if it did nothing.
+  const reportRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!report) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    // Two frames: after the action bar has settled (it sets the scroll padding).
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => reportRef.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' }));
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [report]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [solved, setSolved] = useState(draft.solvedIn !== undefined);
 
@@ -372,7 +384,7 @@ function Solve({ p, mock }: { p: Problem; mock: boolean }) {
         )}
 
         {report && (
-          <div className="solve-report">
+          <div className="solve-report" ref={reportRef}>
             {report.mode === 'examples' && report.result.status === 'done' && report.result.total === 0 ? (
               <div className="run-report" role="status">
                 <div className="run-summary">

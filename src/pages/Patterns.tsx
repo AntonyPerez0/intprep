@@ -29,6 +29,7 @@ import { isDue } from '../lib/srs';
 import { templateScore, useProgress, type Progress, type TemplateMode } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon } from '../components/icons';
+import { BeginnerNote } from '../components/BeginnerNote';
 import { ClueList } from '../components/Memorize';
 import { CodeWindow } from '../components/interact';
 import { EmptyState, ProgressBar } from '../components/ui';
@@ -126,6 +127,8 @@ export function Patterns() {
           </Link>
         }
       />
+
+      <BeginnerNote p={progress} what="The pattern guide" />
 
       <div className="input-group patterns-search">
         <Search aria-hidden="true" />

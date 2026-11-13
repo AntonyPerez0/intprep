@@ -35,9 +35,10 @@ const errors: string[] = [];
 const warnings: string[] = [];
 /**
  * Python to compile; with `output`, also run it and compare what it prints. A `wrong` snippet (a
- * slide's wrong option) may fail to compile or raise, but must not print `output`.
+ * slide's wrong option) may fail to compile or raise, but must not print `output`; when the slide's
+ * `check` is appended to it (`checked`), it must raise or print something else, as the check decides.
  */
-const pyFiles: { label: string; code: string; output?: string; wrong?: boolean }[] = [];
+const pyFiles: { label: string; code: string; output?: string; wrong?: boolean; checked?: boolean }[] = [];
 
 const err = (where: string, msg: string) => errors.push(`✗ ${where}: ${msg}`);
 const warn = (where: string, msg: string) => warnings.push(`⚠ ${where}: ${msg}`);
@@ -199,7 +200,8 @@ function checkFoundations() {
         // With a `check`, it is run after the code and must not raise (the python3 run needs an output to
         // run a snippet at all, so a slide with only a `check` runs against an empty one).
         if (s.check !== undefined) nonEmpty(sw, 'check', s.check);
-        if (s.check !== undefined && s.pick !== undefined) err(sw, 'a slide with "check" is typed: it cannot have "pick" options');
+        if (s.check === undefined && s.output === undefined)
+          err(sw, 'needs an "output" or a "check": without one the code is never run, and a correct answer written another way is marked wrong');
         const tail = s.check ? `\n${s.check}` : '';
         answers.forEach((a, k) =>
           pyFiles.push({
@@ -286,7 +288,10 @@ function checkPick(sw: string, s: TypeSlide) {
     else if (gradeBest(p, answers, { anchor: 0 }).grade.perfect) err(pw, 'grades as correct against the answer');
     if (codeLines(p).some((l) => indentOf(l) % 4 !== 0)) err(pw, 'indent with 4 spaces per level');
     if (Math.abs(baseIndent(p) - col) > 4) err(pw, `starts at column ${baseIndent(p)}, more than a level from the answer's ${col}`);
-    if (s.output !== undefined) pyFiles.push({ label: pw, code: s.starter ? `${s.starter}\n${p}` : p, output: s.output, wrong: true });
+    // Run it too: it must not print the output, and with a `check` (which decides when the slide is
+    // typed) it must not pass the check either.
+    if (s.output !== undefined || s.check)
+      pyFiles.push({ label: pw, code: (s.starter ? `${s.starter}\n${p}` : p) + (s.check ? `\n${s.check}` : ''), output: s.output ?? '', wrong: true, checked: !!s.check });
   });
   // The answer must not be the one option the others are variations of: with each wrong option one
   // mistake away at a different place, the answer is the only one that agrees with the others
@@ -633,7 +638,10 @@ function checkCues() {
       checkMarkdown(cw, cue.use);
       if (plain(cue.see).length > 90) err(cw, `"see" is ${plain(cue.see).length} characters, at most 90: ${cue.see}`);
       if (plain(cue.use).length > 70) err(cw, `"use" is ${plain(cue.use).length} characters, at most 70: ${cue.use}`);
-      if (new RegExp(`\\b${c.name.split(/[ /&]+/)[0]}\\b`, 'i').test(plain(cue.see)) && c.id !== 'trees' && c.id !== 'intervals' && c.id !== 'graphs')
+      // The pattern's own name in the wording gives the answer away ("a stack of plates"). Data a
+      // statement really names is a fair clue, so trees, graphs and intervals are exempt.
+      const giveaway = c.id.startsWith('dp-') ? 'dynamic programming' : c.id.replace(/-/g, ' ').replace(/s$/, '');
+      if (!['trees', 'graphs', 'intervals', 'advanced-graphs'].includes(c.id) && new RegExp(`\\b${giveaway}`, 'i').test(plain(cue.see)))
         warn(cw, `"see" names the pattern itself (${c.name}): the drill asks which pattern it is`);
       for (const a of cue.also ?? []) {
         if (!CATEGORY_BY_ID[a]) err(cw, `"also" names an unknown pattern: ${a}`);
@@ -665,7 +673,7 @@ if (pyFiles.length) {
   const manifest = pyFiles.map((f, i) => {
     const file = path.join(dir, `s${i}.py`);
     fs.writeFileSync(file, f.code + '\n');
-    return { label: f.label, file, output: f.output ?? null, wrong: !!f.wrong };
+    return { label: f.label, file, output: f.output ?? null, wrong: !!f.wrong, checked: !!f.checked };
   });
   fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest));
   const checker = `
@@ -695,16 +703,22 @@ for e in m:
         except SyntaxError:
             continue
         buf = Capped(4 * len(e["output"]) + 1000)
+        raised = False
         try:
             signal.setitimer(signal.ITIMER_REAL, 1.0)
             with contextlib.redirect_stdout(buf):
                 exec(code, {"__name__": "__main__"})
         except BaseException:
-            pass
+            raised = True
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
         got = buf.getvalue()
-        if got == e["output"] or got == e["output"] + "\\n":
+        if e["checked"]:
+            # The slide's check ran after it: a wrong option must fail it (raise) or print something else.
+            if not raised and (got == e["output"] or got == e["output"] + "\\n"):
+                bad += 1
+                print("PYERR", e["label"], "is a wrong option but passes the slide's check")
+        elif got == e["output"] or got == e["output"] + "\\n":
             bad += 1
             print("PYERR", e["label"], "is a wrong option but prints the expected output", json.dumps(got))
         continue

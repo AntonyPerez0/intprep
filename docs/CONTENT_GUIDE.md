@@ -79,19 +79,25 @@ when a lesson grows.
   15`, `assert length([4, 1]) == 2`). It prints nothing, and raising means the code is wrong. With a `check`, any
   code that runs clean (and prints `output`, when there is one) is correct, so the prompt can state only the goal
   ("Write `has_duplicate(nums)`: return `True` if any number appears more than once") instead of dictating names
-  and lines. Use it for find-the-bug exercises, functions written from scratch and other exercises that state only
-  the goal; today 21 slides have one. Rules:
+  and lines. Use it for find-the-bug exercises and for **every exercise whose answer is a function or a method**:
+  without an `output` or a `check` the code is never run, and a correct function written another way is marked
+  wrong. Today 38 slides have one, and no typed slide is left with neither field. Rules:
   - Test what the prompt asks for and nothing more: the names the prompt gives (the function, the variable that
     holds the result), the edge cases it mentions (`[]`, one item), and, when the prompt asks for speed, the work
     done (see the last slide of How to Solve a Problem, which counts how often the list is read).
-  - Write one condition per `assert`, readable on its own: the learner is shown the assert that failed.
+  - Write one condition per `assert`, readable on its own: the learner is shown the assert that failed. Where the
+    exercise is about *how* the code is written (it must call a helper, recurse, define a nested function), test
+    that too and give that assert a message (`assert calls, "use recursion: power should call itself"`): the
+    learner is shown the message instead of the line.
   - `answer` is still required: it is the solution shown, and what the code is compared with when Python cannot be
     run. Keep `accept` for the other forms you expect, for the same reason.
-  - A slide with a `check` is always typed: it cannot have `pick` options.
+  - A slide may have both a `check` and `pick` options: it is picked first, and the `check` decides once it is
+    typed. Every `pick` option must fail the `check`.
 - `npm run validate -- foundations` compiles `starter` + `answer` (and every `accept`) with python3, and runs every
   one that declares an `output` or a `check` (and every code slide with an `output`): what it prints must match
   `output` exactly (nothing, when the slide has only a `check`), and the `check`, run after it, must not raise. It
-  does not test that a `check` rejects wrong code: try a wrong answer against it yourself.
+  runs each `pick` option against the `check` too, and fails if one passes. Beyond the `pick` options it does not
+  test that a `check` rejects wrong code: try a wrong answer against it yourself.
 
 ### Pick options: pick it, then type it
 A learner should see what an idea's code looks like before typing it from memory (faded guidance; see
@@ -143,13 +149,20 @@ what the Clue words drill asks, what the pattern intro and the pattern guide lis
   is literal ("**k-th largest**", "in **O(log n)** time"), or a fact about the input or output that is on the page
   (a list of `[start, end]` pairs). Not a thought had while solving ("the brute force repeats work"): that belongs
   in the guide's `whenToUse`. At most 90 characters; bold the one or two trigger words.
+- **General wording, not one problem's statement.** A clue is wording that turns up in many problems, including
+  ones outside the 150 ("the **top `k`**", "return **all possible** …", "sorted, then **rotated**"), so that it
+  helps on a problem the learner has never seen. "Which pair of walls holds the most water?" only helps on
+  Container With Most Water; that belongs in the problem's own `signals`, which the drill asks as a separate kind
+  of card. Several phrasings of one cue may share a `see` ("**duplicate**", "appears **more than once**",
+  "**distinct**"). Where a pattern has little general wording (Greedy, Math & Geometry), its last clues may be the
+  signature wording of a well-known problem. A clue need not have a problem in the unit.
 - `use` is what to reach for, concrete enough to act on ("a heap capped at size **k**", "binary search **on the
   answer**"). At most 70 characters.
 - The drill offers the other patterns as wrong answers, so a `see` must point to its own pattern. Where the wording
   honestly fits another pattern too, make it more specific, or list that pattern in `also` (it then counts as right
   and is never offered as a wrong option).
-- `problems`: one or two problems of the unit whose statements show the wording. Between them, a unit's clues
-  should cover every problem of the unit. Put the most telling clue first: the pattern intro's question uses it.
+- `problems`: one or two problems of the unit whose statements show the wording, when there are any. Put the most
+  telling clue first: the pattern intro's question uses it.
 - `npm run validate -- cues` checks the counts, the lengths, that `problems` belong to the unit, and that no two
   patterns claim the same wording without `also`.
 

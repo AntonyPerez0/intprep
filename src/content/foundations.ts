@@ -123,7 +123,7 @@ Hello, IntPrep!
       },
       {
         kind: 'type',
-        title: 'Your first line of code',
+        title: 'Print some text',
         prompt: 'Write one line that prints the text `Hi there`. Remember that text goes inside quotes.',
         answer: 'print("Hi there")',
         hint: 'Start with `print(`, put the text inside quotes, then close the parenthesis.',
@@ -1584,6 +1584,7 @@ True False
           'ages.append("cy", 40)',
           'ages = {"cy": 40}',
         ],
+        check: 'assert ages == {"ana": 31, "bo": 25, "cy": 40}',
         ideas: ['dict key'],
         hint: 'Put the key in square brackets after `ages`, then assign the value with `=`.',
         explain:
@@ -2037,6 +2038,10 @@ def area(width, height):
           'return n * 2',
           'print(n * 2)',
         ],
+        check: py`
+assert double(4) == 8
+assert double(0) == 0
+assert double(-3) == -6`,
         ideas: ['return'],
         hint: 'One line that starts with `return`.',
         explain:
@@ -2073,6 +2078,10 @@ def is_even(n):
 def is_even():
     print(n % 2 == 0)`,
         ],
+        check: py`
+assert is_even(4) == True
+assert is_even(7) == False
+assert is_even(0) == True`,
         ideas: ['def'],
         hint: 'A number is even when `n % 2 == 0`. That comparison is already `True` or `False`, so you can return it directly.',
         explain:
@@ -2117,6 +2126,11 @@ def bigger(a, b):
     else:
         return b`,
         ],
+        check: py`
+assert bigger(3, 8) == 8
+assert bigger(8, 3) == 8
+assert bigger(5, 5) == 5
+assert bigger(-2, -7) == -2`,
         ideas: ['def', 'return'],
         hint: 'The `def` line names both parameters, separated by a comma. Inside it: an `if` with a `return`, then a second `return` lined up with the `if`.',
         explain:
@@ -2185,6 +2199,12 @@ None`,
             return True
         return False`,
         ],
+        check: py`
+assert has_big([1, 5, 2], 3) == True
+assert has_big([1, 2, 9], 3) == True
+assert has_big([1, 2], 3) == False
+assert has_big([3], 3) == False
+assert has_big([], 3) == False`,
         ideas: ['early return'],
         hint: '`return True` goes inside the `if`. `return False` goes after the loop, lined up with the `for`.',
         explain:
@@ -2218,6 +2238,20 @@ def has_vowel(word):`,
         if is_vowel(ch):
             return True
     return False`,
+        check: py`
+assert has_vowel("tree") == True
+assert has_vowel("xyzu") == True
+assert has_vowel("sky") == False
+assert has_vowel("") == False
+
+# The helper: has_vowel has to call is_vowel.
+inner = is_vowel
+calls = []
+def is_vowel(ch):
+    calls.append(ch)
+    return inner(ch)
+has_vowel("hi")
+assert calls, "use the helper: has_vowel should call is_vowel(ch)"`,
         ideas: ['call a function', 'early return'],
         hint: 'The same shape as `has_big`: a loop, an `if` that calls the helper, `return True` inside it, and `return False` back at the level of the `for`.',
         explain:
@@ -2327,6 +2361,14 @@ def is_long(w):
 def is_long(w):
     print(len(w) > limit)`,
         ],
+        check: py`
+import types
+found = [c for c in count_long.__code__.co_consts if isinstance(c, types.CodeType) and c.co_name == "is_long"]
+assert found, "define is_long inside count_long, indented one level under it"
+# Run the helper on its own, with limit = 3.
+is_long = types.FunctionType(found[0], globals(), "is_long", None, tuple(types.CellType(3) for _ in found[0].co_freevars))
+assert is_long("tree") == True, "is_long should return True for a word longer than limit"
+assert is_long("sky") == False, "is_long should return False for a word that is not longer than limit"`,
         ideas: ['nested def'],
         hint: 'The helper’s `def` line is indented once, because it lives inside `count_long`. Its body is indented once more.',
         explain:
@@ -2347,6 +2389,11 @@ def is_long(w):
         return limit > n
     return [n for n in nums if is_small(n)]`,
         ],
+        check: py`
+assert keep_small([5, 1, 8, 2], 4) == [1, 2]
+assert keep_small([4, 9], 4) == []
+assert keep_small([], 4) == []
+assert any(getattr(c, "co_name", "") == "is_small" for c in keep_small.__code__.co_consts), "define the helper is_small inside keep_small"`,
         ideas: ['nested def'],
         hint: 'The helper’s `def` is indented once and its body twice. The last line, `return [...]`, lines up with the helper’s `def`.',
         explain:
@@ -2394,6 +2441,11 @@ def tally(nums):
         add(n)
     return total`,
         ],
+        check: py`
+assert tally([4, 1, 6]) == 11
+assert tally([-2, 2, 5]) == 5
+assert tally([]) == 0
+assert any(getattr(c, "co_name", "") == "add" for c in tally.__code__.co_consts), "define the helper add(x) inside tally"`,
         ideas: ['nested def', 'call a function'],
         hint: 'The `def` line is indented once, because `add` lives inside `tally`, and its two lines once more: `nonlocal total` first. The loop and the `return` line up with the `def`.',
         explain:
@@ -2526,6 +2578,14 @@ class Greeter:
           py`
         return "Hi " + name`,
         ],
+        check: py`
+assert Greeter().greet() == "Hi Ada"
+
+# greet has to ask the name method, whatever it returns.
+class Other(Greeter):
+    def name(self):
+        return "Bo"
+assert Other().greet() == "Hi Bo", "call the name method through self: self.name()"`,
         ideas: ['self.method()'],
         hint: 'The method lives on the object: `self.` in front of its name, and `()` to call it.',
         explain:
@@ -2547,6 +2607,20 @@ class Playlist:
         answer: py`
         for song in songs:
             self.add(song)`,
+        check: py`
+p = Playlist()
+p.add_all(["a", "b"])
+assert p.songs == ["a", "b"]
+p.add_all(["c"])
+assert p.songs == ["a", "b", "c"]
+
+# add_all has to go through the add method.
+class Loud(Playlist):
+    def add(self, song):
+        self.songs.append(song.upper())
+loud = Loud()
+loud.add_all(["x"])
+assert loud.songs == ["X"], "add each song by calling the add method through self: self.add(song)"`,
         ideas: ['self.method()'],
         hint: 'A bare `add(song)` raises a `NameError`: the method lives on the object, so it needs `self.` in front.',
         explain:
@@ -2730,6 +2804,11 @@ class Solution:
                 best = n
         return best`,
         ],
+        check: py`
+assert Solution().minValue([4, 2, 9]) == 2
+assert Solution().minValue([7]) == 7
+assert Solution().minValue([-1, -5, 0]) == -5
+assert Solution().minValue([3, 3]) == 3`,
         ideas: ['return'],
         hint: 'It is the `maxValue` method from the last slide, with `min` in place of `max`. The last line, `return best`, is not inside the loop.',
         explain:
@@ -2770,6 +2849,11 @@ class Solution:`,
     def largest(nums: List[int]) -> int
         return max(nums)`,
         ],
+        check: py`
+assert Solution().largest([4, 9, 2]) == 9
+assert Solution().largest([-3, -8]) == -3
+assert Solution.largest.__annotations__.get("nums") == List[int], "type the parameter: nums: List[int]"
+assert Solution.largest.__annotations__.get("return") == int, "say what the method returns: -> int"`,
         ideas: ['method signature'],
         hint: 'Copy the shape of `maxValue`: `self` first, then `nums: List[int]`, then `-> int` and a colon. The body is indented one more level.',
         explain:
@@ -2835,6 +2919,10 @@ class Solution:`,
             node = node.next
         return count`,
         ],
+        check: py`
+assert Solution().countNodes(None) == 0
+assert Solution().countNodes(ListNode(5)) == 1
+assert Solution().countNodes(ListNode(1, ListNode(2, ListNode(3)))) == 3`,
         ideas: ['method signature', 'linked list walk'],
         hint: 'The `def` line: `self`, then `head: Optional[ListNode]`, then `-> int` and a colon. The body is the walk from before, with `count += 1` in place of the `print`, and `return count` after the loop.',
         explain:
@@ -3198,6 +3286,20 @@ def power(base, exp):
           '    return power(base, exp - 1)',
           '    return power(base, exp)',
         ],
+        check: py`
+assert power(2, 4) == 16
+assert power(3, 3) == 27
+assert power(7, 1) == 7
+assert power(5, 0) == 1
+
+# Recursion: power has to call itself.
+inner = power
+calls = []
+def power(base, exp):
+    calls.append(1)
+    return inner(base, exp)
+assert inner(2, 3) == 8
+assert calls, "use recursion: power should call itself with one less exp"`,
         ideas: ['recursive call'],
         hint: 'Copy the shape of `factorial`: `n * factorial(n - 1)`. This time the call keeps `base` and makes `exp` one smaller.',
         explain:
@@ -3293,6 +3395,21 @@ print(mystery(3))`,
         return 0
     return n // 10 + digit_sum(n % 10)`,
         ],
+        check: py`
+assert digit_sum(472) == 13
+assert digit_sum(99) == 18
+assert digit_sum(1000) == 1
+assert digit_sum(7) == 7
+assert digit_sum(0) == 0
+
+# Recursion: digit_sum has to call itself.
+inner = digit_sum
+calls = []
+def digit_sum(n):
+    calls.append(1)
+    return inner(n)
+assert inner(472) == 13
+assert calls, "use recursion: digit_sum should call itself on n // 10"`,
         ideas: ['base case'],
         hint: '`472 % 10` is 2, the last digit, and `472 // 10` is 47, the rest. The recursive call gets the smaller number.',
         explain:
@@ -4181,6 +4298,12 @@ print(first_repeat("abcbad"), repr(first_repeat("xyz")))`,
             if nums[i] + nums[j] == target:
                 return [i, j]
     return []`,
+        check: py`
+assert pair_sum([3, 8, 11, 4], 12) == [1, 3]
+assert pair_sum([5, 5], 10) == [0, 1]
+assert pair_sum([1, 2, 3], 7) == []
+assert pair_sum([6], 6) == []
+assert pair_sum([], 4) == []`,
         hint: 'Inside both loops, check `if nums[i] + nums[j] == target:` and return `[i, j]`. The final `return []` lines up with the first `for`.',
         explain:
           'Starting `j` at `i + 1` checks each pair once and never pairs a number with itself. It is correct, and saying it out loud first is smart, but it is O(n²): 10,000 numbers means about 50 million pairs.',

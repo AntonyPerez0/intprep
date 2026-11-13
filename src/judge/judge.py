@@ -1046,6 +1046,9 @@ def run_snippet(payload):
                 src = req['check'].split('\n')
                 if line and 0 < line <= len(src):
                     res['failed'] = src[line - 1].strip()
+                # An assert written with a message says what is missing in words: show that instead.
+                if val.args and isinstance(val.args[0], str):
+                    res['message'] = val.args[0]
             elif st == 'exc':
                 res['error'] = describe_error(val)
             else:

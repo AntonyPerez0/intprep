@@ -25,6 +25,10 @@
   color: var(--text-secondary);
   max-width: 62ch;
 }
+.solve-report {
+  /* Scrolled into view after a run: clear of the top bar and the action bar. */
+  scroll-margin: calc(72px + env(safe-area-inset-top)) 0 calc(var(--actionbar-h, 96px) + 16px);
+}
 .solve-report .run-report {
   margin-top: 0;
 }

@@ -927,10 +927,14 @@ function RunFeedback({ ran, expected }: { ran: SnippetResult; expected?: string 
       ) : ran.checkFailed ? (
         <>
           <div className="lplayer-run-label">Your code ran, but it does not do the job yet</div>
-          {ran.failed && (
-            <p className="lplayer-run-help">
-              This check failed: <code translate="no">{ran.failed.replace(/^assert\s+/, '')}</code>
-            </p>
+          {ran.message ? (
+            <p className="lplayer-run-help">What is missing: {ran.message}</p>
+          ) : (
+            ran.failed && (
+              <p className="lplayer-run-help">
+                This check failed: <code translate="no">{ran.failed.replace(/^assert\s+/, '')}</code>
+              </p>
+            )
           )}
         </>
       ) : expected !== undefined && !sameOutput(ran.stdout, expected) ? (

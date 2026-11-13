@@ -150,9 +150,10 @@ export interface DerivationStage {
  */
 export interface Cue {
   /**
-   * What the learner reads: a phrase a problem statement really uses, or a fact about its input
+   * What the learner reads: a phrase problem statements really use, or a fact about the input
    * that is visible on the page (mini-markdown, at most 90 characters). Not a thought the learner
-   * has while solving ("the brute force repeats work"): wording they can spot.
+   * has while solving ("the brute force repeats work"): wording they can spot. And wording that
+   * turns up in many problems, not one problem's statement paraphrased (that is its `signals`).
    */
   see: string;
   /** What to reach for, in a few words (mini-markdown, at most 70 characters): the tool or the move. */
@@ -162,7 +163,7 @@ export interface Cue {
    * They count as right in the drill and are never offered as wrong options for this clue.
    */
   also?: CategoryId[];
-  /** One or two problems of this unit whose statement shows the wording (ids). */
+  /** One or two problems of this unit whose statement shows the wording (ids), when there are any. */
   problems?: string[];
 }
 

@@ -737,7 +737,9 @@ phones): the pattern intro (a "Clue words" slide and one generated question), th
   Wrong patterns come from the ones easy to confuse (`CONFUSABLE`) and from the patterns the learner has started;
   a pattern in a clue's `also` counts as right and is never offered. Feedback shows the pattern, then the pair
   ("wording → what to reach for"). A missed card comes back once at the end. Without `?cat`, the session asks
-  about the patterns the learner has started, weakest first (all of them when none is started). Reward toasts are
+  about the patterns the learner has started, weakest first. When none is started, the screen says so first
+  ("Start a pattern first", with Continue learning and "Drill all 18 patterns anyway"): 18 unknown patterns is
+  guessing. Reward toasts are
   held until the summary, which lists each pattern's score for the round and whether its clue words are known
   (`CLUES_KNOWN` = four right in a row, kept per pattern in `progress.clues`).
 - **The memorize steps** (`MemoSteps`) are an ordered list: a green check for a step that is done, a filled brand
@@ -745,6 +747,19 @@ phones): the pattern intro (a "Clue words" slide and one generated question), th
   done steps. "Memorize this pattern" sits on the unit page beside the clue words; "Memorize this solution" is a
   card on the problem page. Every step reads state the app already keeps (`patternSteps`, `problemSteps`): the
   pattern intro, the clue words, Template practice, Code from memory, the review schedule.
+
+## Notes for a new coder who jumps ahead (`components/BeginnerNote.tsx`)
+
+Nothing is locked, so a learner who chose "brand new to coding" can open a pattern before the beginner lessons
+are done. The unit page, a problem page (until the problem is learned) and the pattern guide then show one info
+callout: how many beginner lessons are left, what the lesson ahead assumes, and a link to the next beginner
+lesson. It disappears once the track is finished, and never shows for the other two experience levels.
+
+## Run results come into view (`pages/Solve.tsx`, `components/RunResults.tsx`)
+
+On the blank-file screen the test report renders under the editor, usually below the screen, so after every run
+the report is scrolled into view (`scroll-margin` keeps it clear of the top bar and the action bar). The first
+failing test that raised shows what the error means in plain words (`errorHelp`), as lesson exercises do.
 
 ## Page blueprints
 

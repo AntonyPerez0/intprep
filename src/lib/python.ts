@@ -61,6 +61,8 @@ export interface SnippetResult {
   checkFailed: boolean;
   /** The check line that failed, e.g. `assert total([]) == 0`. */
   failed?: string;
+  /** The failed assert's own message, when it has one ("use recursion: ..."): shown instead of the line. */
+  message?: string;
 }
 
 export interface TraceStep {

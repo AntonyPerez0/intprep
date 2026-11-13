@@ -28,6 +28,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { pythonEnabled } from '../lib/python';
+import { BeginnerNote } from '../components/BeginnerNote';
 import { MemoSteps, problemSteps } from '../components/Memorize';
 import { CATEGORY_BY_ID } from '../content/categories';
 import { PROBLEM_BY_ID, PROBLEMS, problemsFor } from '../content/index';
@@ -134,6 +135,8 @@ export function ProblemDetail() {
           </div>
         </div>
       </header>
+
+      {!learned && <BeginnerNote p={progress} what="This problem" />}
 
       <div className="problem-detail-layout">
         <div className="problem-detail-main">

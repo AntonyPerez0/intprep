@@ -802,6 +802,18 @@ button.list-row {
 .callout-info > svg {
   color: var(--info);
 }
+/* The note to a new coder who opens a pattern before the beginner lessons (components/BeginnerNote.tsx). */
+.beginner-note-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.beginner-note-link svg {
+  width: 14px;
+  height: 14px;
+}
 .callout-warning,
 .hint-box {
   background: var(--warning-subtle);

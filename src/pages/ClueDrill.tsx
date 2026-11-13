@@ -9,7 +9,7 @@ import '../styles/pages/clues.css';
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BookOpen, Quote, RotateCcw, ScanSearch } from 'lucide-react';
-import { CATEGORY_BY_ID } from '../content/categories';
+import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { CUES } from '../content/cues';
 import type { CategoryId } from '../content/types';
 import { buildClueDeck, CLUES_KNOWN, cluesKnown, retryClue, startedPatterns, type ClueCard } from '../lib/clues';
@@ -17,6 +17,7 @@ import { confetti } from '../lib/confetti';
 import { holdToasts } from '../lib/events';
 import { XP } from '../lib/game';
 import { inline } from '../lib/markdown';
+import { nextStep } from '../lib/path';
 import { sfx } from '../lib/sound';
 import { awardXp, getProgress, recordClue, useProgress } from '../lib/store';
 import { CluePhrases } from '../components/Drills';
@@ -29,7 +30,35 @@ export function ClueDrillRoute() {
   const [params] = useSearchParams();
   const cat = params.get('cat');
   const only = cat && CATEGORY_BY_ID[cat as CategoryId] ? (cat as CategoryId) : undefined;
+  const nav = useNavigate();
+  const progress = useProgress();
+  // Without a pattern started, the drill would ask about all 18, which is guessing for someone who
+  // has met none of them: say so first. (One pattern's own drill, opened from its unit, is a choice.)
+  const [anyway, setAnyway] = useState(false);
   if (cat && !only) return <Navigate to="/clues" replace />;
+  if (!only && !anyway && startedPatterns(progress).length === 0) {
+    return (
+      <SessionShell progress={null} onClose={() => nav('/')} title="Clue words">
+        <EmptyState
+          icon={Quote}
+          title="Start a pattern first"
+          actions={
+            <>
+              <Link to={nextStep(progress).href} className="btn btn-primary">
+                Continue learning
+              </Link>
+              <button type="button" className="btn btn-secondary" onClick={() => setAnyway(true)}>
+                Drill all {CATEGORIES.length} patterns anyway
+              </button>
+            </>
+          }
+        >
+          Clue words drills the wording that points to each pattern you have started: you read a phrase from a problem and name the pattern. Each pattern’s intro
+          teaches its clue words, so finish one and come back.
+        </EmptyState>
+      </SessionShell>
+    );
+  }
   return <ClueDrill key={only ?? 'all'} only={only} />;
 }
 

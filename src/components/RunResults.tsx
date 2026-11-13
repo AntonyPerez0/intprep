@@ -5,7 +5,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { CircleCheck, CircleX, Gauge, LoaderCircle, Terminal } from 'lucide-react';
 import type { Problem } from '../content/types';
-import { JudgeCrash, PythonUnavailable, TimeoutError, pythonEnabled, runTests, usePythonStatus, type JudgeResult, type PyError, type TestResult } from '../lib/python';
+import { inline } from '../lib/markdown';
+import { JudgeCrash, PythonUnavailable, TimeoutError, errorHelp, pythonEnabled, runTests, usePythonStatus, type JudgeResult, type PyError, type TestResult } from '../lib/python';
 import '../styles/run.css';
 
 export type RunPhase = 'idle' | 'starting' | 'running' | 'done' | 'unavailable';
@@ -106,7 +107,9 @@ function Row({ label, children, tone }: { label: string; children: string; tone?
   );
 }
 
-function FailedTest({ t, name }: { t: TestResult; name: string }) {
+function FailedTest({ t, name, explain }: { t: TestResult; name: string; explain?: boolean }) {
+  // What the error means in plain words, on the first failing test only.
+  const help = explain && t.error ? errorHelp(t.error) : null;
   return (
     <li className="run-test">
       <div className="run-test-head">
@@ -120,7 +123,10 @@ function FailedTest({ t, name }: { t: TestResult; name: string }) {
       </Row>
       {t.wantNote && <p className="run-note">Also right: {t.wantNote}.</p>}
       {t.error ? (
-        <PyErrorLine error={t.error} />
+        <>
+          <PyErrorLine error={t.error} />
+          {help && <p className="run-note">{inline(help)}</p>}
+        </>
       ) : (
         <Row label="Your code" tone="bad">
           {t.got ?? 'nothing'}
@@ -160,6 +166,7 @@ export function TestReport({ result, max = 2 }: { result: JudgeResult; max?: num
           <span>{result.error.type === 'TimeLimit' ? 'Your code did not finish' : 'Your code did not run'}</span>
         </div>
         <PyErrorLine error={result.error} />
+        {errorHelp(result.error) && <p className="run-note">{inline(errorHelp(result.error)!)}</p>}
       </div>
     );
   }
@@ -198,7 +205,7 @@ export function TestReport({ result, max = 2 }: { result: JudgeResult; max?: num
       </div>
       <ul className="run-tests">
         {shown.map((t, k) => (
-          <FailedTest key={k} t={t} name={names.get(t)!} />
+          <FailedTest key={k} t={t} name={names.get(t)!} explain={k === 0} />
         ))}
       </ul>
       {failed.length > shown.length && (
