@@ -16,6 +16,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Test builds from CI are signed with one fixed key (docs/MOBILE.md), so a newer APK installs
+    // over an older one. Without INTPREP_TEST_KEYSTORE the computer's own debug key is used.
+    signingConfigs {
+        debug {
+            def testKeystore = System.getenv('INTPREP_TEST_KEYSTORE')
+            if (testKeystore) {
+                storeFile file(testKeystore)
+                storeType 'pkcs12'
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false

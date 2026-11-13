@@ -38,24 +38,30 @@ jobs:
         run: npx cap sync android
       # Every run signs with the same test key, so a newer APK installs over an older one and the
       # progress on the phone survives. The key is the repository secret ANDROID_TEST_KEYSTORE_BASE64
-      # (docs/MOBILE.md); Gradle signs debug builds with ~/.android/debug.keystore.
+      # (docs/MOBILE.md); android/app/build.gradle signs debug builds with INTPREP_TEST_KEYSTORE.
       - name: Use the fixed test signing key
         env:
           KEYSTORE: ${{ secrets.ANDROID_TEST_KEYSTORE_BASE64 }}
         run: |
           if [ -n "$KEYSTORE" ]; then
-            mkdir -p "$HOME/.android"
-            printf '%s' "$KEYSTORE" | base64 -d > "$HOME/.android/debug.keystore"
+            printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/intprep-test.keystore"
+            keytool -list -keystore "$RUNNER_TEMP/intprep-test.keystore" -storetype pkcs12 -storepass android | grep -i 'fingerprint'
+            echo "INTPREP_TEST_KEYSTORE=$RUNNER_TEMP/intprep-test.keystore" >> "$GITHUB_ENV"
           else
             echo "::warning::No ANDROID_TEST_KEYSTORE_BASE64 secret: this APK is signed with a throwaway key."
           fi
       - name: Build the debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
-      - name: Show which key signed the APK
+      - name: Check which key signed the APK
         run: |
           tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-          "$tools/apksigner" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -i 'SHA-256'
+          signed=$("$tools/apksigner" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -i 'SHA-256')
+          echo "$signed"
+          # The fixed test key's certificate (docs/MOBILE.md). A different one would break updates on testers' phones.
+          if [ -n "$INTPREP_TEST_KEYSTORE" ]; then
+            echo "$signed" | grep -qi 'e22a1fd3323e64dc07c483228d2b0c68e77368e575425c49427ab4b6d9db1dcc'
+          fi
       - uses: actions/upload-artifact@v7
         with:
           name: intprep-android-debug-apk
