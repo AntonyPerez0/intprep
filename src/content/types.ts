@@ -167,6 +167,44 @@ export interface Cue {
   problems?: string[];
 }
 
+/**
+ * Where a route through the pattern flowchart (src/content/flow.ts) ends: the pattern to try
+ * first, what to reach for there, and the problems whose wording leads to this result.
+ */
+export interface FlowLeaf {
+  cat: CategoryId;
+  /** What to reach for, in a few words (mini-markdown, at most 90 characters). */
+  use: string;
+  /** Other patterns that are a fair answer for wording that ends here. */
+  also?: CategoryId[];
+  /**
+   * Every problem of the 150 that this route leads to (ids). Each must belong to `cat`, to a
+   * pattern in `also`, or accept `cat` itself (`alsoAccept`); `npm run validate` checks it.
+   */
+  problems: string[];
+}
+
+/** One answer to a flowchart question: it leads to another question (`to`) or to a result (`leaf`). */
+export interface FlowOption {
+  /** Unique within its question; a route is the list of these, kept in the page's address. */
+  id: string;
+  /** What the learner can see in the problem (mini-markdown, at most 130 characters). */
+  label: string;
+  /** How to recognize it, in a few words (mini-markdown, at most 90 characters). */
+  hint?: string;
+  /** The id of the next question. */
+  to?: string;
+  leaf?: FlowLeaf;
+}
+
+/** One question of the pattern flowchart. Its options are read in order: the first that fits wins. */
+export interface FlowNode {
+  id: string;
+  ask: string;
+  help?: string;
+  options: FlowOption[];
+}
+
 export interface CategoryContent {
   guide: PatternGuide;
   problems: Problem[];

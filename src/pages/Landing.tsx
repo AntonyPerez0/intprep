@@ -576,7 +576,7 @@ const FEATURES: { kind: string; icon: LucideIcon; title: string; body: string }[
     kind: 'guide',
     icon: BookMarked,
     title: 'Clue words',
-    body: `Learn the wording that gives each pattern away, and what to reach for when you see it. Drill it like flashcards, and follow each pattern's steps to memorize, from first read to writing its template from a blank file. All ${CATEGORIES.length} patterns are in a searchable guide.`,
+    body: `Learn the wording that gives each pattern away, and what to reach for when you see it. Drill it like flashcards, or follow a flowchart of a few questions from a problem to its pattern. Each pattern has steps to memorize, from first read to writing its template from a blank file, and all ${CATEGORIES.length} are in a searchable guide.`,
   },
   {
     kind: 'progress',
@@ -860,6 +860,7 @@ const FOOTER_COLS: { title: string; links: { to: string; label: string }[] }[] =
       { to: '/learn', label: 'Learning path' },
       { to: '/problems', label: 'Problem library' },
       { to: '/patterns', label: 'Pattern guide' },
+      { to: '/flowchart', label: 'Pattern flowchart' },
     ],
   },
   {

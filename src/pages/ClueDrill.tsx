@@ -153,7 +153,7 @@ function ClueDrill({ only }: { only?: CategoryId }) {
                   <tr key={cat}>
                     <th scope="row">
                       <CategoryIcon id={cat} color={CATEGORY_BY_ID[cat].color} size="sm" />
-                      <Link to={`/patterns#${cat}`}>{CATEGORY_BY_ID[cat].name}</Link>
+                      <Link to={`/patterns?p=${cat}`}>{CATEGORY_BY_ID[cat].name}</Link>
                     </th>
                     <td className="tabular">
                       {t.right}/{t.total}

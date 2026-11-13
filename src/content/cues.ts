@@ -43,6 +43,7 @@ export const CUES: Record<CategoryId, Cue[]> = {
     {
       see: '"**anagram**": the same letters in a different order',
       use: 'compare **letter counts** (or the sorted letters)',
+      also: ['sliding-window'],
       problems: ['valid-anagram', 'group-anagrams'],
     },
     {
@@ -55,13 +56,13 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['product-of-array-except-self'],
     },
     {
-      see: '"no value **repeats** in any row, column or box"',
-      use: 'one **set per group**; a value already in its set breaks the rule',
-      problems: ['valid-sudoku'],
+      see: '"the **intersection** of two lists", "values in one list but **not in the other**"',
+      use: 'put one list in a **set**; test the other against it',
+      also: ['two-pointers'],
     },
     {
-      see: '"the longest run of **consecutive** values" in an **unsorted** list, in O(n)',
-      use: 'a **set**; count upward only from a value that starts a run',
+      see: 'an **unsorted** list, "must run in **O(n)** time", and extra memory is allowed',
+      use: 'a **set** or a dict: O(1) lookups replace the sort',
       problems: ['longest-consecutive-sequence'],
     },
   ],
@@ -93,7 +94,7 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['container-with-most-water', 'trapping-rain-water'],
     },
     {
-      see: '"**merge**" or "intersect" a pair of **sorted arrays**',
+      see: '"**merge**" a pair of **sorted arrays** into one sorted array',
       use: 'one pointer **per array**; advance the smaller value',
     },
   ],
@@ -130,10 +131,8 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['sliding-window-maximum'],
     },
     {
-      see: '"**buy** on one day, **sell** on a later day": the best single trade',
-      use: 'keep the **lowest price so far**; try selling each day',
-      also: ['two-pointers', 'greedy', 'dp-1d'],
-      problems: ['best-time-to-buy-and-sell-stock'],
+      see: '"**how many** subarrays have at most `k` …?", "… a product less than `k`?"',
+      use: 'each right edge adds `right − left + 1` valid windows',
     },
   ],
   stack: [
@@ -194,7 +193,7 @@ export const CUES: Record<CategoryId, Cue[]> = {
     },
     {
       see: '"sorted, then **rotated**", "find the **peak**"',
-      use: 'compare the middle with an end: one half is always in order',
+      use: 'compare the middle with an end or a neighbor: one half must hold it',
       problems: ['find-minimum-in-rotated-sorted-array', 'search-in-rotated-sorted-array'],
     },
     {
@@ -256,10 +255,10 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['add-two-numbers'],
     },
     {
-      see: 'values `1..n` in `n + 1` slots: "find the **repeat**", no extra space, no changes',
-      use: 'treat each value as a `next` pointer: find the cycle',
-      also: ['two-pointers', 'binary-search', 'bit-manipulation'],
-      problems: ['find-the-duplicate-number'],
+      see: '"is the **list** a **palindrome**?", "reorder it as first, last, second, …"',
+      use: 'find the middle, **reverse** the second half, walk both halves',
+      also: ['two-pointers'],
+      problems: ['reorder-list'],
     },
   ],
   trees: [
@@ -370,8 +369,8 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['design-twitter'],
     },
     {
-      see: '"**schedule** tasks": the most frequent first, "with a **cooldown**"',
-      use: 'a max-heap of counts, and a queue of tasks cooling down',
+      see: '"**rearrange** so that no two equal items are **adjacent**", tasks "with a **cooldown**"',
+      use: 'a max-heap of counts: place the most frequent one allowed',
       also: ['greedy'],
       problems: ['task-scheduler'],
     },
@@ -493,7 +492,7 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['cheapest-flights-within-k-stops'],
     },
     {
-      see: '"how long until **every** node has received the signal?" (weighted delays)',
+      see: 'each edge has a **travel time**: "how long until **all** the nodes get the signal?"',
       use: 'Dijkstra from the source; the answer is the **largest** distance',
       also: ['heap'],
       problems: ['network-delay-time'],
@@ -529,10 +528,10 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['climbing-stairs', 'decode-ways'],
     },
     {
-      see: '"the **minimum cost**", "the **fewest** coins to make exactly `amount`"',
+      see: '"the **fewest** coins / numbers / steps that add up to **exactly** `amount`"',
       use: '`dp[x]` = 1 + the best `dp[x − c]` over every choice `c`',
       also: ['dp-2d', 'graphs'],
-      problems: ['coin-change', 'min-cost-climbing-stairs'],
+      problems: ['coin-change'],
     },
     {
       see: '"you **cannot take two adjacent** items": the largest total',
@@ -629,10 +628,30 @@ export const CUES: Record<CategoryId, Cue[]> = {
   ],
   greedy: [
     {
-      see: 'each value is a **maximum jump**: "can you **reach** the last index?"',
-      use: 'track the **farthest** index reachable so far',
-      also: ['dp-1d'],
-      problems: ['jump-game'],
+      see: '"can you **reach the end**?", "the **fewest** jumps / clips / taps to cover the whole range"',
+      use: 'track the **farthest** reach; count each time the current one runs out',
+      also: ['dp-1d', 'graphs', 'intervals'],
+      problems: ['jump-game', 'jump-game-ii'],
+    },
+    {
+      see: '"the **most** that fit without overlapping", "the fewest arrows / groups"',
+      use: '**sort** (often by end), then take each item that still fits',
+      also: ['intervals'],
+    },
+    {
+      see: '"**assign** … so that **as many as possible** are satisfied" (cookies, jobs to workers)',
+      use: '**sort** both sides; give each one the smallest that works',
+      also: ['two-pointers'],
+    },
+    {
+      see: '"**split** into **as many** parts **as possible**", each part obeying a rule',
+      use: 'cut at the **earliest** point the rule allows',
+      problems: ['partition-labels'],
+    },
+    {
+      see: '"the **largest number** you can form", "the **lexicographically smallest** result"',
+      use: 'fill positions left to right, each with the best piece still unused',
+      also: ['stack'],
     },
     {
       see: '"the largest **sum** of a **contiguous** subarray"',
@@ -641,37 +660,15 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['maximum-subarray'],
     },
     {
-      see: '"the **most** that fit without overlapping", "the fewest arrows / groups"',
-      use: '**sort** (often by end), then take each item that still fits',
-      also: ['intervals'],
-    },
-    {
-      see: '"the **fewest jumps**" to reach the last index',
-      use: 'extend the current reach; count a jump each time it runs out',
-      also: ['dp-1d', 'graphs'],
-      problems: ['jump-game-ii'],
-    },
-    {
-      see: 'a **circular** route with `gas[i]` and `cost[i]`: "where can you start?"',
-      use: 'if the total is enough: restart after each point the tank runs dry',
-      problems: ['gas-station'],
-    },
-    {
-      see: '"**split** into as many parts as possible", each letter in only one part',
-      use: 'note each item’s **last** position; cut when you reach it',
-      problems: ['partition-labels'],
-    },
-    {
-      see: '"can the cards be arranged in **groups of consecutive** values?"',
+      see: '"can the values be split into **groups of consecutive** numbers?"',
       use: 'always start a group from the **smallest** value left',
       also: ['heap', 'arrays-hashing'],
       problems: ['hand-of-straights'],
     },
     {
-      see: 'brackets plus a `*` that may be `(`, `)` or nothing: "can it be valid?"',
-      use: 'track the **lowest and highest** possible count of open brackets',
-      also: ['stack', 'dp-2d'],
-      problems: ['valid-parenthesis-string'],
+      see: 'a **circular** route with `gas[i]` and `cost[i]`: "where can you start?"',
+      use: 'if the total is enough: restart after each point the tank runs dry',
+      problems: ['gas-station'],
     },
   ],
   intervals: [
@@ -716,19 +713,24 @@ export const CUES: Record<CategoryId, Cue[]> = {
   ],
   'math-geometry': [
     {
-      see: '"**rotate** the matrix by 90 degrees", "in place"',
+      see: '"**rotate** the matrix by 90 degrees", "flip / mirror the image", "in place"',
       use: '**transpose**, then reverse each row',
       problems: ['rotate-image'],
     },
     {
-      see: '"in **spiral** order": walk the matrix layer by layer',
-      use: 'four **boundaries** that close in after each side',
+      see: '"in **spiral** order", "in **diagonal** / zigzag order": an unusual walk over a matrix',
+      use: '**boundaries** that close in, or a direction that turns',
       problems: ['spiral-matrix'],
     },
     {
-      see: 'a number given as an **array of digits** or a **string**: "add one", "multiply"',
+      see: 'a number given as an **array of digits** or a **string**: "add one", "add", "multiply"',
       use: 'grade-school arithmetic with a **carry**, right to left',
       problems: ['plus-one', 'multiply-strings'],
+    },
+    {
+      see: '"the **sum of the digits**", "replace `n` by the sum of the squares of its **digits**"',
+      use: 'peel digits off with `% 10` and `// 10`',
+      problems: ['happy-number'],
     },
     {
       see: '"compute `x` raised to the **power** `n`", where `n` is huge or negative',
@@ -736,14 +738,8 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['powx-n'],
     },
     {
-      see: '"repeat the process until it reaches 1, or it **loops forever**"',
-      use: 'detect the loop: a **set** of values seen (or slow and fast)',
-      also: ['arrays-hashing', 'linked-list', 'two-pointers'],
-      problems: ['happy-number'],
-    },
-    {
-      see: '"where a cell is `0`, set its whole **row and column** to `0`", O(1) space',
-      use: 'use the first row and column as the **markers**',
+      see: 'a **matrix** changed "in place", "with **O(1)** extra space" (set zeroes, Game of Life)',
+      use: 'mark **inside the matrix**: its first row and column, or a spare value',
       problems: ['set-matrix-zeroes'],
     },
     {
@@ -769,7 +765,7 @@ export const CUES: Record<CategoryId, Cue[]> = {
       problems: ['number-of-1-bits'],
     },
     {
-      see: '"**without** using `+` or `−`", "without multiplication or division"',
+      see: '"**without** using the operators `+` and `−`"',
       use: 'XOR adds without the carry; AND then a shift gives the carry',
       problems: ['sum-of-two-integers'],
     },

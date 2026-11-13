@@ -4,6 +4,7 @@
  *   npm run validate                 # everything
  *   npm run validate -- trees heap   # just these categories
  *   npm run validate -- foundations  # just the beginner track
+ *   npm run validate -- cues flow    # just the clue words and the pattern flowchart
  *
  * Checks structure, the annotated-solution format, quiz answers, mini-markdown
  * balance, and compiles every Python solution/template with python3. Foundations
@@ -19,7 +20,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { CATEGORIES, CATEGORY_BY_ID } from '../src/content/categories';
 import { CUES } from '../src/content/cues';
-import { CONTENT, PROBLEM_BY_ID } from '../src/content/index';
+import { FLOW, FLOW_BY_ID, FLOW_OFF_CHART, FLOW_START } from '../src/content/flow';
+import { CONTENT, PROBLEM_BY_ID, PROBLEMS } from '../src/content/index';
 import { FOUNDATIONS } from '../src/content/foundations';
 import { isSignatureLine, lessonParts, parseSolution } from '../src/lib/parseSolution';
 import { baseIndent, codeLines, gradeBest, gradeCode, indentOf, lineKey, reindent } from '../src/lib/codegrade';
@@ -659,8 +661,106 @@ function checkCues() {
   }
 }
 
+/**
+ * The pattern flowchart (src/content/flow.ts). Its structure: every question can be reached from
+ * the start, no route loops, every pattern is the result of some route. And its test: each of
+ * the problems is listed on exactly one result that names its pattern (or one it accepts), or in
+ * FLOW_OFF_CHART with a reason, so the chart is known to work on the whole curriculum.
+ */
+function checkFlow() {
+  const w = 'flow';
+  const plain = (t: string) => t.replace(/[*`]/g, '');
+  const ids = new Set<string>();
+  for (const n of FLOW) {
+    if (ids.has(n.id)) err(`${w}/${n.id}`, 'two questions share this id');
+    ids.add(n.id);
+  }
+  if (!FLOW_BY_ID[FLOW_START]) err(w, `the start question "${FLOW_START}" does not exist`);
+  const routed = new Map<string, string>();
+  const results = new Set<CategoryId>();
+  for (const n of FLOW) {
+    const nw = `${w}/${n.id}`;
+    nonEmpty(nw, 'ask', n.ask);
+    if (!n.ask.trim().endsWith('?')) err(nw, `"ask" is a question: ${n.ask}`);
+    checkMarkdown(nw, n.ask);
+    if (n.help) checkMarkdown(nw, n.help);
+    if (n.options.length < 2 || n.options.length > 8) err(nw, `needs 2 to 8 options, has ${n.options.length}`);
+    const seen = new Set<string>();
+    for (const o of n.options) {
+      const ow = `${nw}.${o.id}`;
+      if (!/^[a-z0-9]+$/.test(o.id)) err(ow, 'an option id is lowercase letters and digits (it is part of the page address)');
+      if (seen.has(o.id)) err(ow, 'two options of this question share this id');
+      seen.add(o.id);
+      nonEmpty(ow, 'label', o.label);
+      checkMarkdown(ow, o.label);
+      if (plain(o.label).length > 130) err(ow, `"label" is ${plain(o.label).length} characters, at most 130`);
+      if (o.hint) {
+        checkMarkdown(ow, o.hint);
+        if (plain(o.hint).length > 90) err(ow, `"hint" is ${plain(o.hint).length} characters, at most 90`);
+      }
+      if (!!o.to === !!o.leaf) err(ow, 'an option leads to a question ("to") or to a result ("leaf"): exactly one');
+      if (o.to && !FLOW_BY_ID[o.to]) err(ow, `"to" names an unknown question: ${o.to}`);
+      const leaf = o.leaf;
+      if (!leaf) continue;
+      if (!CATEGORY_BY_ID[leaf.cat]) {
+        err(ow, `the result names an unknown pattern: ${leaf.cat}`);
+        continue;
+      }
+      results.add(leaf.cat);
+      nonEmpty(ow, 'use', leaf.use);
+      checkMarkdown(ow, leaf.use);
+      if (plain(leaf.use).length > 90) err(ow, `"use" is ${plain(leaf.use).length} characters, at most 90`);
+      for (const a of leaf.also ?? []) {
+        if (!CATEGORY_BY_ID[a]) err(ow, `"also" names an unknown pattern: ${a}`);
+        if (a === leaf.cat) err(ow, '"also" names the result itself');
+      }
+      for (const id of leaf.problems) {
+        const p = PROBLEM_BY_ID[id];
+        if (!p) {
+          err(ow, `"problems" names an unknown problem: ${id}`);
+          continue;
+        }
+        if (routed.has(id)) err(ow, `${id} is already on ${routed.get(id)}: a problem has one route`);
+        routed.set(id, ow);
+        const fits = p.category === leaf.cat || (leaf.also ?? []).includes(p.category) || (p.alsoAccept ?? []).includes(leaf.cat);
+        if (!fits)
+          err(ow, `${id} is a ${p.category} problem that does not accept ${leaf.cat}: move it, name ${p.category} in the result's "also", or list it in FLOW_OFF_CHART`);
+      }
+    }
+  }
+  // Every question reachable, and no route that comes back to a question it has passed.
+  const reached = new Set<string>();
+  const walk = (id: string, trail: string[]) => {
+    const n = FLOW_BY_ID[id];
+    if (!n) return;
+    if (trail.includes(id)) {
+      err(`${w}/${id}`, `a route loops: ${[...trail, id].join(' → ')}`);
+      return;
+    }
+    reached.add(id);
+    if (trail.length >= 5) warn(`${w}/${id}`, `a route asks ${trail.length + 1} questions (${[...trail, id].join(" → ")}): keep it to 5`);
+    for (const o of n.options) if (o.to) walk(o.to, [...trail, id]);
+  };
+  walk(FLOW_START, []);
+  for (const n of FLOW) if (!reached.has(n.id)) err(`${w}/${n.id}`, 'no route leads to this question');
+  for (const c of CATEGORIES) if (!results.has(c.id)) err(w, `no route ends at ${c.id}`);
+  for (const x of FLOW_OFF_CHART) {
+    const xw = `${w}/off-chart/${x.id}`;
+    if (!PROBLEM_BY_ID[x.id]) err(xw, 'an unknown problem');
+    if (routed.has(x.id)) err(xw, `also on ${routed.get(x.id)}: a problem is on the chart or off it`);
+    nonEmpty(xw, 'why', x.why);
+    checkMarkdown(xw, x.why);
+    routed.set(x.id, xw);
+  }
+  for (const p of PROBLEMS) if (!routed.has(p.id)) err(w, `${p.id} (${p.category}) is on no result: add it to the result its wording leads to, or to FLOW_OFF_CHART`);
+  // Most problems must reach their pattern by the chart, or the chart is not worth following.
+  if (FLOW_OFF_CHART.length > PROBLEMS.length * 0.05) err(w, `${FLOW_OFF_CHART.length} problems are off the chart (at most 5% of ${PROBLEMS.length}): rework the questions`);
+  console.log(`✓ flowchart: ${FLOW.length} questions, ${PROBLEMS.length - FLOW_OFF_CHART.length} of ${PROBLEMS.length} problems reach their pattern, ${FLOW_OFF_CHART.length} off the chart`);
+}
+
 for (const c of CATEGORIES) if (wantAll || args.includes(c.id)) checkCategory(c.id);
 if (wantAll || args.includes('cues')) checkCues();
+if (wantAll || args.includes('flow')) checkFlow();
 checkScheduler();
 if (wantAll || args.includes('foundations')) checkFoundations();
 checkTypingKit();

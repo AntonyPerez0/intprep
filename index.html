@@ -19,6 +19,22 @@
   <body>
     <div id="root"></div>
     <noscript>IntPrep needs JavaScript to run.</noscript>
+    <script>
+      // The app's code needs a browser from 2023 or later (Safari and iOS 16.4, Chrome 107,
+      // Firefox 104). An older one cannot load it and would show a blank page, so say why. The
+      // test is the newest thing the code relies on: a lookbehind in a regular expression.
+      (function () {
+        try {
+          new RegExp('(?<=a)b');
+        } catch (e) {
+          document.getElementById('root').innerHTML =
+            '<div style="max-width:34em;margin:15vh auto;padding:0 24px;font:16px/1.6 system-ui,-apple-system,sans-serif">' +
+            '<h1 style="font-size:22px;margin:0 0 8px">IntPrep needs a newer browser</h1>' +
+            '<p style="margin:0">This browser is too old to run it. On an iPhone or iPad, update to iOS 16.4 or later ' +
+            '(Settings, General, Software Update). Otherwise open IntPrep in a current Safari, Chrome, Firefox or Edge.</p></div>';
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

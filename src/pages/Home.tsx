@@ -1,7 +1,7 @@
 import '../styles/pages/home.css';
 import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Workflow } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS } from '../content/index';
 import { addDays, dayKey, daysBetween, friendlyDue, lastNDays, parseDay, today, weekdayShort } from '../lib/date';
@@ -962,6 +962,16 @@ function QuickLinks({ p }: { p: Progress }) {
             <div className="grow">
               <div className="home-link-title">Pattern guide</div>
               <div className="home-link-meta">{CATEGORIES.length} patterns, templates and cues</div>
+            </div>
+            <Icon name="chevron" className="home-link-chevron" />
+          </Link>
+        </li>
+        <li>
+          <Link to="/flowchart" className="home-link">
+            <IconTile icon={Workflow} color={NEUTRAL} size="sm" />
+            <div className="grow">
+              <div className="home-link-title">Pattern flowchart</div>
+              <div className="home-link-meta">A few questions that name the pattern</div>
             </div>
             <Icon name="chevron" className="home-link-chevron" />
           </Link>

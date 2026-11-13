@@ -160,6 +160,12 @@
   min-width: 48px;
   accent-color: var(--brand);
 }
+/* A slider is thin: on touch screens, give it a finger-sized row to be dragged in. */
+@media (pointer: coarse) {
+  .trace-range {
+    height: 40px;
+  }
+}
 .trace-controls .btn svg {
   width: 16px;
   height: 16px;

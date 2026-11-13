@@ -6,6 +6,7 @@ import { Toaster } from './components/ui';
 import { reconcileStreak, storageNotice, useProgress } from './lib/store';
 import { Blitz } from './pages/Blitz';
 import { ClueDrillRoute } from './pages/ClueDrill';
+import { Flowchart } from './pages/Flowchart';
 import { Home } from './pages/Home';
 import { Landing } from './pages/Landing';
 import { OnboardingPage } from './pages/Onboarding';
@@ -74,6 +75,7 @@ const router = createHashRouter([
           { path: '/unit/:cat', element: <Unit /> },
           { path: '/p/:id', element: <ProblemDetail /> },
           { path: '/patterns', element: <Patterns /> },
+          { path: '/flowchart', element: <Flowchart /> },
           { path: '/problems', element: <Problems /> },
           { path: '/profile', element: <Profile /> },
           { path: '/science', element: <Science /> },

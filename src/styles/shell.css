@@ -136,7 +136,7 @@
   flex: none;
 }
 @media (pointer: coarse) {
-  .topbar .logo {
+  .logo {
     min-height: 40px;
   }
 }

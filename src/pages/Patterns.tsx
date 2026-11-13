@@ -16,6 +16,7 @@ import {
   SearchX,
   TextCursorInput,
   Trophy,
+  Workflow,
   X,
 } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID, type CategoryMeta } from '../content/categories';
@@ -121,10 +122,16 @@ export function Patterns() {
         title="Pattern guide"
         sub={`If you see this, reach for that. All ${CATEGORIES.length} patterns with their clue words, a reusable template and the problems that use them.`}
         right={
-          <Link to="/clues" className="btn btn-primary">
-            <Quote aria-hidden="true" />
-            Drill the clue words
-          </Link>
+          <>
+            <Link to="/flowchart" className="btn btn-secondary">
+              <Workflow aria-hidden="true" />
+              Pattern flowchart
+            </Link>
+            <Link to="/clues" className="btn btn-primary">
+              <Quote aria-hidden="true" />
+              Drill the clue words
+            </Link>
+          </>
         }
       />
 

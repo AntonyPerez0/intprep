@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CornerDownLeft, Search, X } from 'lucide-react';
+import { CornerDownLeft, Search, Workflow, X } from 'lucide-react';
 import { CATEGORIES } from '../content/categories';
 import { PROBLEMS } from '../content/index';
 import { CATEGORY_ICON, ICONS, type LucideIcon } from './icons';
@@ -31,6 +31,7 @@ const PAGES: { label: string; to: string; icon: LucideIcon; hint?: string }[] = 
   { label: 'Mock interview', to: '/mock', icon: ICONS.timer },
   { label: 'Problem library', to: '/problems', icon: ICONS.list },
   { label: 'Pattern guide', to: '/patterns', icon: ICONS.book },
+  { label: 'Pattern flowchart', to: '/flowchart', icon: Workflow, hint: 'Which pattern is it?' },
   { label: 'Profile & settings', to: '/profile', icon: ICONS.user },
   { label: 'Learning science', to: '/science', icon: ICONS.flask },
 ];

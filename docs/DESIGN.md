@@ -17,7 +17,9 @@ with taste: precise, quiet, confident.
    `SCIENCE_ICON`, `ICONS`.
 4. **Real data, honestly presented.** Numbers are tabular, labeled, and true. No fake testimonials, user counts,
    company logos or endorsements. Not affiliated with LeetCode, NeetCode or any employer — say so in the footer.
-5. **Mobile is first-class.** Design at 390px wide first, then scale up. Touch targets ≥ 40px (on touch screens
+5. **Mobile is first-class.** Design at 390px wide first, then scale up, and check heights too: a phone's browser
+   leaves less than the screen (about 660px of an iPhone's 844px with Safari's bars showing, about 550px on a small
+   one), so whatever must be on screen together has to fit there. Touch targets ≥ 40px (on touch screens
    default `.btn` and `.input` grow to 40px, and `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an
    invisible 40px hit area automatically). Hover colors live inside `@media (hover: hover)` so a tap never leaves a
    sticky hover. Never cause horizontal page scroll (code blocks scroll inside themselves). Nothing may sit hidden
@@ -725,10 +727,10 @@ Stored steps hold only what changed since the call's last step; `expandTrace` re
 
 ## Clue words and the memorize steps (`pages/ClueDrill.tsx`, `lib/clues.ts`, `components/Memorize.tsx`, `content/cues.ts`, `styles/pages/clues.css`)
 
-**Clue words** are "see this, reach for that" pairs, 6 to 9 per pattern. They appear in four places, always as
+**Clue words** are "see this, reach for that" pairs, 6 to 9 per pattern. They appear in five places, always as
 the same pair (`.clue-list`: wording left, arrow, what to reach for in semibold; stacked with a leading arrow on
 phones): the pattern intro (a "Clue words" slide and one generated question), the unit page, the pattern guide
-(searchable), and the drill.
+(searchable), a result of the pattern flowchart (folded), and the drill.
 
 - **The drill** (`/clues`, `/clues?cat=<pattern>`) is a focus session of 12 cards on the drill kit (`.drill`,
   `Choices`, `ActionBar`). Three kinds of card: *wording to pattern* (one clue's wording as a `.clue-phrase` card,
@@ -748,10 +750,39 @@ phones): the pattern intro (a "Clue words" slide and one generated question), th
   card on the problem page. Every step reads state the app already keeps (`patternSteps`, `problemSteps`): the
   pattern intro, the clue words, Template practice, Code from memory, the review schedule.
 
+## Pattern flowchart (`pages/Flowchart.tsx`, `content/flow.ts`, `styles/pages/flowchart.css`)
+
+`/flowchart` is an app page (sidebar, command palette, a button on the Pattern guide, a dashboard link): a few
+questions about a problem's wording that end at the pattern to try first. It is a reference, so it records
+nothing and earns nothing.
+
+- **The walk** is one prose-width column. The answers so far are a `.flow-trail` card (number, the question in
+  small type, the answer, and a quiet **Change** that goes back to that question). Under it the current question
+  (`.flow-question`: "Question N", the question as the `h2`, a line of help, the options) or the result. An
+  option is a full-width button with the wording in medium weight, a hint under it, and at the end a chevron
+  (it leads to another question) or the pattern's icon tile (it ends there). No Check button: choosing an option
+  answers.
+- **The route lives in the address** (`?path=plain.none.piece.window`, option ids from the start), so the browser's
+  Back undoes one answer and a result can be linked to. After an answer the next heading takes the focus (it is
+  not outlined: it is not a control) and the card scrolls into view only when it is off screen.
+- **The result** (`.flow-result`, topped with the pattern's color): "Try this pattern first", the pattern's name
+  (`h2`) and tagline; "Reach for" (the result's own `use`) and "Also fits" (pattern pills that open the guide);
+  **Open in the pattern guide** (primary), **Drill its clue words**, **Start over** (quiet); "Problems that end
+  here" as chips with the learned / due dot (a problem taught in another unit says so on a second line); and the
+  pattern's clue words in a `details`.
+- **The whole chart** is a `details.disclosure` under the walk, open from 900px and closed on a phone: two
+  sentences on how to read it ("the structure first, then the wording"), then the chart as nested lists
+  (`.flow-tree`). A question is a brand-tinted label; each answer hangs off a line from it, with the next question
+  under it or its pattern as a pill on the right (under the answer on a phone). The pill opens that route in the
+  walk. A question that two routes reach is drawn once, on its shortest route; the other says "Continue at …" and
+  moves the focus there. The current route is tinted. It ends with the chart's own score ("148 of the 150
+  problems") and the problems whose wording hides their pattern, each with the reason.
+
 ## Notes for a new coder who jumps ahead (`components/BeginnerNote.tsx`)
 
 Nothing is locked, so a learner who chose "brand new to coding" can open a pattern before the beginner lessons
-are done. The unit page, a problem page (until the problem is learned) and the pattern guide then show one info
+are done. The unit page, a problem page (until the problem is learned), the pattern guide and the pattern
+flowchart then show one info
 callout: how many beginner lessons are left, what the lesson ahead assumes, and a link to the next beginner
 lesson. It disappears once the track is finished, and never shows for the other two experience levels.
 
@@ -1042,6 +1073,12 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   games share the HUD (score, streak, ×1–×4 multiplier, clock or Zen ring), 10 points × multiplier a hit, and send
   misses on learned problems to today's review (`flagForReview`), except a problem learned or lapsed today, which
   keeps its own due day; the lobby and the pattern game's misses say they "join your next review".
+  **Spot the pattern on a phone** (below 640px): the four options are a 2 × 2 tray docked to the bottom edge of
+  the screen (rows of 56px, no number keys, the check or cross in the option's corner), so they never move between
+  questions and are all on screen with a long prompt and with the browser's own bars showing (Safari leaves an
+  iPhone about 660px of height, a small one about 550px; at the full screen height everything fits anyway, so
+  check the round at those heights too). A longer prompt scrolls under the tray, and the result strip sticks
+  just above it. Screens under 700px tall also drop the air above the scoreboard.
   **Key lines round** (`lib/blitzLines.ts` picks the line, `<CodeGaps>` shows it): kicker "Type the missing line",
   "Round N" (Zen "Round N of 10"), the problem title (`h1`) with its difficulty, and a `TyperWindow` with a short
   window of the solution (up to 6 lines before, 3 after, trimmed of blank edges), the enclosing `def` / `class`
@@ -1080,7 +1117,8 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   learning these, so each line shows choices." when all are) and its copy says Pick when every round will be
   picked; results add "N picked from choices, M typed." and label a
   picked miss "picked".
-- **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide; Problem detail with
+- **Library** — Problems as a dense, scannable table/list with toolbar filters; Pattern guide (its header links
+  to the Pattern flowchart and the clue words drill); Problem detail with
   main column + meta sidebar on desktop. The problem page's actions keep the primary first: the guided lesson
   (Code from memory once learned), then **"Solve it yourself"** (Terminal icon; "Solve it again" once the
   learner's code has passed; not shown where code cannot be run), then the lesson again for a learned problem.
@@ -1105,6 +1143,7 @@ Sentence case everywhere ("Start review", not "START REVIEW"). American English 
 content alike (practice, color, behavior, neighbor, optimize, math). Short, specific, encouraging, adult. Avoid
 exclamation marks except on genuine celebrations ("Problem learned" is enough). No emoji. Name things
 consistently: Dashboard, Learning path, Daily review, Pattern Blitz, Mock interview, Problem library, Pattern guide,
+Pattern flowchart,
 Code from memory, Solve it yourself, Your plan, Run my code, Learning science. Running code has its own verbs:
 code is "run" against "tests" and "passes" them; "Submit" runs every test and "Run examples" only the examples.
 A level-up toast names a title only when it is new ("New title: Hash Hero."); otherwise it says how far the next
@@ -1136,6 +1175,10 @@ Automated tests drive the UI through these hooks — keep them working:
   left of Check before the first check; on phones the key line's reads "Answer", its accessible name staying
   "Show answer"; after it, the checked action is **"Type it now"**); completion titles containing **"Lesson complete"**, **"Problem learned"**,
   **"Review complete"**, and its **"Lines written"** stat; repair button containing **"Repair"**.
+- Pattern flowchart (`/flowchart?path=<option ids joined by dots>`): the question `#flow-ask`, its options
+  `.flow-option`, the answers so far `.flow-trail-step` (each with a **"Change"** button), the result's name
+  `#flow-result-title`, **"Start over"**, and the outline's results `.flow-tree button.flow-pattern` (named
+  "<Pattern>: show this route").
 - Beginner "Pick the right code": `.lplayer-pick[data-input="pick"]` (typed slides stay `.lplayer-type`), its
   options `.lplayer-pick-options .pick-option` (each line a `.pick-option-line` with its column in `--indent`),
   the slot `.lplayer-pick-slot`, the picked code `.lplayer-pick-line`.

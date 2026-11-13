@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Quote, Search, X } from 'lucide-react';
+import { Quote, Search, Workflow, X } from 'lucide-react';
 import { levelInfo, levelTitle } from '../lib/game';
 import { dueProblemIds, practicedToday, useProgress, xpToday } from '../lib/store';
 import { CommandPalette, openCommandPalette } from './CommandPalette';
@@ -19,6 +19,7 @@ const NAV: { label: string; items: NavItem[] }[] = [
       { to: '/learn', icon: ICONS.learn, label: 'Learning path' },
       { to: '/problems', icon: ICONS.list, label: 'Problem library' },
       { to: '/patterns', icon: ICONS.book, label: 'Pattern guide' },
+      { to: '/flowchart', icon: Workflow, label: 'Pattern flowchart' },
     ],
   },
   {

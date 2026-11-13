@@ -30,6 +30,7 @@ jumping to any problem, pattern or page.
 | ⌨️ **Code from memory** | Three rungs, inspired by AlgoDrill-style recall: rebuild a solution part by part from plain-English cues, fill the gaps in it, then write it from a blank file. While a problem's code is new, part by part and the gaps are picked from choices (with their own best scores); From scratch is always typed, and it is run against the problem's tests, so any correct solution passes; a failing run shows the failing test, with the line-by-line comparison one click away. Type on any device: phones get a key bar for indents and symbols. |
 | 🧩 **Code practice: pick first, then type** | New code is picked from choices until you know it, then typing takes over (faded guidance, Parsons problems; see the science). In the default, every pick screen offers "Type instead". Profile → *Code practice* switches between *Pick first, then type* (the default), *Always type* and *Always pick*. |
 | 🔎 **Clue words** | For each pattern, the wording that turns up across many problem statements and should make you reach for it, and what to reach for ("**k-th largest**" → a heap capped at size k). Listed in the pattern guide and each unit, taught in the pattern intro, and drilled like flashcards in both directions: this wording, which pattern? this pattern, which wording? A daily review also asks a learned problem's clue phrases without its statement. Four right in a row marks a pattern's clue words as known. |
+| 🧭 **Pattern flowchart** | A few questions about a problem's wording that end at the pattern to try first: what the problem is built on (a linked list, a tree, a graph, a grid, ranges, a class), then, for an array, a string or plain numbers, what the wording asks for. Each result says what to reach for, lists the problems that end there and the pattern's clue words, and the whole chart is shown as an outline to learn. It is checked against the curriculum: the wording of 148 of the 150 problems leads to their pattern by the chart, and it names the two that hide it. |
 | 🪜 **Steps to memorize** | Every unit has "Memorize this pattern" (learn it, know its clue words, fill in its template, write the template from a blank file, learn its problems) and every problem has "Memorize this solution" (learn it, rebuild it part by part, fill in its missing lines, write it from a blank file, keep it with reviews). Each list shows what is done and a button for the next step. |
 | ⚡ **Pattern Blitz** | Two games with combo multipliers: *Spot the pattern* (60 seconds of "which pattern is this?") and *Key lines* (90 seconds to recall the key lines of solutions you have learned, picked from choices while a problem is new, else typed, and only typed lines count toward your best; opens at 3 learned problems). Zen mode has no clock. Spot the pattern asks about the units you have started once they hold 8 problems. Misses go into your review queue. |
 | ⏱️ **Mock interview** | One problem against the clock (15 minutes for an Easy problem, 25 for a Medium, 40 for a Hard) with a blank file, no hints and no pattern name. It draws a problem you have learned, or a new one from a pattern you have started, and your code has to pass the tests. |
@@ -121,6 +122,8 @@ All teaching content is typed TypeScript data in `src/content/`:
   recursion, the same with a cache, the table), each a complete runnable answer.
 - `foundations.ts` and `foundations-extra.ts`: the beginner track.
 - `cues.ts`: the clue words, 6 to 9 "see this, reach for that" pairs per pattern.
+- `flow.ts`: the pattern flowchart: its questions, their answers, and for each result the problems whose wording
+  leads there (`npm run validate` checks that every problem is on a result that names its pattern).
 - `science.ts`: the research summaries shown in the app.
 
 Each solution is **one block of real, runnable Python** with two tiny comment markers:
@@ -166,7 +169,7 @@ src/
                 test report, "Why is it wrong?", crash screen, shared UI primitives
   pages/        landing, onboarding, dashboard, learning path, unit, guided lesson, review,
                 Blitz, code from memory, solve it yourself, mock interview, pattern guide,
-                problem library, profile, science
+                pattern flowchart, problem library, profile, science
   styles/       design tokens (base.css), components, shell, per-page styles (pages/)
 scripts/        content validator, distractor checker (runs every wrong option in place),
                 judge check (judge-check.py), trace builder (build-traces.py)
@@ -183,3 +186,5 @@ docs/           design system, learning-science design doc, content guide
   checked field by field when it is loaded or imported; a save that cannot be read is kept aside and the app says so,
   and a save that fails (storage full or blocked) shows a warning.
 - Your code never leaves the browser: Python runs locally, and *Profile → Run my code* turns it off.
+- Browsers: the app needs one from 2023 or later (Safari and iOS 16.4, Chrome 107, Firefox 104). An older browser
+  gets a message saying so (`index.html`) instead of a blank page.

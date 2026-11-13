@@ -165,6 +165,31 @@ what the Clue words drill asks, what the pattern intro and the pattern guide lis
   telling clue first: the pattern intro's question uses it.
 - `npm run validate -- cues` checks the counts, the lengths, that `problems` belong to the unit, and that no two
   patterns claim the same wording without `also`.
+- When a clue's wording changes what a learner would answer in the flowchart (below), change the flowchart's option
+  too: the two should agree.
+
+## The pattern flowchart (`src/content/flow.ts`)
+The flowchart (`/flowchart`) asks a few questions about a problem's wording and ends at the pattern to try first.
+It is a list of questions (`FlowNode`); each option (`FlowOption`) leads to another question (`to`) or to a result
+(`leaf`: the pattern, what to reach for, other patterns that also fit, and the problems that end there).
+- **Order.** First the structure the problem is built on (a linked list, a tree, a graph, a grid, ranges, a class),
+  then, for an array, a string or plain numbers, the wording: the strong signals ("all possible", "k-th largest",
+  "O(log n)") before what the problem is about. Options are read top to bottom and the first that fits wins, so
+  put the more specific option above the more general one. A route asks at most five questions; most ask two or
+  three.
+- **An option's `label`** is what a learner can see in the problem, like a clue word (at most 130 characters; bold
+  the one or two trigger words). `hint` says how to recognize it (at most 90). A result's `use` is what to reach
+  for on that route (at most 90), so two routes to one pattern can name different tools (BFS for the fewest steps,
+  topological sort for an order).
+- **Every result lists the problems whose wording leads there**, and that is the chart's test. Each of the 150 is on
+  exactly one result, and that result names the problem's pattern, lists it in `also`, or is a pattern the problem
+  accepts (`alsoAccept`). Route a problem by its wording, as a learner who has not solved it would: when that
+  ends at the wrong pattern, fix the questions; when the wording really hides the pattern (Car Fleet, Find the
+  Duplicate Number), put the problem in `FLOW_OFF_CHART` with the reason, which the page shows. At most 5% of the
+  problems may be off the chart.
+- **When a problem is added or moves to another unit,** add it to the result its wording leads to.
+- `npm run validate -- flow` checks all of this, and that every question can be reached, no route loops and every
+  pattern is the result of some route.
 
 ## Every solution must be tested
 In your own scratch directory, build a harness: `from typing import *`, `import heapq, collections, math`,

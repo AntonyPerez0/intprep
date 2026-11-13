@@ -88,6 +88,17 @@
 .clues-table a:hover {
   text-decoration: underline;
 }
+/* The pattern's name is the row's link: on touch screens it takes the row's full height. */
+@media (pointer: coarse) {
+  .clues-table a {
+    position: relative;
+  }
+  .clues-table a::before {
+    content: '';
+    position: absolute;
+    inset: -10px -4px;
+  }
+}
 
 /* ── A pattern's clue words as a list (pattern guide, unit page) ─────────── */
 .clue-list {
