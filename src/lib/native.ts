@@ -82,6 +82,7 @@ async function hideSplash(root: HTMLElement): Promise<void> {
 /** Set up the native shell. Call once, after React has been asked to render into `root`. */
 export function initNative(root: HTMLElement): void {
   if (!isNative()) return;
+  document.documentElement.classList.add('native'); // base.css: no scroll bars inside the apps
   quiet(followTheme());
   quiet(handleBackButton());
   quiet(hideSplash(root));

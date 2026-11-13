@@ -309,6 +309,17 @@ html {
     scroll-padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
   }
 }
+/* Inside the Android and iOS apps (lib/native.ts adds .native) nothing shows a scroll bar: the
+   page and the code blocks scroll under the finger, as in any app. The shells also turn off the
+   WebView's own bars for the page. The website keeps the browser's. */
+html.native,
+html.native * {
+  scrollbar-width: none;
+}
+html.native::-webkit-scrollbar,
+html.native *::-webkit-scrollbar {
+  display: none;
+}
 body {
   margin: 0;
   background: var(--canvas);

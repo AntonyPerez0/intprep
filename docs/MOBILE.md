@@ -26,6 +26,8 @@ What differs from the website:
 
 - The files are in the app, so it works offline from the first launch, Python included. The service worker is not
   registered. New content needs a new build of the app.
+- No scroll bars: the shells turn off the WebView's own (`MainActivity.java`, `AppViewController` in
+  `SceneDelegate.swift`) and `html.native` in `base.css` hides the ones inside the page.
 - The page is served at `https://localhost` on Android and `capacitor://localhost` on iOS. Progress is in
   `localStorage` under that address, so **progress in the app is separate from progress on the website** and from the
   other platform. Changing the app id, the scheme or the hostname later would reset everyone's progress.
