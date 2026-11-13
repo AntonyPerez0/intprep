@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The page colour of the web app (the canvas colour of src/styles/base.css), shown by the launch
+         screen and behind the system bars. The dark value is in values-night/colors.xml. -->
+    <color name="appBackground">#fbf4e2</color>
+</resources>

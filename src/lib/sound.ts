@@ -1,6 +1,7 @@
 // Tiny synthesized sound effects (WebAudio) + haptics. No audio files needed.
 
 import { getProgress } from './store';
+import { haptic, isNative } from './native';
 
 let ctx: AudioContext | null = null;
 
@@ -40,7 +41,12 @@ export function sfx(kind: Sfx, comboLevel = 0) {
   } catch {
     return;
   }
-  if (p.settings.haptics && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+  if (p.settings.haptics && isNative()) {
+    // In the Android and iOS apps the phone's own haptics (iOS has no navigator.vibrate).
+    const feel: Partial<Record<Sfx, 'tap' | 'success' | 'error'>> = { correct: 'success', wrong: 'error', tap: 'tap', combo: 'tap', complete: 'success', goal: 'success', level: 'success' };
+    const f = feel[kind];
+    if (f) haptic(f);
+  } else if (p.settings.haptics && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     const pattern: Record<Sfx, number | number[]> = {
       correct: 15,
       wrong: [30, 40, 30],

@@ -49,10 +49,8 @@
   gap: 8px;
   height: calc(var(--topbar-h) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 12px 0 16px;
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--border);
+  background: var(--canvas);
+  border-bottom: var(--bw) solid var(--ink);
 }
 .topbar .stats {
   display: flex;
@@ -76,10 +74,8 @@
   grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-top: var(--bw) solid var(--ink);
 }
 .tab {
   position: relative;
@@ -87,23 +83,40 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   color: var(--text-tertiary);
   font-size: 11px;
-  font-weight: 550;
+  font-weight: 700;
   text-decoration: none !important;
 }
+/* The icon sits in a pill; on the current tab the pill is a sunflower sticker. */
 .tab svg {
-  width: 22px;
-  height: 22px;
+  box-sizing: content-box;
+  width: 20px;
+  height: 20px;
+  padding: 3px 13px;
+  border: var(--bw) solid transparent;
+  border-radius: var(--r-full);
 }
 .tab.active {
-  color: var(--brand-text);
+  color: var(--text);
+}
+.tab.active svg {
+  background: var(--sun);
+  color: var(--on-fill);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-xs);
+  animation: tab-pop 0.3s var(--spring);
+}
+@keyframes tab-pop {
+  from {
+    transform: scale(0.8);
+  }
 }
 .tab .badge-count {
   position: absolute;
-  top: 6px;
-  left: calc(50% + 6px);
+  top: 3px;
+  left: calc(50% + 12px);
 }
 
 .badge-count {
@@ -113,10 +126,11 @@
   height: 18px;
   padding: 0 5px;
   border-radius: var(--r-full);
-  background: var(--danger-solid);
+  background: var(--tomato);
+  box-shadow: 0 0 0 1.5px var(--ink);
   color: #fff;
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -127,7 +141,7 @@
   align-items: center;
   gap: 10px;
   color: var(--text);
-  font-weight: 650;
+  font-weight: 800;
   font-size: 17px;
   letter-spacing: -0.02em;
   text-decoration: none !important;
@@ -156,9 +170,10 @@
     height: 100vh;
     display: flex;
     flex-direction: column;
-    padding: 16px 12px;
-    background: var(--surface);
-    border-right: 1px solid var(--border);
+    padding: 16px 14px;
+    /* A paper column with an ink line on its right. */
+    background: var(--canvas);
+    border-right: var(--bw) solid var(--ink);
     overflow-y: auto;
   }
   .sidebar .logo {
@@ -168,20 +183,23 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: none;
     width: 100%;
-    height: 34px;
+    height: 38px;
     padding: 0 8px 0 10px;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
     border-radius: var(--r-md);
-    border: 1px solid var(--border);
-    background: var(--surface-sunken);
+    border: var(--bw) solid var(--ink);
+    background: var(--surface);
     color: var(--text-tertiary);
-    font-size: var(--fs-sm);
+    font-size: var(--fs-md);
+    font-weight: 500;
     cursor: pointer;
-    transition: border-color var(--dur-fast);
+    transition: background var(--dur-fast);
   }
   .search-trigger:hover {
-    border-color: var(--border-strong);
+    background: var(--surface-hover);
+    color: var(--text-secondary);
   }
   .search-trigger svg {
     width: 15px;
@@ -196,7 +214,7 @@
   .nav-group-label {
     padding: 0 10px 6px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--text-tertiary);
@@ -205,12 +223,14 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 34px;
+    height: 36px;
     padding: 0 10px;
-    border-radius: var(--r-md);
+    margin-bottom: 2px;
+    border: var(--bw) solid transparent;
+    border-radius: var(--r-full);
     color: var(--text-secondary);
     font-size: var(--fs-md);
-    font-weight: 500;
+    font-weight: 600;
     text-decoration: none !important;
     transition:
       background var(--dur-fast),
@@ -222,16 +242,23 @@
     color: var(--text-tertiary);
   }
   .nav-link:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-  .nav-link.active {
     background: var(--surface-active);
     color: var(--text);
-    font-weight: 550;
+  }
+  .nav-link:hover svg {
+    color: var(--text);
+  }
+  /* The current page is a sunflower sticker pill, as on the phone tab bar. */
+  .nav-link.active,
+  .nav-link.active:hover {
+    background: var(--sun);
+    border-color: var(--ink);
+    box-shadow: var(--shadow-xs);
+    color: var(--on-fill);
+    font-weight: 700;
   }
   .nav-link.active svg {
-    color: var(--brand-text);
+    color: var(--on-fill);
   }
   .nav-link .badge-count {
     margin-left: auto;
@@ -240,10 +267,13 @@
     flex: 1;
   }
   .sidebar-card {
+    flex: none;
     padding: 12px;
+    margin: 0 3px 3px 0; /* room for its hard shadow inside the scrolling sidebar */
     border-radius: var(--r-lg);
-    border: 1px solid var(--border);
-    background: var(--surface-hover);
+    border: var(--bw) solid var(--ink);
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
   }
   .deskbar {
     position: sticky;
@@ -254,14 +284,14 @@
     justify-content: flex-end;
     gap: 8px;
     height: var(--topbar-h);
-    padding: 0 32px;
-    background: color-mix(in srgb, var(--canvas) 85%, transparent);
-    backdrop-filter: saturate(180%) blur(12px);
-    -webkit-backdrop-filter: saturate(180%) blur(12px);
-    border-bottom: 1px solid transparent;
+    padding: 0 40px;
+    background: var(--canvas);
+    border-bottom: var(--bw) solid transparent;
+    transition: border-color var(--dur-fast);
   }
+  /* Once the page scrolls under it, the bar gets the same ink line as the phone top bar. */
   .deskbar.scrolled {
-    border-bottom-color: var(--border);
+    border-bottom-color: var(--ink);
   }
   .deskbar .crumbs {
     margin-right: auto;
@@ -304,8 +334,8 @@
   align-items: center;
   gap: 4px;
   font-size: var(--fs-sm);
-  font-weight: 500;
-  color: var(--text-tertiary);
+  font-weight: 700;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 .back-link svg {
@@ -329,10 +359,8 @@
   position: sticky;
   top: 0;
   z-index: 30;
-  background: color-mix(in srgb, var(--canvas) 88%, transparent);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-  border-bottom: 1px solid var(--border);
+  background: var(--canvas);
+  border-bottom: var(--bw) solid var(--ink);
   padding-top: env(safe-area-inset-top);
 }
 .session-head-inner {
@@ -347,7 +375,7 @@
 }
 .session-head .session-title {
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 650;
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -375,10 +403,10 @@ html:has(.actionbar) {
   gap: 8px;
   margin-bottom: 8px;
   font-size: var(--fs-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--brand-text);
+  color: var(--tomato);
 }
 .kicker svg {
   width: 14px;
@@ -387,7 +415,7 @@ html:has(.actionbar) {
 .q-title {
   margin: 0 0 18px;
   font-size: clamp(19px, 2.6vw, 23px);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--text);
@@ -402,8 +430,7 @@ html:has(.actionbar) {
   bottom: 0;
   padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
   background: var(--surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -8px 24px -12px rgba(16, 24, 40, 0.12);
+  border-top: var(--bw) solid var(--ink);
   animation: bar-in var(--dur) var(--ease);
 }
 @keyframes bar-in {
@@ -454,53 +481,126 @@ html:has(.actionbar) {
     flex: 1;
   }
 }
+/* Feedback is a full sticker fill with ink text, the same in both themes. */
+.actionbar.correct,
+.actionbar.wrong {
+  --text: var(--on-fill);
+  --text-secondary: var(--on-fill-soft);
+  color: var(--on-fill);
+  animation: bar-pop 0.4s var(--spring);
+}
 .actionbar.correct {
-  background: var(--success-subtle);
-  border-top-color: var(--success-border);
+  background: var(--mint);
 }
 .actionbar.wrong {
-  background: var(--danger-subtle);
-  border-top-color: var(--danger-border);
+  background: var(--rose);
 }
-:root[data-theme='dark'] .actionbar.correct,
-:root[data-theme='dark'] .actionbar.wrong {
-  background-color: var(--surface);
-  background-image: linear-gradient(var(--success-subtle), var(--success-subtle));
-}
-:root[data-theme='dark'] .actionbar.wrong {
-  background-image: linear-gradient(var(--danger-subtle), var(--danger-subtle));
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .actionbar.correct {
-    background-color: var(--surface);
-    background-image: linear-gradient(var(--success-subtle), var(--success-subtle));
+@keyframes bar-pop {
+  from {
+    transform: translateY(40%);
   }
-  :root:not([data-theme='light']) .actionbar.wrong {
-    background-color: var(--surface);
-    background-image: linear-gradient(var(--danger-subtle), var(--danger-subtle));
-  }
+}
+/* What a session draws inside the feedback (the right order, a diff, "Why is it wrong?", cost
+   chips, inline code) sits on the action bar's --mint / --rose fill, which is the same light
+   sticker in both themes. So inside it every token is its light-theme value: panels are white
+   bubbles with ink text at night too. */
+.actionbar:is(.correct, .wrong) .feedback-body {
+  --surface: #fffefa;
+  --surface-raised: #fffefa;
+  --surface-sunken: #f3ead3;
+  --surface-hover: #faf3e1;
+  --surface-active: #efe5cb;
+  --border: #e0d5b8;
+  --border-subtle: #ebe2c9;
+  --text-tertiary: #554e40; /* >= 4.5:1 on --rose and --mint */
+  --text-disabled: #6a6251;
+  --brand-text: #1b47b3;
+  --brand-subtle: #e3f0ff;
+  --brand-border: #9cc6ff;
+  --success: #17703f;
+  --success-text: #125a33;
+  --success-subtle: #dff6e6;
+  --success-border: #8fd9a8;
+  --danger: #c92a1c;
+  --danger-text: #a82216;
+  --danger-subtle: #ffe7e2;
+  --danger-border: #f5b3a8;
+  --warning: #944d00;
+  --warning-text: #944d00;
+  --code-bg: #fffdf5;
+  --code-text: #1e1b16;
+  --code-comment: #6a6251;
 }
 .feedback-title {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: var(--fs-lg);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 .feedback-title svg {
   width: 22px;
   height: 22px;
 }
-.actionbar.correct .feedback-title {
-  color: var(--success-text);
+/* On a filled bar the way forward is the one ink button. */
+.actionbar.correct .btn-success,
+.actionbar.wrong .btn-danger {
+  --btn-bg: #1e1b16;
+  --btn-fg: #fff;
+  --btn-border: #1e1b16;
+  --btn-hover: #000;
+  box-shadow: none;
 }
+.actionbar.correct .btn:not(.btn-success):not(.btn-quiet),
+.actionbar.wrong .btn:not(.btn-danger):not(.btn-quiet) {
+  --btn-bg: #fffefa;
+  --btn-fg: #1e1b16;
+  --btn-border: #1e1b16;
+  --btn-hover: #faf3e1;
+  box-shadow: none;
+}
+.actionbar.correct .feedback-title,
 .actionbar.wrong .feedback-title {
-  color: var(--danger-text);
+  color: var(--on-fill);
+  font-weight: 800;
+}
+/* Pip reacts next to the verdict: a hop when right, a tilt when wrong. */
+.feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.feedback-text {
+  flex: 1;
+  min-width: 0;
+}
+.feedback-pip {
+  flex: none;
+  margin-top: -2px;
+}
+.actionbar.correct .feedback-pip {
+  animation: pip-hop 0.55s 0.1s var(--spring) backwards;
+}
+.actionbar.wrong .feedback-pip {
+  transform: rotate(-9deg);
+  animation: pip-tilt 0.5s 0.1s var(--ease) backwards;
+}
+@keyframes pip-hop {
+  0% {
+    transform: translateY(18px) scale(0.8);
+  }
+  60% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes pip-tilt {
+  from {
+    transform: translateY(14px) rotate(0);
+  }
 }
 .feedback-body {
-  margin-top: 6px;
-  padding-left: 32px;
+  margin-top: 4px;
   font-size: var(--fs-md);
   color: var(--text-secondary);
   max-height: 34vh;
@@ -520,9 +620,7 @@ html:has(.actionbar) {
   justify-content: center;
   align-items: flex-start;
   padding: 12vh 16px 16px;
-  background: rgba(16, 24, 40, 0.4);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: color-mix(in srgb, var(--ink) 55%, transparent); /* a plain dim, no blur */
   animation: fade var(--dur) var(--ease);
 }
 .cmdk {
@@ -531,7 +629,7 @@ html:has(.actionbar) {
   display: flex;
   flex-direction: column;
   background: var(--surface-raised);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-xl);
   overflow: hidden;
@@ -575,7 +673,7 @@ html:has(.actionbar) {
 .cmdk-group {
   padding: 10px 10px 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -595,8 +693,15 @@ html:has(.actionbar) {
   color: var(--text);
   cursor: pointer;
 }
+/* The highlighted row is a selection: a sky sticker with ink text. */
 .cmdk-item.active {
-  background: var(--surface-active);
+  background: var(--sky);
+  color: var(--on-fill);
+  box-shadow: inset 0 0 0 var(--bw) var(--ink);
+}
+.cmdk-item.active > svg,
+.cmdk-item.active .cmdk-meta {
+  color: var(--on-fill);
 }
 .cmdk-item .cmdk-meta {
   margin-left: auto;
@@ -605,6 +710,7 @@ html:has(.actionbar) {
   gap: 6px;
   color: var(--text-tertiary);
   font-size: var(--fs-xs);
+  white-space: nowrap;
 }
 .cmdk-item > svg {
   width: 16px;
@@ -668,7 +774,8 @@ html:has(.actionbar) {
   padding: 10px 12px;
   border-radius: var(--r-md);
   background: var(--surface-sunken);
-  color: var(--text-tertiary);
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   white-space: pre-wrap;

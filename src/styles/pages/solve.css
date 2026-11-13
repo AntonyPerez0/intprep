@@ -49,20 +49,21 @@
   padding: 0 10px 0 8px;
   border-radius: var(--r-full);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
 }
 .solve-clock svg {
   width: 14px;
   height: 14px;
 }
+/* The last minutes: the whole pill turns rose (and a screen reader hears the time as before) */
 .solve-clock.is-low {
-  color: var(--danger-text);
-  border-color: var(--danger-border);
-  background: var(--danger-subtle);
+  color: var(--on-fill);
+  background: var(--rose);
 }
 .solve-done {
   display: flex;
@@ -121,30 +122,44 @@
   gap: 4px;
   text-align: left;
   padding: 14px 16px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  border: var(--bw) solid var(--ink);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   color: var(--text);
   cursor: pointer;
-  transition: border-color var(--dur-fast), background var(--dur-fast);
+  transition:
+    background var(--dur-fast),
+    box-shadow var(--dur-fast),
+    transform var(--dur-fast) var(--ease);
 }
-.mock-option:hover:not(:disabled) {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .mock-option:hover:not(:disabled):not(.is-on) {
+    background: var(--surface-hover);
+  }
 }
-.mock-option:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+.mock-option:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
+/* The chosen source: a pressed sticker in the selection color (as .choice.selected) */
 .mock-option.is-on {
-  border-color: var(--brand);
-  background: var(--brand-subtle);
+  background: var(--sky);
+  color: var(--on-fill);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.mock-option.is-on .mock-option-body,
+.mock-option.is-on .mock-option-count {
+  color: color-mix(in srgb, var(--on-fill) 82%, transparent);
 }
 .mock-option:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+  box-shadow: none;
 }
 .mock-option-title {
-  font-weight: 600;
+  font-weight: 700;
 }
 .mock-option-body {
   font-size: var(--fs-sm);

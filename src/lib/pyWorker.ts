@@ -10,25 +10,73 @@ interface Request {
   id: number;
   type: 'init' | 'judge' | 'trace' | 'snippet';
   indexURL?: string;
+  /** The page runs inside the Android or iOS app (src/lib/native.ts). */
+  native?: boolean;
   payload?: unknown;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let judge: any = null;
 
-async function init(indexURL: string) {
+// In the Android and iOS apps the files come from the app itself, through the shell's own file
+// server (Capacitor) and not a web server. The two helpers below cover what such a server can get
+// wrong about a file's type, so that Python still loads there. The website never uses them.
+
+/** A module loaded from its text, for a file `import()` refused (served under a type that is not JavaScript). */
+async function importFromText(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to load ${url}: ${res.status}`);
+  const blob = URL.createObjectURL(new Blob([await res.text()], { type: 'text/javascript' }));
+  try {
+    return await import(/* @vite-ignore */ blob);
+  } finally {
+    URL.revokeObjectURL(blob);
+  }
+}
+
+/**
+ * Pyodide compiles its WebAssembly while it downloads, which needs the file served as
+ * `application/wasm`, and it does not try another way when that fails. This does: the same file,
+ * fetched whole and compiled from memory.
+ */
+function compileWasmFromBytesOnFailure() {
+  const streaming = WebAssembly.instantiateStreaming.bind(WebAssembly);
+  WebAssembly.instantiateStreaming = async (source, imports) => {
+    const response = await source;
+    try {
+      return await streaming(response, imports);
+    } catch (err) {
+      const again = await fetch(response.url);
+      if (!again.ok) throw err;
+      return WebAssembly.instantiate(await again.arrayBuffer(), imports);
+    }
+  };
+}
+
+async function init(indexURL: string, native = false) {
   if (judge) return;
-  const { loadPyodide } = await import(/* @vite-ignore */ `${indexURL}pyodide.mjs`);
-  const py = await loadPyodide({ indexURL });
+  const options: Record<string, unknown> = { indexURL };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let pyodide: any;
+  try {
+    pyodide = await import(/* @vite-ignore */ `${indexURL}pyodide.mjs`);
+  } catch (err) {
+    if (!native) throw err;
+    pyodide = await importFromText(`${indexURL}pyodide.mjs`);
+    // The loader imports its second half by address as well: hand it over instead.
+    options.createPyodideModule = (await importFromText(`${indexURL}pyodide.asm.mjs`)).default;
+  }
+  if (native) compileWasmFromBytesOnFailure();
+  const py = await pyodide.loadPyodide(options);
   py.FS.writeFile('judge.py', judgeSource);
   judge = py.pyimport('judge');
 }
 
 self.onmessage = async (e: MessageEvent<Request>) => {
-  const { id, type, indexURL, payload } = e.data;
+  const { id, type, indexURL, native, payload } = e.data;
   try {
     if (type === 'init') {
-      await init(indexURL!);
+      await init(indexURL!, native);
       self.postMessage({ id, ok: true });
       return;
     }

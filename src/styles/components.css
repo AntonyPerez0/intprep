@@ -12,14 +12,14 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--btn-border);
+  height: 40px;
+  padding: 0 16px;
+  border: var(--bw) solid var(--btn-border);
   border-radius: var(--r-md);
   background: var(--btn-bg);
   color: var(--btn-fg);
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
@@ -37,8 +37,10 @@
     background: var(--btn-hover);
   }
 }
-.btn:active {
-  transform: translateY(0.5px);
+/* A press pushes the button into its own shadow. */
+.btn:active:not(:disabled):not([aria-disabled='true']):not(.btn-quiet) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .btn:focus-visible {
   outline: 2px solid var(--brand-500);
@@ -54,29 +56,29 @@
   width: 16px;
   height: 16px;
 }
+/* The primary action is a sunflower sticker with ink text, in both themes. */
 .btn-primary,
 .btn-green,
 .btn-blue,
 .btn-orange {
-  --btn-bg: var(--brand);
-  --btn-fg: #fff;
-  --btn-border: transparent;
-  --btn-hover: var(--brand-hover);
-  box-shadow:
-    var(--shadow-xs),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --btn-bg: var(--sun);
+  --btn-fg: var(--on-fill);
+  --btn-border: var(--ink);
+  --btn-hover: var(--sun-hover);
+  box-shadow: var(--shadow-sm);
 }
 .btn-success {
-  --btn-bg: var(--success-solid);
-  --btn-fg: #fff;
-  --btn-border: transparent;
-  --btn-hover: var(--success-solid-hover);
+  --btn-bg: var(--mint);
+  --btn-fg: var(--on-fill);
+  --btn-border: var(--ink);
+  --btn-hover: #86dba2;
+  box-shadow: var(--shadow-sm);
 }
 .btn-danger,
 .btn-red {
   --btn-bg: var(--danger-solid);
   --btn-fg: #fff;
-  --btn-border: transparent;
+  --btn-border: var(--ink);
   --btn-hover: var(--danger-solid-hover);
 }
 .btn-secondary,
@@ -100,10 +102,10 @@
   }
 }
 .btn-inverse {
-  --btn-bg: #fff;
-  --btn-fg: #101828;
-  --btn-border: transparent;
-  --btn-hover: #f2f4f7;
+  --btn-bg: #fffefa;
+  --btn-fg: #1e1b16;
+  --btn-border: #1e1b16;
+  --btn-hover: #faf3e1;
 }
 .btn-sm {
   height: 32px;
@@ -117,16 +119,17 @@
   font-size: var(--fs-base);
 }
 .btn-xl {
-  height: 50px;
+  height: 52px;
   padding: 0 24px;
-  font-size: var(--fs-base);
+  font-size: var(--fs-lg);
+  font-weight: 800;
   border-radius: var(--r-lg);
 }
 .btn-block {
   width: 100%;
 }
 .btn-icon {
-  width: 38px;
+  width: 40px;
   padding: 0;
 }
 .btn-icon.btn-sm {
@@ -155,7 +158,7 @@
   border: 0;
   padding: 0;
   color: var(--brand-text);
-  font-weight: 550;
+  font-weight: 650;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -168,10 +171,10 @@
 /* ── Cards ──────────────────────────────────────────────────────────────── */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   padding: 20px;
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 .card.flat {
   box-shadow: none;
@@ -194,9 +197,15 @@
   text-decoration: none !important;
   display: block;
 }
-.card-interactive:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
+@media (hover: hover) {
+  .card-interactive:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-md);
+  }
+}
+.card-interactive:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .card-header {
   display: flex;
@@ -207,7 +216,7 @@
 }
 .card-title {
   font-size: var(--fs-base);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text);
   margin: 0;
@@ -222,7 +231,7 @@
   padding: 12px 20px;
   border-top: 1px solid var(--border);
   background: var(--surface-hover);
-  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  border-radius: 0 0 calc(var(--r-lg) - var(--bw)) calc(var(--r-lg) - var(--bw));
 }
 
 /* ── Badges ─────────────────────────────────────────────────────────────── */
@@ -232,15 +241,15 @@
   align-items: center;
   gap: 5px;
   height: 22px;
-  padding: 0 8px;
-  border-radius: var(--r-sm);
+  padding: 0 9px;
+  border-radius: var(--r-full);
   font-size: var(--fs-xs);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1;
   white-space: nowrap;
   background: var(--surface-sunken);
   color: var(--text-secondary);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
 }
 .badge svg,
 .chip svg {
@@ -307,9 +316,9 @@
   width: 36px;
   height: 36px;
   border-radius: var(--r-md);
-  color: var(--c);
-  background: color-mix(in srgb, var(--c) 10%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--c) 22%, transparent);
+  color: color-mix(in srgb, var(--c) 82%, var(--ink));
+  background: color-mix(in srgb, var(--c) 20%, var(--surface));
+  border: var(--bw) solid var(--ink);
 }
 .icon-tile svg {
   width: 18px;
@@ -345,7 +354,8 @@
 .icon-tile.solid {
   background: var(--c);
   color: #fff;
-  border-color: transparent;
+  border-color: var(--ink);
+  box-shadow: var(--shadow-xs);
 }
 :root[data-theme='dark'] .icon-tile:not(.solid) {
   color: color-mix(in srgb, var(--c) 70%, white);
@@ -379,7 +389,7 @@
 }
 .stat-value {
   font-size: var(--fs-2xl);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -391,14 +401,14 @@
 }
 .stat-tile {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   padding: 14px 16px;
   box-shadow: var(--shadow-xs);
 }
 .stat-tile .v {
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -418,9 +428,9 @@ textarea.input {
   font-size: var(--fs-md);
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-xs);
+  box-shadow: none;
   transition:
     border-color var(--dur-fast),
     box-shadow var(--dur-fast);
@@ -434,10 +444,10 @@ textarea.input {
 .input::placeholder {
   color: var(--text-tertiary);
 }
+/* Focus is a solid ring around the ink outline, never a glow. */
 .input:focus {
-  outline: none;
-  border-color: var(--brand-500);
-  box-shadow: var(--ring);
+  outline: 3px solid var(--brand-500);
+  outline-offset: 1px;
 }
 .input:disabled {
   background: var(--surface-sunken);
@@ -462,7 +472,7 @@ textarea.input {
 .label {
   display: block;
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 650;
   color: var(--text);
   margin-bottom: 6px;
 }
@@ -482,7 +492,7 @@ textarea.code-input {
   min-height: 120px;
   white-space: pre;
   tab-size: 4;
-  caret-color: var(--brand-300);
+  caret-color: var(--brand-500);
 }
 textarea.code-input::placeholder {
   color: var(--code-gutter);
@@ -500,7 +510,7 @@ textarea.code-input::placeholder {
   padding: 3px;
   border-radius: var(--r-md);
   background: var(--surface-sunken);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
 }
 .seg button {
   display: inline-flex;
@@ -513,7 +523,7 @@ textarea.code-input::placeholder {
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background var(--dur-fast),
@@ -527,11 +537,9 @@ textarea.code-input::placeholder {
   color: var(--text);
 }
 .seg button.on {
-  background: var(--surface-raised);
-  color: var(--text);
-  box-shadow:
-    var(--shadow-sm),
-    inset 0 0 0 1px color-mix(in srgb, var(--border-strong) 75%, transparent);
+  background: var(--sun);
+  color: var(--on-fill);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
 }
 .seg button:disabled {
   opacity: 0.45;
@@ -542,11 +550,11 @@ textarea.code-input::placeholder {
 .toggle {
   position: relative;
   flex: none;
-  width: 36px;
-  height: 20px;
+  width: 40px;
+  height: 24px;
   border-radius: var(--r-full);
-  background: var(--border-strong);
-  border: 0;
+  background: var(--surface-sunken);
+  border: var(--bw) solid var(--ink);
   cursor: pointer;
   transition: background var(--dur);
 }
@@ -558,12 +566,11 @@ textarea.code-input::placeholder {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.2);
-  transition: transform var(--dur) var(--ease);
+  background: var(--ink);
+  transition: transform var(--dur) var(--spring);
 }
 .toggle.on {
-  background: var(--brand);
+  background: var(--mint);
 }
 .toggle.on::after {
   transform: translateX(16px);
@@ -605,9 +612,10 @@ textarea.code-input::placeholder {
 /* ── Progress ───────────────────────────────────────────────────────────── */
 .progress {
   flex: 1;
-  height: 6px;
+  height: 10px;
   border-radius: var(--r-full);
-  background: var(--surface-active);
+  background: var(--surface);
+  border: var(--bw) solid var(--ink);
   overflow: hidden;
 }
 .progress > div {
@@ -622,10 +630,12 @@ textarea.code-input::placeholder {
     background var(--dur) var(--ease);
 }
 .progress.lg {
-  height: 8px;
+  height: 12px;
 }
 .progress.thin {
   height: 4px;
+  border: 0;
+  background: var(--surface-active);
 }
 .ring {
   position: relative;
@@ -642,7 +652,7 @@ textarea.code-input::placeholder {
   display: grid;
   place-items: center;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -656,7 +666,7 @@ textarea.code-input::placeholder {
 .mastery span {
   width: 4px;
   border-radius: 1px;
-  background: var(--border-strong);
+  background: var(--border);
 }
 .mastery span:nth-child(1) {
   height: 5px;
@@ -686,12 +696,12 @@ textarea.code-input::placeholder {
   padding: 0 5px;
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
+  font-weight: 700;
+  color: var(--text-secondary);
   background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-bottom-width: 2px;
+  border: 1.5px solid var(--ink);
   border-radius: var(--r-xs);
+  box-shadow: 0 1.5px 0 var(--ink);
   line-height: 1;
 }
 
@@ -700,7 +710,7 @@ textarea.code-input::placeholder {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   overflow: hidden;
   box-shadow: var(--shadow-xs);
@@ -719,10 +729,20 @@ textarea.code-input::placeholder {
 .list-row:last-child {
   border-bottom: 0;
 }
-a.list-row:hover,
-button.list-row:hover {
-  background: var(--surface-hover);
-  text-decoration: none;
+@media (hover: hover) {
+  a.list-row:hover,
+  button.list-row:hover {
+    background: var(--surface-hover);
+    text-decoration: none;
+  }
+}
+a.list-row:active,
+button.list-row:active {
+  background: var(--surface-active);
+}
+a.list-row:focus-visible,
+button.list-row:focus-visible {
+  outline-offset: -3px; /* the list clips its rows */
 }
 button.list-row {
   width: 100%;
@@ -733,7 +753,7 @@ button.list-row {
   cursor: pointer;
 }
 .list-row .title {
-  font-weight: 550;
+  font-weight: 650;
   font-size: var(--fs-md);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -744,7 +764,7 @@ button.list-row {
   color: var(--text-tertiary);
 }
 .list-row .chevron {
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
 }
 .status-dot {
   flex: none;
@@ -753,10 +773,10 @@ button.list-row {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-strong);
+  border: 1.5px solid var(--ink);
   color: var(--text-tertiary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   background: var(--surface);
 }
 .status-dot svg {
@@ -764,14 +784,12 @@ button.list-row {
   height: 13px;
 }
 .status-dot.learned {
-  background: var(--success);
-  border-color: var(--success);
-  color: #fff;
+  background: var(--mint);
+  color: var(--on-fill);
 }
 .status-dot.due {
-  background: var(--warning);
-  border-color: var(--warning);
-  color: #fff;
+  background: var(--sun);
+  color: var(--on-fill);
 }
 
 /* ── Callouts ───────────────────────────────────────────────────────────── */
@@ -782,8 +800,9 @@ button.list-row {
   align-items: flex-start;
   padding: 12px 14px;
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface-hover);
+  /* A note, not a sticker: tinted paper, a 1.5px outline in its status color (as badges), never a shadow. */
+  border: 1.5px solid var(--border);
+  background: var(--surface-sunken);
   font-size: var(--fs-md);
   color: var(--text);
   line-height: 1.55;
@@ -807,7 +826,7 @@ button.list-row {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
 .beginner-note-link svg {
@@ -852,7 +871,7 @@ button.list-row {
   align-items: flex-start;
   padding: 12px 14px;
   border-radius: var(--r-md);
-  border: 1px solid var(--brand-border);
+  border: 1.5px solid var(--brand-border);
   font-size: var(--fs-md);
   line-height: 1.55;
 }
@@ -863,7 +882,7 @@ button.list-row {
   padding: 20px 22px;
   border-radius: var(--r-lg);
   background: var(--surface);
-  border: 1px solid var(--brand-border);
+  border: var(--bw) solid var(--ink);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
@@ -871,18 +890,19 @@ button.list-row {
   content: '';
   position: absolute;
   inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--brand);
+  width: 6px;
+  background: var(--sun);
+  border-right: var(--bw) solid var(--ink);
 }
 .insight-card .insight-label {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--brand-text);
+  color: var(--tomato);
   margin-bottom: 8px;
 }
 .insight-card .insight-label svg {
@@ -895,8 +915,8 @@ button.list-row {
   gap: 8px;
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px dashed var(--border-strong);
-  font-weight: 550;
+  border-top: 1.5px dashed var(--border);
+  font-weight: 650;
   color: var(--text);
   font-size: var(--fs-md);
 }
@@ -904,7 +924,7 @@ button.list-row {
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  color: var(--brand-text);
+  color: var(--xp);
 }
 
 /* ── Markdown prose ─────────────────────────────────────────────────────── */
@@ -924,7 +944,7 @@ button.list-row {
   color: var(--text-tertiary);
 }
 .md strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .md .code {
@@ -938,11 +958,16 @@ button.list-row {
 }
 
 /* ── Code ───────────────────────────────────────────────────────────────── */
+/* A code surface is a sheet: paper with ink text in the light theme, a dark sheet in the dark
+   one. Everything drawn on it uses --code-* tokens, or tints mixed from --sun (the line or gap
+   to act on), --brand-400 (a note, the open slot) and the --code-success/-danger pairs, which
+   read on both sheets. Filled stickers on the sheet (--sun, --sky, --mint, --rose) carry ink
+   text, so syntax colors are switched off inside them (.on-sticker rules below). */
 .code {
   margin: 0;
   background: var(--code-bg);
   color: var(--code-text);
-  border: 1px solid var(--code-border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   padding: 14px 0;
   font-family: var(--font-mono);
@@ -960,6 +985,10 @@ button.list-row {
     font-size: 13px;
   }
 }
+.code ::selection,
+.code-window ::selection {
+  background: color-mix(in srgb, var(--sun) 60%, transparent);
+}
 .code-line {
   position: relative;
   padding: 0 18px;
@@ -971,11 +1000,12 @@ button.list-row {
     background var(--dur) var(--ease);
 }
 .code-line.dim {
-  opacity: 0.38;
+  opacity: 0.5;
 }
+/* The lines in question: a highlighter pen across the sheet */
 .code-line.focus {
-  background: var(--code-line-hl);
-  box-shadow: inset 2px 0 0 var(--brand-400);
+  background: color-mix(in srgb, var(--sun) 30%, transparent);
+  box-shadow: inset 3px 0 0 var(--code-key);
 }
 .code-line .ln {
   display: inline-block;
@@ -990,35 +1020,58 @@ button.list-row {
   position: absolute;
   left: 7px;
   top: 50%;
-  width: 5px;
-  height: 5px;
-  margin-top: -2.5px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
   border-radius: 50%;
   background: var(--code-key);
 }
+/* A gap: a dashed box on sun-tinted paper while empty, a small sticker once answered */
 .blank {
   display: inline-block;
   min-width: 14ch;
   padding: 0 8px;
-  border: 1px dashed var(--code-key);
+  border: 1.5px dashed var(--code-text);
   border-radius: var(--r-xs);
-  color: var(--code-key);
-  background: color-mix(in srgb, var(--code-key) 8%, transparent);
+  color: var(--code-text);
+  background: color-mix(in srgb, var(--sun) 26%, transparent);
+  line-height: calc(1.7em - 5px);
 }
-.blank.filled-correct {
-  border-style: solid;
-  border-color: var(--code-success-border);
-  color: var(--code-success-text);
-  background: var(--code-success-bg);
-}
+.blank.is-filled,
+.blank.filled-correct,
 .blank.filled-wrong {
   border-style: solid;
-  border-color: var(--code-danger-border);
-  color: var(--code-danger-text);
-  background: var(--code-danger-bg);
+  border-color: var(--ink);
+  color: var(--on-fill);
+}
+.blank.is-filled {
+  background: var(--sun);
+}
+/* Checked: mint with a check, rose with a cross (never the color alone) */
+.blank.filled-correct {
+  background: var(--mint);
+}
+.blank.filled-wrong {
+  background: var(--rose);
+}
+.blank.filled-correct::after {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 9px;
+  margin: 0 3px 1px 10px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.blank.filled-wrong::after {
+  content: '\00d7';
+  margin-left: 8px;
+  font-weight: 700;
 }
 .tk-kw {
   color: var(--code-keyword);
+  font-weight: 500;
 }
 .tk-const {
   color: var(--code-const);
@@ -1043,11 +1096,12 @@ button.list-row {
   color: var(--code-deco);
 }
 
-/* Editor-style frame around code: <CodeWindow filename lang meta right footer>. */
+/* Editor-style frame around code: <CodeWindow filename lang meta right footer>.
+   A paper sticker with a file tab header on --sky and an ink line under it. */
 .code-window {
   container: code-window / inline-size;
   background: var(--code-bg);
-  border: 1px solid var(--code-border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
@@ -1057,37 +1111,29 @@ button.list-row {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  height: 38px;
-  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
-  border-bottom: 1px solid var(--code-border);
+  height: 36px;
+  background: var(--sky);
+  color: var(--on-fill);
+  border-bottom: var(--bw) solid var(--ink);
 }
 .code-window-tab {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  padding: 0 16px;
-  margin-bottom: -1px;
+  padding: 0 0 0 14px;
   font-family: var(--font-mono);
+  font-variant-ligatures: none;
   font-size: 12px;
-  color: var(--code-text);
-  background: var(--code-bg);
-  border-right: 1px solid var(--code-border);
+  font-weight: 500;
+  color: var(--on-fill);
   white-space: nowrap;
-}
-.code-window-tab::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 2px;
-  background: var(--brand-400);
 }
 .code-window-tab svg {
   flex: none;
   width: 14px;
   height: 14px;
-  color: var(--code-builtin);
+  color: var(--on-fill);
 }
 .code-window-name {
   min-width: 0;
@@ -1101,8 +1147,12 @@ button.list-row {
   gap: 8px;
   padding: 0 14px;
   font-size: var(--fs-xs);
-  color: var(--code-comment);
+  font-weight: 700;
+  color: var(--on-fill);
   white-space: nowrap;
+}
+.code-window-meta {
+  font-weight: 500;
 }
 .code-window-meta + .code-window-lang::before {
   content: '·';
@@ -1125,12 +1175,13 @@ button.list-row {
 /* Code that scrolls sideways is focusable. The window clips its children, so draw the
    focus ring on the window itself rather than on the clipped <pre>. */
 .code-window:has(.code:focus-visible) {
-  outline: 2px solid var(--brand-500);
+  outline: 3px solid var(--brand-500);
   outline-offset: 2px;
 }
 .code-window-body .code:focus-visible {
   outline: none;
 }
+/* The status bar: a sunken strip under a hairline (only the header gets the ink line) */
 .code-window-foot {
   display: flex;
   align-items: center;
@@ -1139,9 +1190,10 @@ button.list-row {
   min-height: 30px;
   padding: 4px 14px;
   font-size: 11.5px;
-  color: var(--code-comment);
-  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
-  border-top: 1px solid var(--code-border);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  background: var(--surface-sunken);
+  border-top: 1px solid var(--border);
 }
 .code-output {
   background: var(--surface-sunken);
@@ -1156,7 +1208,7 @@ button.list-row {
   padding: 3px 10px;
   border-radius: var(--r-sm);
   overflow-x: auto;
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
 }
 .diff-line.ok {
   background: var(--success-subtle);
@@ -1174,7 +1226,7 @@ button.list-row {
 /* ── Problem statement ──────────────────────────────────────────────────── */
 .prompt-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   padding: 18px 20px;
   box-shadow: var(--shadow-xs);
@@ -1196,7 +1248,7 @@ button.list-row {
   color: var(--text-tertiary);
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   margin-right: 4px;
 }
 .example .note {
@@ -1225,36 +1277,39 @@ button.list-row {
   padding: 12px 14px;
   text-align: left;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   font-size: var(--fs-md);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text);
   cursor: pointer;
   transition:
-    border-color var(--dur-fast),
     background var(--dur-fast),
-    box-shadow var(--dur-fast);
+    box-shadow var(--dur-fast),
+    transform var(--dur-fast) var(--ease);
 }
 @media (hover: hover) {
   .choice:hover:not(:disabled) {
-    border-color: var(--text-disabled);
     background: var(--surface-hover);
   }
+}
+.choice:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .choice .num {
   flex: none;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--r-xs);
-  border: 1px solid var(--border-strong);
-  background: var(--surface-sunken);
-  color: var(--text-tertiary);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: var(--bw) solid var(--ink);
+  background: var(--surface);
+  color: var(--text);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
 }
 .choice .choice-icon {
   display: inline-grid;
@@ -1269,41 +1324,42 @@ button.list-row {
   width: 18px;
   height: 18px;
 }
-.choice.selected {
-  border-color: var(--brand-500);
-  background: var(--brand-subtle);
-  box-shadow: 0 0 0 1px var(--brand-500);
+/* A picked answer is a pressed sticker: filled, pushed into its shadow. */
+.choice.selected,
+.choice.correct,
+.choice.wrong {
+  color: var(--on-fill);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
-.choice.selected .num {
-  border-color: var(--brand-500);
-  background: var(--brand);
-  color: #fff;
+.choice.selected {
+  background: var(--sky);
 }
 .choice.correct {
-  border-color: var(--success);
-  background: var(--success-subtle);
-  box-shadow: 0 0 0 1px var(--success);
-}
-.choice.correct .num {
-  background: var(--success-solid);
-  border-color: var(--success-solid);
-  color: #fff;
-}
-.choice.correct .choice-mark {
-  color: var(--success);
+  background: var(--mint);
+  animation: stamp 0.35s var(--spring);
 }
 .choice.wrong {
-  border-color: var(--danger);
-  background: var(--danger-subtle);
-  box-shadow: 0 0 0 1px var(--danger);
+  background: var(--rose);
 }
+.choice.selected .num,
+.choice.correct .num,
 .choice.wrong .num {
-  background: var(--danger-solid);
-  border-color: var(--danger-solid);
+  background: var(--ink);
+  border-color: var(--ink);
   color: #fff;
 }
+.choice.correct .choice-mark,
 .choice.wrong .choice-mark {
-  color: var(--danger);
+  color: var(--on-fill);
+}
+@keyframes stamp {
+  0% {
+    transform: translate(2px, 2px) scale(0.96);
+  }
+  60% {
+    transform: translate(2px, 2px) scale(1.02);
+  }
 }
 .choice:disabled {
   cursor: default;
@@ -1350,7 +1406,7 @@ button.list-row {
   align-items: flex-start;
   padding: 12px 14px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--r-md);
   font-size: var(--fs-md);
   animation: rise var(--dur-slow) var(--ease);
@@ -1363,11 +1419,11 @@ button.list-row {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--brand-subtle);
-  color: var(--brand-text);
-  border: 1px solid var(--brand-border);
+  background: var(--mint);
+  color: var(--on-fill);
+  border: 1.5px solid var(--ink);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   margin-top: 1px;
 }
 @keyframes rise {
@@ -1376,15 +1432,16 @@ button.list-row {
     transform: translateY(6px);
   }
 }
+/* Where the steps go: a dashed well. The steps themselves are stickers you press. */
 .parsons-slot {
   min-height: 72px;
-  padding: 8px;
-  border: 1px dashed var(--border-strong);
+  padding: 8px 10px 10px 8px; /* room for the stickers' hard shadows */
+  border: var(--bw) dashed var(--border-strong);
   border-radius: var(--r-lg);
   background: var(--surface-sunken);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 .parsons-item {
   display: flex;
@@ -1394,18 +1451,29 @@ button.list-row {
   padding: 10px 12px;
   text-align: left;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-xs);
   font-size: var(--fs-md);
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition:
-    border-color var(--dur-fast),
-    background var(--dur-fast);
+    background var(--dur-fast),
+    box-shadow var(--dur-fast),
+    transform var(--dur-fast) var(--ease);
 }
-.parsons-item:hover:not(:disabled) {
-  border-color: var(--text-disabled);
+@media (hover: hover) {
+  .parsons-item:hover:not(:disabled) {
+    background: var(--surface-hover);
+  }
+}
+.parsons-item:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.parsons-item:disabled {
+  cursor: default;
 }
 .parsons-item > svg {
   flex: none;
@@ -1415,22 +1483,33 @@ button.list-row {
   flex: none;
   min-width: 1.4em;
   color: var(--text-tertiary);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Checked: a placed step is a pressed sticker, mint or rose, with its mark at the end */
+.parsons-item.correct,
+.parsons-item.wrong {
+  color: var(--on-fill);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
 .parsons-item.correct {
-  border-color: var(--success);
-  background: var(--success-subtle);
+  background: var(--mint);
 }
 .parsons-item.wrong {
-  border-color: var(--danger);
-  background: var(--danger-subtle);
+  background: var(--rose);
+}
+.parsons-item.correct .idx,
+.parsons-item.wrong .idx,
+.parsons-item.correct > svg,
+.parsons-item.wrong > svg {
+  color: var(--on-fill);
 }
 
 /* ── Disclosure ─────────────────────────────────────────────────────────── */
 details.disclosure {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -1442,7 +1521,7 @@ details.disclosure > summary {
   padding: 14px 18px;
   cursor: pointer;
   list-style: none;
-  font-weight: 550;
+  font-weight: 700;
   font-size: var(--fs-md);
   user-select: none;
   /* The card clips its children, so the focus outline is drawn just inside the summary,
@@ -1470,16 +1549,18 @@ details.disclosure > summary::after {
   margin-left: auto;
   width: 8px;
   height: 8px;
-  border-right: 1.5px solid var(--text-tertiary);
-  border-bottom: 1.5px solid var(--text-tertiary);
+  border-right: var(--bw) solid var(--text);
+  border-bottom: var(--bw) solid var(--text);
   transform: translateY(-2px) rotate(45deg);
   transition: transform var(--dur) var(--ease);
 }
 details.disclosure[open] > summary::after {
   transform: translateY(2px) rotate(-135deg);
 }
-details.disclosure > summary:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  details.disclosure > summary:hover {
+    background: var(--surface-hover);
+  }
 }
 details.disclosure > .disclosure-body,
 details.disclosure > :not(summary) {
@@ -1487,10 +1568,11 @@ details.disclosure > :not(summary) {
 }
 
 /* ── Tabs ───────────────────────────────────────────────────────────────── */
+/* The current tab is a sunflower pill, as in the tab bar and the sidebar. */
 .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--border);
+  padding: 2px 4px 4px 2px; /* room for the pill's hard shadow inside the scroller */
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -1499,33 +1581,40 @@ details.disclosure > :not(summary) {
 }
 .tabs button,
 .tabs a {
-  position: relative;
   flex: none;
-  padding: 10px 12px;
-  border: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: var(--bw) solid transparent;
+  border-radius: var(--r-full);
   background: none;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none !important;
 }
-.tabs button:hover,
-.tabs a:hover {
-  color: var(--text);
+@media (hover: hover) {
+  .tabs button:hover,
+  .tabs a:hover {
+    color: var(--text);
+    background: var(--surface-active);
+  }
 }
-.tabs .on {
-  color: var(--text);
+.tabs .on,
+.tabs .on:hover {
+  background: var(--sun);
+  border-color: var(--ink);
+  color: var(--on-fill);
+  box-shadow: var(--shadow-xs);
 }
-.tabs .on::after {
-  content: '';
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--brand);
+@media (pointer: coarse) {
+  .tabs button,
+  .tabs a {
+    min-height: 40px;
+  }
 }
 
 /* ── Toasts ─────────────────────────────────────────────────────────────── */
@@ -1558,7 +1647,7 @@ details.disclosure > :not(summary) {
   padding: 12px 14px;
   border-radius: var(--r-lg);
   background: var(--surface-raised);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   box-shadow: var(--shadow-lg);
   animation: toast-in var(--dur-slow) var(--ease);
   cursor: pointer;
@@ -1569,46 +1658,43 @@ details.disclosure > :not(summary) {
   padding: 2px 8px;
   border-radius: var(--r-full);
   background: var(--surface-sunken);
-  color: var(--text-secondary);
+  border: 1.5px solid var(--ink);
+  color: var(--text);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
 }
 .toast .t-icon {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--r-md);
   flex: none;
+  /* A small sticker: one of the fills under an ink icon. */
+  border: var(--bw) solid var(--ink);
   background: var(--surface-sunken);
-  color: var(--text-secondary);
+  color: var(--text);
 }
 .toast .t-icon svg {
   width: 16px;
   height: 16px;
 }
-.toast.streak .t-icon {
-  background: var(--streak-subtle);
-  color: var(--streak);
+.toast.streak .t-icon,
+.toast.warn .t-icon {
+  background: var(--sun);
+  color: var(--on-fill);
 }
 .toast.success .t-icon {
-  background: var(--success-subtle);
-  color: var(--success);
+  background: var(--mint);
+  color: var(--on-fill);
 }
-.toast.gem .t-icon {
-  background: var(--brand-subtle);
-  color: var(--brand-text);
-}
-.toast.warn .t-icon {
-  background: var(--warning-subtle);
-  color: var(--warning);
-}
+.toast.gem .t-icon,
 .toast.info .t-icon {
-  background: var(--info-subtle);
-  color: var(--info);
+  background: var(--sky);
+  color: var(--on-fill);
 }
 .toast .t-title {
-  font-weight: 600;
+  font-weight: 800;
   font-size: var(--fs-md);
   line-height: 1.35;
 }
@@ -1633,9 +1719,8 @@ details.disclosure > :not(summary) {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(16, 24, 40, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  /* A plain dim, no blur. The padding keeps the dialog's hard shadow on screen. */
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
   animation: fade var(--dur) var(--ease);
 }
 .modal:focus {
@@ -1647,14 +1732,15 @@ details.disclosure > :not(summary) {
   overflow-y: auto;
   padding: 24px;
   background: var(--surface-raised);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-xl);
   animation: modal-in var(--dur-slow) var(--ease);
 }
 .modal-title {
-  font-size: var(--fs-lg);
-  font-weight: 600;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   margin-bottom: 6px;
 }
 .modal-actions {
@@ -1694,7 +1780,8 @@ details.disclosure > :not(summary) {
   gap: 8px;
   padding: 48px 20px;
 }
-.empty .icon-tile {
+.empty .icon-tile,
+.empty .pip {
   margin-bottom: 8px;
 }
 .empty-title {
@@ -1717,11 +1804,91 @@ details.disclosure > :not(summary) {
   margin: 0 auto;
 }
 .complete .complete-icon {
-  animation: pop-in 0.5s var(--ease);
+  position: relative;
+  animation: pip-jump 0.9s var(--spring);
+}
+/* The screen's own icon rides along as a small sticker on Pip's shoulder. */
+.complete .complete-icon .icon-tile {
+  position: absolute;
+  right: -14px;
+  bottom: 2px;
+  transform: rotate(8deg);
+  animation: pop-in 0.45s 0.5s var(--spring) backwards;
+}
+@keyframes pip-jump {
+  0% {
+    transform: translateY(30px) scale(0.7);
+    opacity: 0;
+  }
+  45% {
+    transform: translateY(-20px) scale(1.04);
+    opacity: 1;
+  }
+}
+
+/* ── Mascot ─────────────────────────────────────────────────────────────── */
+/* The ink outline follows the whole silhouette, so Pip reads as a cut-out sticker. */
+.pip {
+  display: block;
+  flex: none;
+  overflow: visible;
+  filter: drop-shadow(1.5px 0 0 var(--ink)) drop-shadow(-1.5px 0 0 var(--ink)) drop-shadow(0 1.5px 0 var(--ink))
+    drop-shadow(0 -1.5px 0 var(--ink)) drop-shadow(2px 2px 0 var(--ink));
+}
+.pip-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pip-blink 4.4s infinite;
+}
+@keyframes pip-blink {
+  0%,
+  91%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+.pip.bob {
+  animation: pip-bob 2.6s ease-in-out infinite;
+}
+@keyframes pip-bob {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+/* Code-symbol confetti (components/Mascot.tsx) */
+.confetti {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: -28px;
+  font: 800 20px/1 var(--font-mono);
+  font-style: normal;
+  -webkit-text-stroke: 1px var(--ink);
+  animation: confetti-fall 2.6s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+}
+@keyframes confetti-fall {
+  to {
+    transform: translate(var(--x), 105vh) rotate(var(--r));
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
 }
 .complete h1 {
   margin-top: 20px;
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-3xl);
 }
 .complete .lead {
   margin-top: 8px;
@@ -1745,10 +1912,11 @@ details.disclosure > :not(summary) {
   width: 100%;
   margin: 28px 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
+  animation: pop-in 0.45s 0.12s var(--spring) backwards;
 }
 /* A column, value pinned to the bottom: a label that wraps on a narrow phone ("Gaps correct")
    does not push its value below the others (the grid already gives every tile the same height). */
@@ -1756,7 +1924,7 @@ details.disclosure > :not(summary) {
   display: flex;
   flex-direction: column;
   padding: 14px 12px;
-  border-right: 1px solid var(--border);
+  border-right: var(--bw) solid var(--ink);
 }
 .reward:last-child {
   border-right: 0;
@@ -1770,7 +1938,7 @@ details.disclosure > :not(summary) {
   margin-top: auto;
   padding-top: 4px;
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -1794,14 +1962,13 @@ details.disclosure > :not(summary) {
   font-size: var(--fs-lg);
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-sunken), var(--surface-active), var(--surface-sunken));
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
+  background: var(--surface-active);
+  animation: shimmer 1.4s ease-in-out infinite;
   border-radius: var(--r-sm);
 }
 @keyframes shimmer {
-  to {
-    background-position: -200% 0;
+  50% {
+    opacity: 0.5;
   }
 }
 .avatar {
@@ -1811,10 +1978,12 @@ details.disclosure > :not(summary) {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--brand-500), #8b5cf6);
-  color: #fff;
-  font-size: var(--fs-sm);
-  font-weight: 600;
+  background: var(--sky);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
+  color: var(--on-fill);
+  font-size: var(--fs-xs);
+  font-weight: 800;
 }
 .dot-sep::before {
   content: '·';
@@ -1829,11 +1998,12 @@ details.disclosure > :not(summary) {
   padding: 0 10px;
   border-radius: var(--r-full);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
 }
 .pill-stat svg {
   width: 15px;

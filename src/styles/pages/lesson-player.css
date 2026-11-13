@@ -8,7 +8,7 @@
   min-width: 44px;
   text-align: right;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -43,7 +43,7 @@
 .lplayer-card {
   padding: 20px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
 }
@@ -59,7 +59,7 @@
   margin-bottom: 0;
 }
 .lplayer-prose strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 .lplayer-prose ul,
 .lplayer-prose ol {
@@ -88,7 +88,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--brand);
+  background: var(--text);
 }
 .lplayer-prose ul > li:first-child::before {
   top: calc(2px + 0.8em - 3px);
@@ -109,11 +109,11 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--brand-subtle);
-  border: 1px solid var(--brand-border);
-  color: var(--brand-text);
-  font-size: var(--fs-xs);
-  font-weight: 600;
+  background: var(--sky);
+  border: 1.5px solid var(--ink);
+  color: var(--on-fill);
+  font-size: 11px;
+  font-weight: 800;
   line-height: 1;
 }
 .lplayer-prose ol > li:first-child::before {
@@ -156,7 +156,7 @@
 .lplayer-card-foot-label {
   display: block;
   margin-bottom: 2px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -174,8 +174,8 @@
 
 /* Program output, docked under the code inside the CodeWindow like a terminal pane. */
 .lplayer-output {
-  border-top: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-bg) 94%, var(--code-text));
+  border-top: 1px solid var(--border);
+  background: var(--surface-sunken);
 }
 .lplayer-output-head {
   display: flex;
@@ -184,15 +184,15 @@
   height: 34px;
   padding: 0 18px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--code-comment);
+  color: var(--text-tertiary);
 }
 .lplayer-output-head svg {
   width: 14px;
   height: 14px;
-  color: var(--code-comment);
+  color: var(--text-tertiary);
 }
 .lplayer-output-body {
   margin: 0;
@@ -201,10 +201,11 @@
   font-variant-ligatures: none;
   font-size: 12.5px;
   line-height: 1.7;
-  color: var(--code-text);
+  color: var(--text);
   white-space: pre;
   overflow-x: auto;
   scrollbar-width: thin;
+  scrollbar-color: var(--code-scrollbar) transparent;
 }
 @media (min-width: 640px) {
   .lplayer-output-body {
@@ -243,7 +244,7 @@
 }
 .lplayer-type-hint-label {
   margin-bottom: 2px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--brand-text);
 }
 .lplayer-type-hint code {
@@ -266,31 +267,27 @@
   align-items: center;
   gap: 6px;
 }
-/* The same markers as the diff gutter, on a code-colored chip */
+/* The same round stickers as the diff gutter (typer.css) */
 .lplayer-diff-sign {
   display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: var(--r-xs);
-  background: var(--code-bg);
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: var(--mint);
+  color: var(--on-fill);
 }
 .lplayer-diff-sign svg {
-  width: 12px;
-  height: 12px;
-}
-.lplayer-diff-sign.ok,
-.lplayer-diff-sign.add {
-  color: color-mix(in srgb, var(--success) 75%, var(--code-text));
-  background-image: linear-gradient(color-mix(in srgb, var(--success) 16%, transparent), color-mix(in srgb, var(--success) 16%, transparent));
+  width: 9px;
+  height: 9px;
+  stroke-width: 3.2;
 }
 .lplayer-diff-sign.del {
-  color: color-mix(in srgb, var(--danger) 65%, var(--code-text));
-  background-image: linear-gradient(color-mix(in srgb, var(--danger) 16%, transparent), color-mix(in srgb, var(--danger) 16%, transparent));
+  background: var(--rose);
 }
 .lplayer-diff-sign.indent {
-  color: color-mix(in srgb, var(--warning) 75%, var(--code-text));
-  background-image: linear-gradient(color-mix(in srgb, var(--warning) 16%, transparent), color-mix(in srgb, var(--warning) 16%, transparent));
+  background: var(--sun);
 }
 
 /* After "Show answer": why it works, under the answer */
@@ -351,7 +348,8 @@
   cursor: pointer;
 }
 .lplayer-pick-slot-row .typer-ln {
-  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+  color: color-mix(in srgb, var(--code-key) 60%, var(--code-text));
+  font-weight: 500;
 }
 .lplayer-pick-slot-wrap {
   flex: 1;
@@ -363,29 +361,32 @@
   flex: none;
   width: max(16ch, calc(100cqi - 52px - var(--indent, 0ch) - 12px));
   height: 20px;
-  margin: 1px 0 1px -7px;
+  margin: 1px 0 1px -7.5px;
   padding: 0 6px;
   overflow: hidden;
-  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border: 1.5px dashed var(--code-text);
   border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--code-key) 7%, transparent);
-  color: var(--code-comment);
+  background: color-mix(in srgb, var(--sun) 26%, transparent);
+  color: color-mix(in srgb, var(--code-text) 68%, transparent);
   font-style: italic;
-  line-height: 18px;
+  line-height: 17px;
   text-overflow: ellipsis;
 }
-/* The picked code, in place under the starter: tinted, so it reads apart from the given lines */
+/* The picked code, in place under the starter: highlighted in sun, so it reads apart from the given lines */
 .lplayer-pick-code {
   cursor: pointer;
   animation: lplayer-pick-in var(--dur) var(--ease);
 }
 .typer-line.lplayer-pick-line {
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 55%, transparent);
-  background: color-mix(in srgb, var(--brand-500) 7%, transparent);
+  box-shadow: inset 3px 0 0 var(--code-key);
+  background: color-mix(in srgb, var(--sun) 30%, transparent);
+}
+.typer-line.lplayer-pick-line .typer-ln {
+  color: var(--code-text);
 }
 @keyframes lplayer-pick-in {
   from {
-    background: color-mix(in srgb, var(--brand-500) 18%, transparent);
+    background: color-mix(in srgb, var(--sun) 65%, transparent);
   }
 }
 @media (pointer: coarse) {
@@ -394,7 +395,7 @@
   }
   .lplayer-pick-slot {
     height: 34px;
-    line-height: 32px;
+    line-height: 31px;
   }
 }
 
@@ -408,7 +409,7 @@
 }
 .lplayer-done .lead strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
 }
 .lplayer-of {
   color: var(--text-tertiary);
@@ -455,7 +456,8 @@
   margin-top: 12px;
   padding: 14px 16px;
   border-radius: var(--r-lg);
-  border: 1px solid var(--danger-border);
+  /* A note about the code above, not a sticker: a 1.5px outline in its status color (as callouts) */
+  border: 1.5px solid var(--danger-border);
   background: var(--surface);
   display: grid;
   gap: 8px;
@@ -467,7 +469,7 @@
 .lplayer-run-label,
 .lplayer-works-label {
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--danger-text);
 }
 .lplayer-works-label {
@@ -487,7 +489,7 @@
   gap: 10px;
   align-items: start;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-tertiary);
 }
 .lplayer-run-out pre,
@@ -497,6 +499,7 @@
   border-radius: var(--r-sm);
   background: var(--code-bg);
   color: var(--code-text);
+  border: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: var(--fs-sm);
   font-weight: 400;

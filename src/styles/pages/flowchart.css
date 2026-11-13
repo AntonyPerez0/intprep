@@ -22,7 +22,7 @@
   margin: 0;
   padding: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
 }
@@ -42,11 +42,13 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  /* An answered question is done: mint. */
+  background: var(--mint);
+  border: 1.5px solid var(--ink);
+  color: var(--on-fill);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .flow-trail-text {
   flex: 1;
@@ -65,7 +67,7 @@
   line-height: 1.45;
 }
 .flow-trail-a strong {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ── The question ───────────────────────────────────────────────────────── */
@@ -77,9 +79,9 @@
 .flow-result {
   padding: 20px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 .flow-question h2,
 .flow-result h2 {
@@ -110,23 +112,28 @@
   padding: 10px 12px 10px 14px;
   text-align: left;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-xs);
   color: var(--text);
   cursor: pointer;
   transition:
-    border-color var(--dur-fast),
-    background var(--dur-fast);
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
+/* An option is a sticker: it lifts under the pointer and a press pushes it into its shadow. */
 @media (hover: hover) {
   .flow-option:hover {
-    border-color: var(--text-disabled);
     background: var(--surface-hover);
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-sm);
   }
 }
 .flow-option:active {
   background: var(--surface-active);
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .flow-option-text {
   flex: 1;
@@ -141,7 +148,7 @@
   line-height: 1.45;
 }
 .flow-option-label strong {
-  font-weight: 650;
+  font-weight: 800;
 }
 .flow-option-hint {
   font-size: var(--fs-sm);
@@ -161,8 +168,12 @@
 }
 
 /* ── The result ─────────────────────────────────────────────────────────── */
+/* Topped with a flat band of the pattern's color, inside the ink outline. */
 .flow-result {
-  border-top: 3px solid var(--c, var(--brand));
+  padding-top: 26px;
+  box-shadow:
+    var(--shadow-sm),
+    inset 0 8px 0 var(--c, var(--brand));
 }
 .flow-result-head {
   display: flex;
@@ -198,7 +209,7 @@
 .flow-result-facts dd {
   margin: 0;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1.5;
 }
 .flow-result-also {
@@ -218,7 +229,7 @@
 .flow-result-block h3 {
   margin-bottom: 10px;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
 }
 .flow-count {
   margin-left: 4px;
@@ -237,7 +248,7 @@
   max-width: 100%;
   min-height: 32px;
   padding: 4px 12px 4px 10px;
-  border: 1px solid var(--border-strong);
+  border: 1.5px solid var(--ink);
   border-radius: var(--r-full);
   background: var(--surface);
   color: var(--text);
@@ -252,23 +263,25 @@
 @media (hover: hover) {
   .flow-chip:hover {
     background: var(--surface-hover);
-    border-color: var(--text-disabled);
   }
 }
+/* The Learning path's stamps, very small: an open ring, a tomato double ring once learned, the
+   review color with an ink outline when due. */
 .flow-chip-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1.5px solid var(--text-disabled);
+  border: 1.5px solid var(--text-tertiary);
 }
 .flow-chip-dot.learned {
-  background: var(--success);
-  border-color: var(--success);
+  border-color: var(--tomato);
+  background: var(--tomato);
+  box-shadow: inset 0 0 0 1.5px var(--surface);
 }
 .flow-chip-dot.due {
+  border-color: var(--ink);
   background: var(--warning);
-  border-color: var(--warning);
 }
 .flow-chip-text {
   min-width: 0;
@@ -299,7 +312,7 @@
   cursor: pointer;
   list-style: none;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   color: var(--text);
   border-radius: var(--r-sm);
 }
@@ -329,12 +342,12 @@
   gap: 6px;
   min-height: 30px;
   padding: 2px 10px 2px 2px;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--ink);
   border-radius: var(--r-full);
   background: var(--surface);
   color: var(--text);
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
   text-decoration: none !important;
@@ -355,13 +368,12 @@
 @media (hover: hover) {
   .flow-pattern:hover {
     background: var(--surface-hover);
-    border-color: var(--border-strong);
   }
 }
+/* The route on show is the sky pill: selection. */
 .flow-pattern[aria-current='true'] {
-  border-color: var(--brand-border);
-  background: var(--brand-subtle);
-  color: var(--brand-text);
+  background: var(--sky);
+  color: var(--on-fill);
 }
 
 /* ── The whole chart ────────────────────────────────────────────────────── */
@@ -373,7 +385,7 @@
 }
 .flow-chart-title {
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0;
 }
 .flow-chart-meta {
@@ -397,17 +409,17 @@
 }
 .flow-chart-lead strong {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 700;
 }
 .flow-tree-ask {
   display: inline-block;
   padding: 5px 10px;
   border-radius: var(--r-sm);
   background: var(--brand-subtle);
-  border: 1px solid var(--brand-border);
+  border: 1.5px solid var(--brand-border);
   color: var(--brand-text);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
   scroll-margin-top: calc(var(--topbar-h) + 16px);
 }
@@ -415,6 +427,8 @@
   outline-offset: 2px;
 }
 .flow-tree-options {
+  /* Ink in the light theme would vanish on the dark sheet: the lines are a tone of the text. */
+  --flow-line: color-mix(in srgb, var(--text) 62%, var(--surface));
   list-style: none;
   margin: 0 0 0 10px;
   padding: 6px 0 0;
@@ -423,7 +437,7 @@
 .flow-tree-options > li {
   position: relative;
   padding: 5px 0 5px 20px;
-  border-left: 1.5px solid var(--border-strong);
+  border-left: 1.5px solid var(--flow-line);
 }
 .flow-tree-options > li:last-child {
   border-left-color: transparent;
@@ -435,8 +449,8 @@
   top: 0;
   width: 14px;
   height: 20px;
-  border-left: 1.5px solid var(--border-strong);
-  border-bottom: 1.5px solid var(--border-strong);
+  border-left: 1.5px solid var(--flow-line);
+  border-bottom: 1.5px solid var(--flow-line);
   border-bottom-left-radius: 8px;
 }
 .flow-tree-options > li.on-route::before {
@@ -518,7 +532,7 @@
 }
 .flow-off a {
   justify-self: start;
-  font-weight: 550;
+  font-weight: 700;
 }
 
 /* ── Touch and phones ───────────────────────────────────────────────────── */

@@ -14,9 +14,9 @@ screen, works offline after the first visit, and saves progress in your browser.
 7 MB over the wire) is downloaded the first time you run code and kept in the browser; after that, running code works
 offline too. Until then, or with "Run my code" turned off, typed code is compared with the answer line by line.
 
-The interface follows a documented design system ([`docs/DESIGN.md`](docs/DESIGN.md)): Inter typography, a neutral
-palette with one indigo accent, Lucide icons, tuned light and dark themes, and a ⌘K / Ctrl+K command palette for
-jumping to any problem, pattern or page.
+The interface follows a documented design system ([`docs/DESIGN.md`](docs/DESIGN.md)): the Sticker book look (cream
+paper, ink outlines, flat fills, hard shadows), Inter typography, Lucide icons, a small mascot (Pip, a keycap with a
+face), light and dark themes, and a ⌘K / Ctrl+K command palette for jumping to any problem, pattern or page.
 
 ## What's inside
 
@@ -107,6 +107,24 @@ is run, and the worker keeps it in its own cache, `intprep-python-<pyodide versi
 So after that first run, running code works offline. Offline before it, every screen falls back to comparing the code
 line by line; Solve it yourself and the mock interview have no such fallback and need Python to have loaded once.
 The tests and the traces are ordinary lazy chunks and are precached with the rest of the app.
+
+## Mobile apps
+
+The same site also builds as an Android and an iOS app with [Capacitor](https://capacitorjs.com): the native projects
+are in `android/` and `ios/`, and `src/lib/native.ts` holds the few things the page asks of them (status bar, Android
+back button, launch screen, haptics). In the apps everything is on the device, Python included, and progress is kept
+separately from the website's.
+
+```bash
+npm run cap:sync      # build the site and copy it into both native projects
+npm run cap:android   # then open Android Studio
+npm run cap:ios       # then open Xcode (Mac only)
+```
+
+`.github/workflows/mobile.yml` builds a debug APK and an unsigned iOS simulator build. It runs only by hand
+(**Actions → Mobile apps → Run workflow**) or on a `v*` tag, never on an ordinary push. Nothing is published to a
+store yet. [docs/MOBILE.md](docs/MOBILE.md) covers installing the APK on a phone, running on an iPhone, icons, what
+a store release needs, and what has not been checked on a real device.
 
 ## How the content works
 

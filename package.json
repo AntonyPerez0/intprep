@@ -11,9 +11,22 @@
     "typecheck": "tsc -b",
     "validate": "tsx scripts/validate-content.ts",
     "validate:tests": "python3 scripts/judge-check.py --min 4 --quiet",
-    "traces": "python3 scripts/build-traces.py"
+    "traces": "python3 scripts/build-traces.py",
+    "cap:sync": "npm run build && cap sync",
+    "cap:android": "npm run cap:sync && cap open android",
+    "cap:ios": "npm run cap:sync && cap open ios",
+    "cap:assets": "capacitor-assets generate --ios --android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.6.2",
+    "@capacitor/share": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "lucide-react": "^0.577.0",
@@ -23,6 +36,8 @@
     "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

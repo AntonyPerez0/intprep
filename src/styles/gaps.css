@@ -4,7 +4,9 @@
    diff rows, status bar, touch keys) with a single-line input in place of
    each missing line. The input starts at the line's indentation, so its text
    lines up with the code above and below; the learner never types indentation.
-   Colors are --code-* tokens (code is always dark).
+   An empty gap is a dashed box on sun-tinted paper; a filled one is a small --sun
+   sticker with ink text; the one being typed is plain paper with the focus color.
+   Colors are --code-* tokens and tints that read on the paper and the dark sheet.
    ========================================================================== */
 
 /* ── A gap: the line number in the fill-in color, an input where the code goes ── */
@@ -13,14 +15,15 @@
   cursor: text;
 }
 .gaps-row .typer-ln {
-  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+  color: color-mix(in srgb, var(--code-key) 60%, var(--code-text));
+  font-weight: 500;
 }
 /* The line being typed reads like an editor's current line */
 .gaps-row:focus-within {
   background: var(--code-line-hl);
 }
 .gaps-row:focus-within .typer-ln {
-  color: var(--brand-300);
+  color: var(--code-text);
 }
 .gaps-slot {
   flex: 1;
@@ -37,16 +40,16 @@
   width: 0; /* the row sizes from min-width, not the input's default 20-character width */
   min-width: 18ch;
   height: 20px;
-  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1px);
+  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1.5px);
   padding: 0 var(--gap-pad);
-  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border: 1.5px dashed var(--code-text);
   border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--code-key) 7%, transparent);
+  background: color-mix(in srgb, var(--sun) 26%, transparent);
   color: var(--code-text);
-  caret-color: var(--brand-300);
+  caret-color: var(--code-text);
   font: inherit;
   font-variant-ligatures: none;
-  line-height: 18px;
+  line-height: 17px;
   white-space: pre;
   outline: none;
   transition:
@@ -55,21 +58,24 @@
     box-shadow var(--dur-fast) var(--ease);
 }
 .gaps-input::placeholder {
-  color: var(--code-comment);
+  color: color-mix(in srgb, var(--code-text) 68%, transparent);
   font-style: italic;
   opacity: 1;
 }
-/* Something typed: a quiet solid frame, so the remaining dashed gaps stand out */
+/* Something typed: a small sun sticker, so the remaining dashed gaps stand out */
 .gaps-row.is-filled .gaps-input {
   border-style: solid;
-  border-color: color-mix(in srgb, var(--code-text) 18%, transparent);
-  background: color-mix(in srgb, var(--code-text) 4%, transparent);
+  border-color: var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
 }
+/* Being typed: plain paper in the focus color (as .input:focus), filled or not */
 .gaps-row .gaps-input:focus {
   border-style: solid;
-  border-color: var(--brand-400);
-  background: color-mix(in srgb, var(--brand-500) 12%, var(--code-bg));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-400) 30%, transparent);
+  border-color: var(--brand-500);
+  background: var(--code-bg);
+  color: var(--code-text);
+  box-shadow: 0 0 0 2px var(--brand-500);
 }
 .gaps-input:disabled {
   opacity: 0.55;
@@ -113,7 +119,7 @@
     --gap-pad: 8px;
     height: 38px;
     margin-block: 3px;
-    line-height: 36px;
+    line-height: 35px;
     min-width: 14ch;
   }
   .gaps-row.has-caption .typer-ln {
@@ -132,6 +138,6 @@
   animation: typer-fade var(--dur) var(--ease);
 }
 .gaps-empty {
-  color: color-mix(in srgb, var(--danger) 45%, var(--code-text));
+  color: var(--code-danger-text);
   font-style: italic;
 }

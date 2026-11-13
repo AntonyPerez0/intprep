@@ -14,13 +14,14 @@
   padding: 0 9px 0 7px;
   border-radius: var(--r-full);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   /* The number stays in body text for contrast; the flame carries the streak color. */
   color: var(--text);
-  background: var(--streak-subtle);
-  border: 1px solid color-mix(in srgb, var(--streak) 28%, transparent);
-  animation: review-combo-in var(--dur) var(--ease);
+  background: var(--surface);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
+  animation: review-combo-in var(--dur) var(--spring);
 }
 .review-combo svg {
   width: 14px;
@@ -28,7 +29,7 @@
   color: var(--streak);
 }
 .review-combo.pop {
-  animation: review-combo-pop 0.4s var(--ease);
+  animation: review-combo-pop 0.4s var(--spring);
 }
 @keyframes review-combo-in {
   from {
@@ -74,7 +75,7 @@
   margin: 0;
   padding: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -94,13 +95,13 @@
   align-items: center;
   gap: 8px;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   line-height: 28px;
 }
 .review-how-num {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
@@ -139,7 +140,7 @@
   padding: 0 6px;
   border-radius: var(--r-full);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   background: var(--surface-active);
 }
@@ -149,7 +150,7 @@
   border-spacing: 0;
   table-layout: fixed;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -159,7 +160,7 @@
   padding: 0 16px;
   text-align: left;
   font-size: var(--fs-xs);
-  font-weight: 550;
+  font-weight: 650;
   color: var(--text-tertiary);
   background: var(--surface-hover);
   border-bottom: 1px solid var(--border);
@@ -184,8 +185,10 @@
 .review-table tbody tr {
   transition: background var(--dur-fast);
 }
-.review-table tbody tr:hover {
-  background: var(--surface-hover);
+@media (hover: hover) {
+  .review-table tbody tr:hover {
+    background: var(--surface-hover);
+  }
 }
 .review-prob {
   display: flex;
@@ -205,7 +208,7 @@
 }
 .review-prob-title {
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 650;
   line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;

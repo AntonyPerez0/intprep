@@ -12,7 +12,7 @@
   display: flex;
   align-items: stretch;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
 }
@@ -42,7 +42,7 @@
 }
 .problems-summary-v {
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.2;
   color: var(--text);
@@ -158,12 +158,13 @@
   background: var(--surface-active);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1;
 }
+/* The picked filter is a sun sticker (shared .seg): its count is an ink pill on it. */
 .problems-seg button.on .problems-seg-count {
-  background: var(--brand-subtle);
-  color: var(--brand-text);
+  background: var(--on-fill);
+  color: var(--sun);
 }
 
 /* Not enough room for all three on one line: search gets its own row, and the
@@ -181,7 +182,7 @@
 .problems-table {
   container-type: inline-size;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   /* clip, not hidden: rounds the corners without creating a scroll container,
@@ -210,7 +211,7 @@
   margin-right: -8px;
 }
 .problems-table-bar strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .problems-table .empty {
@@ -259,6 +260,33 @@
 .problems-status {
   grid-area: status;
 }
+/* Status dots (base: .status-dot in components.css) in the Learning path's stamp language: a
+   dashed circle until learned, then a tomato stamp; a review badge when due. The shared sheet
+   loads after this one, so the overrides carry the row. */
+.problems-row > .status-dot {
+  border: 1.5px dashed color-mix(in srgb, var(--text) 50%, var(--surface));
+  background: transparent;
+}
+.problems-row > .status-dot.learned {
+  border: 2px solid var(--tomato);
+  background: var(--surface);
+  color: var(--tomato);
+}
+.problems-row > .status-dot.learned svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3.5;
+}
+.problems-row > .status-dot.due {
+  border: 1.5px solid var(--ink);
+  background: color-mix(in srgb, var(--warning) 34%, var(--surface));
+  color: var(--warning-text);
+}
+.problems-row > .status-dot.due svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.75;
+}
 .problems-title {
   grid-area: title;
   display: flex;
@@ -271,7 +299,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   color: var(--text);
 }
 .problems-num {
@@ -344,7 +372,7 @@
     background: var(--surface-hover);
     border-bottom: 1px solid var(--border);
     font-size: var(--fs-xs);
-    font-weight: 550;
+    font-weight: 700;
     color: var(--text-tertiary);
   }
   .problems-th-tech {
@@ -407,7 +435,7 @@
     background: var(--surface-hover);
     border-bottom: 1px solid var(--border);
     font-size: var(--fs-xs);
-    font-weight: 550;
+    font-weight: 700;
     color: var(--text-tertiary);
   }
   .problems-row {

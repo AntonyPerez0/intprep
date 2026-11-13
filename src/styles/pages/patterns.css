@@ -38,7 +38,7 @@
 .patterns-results {
   margin-bottom: 24px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -52,7 +52,7 @@
   background: var(--surface-hover);
 }
 .patterns-results-head strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .patterns-results .empty {
@@ -133,7 +133,7 @@
   overflow-y: auto;
   padding: 8px;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   scrollbar-width: thin;
@@ -152,7 +152,7 @@
   justify-content: space-between;
   padding: 4px 8px 8px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -185,10 +185,15 @@
   background: var(--surface-hover);
   color: var(--text);
 }
+/* The open pattern is the sky sticker: selection. */
 .patterns-nav-item.on {
-  background: var(--surface-active);
-  color: var(--text);
-  font-weight: 550;
+  background: var(--sky);
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  color: var(--on-fill);
+  font-weight: 700;
+}
+.patterns-nav-item.on .patterns-nav-count {
+  color: var(--on-fill);
 }
 .patterns-nav-item .icon-tile.sm {
   width: 28px;
@@ -211,7 +216,7 @@
 .patterns-detail {
   min-width: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
 }
@@ -274,7 +279,7 @@
 .patterns-facts dd {
   margin: 0;
   font-size: var(--fs-lg);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text);
 }
@@ -313,7 +318,7 @@ dd.patterns-mix {
   border-radius: 50%;
 }
 .patterns-mix-item .tabular {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .patterns-mix-item.easy::before {
@@ -337,7 +342,7 @@ dd.patterns-mix {
   gap: 8px;
   margin-bottom: 12px;
   font-size: var(--fs-base);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 .patterns-h-count {
@@ -350,7 +355,7 @@ dd.patterns-mix {
   background: var(--surface-active);
   color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .patterns-prose {
   max-width: var(--prose-max);
@@ -366,7 +371,7 @@ dd.patterns-mix {
 }
 .patterns-analogy-label {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--brand-text);
@@ -421,7 +426,7 @@ dd.patterns-mix {
   background: var(--surface-active);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -465,7 +470,7 @@ dd.patterns-mix {
   color: var(--text-tertiary);
 }
 .patterns-cost-k {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .patterns-cost-v {
@@ -484,7 +489,7 @@ dd.patterns-mix {
   max-width: 100%;
   min-height: 32px;
   padding: 4px 12px 4px 10px;
-  border: 1px solid var(--border-strong);
+  border: 1.5px solid var(--ink);
   border-radius: var(--r-full);
   background: var(--surface);
   color: var(--text);
@@ -496,30 +501,34 @@ dd.patterns-mix {
     background var(--dur-fast),
     border-color var(--dur-fast);
 }
-.patterns-chip:hover {
-  background: var(--surface-hover);
-  border-color: var(--text-disabled);
+@media (hover: hover) {
+  .patterns-chip:hover {
+    background: var(--surface-hover);
+  }
 }
+/* The Learning path's stamps, very small: an open ring, a tomato double ring once learned, the
+   review color with an ink outline when due. */
 .patterns-chip-dot {
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  border: 1.5px solid var(--text-disabled);
+  border: 1.5px solid var(--text-tertiary);
 }
 .patterns-chip-dot.learned {
-  background: var(--success);
-  border-color: var(--success);
+  border-color: var(--tomato);
+  background: var(--tomato);
+  box-shadow: inset 0 0 0 1.5px var(--surface);
 }
 .patterns-chip-dot.due {
+  border-color: var(--ink);
   background: var(--warning);
-  border-color: var(--warning);
 }
 
 /* ── Accordion (narrow) ─────────────────────────────────────────────────── */
 .patterns-acc {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
@@ -533,7 +542,7 @@ dd.patterns-mix {
   border-bottom: 1px solid var(--border);
   background: var(--surface-hover);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -577,7 +586,7 @@ dd.patterns-mix {
 .patterns-acc-name {
   display: block;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   line-height: 1.35;
 }

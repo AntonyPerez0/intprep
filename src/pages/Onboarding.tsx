@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, CalendarClock, Check, CodeXml, Flame, MapPin, Re
 import { CATEGORIES, FOUNDATIONS, PROBLEMS } from '../content/index';
 import { IconTile } from '../components/icons';
 import { CODE_PRACTICE_ICON } from '../components/InputSwitch';
+import { Pip, type PipMood } from '../components/Mascot';
 import { Logo, Ring } from '../components/ui';
 import { addDays, today } from '../lib/date';
 import { DAILY_GOALS, GEMS } from '../lib/game';
@@ -20,6 +21,8 @@ const LEVELS: { id: Experience; icon: LucideIcon; title: string; blurb: string }
 ];
 
 const STEPS = ['Welcome', 'Experience', 'Daily goal', 'Your plan'];
+/** Pip sits on top of the card and reacts to each step. */
+const STEP_MOOD: PipMood[] = ['happy', 'think', 'happy', 'cheer'];
 const MAX_GOAL = DAILY_GOALS[DAILY_GOALS.length - 1].xp;
 const DEFAULT_GOAL = 50;
 
@@ -104,7 +107,6 @@ export function OnboardingPage() {
 
   return (
     <div className="ob">
-      <div className="ob-bg" aria-hidden="true" />
       <header className="ob-header">
         <Logo to="/welcome" />
         <span className="ob-header-step" aria-hidden="true">
@@ -114,6 +116,7 @@ export function OnboardingPage() {
 
       <main className="ob-main">
         <div className="ob-card">
+          <Pip key={step} size={76} mood={STEP_MOOD[step]} className="ob-pip" />
           <ol className="ob-steps" aria-label="Setup progress">
             {STEPS.map((s, i) => (
               <li key={s} className={i < step ? 'done' : i === step ? 'current' : ''} aria-current={i === step ? 'step' : undefined}>
@@ -217,8 +220,8 @@ export function OnboardingPage() {
                             value={g.xp / MAX_GOAL}
                             size={40}
                             stroke={5}
-                            color={on ? 'var(--brand)' : 'var(--text-tertiary)'}
-                            track={on ? 'var(--brand-border)' : 'var(--border-strong)'}
+                            color="var(--ob-ring)"
+                            track="var(--ob-ring-track)"
                           />
                           <span className="ob-option-text">
                             <span className="ob-option-title">{g.label}</span>

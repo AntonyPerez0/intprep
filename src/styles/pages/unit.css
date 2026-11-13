@@ -15,18 +15,12 @@
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
+/* One sticker in two parts, like a code window: the unit's identity on a flat tint of its own
+   color, then, under an ink line, the stats on plain paper. */
 .unit-hero {
   container-type: inline-size;
   position: relative;
   overflow: hidden;
-}
-.unit-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 160px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 7%, transparent), transparent);
-  pointer-events: none;
 }
 .unit-hero-body {
   position: relative;
@@ -34,6 +28,7 @@
   flex-direction: column;
   gap: 20px;
   padding: 20px;
+  background: color-mix(in srgb, var(--c) 13%, var(--surface));
 }
 @media (min-width: 640px) {
   .unit-hero-body {
@@ -110,9 +105,9 @@
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--r-md);
-  background: var(--surface-sunken);
+  background: var(--surface);
   font-size: var(--fs-sm);
   line-height: 1.5;
   color: var(--text-secondary);
@@ -153,7 +148,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
-  border-top: 1px solid var(--border);
+  border-top: var(--bw) solid var(--ink);
   background: var(--surface);
 }
 .unit-stat {
@@ -221,7 +216,7 @@
 }
 .unit-stat-value {
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 28px;
   color: var(--text);
@@ -237,7 +232,7 @@
 .unit-stat-pct {
   margin-left: auto;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-tertiary);
 }
 .unit-stat-progress .progress {
@@ -246,7 +241,7 @@
 .unit-stat-link {
   margin-left: 4px;
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 700;
 }
 @media (pointer: coarse) {
   .unit-stat-link {
@@ -263,7 +258,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 28px;
   color: var(--text);
 }
@@ -290,7 +285,7 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 28px;
   color: var(--text);
 }
@@ -386,7 +381,7 @@
 .unit-label {
   margin: 0 0 6px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -397,7 +392,7 @@
 .unit-analogy-label {
   margin-bottom: 2px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--brand-text);
@@ -458,12 +453,19 @@
   max-height: 400px;
   overflow-y: hidden;
 }
+/* No fade: the sheet is cut along a dashed line, and the button under it shows the rest. */
 .unit-code.is-clamped::after {
-  content: '';
+  content: '···';
   position: absolute;
   inset: auto 0 0;
-  height: 88px;
-  background: linear-gradient(180deg, transparent, var(--code-bg) 85%);
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-top: 2px dashed var(--code-gutter);
+  background: var(--code-bg);
+  color: var(--code-gutter);
+  font: 800 16px/1 var(--font-mono);
+  letter-spacing: 0.2em;
   pointer-events: none;
 }
 .unit-code-toggle {
@@ -473,20 +475,27 @@
   height: 40px;
   margin-top: 8px;
   padding: 0 10px;
-  border: 1px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-sm);
   background: var(--surface);
   color: var(--text);
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 700;
   box-shadow: var(--shadow-xs);
   cursor: pointer;
-  transition: background var(--dur-fast);
+  transition:
+    background var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 @media (hover: hover) {
   .unit-code-toggle:hover {
     background: var(--surface-hover);
   }
+}
+.unit-code-toggle:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 @media (min-width: 640px) and (pointer: fine) {
   .unit-code-toggle {
@@ -532,7 +541,7 @@
 .unit-table {
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-xs);
 }
@@ -572,8 +581,14 @@
   outline-offset: -2px;
   border-radius: var(--r-sm);
 }
+/* Up next is the sun row, as on the Learning path. */
 .unit-row.is-next {
-  background: var(--brand-subtle);
+  background: color-mix(in srgb, var(--sun) 20%, var(--surface));
+}
+@media (hover: hover) {
+  .unit-row.is-next:hover {
+    background: color-mix(in srgb, var(--sun) 30%, var(--surface));
+  }
 }
 .unit-row.is-next::before {
   content: '';
@@ -581,19 +596,50 @@
   left: 0;
   top: 8px;
   bottom: 8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--brand);
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--sun);
 }
-.status-dot.unit-dot-todo {
+.unit-row .badge-brand.unit-row-flag {
+  border-color: var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
+}
+/* Status dots (base: .status-dot in components.css) in the Learning path's stamp language: a
+   dashed circle with the number, a tomato stamp once learned, a review badge when due, the sun
+   dot for what is next. The shared sheet loads after this one, so the overrides carry the row. */
+.unit-row > .status-dot {
+  border: 1.5px dashed color-mix(in srgb, var(--text) 50%, var(--surface));
+  background: transparent;
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
-.status-dot.unit-dot-next {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--text-inverse);
+.unit-row > .status-dot.learned {
+  border: 2px solid var(--tomato);
+  background: var(--surface);
+  color: var(--tomato);
 }
-.status-dot.unit-dot-next svg {
+.unit-row > .status-dot.learned svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3.5;
+}
+.unit-row > .status-dot.due {
+  border: 1.5px solid var(--ink);
+  background: color-mix(in srgb, var(--warning) 34%, var(--surface));
+  color: var(--warning-text);
+}
+.unit-row > .status-dot.due svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.75;
+}
+.unit-row > .status-dot.unit-dot-next {
+  border: 1.5px solid var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
+}
+.unit-row > .status-dot.unit-dot-next svg {
   width: 9px;
   height: 9px;
   margin-left: 1px;
@@ -623,7 +669,7 @@
   overflow: hidden;
   min-width: 0;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1.4;
 }
 .badge.unit-row-flag {
@@ -660,7 +706,7 @@
 }
 .unit-row-review-inline.is-due {
   color: var(--warning-text);
-  font-weight: 550;
+  font-weight: 700;
 }
 .unit-row-review {
   display: none;
@@ -721,7 +767,7 @@
     border-bottom: 1px solid var(--border);
     background: var(--surface-hover);
     font-size: var(--fs-xs);
-    font-weight: 550;
+    font-weight: 700;
     color: var(--text-tertiary);
   }
   .unit-row {
@@ -753,7 +799,7 @@
   }
   .unit-row-review.is-due {
     color: var(--warning-text);
-    font-weight: 550;
+    font-weight: 700;
   }
   .unit-row-mastery,
   .unit-row-mastery.is-empty {
@@ -780,19 +826,25 @@
   gap: 8px;
   min-width: 0;
   padding: 14px 16px;
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-xs);
   color: var(--text);
   text-decoration: none !important;
   transition:
-    border-color var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
-.unit-pager-link:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-md);
+@media (hover: hover) {
+  .unit-pager-link:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: var(--shadow-sm);
+  }
+}
+.unit-pager-link:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .unit-pager-link.is-next {
   align-items: flex-end;
@@ -817,7 +869,7 @@
   min-width: 0;
   max-width: 100%;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.35;
 }
 .unit-pager-name > .unit-pager-text {
@@ -846,7 +898,7 @@
   background: var(--surface-active);
   color: var(--text-secondary);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -888,4 +940,15 @@
 }
 .unit-memo-sub {
   margin: 0 0 6px;
+}
+/* Phones: the step to do next has a button with a long label ("Drill the clue words"); it goes
+   under the step's text so the text keeps the row's width. */
+@media (max-width: 479px) {
+  .unit-memo .memo-step.is-next {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .unit-memo .memo-step.is-next .memo-step-go {
+    grid-column: 2;
+    justify-self: start;
+  }
 }

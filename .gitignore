@@ -10,3 +10,10 @@ screenshots
 .claude/
 scripts/__pycache__/
 src/judge/__pycache__/
+
+# Mobile apps (docs/MOBILE.md). android/ and ios/ carry their own .gitignore for build output and
+# the copied site. Signing keys must never be committed.
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

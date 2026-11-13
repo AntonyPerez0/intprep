@@ -70,7 +70,7 @@
 .drill-meta {
   margin-left: auto;
   font-size: var(--fs-xs);
-  font-weight: 550;
+  font-weight: 650;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -87,13 +87,12 @@
   color: var(--text-secondary);
   line-height: 1.55;
 }
-/* The variable the question hinges on ("time" / "space"): a token, not a link */
+/* The variable the question hinges on ("time" / "space"): a word under the highlighter */
 .drill-key {
-  padding: 0 6px;
-  border-radius: var(--r-sm);
-  color: var(--brand-text);
-  background: var(--brand-subtle);
-  box-shadow: inset 0 0 0 1px var(--brand-border);
+  padding: 0 5px;
+  border-radius: var(--r-xs);
+  color: var(--on-fill);
+  background: var(--sun);
 }
 
 /* ── Answer area ────────────────────────────────────────────────────────── */
@@ -105,7 +104,7 @@
   min-height: 20px;
   margin-bottom: 10px;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 .drill-keys {
@@ -154,7 +153,7 @@
 /* The symbol keys under the typed key line (touch screens only, like every code input's) */
 .drill-line-keys {
   margin-top: 8px;
-  border: 1px solid var(--code-border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
 }
 
@@ -206,7 +205,7 @@ details.disclosure.drill-code-disclosure > .code {
   padding: 14px 16px;
   border-radius: var(--r-lg);
   background: var(--surface-sunken);
-  border: 1px dashed var(--border-strong);
+  border: 1.5px dashed var(--text-tertiary);
 }
 .drill-note-text {
   margin-top: 4px;
@@ -234,7 +233,7 @@ details.disclosure.drill-code-disclosure > .code {
 .drill-insight-pattern {
   margin-left: 2px;
   padding-left: 8px;
-  border-left: 1px solid var(--brand-border);
+  border-left: 1.5px solid var(--border);
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
   min-width: 0;
@@ -244,7 +243,7 @@ details.disclosure.drill-code-disclosure > .code {
 }
 .drill-insight-text {
   font-size: var(--fs-base);
-  font-weight: 550;
+  font-weight: 650;
   line-height: 1.6;
   color: var(--text);
 }
@@ -293,7 +292,7 @@ details.disclosure.drill-code-disclosure > .code {
   justify-content: space-between;
   gap: 12px;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .drill-rate-q-meta {
@@ -318,31 +317,34 @@ details.disclosure.drill-code-disclosure > .code {
   --tone: var(--success);
   width: 100%;
   padding: 0 8px;
-  font-weight: 600;
+  font-weight: 700;
 }
+/* The tone dot: a tiny sticker (the label carries the meaning, the dot only echoes it) */
 .drill-rate-btn::before {
   content: '';
   flex: none;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--ink);
   border-radius: 50%;
   background: var(--tone);
 }
-.drill-rate-btn:hover {
-  border-color: var(--tone);
-  background: color-mix(in srgb, var(--tone) 8%, var(--surface));
+@media (hover: hover) {
+  .drill-rate-btn:hover {
+    background: color-mix(in srgb, var(--tone) 35%, var(--surface));
+  }
 }
 .drill-rate-btn.tone-danger {
-  --tone: var(--danger);
+  --tone: var(--rose);
 }
 .drill-rate-btn.tone-warning {
-  --tone: var(--warning);
+  --tone: var(--sun);
 }
 .drill-rate-btn.tone-success {
-  --tone: var(--success);
+  --tone: var(--mint);
 }
 .drill-rate-btn.tone-brand {
-  --tone: var(--brand);
+  --tone: var(--sky);
 }
 /* Keyboard shortcut digit (fine pointers only), styled like a choice's number */
 .drill-rate-option {
@@ -357,11 +359,12 @@ details.disclosure.drill-code-disclosure > .code {
   width: 22px;
   height: 22px;
   border-radius: var(--r-xs);
-  border: 1px solid var(--border-strong);
-  background: var(--surface-sunken);
-  color: var(--text-tertiary);
+  border: 1.5px solid var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1.5px 0 var(--ink);
+  color: var(--text-secondary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -389,8 +392,8 @@ details.disclosure.drill-code-disclosure > .code {
     gap: 6px;
   }
   .drill-rate-btn::before {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
   .drill-rate-q-meta {
     display: none;
@@ -405,7 +408,7 @@ details.disclosure.drill-code-disclosure > .code {
 }
 .drill-fb-label {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -443,7 +446,7 @@ details.disclosure.drill-code-disclosure > .code {
 .drill-diff {
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
 }
 .drill-diff-row {
@@ -454,13 +457,13 @@ details.disclosure.drill-code-disclosure > .code {
   padding: 4px 12px 4px 10px;
 }
 .drill-diff-row + .drill-diff-row {
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border);
 }
 .drill-diff-row.del {
-  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
 }
 .drill-diff-row.add {
-  background: color-mix(in srgb, var(--success) 8%, var(--surface));
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
 }
 .drill-diff-sign {
   flex: none;
@@ -513,7 +516,7 @@ details.disclosure.drill-code-disclosure > .code {
   font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   border-radius: var(--r-sm);
 }
 .drill-cost-item .mono {
@@ -523,9 +526,8 @@ details.disclosure.drill-code-disclosure > .code {
 }
 .drill-cost-item.is-asked {
   color: var(--text);
-  font-weight: 550;
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-xs);
+  font-weight: 700;
+  border-color: var(--ink);
 }
 .drill .actionbar .steps-list li {
   padding: 8px 12px;
@@ -562,18 +564,19 @@ details.disclosure.drill-prompt > .prompt-card {
   padding-top: 3px;
   padding-bottom: 3px;
   white-space: normal;
-  background: color-mix(in srgb, var(--brand-500) 16%, transparent);
-  box-shadow: inset 2px 0 0 var(--brand-400);
+  /* A note in blue pen on the sheet */
+  background: color-mix(in srgb, var(--brand-400) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand-400);
 }
 .drill-code .typer-line.drill-cue .typer-ln {
-  color: var(--brand-300);
+  color: var(--brand-text);
 }
 .drill-cue-text {
   --indent: 0ch;
   display: block;
   padding-left: calc(var(--indent) + 2ch);
   text-indent: -2ch;
-  color: var(--brand-200);
+  color: var(--brand-text);
   font-style: italic;
   overflow-wrap: anywhere;
 }
@@ -596,12 +599,12 @@ details.disclosure.drill-prompt > .prompt-card {
   min-height: 32px;
   padding: 0 16px 0 22px;
   border: 0;
-  border-bottom: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-text) 5%, transparent);
-  color: var(--code-comment);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text-tertiary);
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
-  font-weight: 550;
+  font-weight: 650;
   text-align: left;
   cursor: pointer;
   transition:
@@ -615,13 +618,13 @@ details.disclosure.drill-prompt > .prompt-card {
 }
 @media (hover: hover) {
   .drill-fold:hover {
-    color: var(--code-text);
-    background: color-mix(in srgb, var(--code-text) 9%, transparent);
+    color: var(--text);
+    background: var(--surface-active);
   }
 }
 .drill-fold:focus-visible {
-  outline: 2px solid var(--brand-400);
-  outline-offset: -2px;
+  outline: 3px solid var(--brand-500);
+  outline-offset: -3px;
 }
 @media (pointer: coarse) {
   .drill-fold {
@@ -646,15 +649,23 @@ details.disclosure.drill-prompt > summary::after {
   display: grid;
   gap: 8px;
 }
+/* The wording under study: what the problem "says", so a speech bubble. Flat (no shadow): it is
+   read, not pressed, and must not look like the answer stickers under it. Its clue word sits
+   under the highlighter. */
 .clue-phrase {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--brand);
-  border-radius: var(--r-md);
+  padding: 11px 14px;
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-lg) 3px;
   background: var(--surface);
   font-size: var(--fs-base);
   line-height: 1.5;
 }
 .clue-phrase strong {
-  color: var(--brand-text);
+  padding: 0 3px;
+  border-radius: 4px;
+  background: var(--sun);
+  color: var(--on-fill);
+  font-weight: 700;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }

@@ -1,38 +1,52 @@
 /* "Run my code": the test report under an editor (components/RunResults.tsx). */
 
+/* A sticker card whose top strip is the verdict: mint with a check when every test passed, rose
+   with a cross when not. The words say it too ("3 of 12 tests passed"). */
 .run-report {
   margin-top: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
   display: grid;
   gap: 10px;
 }
-.run-report.is-good {
-  border-color: var(--success-border);
-  background: var(--success-subtle);
+.run-report > :not(.run-summary) {
+  margin-inline: 14px;
 }
-.run-report.is-bad {
-  border-color: var(--danger-border);
+.run-report > :last-child:not(.run-summary) {
+  margin-bottom: 14px;
+}
+.run-report > .btn {
+  justify-self: start;
+  margin-left: 4px;
 }
 .run-summary {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: var(--bw) solid var(--ink);
+  font-weight: 800;
   font-size: var(--fs-base);
+  line-height: 1.3;
+  color: var(--on-fill);
+}
+.run-summary:only-child {
+  border-bottom: 0;
 }
 .run-summary svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   flex: none;
+  stroke-width: 2.4;
 }
 .run-report.is-good .run-summary {
-  color: var(--success-text);
+  background: var(--mint);
 }
 .run-report.is-bad .run-summary {
-  color: var(--danger-text);
+  background: var(--rose);
 }
 .run-tests {
   list-style: none;
@@ -47,6 +61,7 @@
   padding: 12px;
   border-radius: var(--r-md);
   background: var(--surface-sunken);
+  border: 1px solid var(--border);
   min-width: 0;
 }
 .run-test-head {
@@ -54,7 +69,7 @@
   align-items: center;
   gap: 8px;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
   min-width: 0;
 }
@@ -81,7 +96,7 @@
   align-items: center;
   gap: 5px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-tertiary);
 }
 .run-row-label svg {
@@ -114,11 +129,12 @@
 .run-error-line {
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: 1px 7px;
+  font-weight: 700;
+  padding: 0 7px;
   border-radius: var(--r-full);
-  background: var(--danger-subtle);
-  border: 1px solid var(--danger-border);
+  background: var(--rose);
+  color: var(--on-fill);
+  border: 1.5px solid var(--ink);
   white-space: nowrap;
 }
 .run-note {
@@ -148,6 +164,7 @@
   border-radius: var(--r-sm);
   background: var(--code-bg);
   color: var(--code-text);
+  border: 1px solid var(--border);
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
   max-height: 120px;
@@ -212,12 +229,13 @@
   padding: 10px 12px;
   border-radius: var(--r-md);
   background: var(--surface);
-  border: 1px solid var(--border);
+  color: var(--text);
+  border: var(--bw) solid var(--ink);
   font-size: var(--fs-sm);
   min-width: 0;
 }
 .why-label {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .why-input {

@@ -1,8 +1,9 @@
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Difficulty } from '../content/types';
 import { onToast, type Toast } from '../lib/events';
 import { Icon as RegistryIcon, IconTile, ICONS, type IconName, type LucideIcon } from './icons';
+import { Confetti, Pip, type PipMood } from './Mascot';
 
 // ── Icons ───────────────────────────────────────────────────────────────────
 
@@ -13,22 +14,18 @@ export function Icon({ name, size = 16, stroke }: { name: IconName | string; siz
 
 // ── Brand ───────────────────────────────────────────────────────────────────
 
+/** The brand mark: Pip (a keycap with a face) on a sunflower sticker. Same colors in both themes. */
 export function LogoMark({ size = 28 }: { size?: number }) {
-  const id = useId().replace(/:/g, '');
   return (
     <svg className="logo-mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id={`lg${id}`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#6366f1" />
-          <stop offset="1" stopColor="#4338ca" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill={`url(#lg${id})`} />
-      <path d="M9.5 21.5 16 10.5l6.5 11" stroke="#fff" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-      <path d="M9.5 21.5h13" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
-      <circle cx="9.5" cy="21.5" r="2.7" fill="#fff" />
-      <circle cx="16" cy="10.5" r="2.7" fill="#fff" />
-      <circle cx="22.5" cy="21.5" r="2.7" fill="#fff" />
+      <rect x="1" y="1" width="30" height="30" rx="9" fill="#ffc83d" stroke="#1e1b16" strokeWidth="2" />
+      <rect x="6" y="9.5" width="20" height="17" rx="5" fill="#62c987" stroke="#1e1b16" strokeWidth="1.8" />
+      <rect x="7.5" y="5.5" width="17" height="16" rx="4.5" fill="#9be7b4" stroke="#1e1b16" strokeWidth="1.8" />
+      <circle cx="12.7" cy="12.6" r="2.5" fill="#fff" />
+      <circle cx="19.3" cy="12.6" r="2.5" fill="#fff" />
+      <circle cx="13.1" cy="13" r="1.35" fill="#1e1b16" />
+      <circle cx="18.9" cy="13" r="1.35" fill="#1e1b16" />
+      <path d="M14 16.7q2 1.7 4 0" fill="none" stroke="#1e1b16" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   );
 }
@@ -211,6 +208,7 @@ export function EmptyState({
   children,
   actions,
   level = 2,
+  pip,
 }: {
   icon: LucideIcon;
   title: ReactNode;
@@ -218,11 +216,13 @@ export function EmptyState({
   actions?: ReactNode;
   /** Heading level of the title: 2 under a page h1 (default), 3 inside an h2 section. */
   level?: 2 | 3;
+  /** Show Pip in this mood instead of the icon tile (only where no other Pip is on screen). */
+  pip?: PipMood;
 }) {
   const H = level === 3 ? 'h3' : 'h2';
   return (
     <div className="empty">
-      <IconTile icon={icon} size="lg" />
+      {pip ? <Pip size={88} mood={pip} /> : <IconTile icon={icon} size="lg" />}
       <H className="empty-title">{title}</H>
       {children && <p>{children}</p>}
       {actions && <div className="row wrap" style={{ justifyContent: 'center', marginTop: 8 }}>{actions}</div>}
@@ -249,8 +249,10 @@ export function Completion({
   const color = { brand: 'var(--brand)', success: 'var(--success)', warning: 'var(--warning)', streak: 'var(--streak)' }[tone];
   return (
     <div className="complete">
+      {tone !== 'warning' && <Confetti />}
       <div className="complete-icon">
-        <IconTile icon={icon} size="xl" color={color} solid />
+        <Pip size={132} mood={tone === 'warning' ? 'think' : 'cheer'} />
+        <IconTile icon={icon} size="lg" color={color} solid />
       </div>
       <h1>{title}</h1>
       {subtitle && <div className="lead">{subtitle}</div>}

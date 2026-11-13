@@ -19,7 +19,6 @@ import {
   Snowflake,
   Star,
   Sun,
-  TriangleAlert,
   Upload,
   UserRound,
   type LucideIcon,
@@ -28,6 +27,7 @@ import { PROBLEMS } from '../content/index';
 import { addDays, dayKey, lastNDays, parseDay, today } from '../lib/date';
 import { ACHIEVEMENTS, DAILY_GOALS, GEMS, levelInfo, levelTitle } from '../lib/game';
 import { CODE_PRACTICE, mastery, type InputMode } from '../lib/input';
+import { saveTextFile } from '../lib/native';
 import {
   buyFreeze,
   exportProgress,
@@ -41,6 +41,7 @@ import {
 } from '../lib/store';
 import { ICONS, IconTile } from '../components/icons';
 import { CODE_PRACTICE_ICON } from '../components/InputSwitch';
+import { Pip } from '../components/Mascot';
 import { Badge, Modal, ProgressBar, SectionHeader, StatCard, Toggle } from '../components/ui';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -95,9 +96,7 @@ function IdentityCard({ p, onEdit }: { p: Progress; onEdit: () => void }) {
         <div className="profile-id-text">
           <h1 className="profile-name">{name || 'Your profile'}</h1>
           <div className="profile-id-meta">
-            <Badge tone="brand" pill>
-              Level {lv.level}
-            </Badge>
+            <span className="profile-id-level-pill">Level {lv.level}</span>
             <span className="profile-id-title">{title}</span>
           </div>
           <div className="profile-id-since">
@@ -105,7 +104,7 @@ function IdentityCard({ p, onEdit }: { p: Progress; onEdit: () => void }) {
             Member since {since}
           </div>
         </div>
-        <button type="button" className="btn btn-secondary btn-sm profile-id-edit" onClick={onEdit} aria-label="Edit profile">
+        <button type="button" className="btn btn-inverse btn-sm profile-id-edit" onClick={onEdit} aria-label="Edit profile">
           <Pencil aria-hidden="true" />
           <span className="profile-id-edit-label">Edit profile</span>
         </button>
@@ -669,14 +668,7 @@ export function Profile() {
   const xpToday = p.xpByDay[today()] ?? 0;
   const streakMeta = practicedToday(p) ? 'Extended today' : p.streak.current > 0 ? 'Extend it today' : 'Start one today';
 
-  const download = () => {
-    const blob = new Blob([exportProgress()], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `intprep-progress-${today()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
+  const download = () => void saveTextFile(`intprep-progress-${today()}.json`, exportProgress());
 
   const closeReset = () => setConfirmReset(false);
 
@@ -969,7 +961,7 @@ export function Profile() {
       {confirmReset && (
         <Modal onClose={closeReset} labelledBy="profile-reset-title">
           <div className="profile-modal">
-            <IconTile icon={TriangleAlert} color="var(--danger)" />
+            <Pip size={60} mood="sad" />
             <div className="grow">
               <h2 id="profile-reset-title" className="modal-title">
                 Reset all progress?

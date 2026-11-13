@@ -5,6 +5,10 @@
    ========================================================================== */
 
 .profile {
+  /* On a sticker fill (the sky header, a picked radio card) colors are the same in both themes,
+     as .btn-inverse: white paper, ink text, a softer ink for secondary text. */
+  --profile-paper: var(--fill-paper);
+  --profile-on-fill-soft: var(--on-fill-soft);
   container: profile / inline-size;
   display: flex;
   flex-direction: column;
@@ -15,10 +19,11 @@
   margin: 24px 0 4px;
 }
 .profile .section-title h2 {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-xl);
 }
 
 /* ── Identity ───────────────────────────────────────────────────────────── */
+/* A sky header (who you are) over a paper strip (how far to the next level). */
 .profile-id {
   overflow: hidden;
 }
@@ -29,7 +34,11 @@
   gap: 16px;
   min-width: 0;
   padding: 20px;
-  background: radial-gradient(120% 160% at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 62%);
+  background: var(--sky);
+  color: var(--on-fill);
+}
+.profile-id-who :focus-visible {
+  outline-color: var(--ink);
 }
 .profile-avatar {
   display: grid;
@@ -37,16 +46,14 @@
   flex: none;
   width: 64px;
   height: 64px;
+  border: var(--bw) solid var(--ink);
   border-radius: 50%;
-  background: linear-gradient(140deg, var(--brand-400), var(--brand-700));
-  color: var(--text-inverse);
+  background: var(--sun);
+  color: var(--on-fill);
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: -0.01em;
-  box-shadow:
-    0 0 0 3px var(--surface),
-    0 0 0 4px var(--border),
-    var(--shadow-sm);
+  box-shadow: var(--shadow-sm);
 }
 .profile-avatar svg {
   width: 28px;
@@ -58,8 +65,10 @@
 }
 .profile-name {
   font-size: var(--fs-2xl);
+  font-weight: 900;
   letter-spacing: -0.025em;
   line-height: 1.2;
+  color: var(--on-fill);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -71,10 +80,24 @@
   gap: 8px;
   margin-top: 8px;
 }
+.profile-id-level-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-full);
+  background: var(--profile-paper);
+  color: var(--on-fill);
+  font-size: var(--fs-xs);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .profile-id-title {
   font-size: var(--fs-md);
-  font-weight: 550;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: var(--on-fill);
 }
 .profile-id-since {
   display: flex;
@@ -82,7 +105,8 @@
   gap: 6px;
   margin-top: 8px;
   font-size: var(--fs-sm);
-  color: var(--text-tertiary);
+  font-weight: 500;
+  color: var(--profile-on-fill-soft);
 }
 .profile-id-since svg {
   width: 14px;
@@ -98,8 +122,8 @@
   justify-content: center;
   gap: 8px;
   padding: 16px 20px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-hover);
+  border-top: var(--bw) solid var(--ink);
+  background: var(--surface);
 }
 .profile-level-top,
 .profile-level-bottom {
@@ -114,13 +138,13 @@
   align-items: center;
   gap: 6px;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
 }
 .profile-level-name svg {
   width: 15px;
   height: 15px;
-  color: var(--xp);
-  fill: color-mix(in srgb, var(--xp) 25%, transparent);
+  color: var(--text);
+  fill: var(--sun);
   align-self: center;
 }
 .profile-level-nums {
@@ -129,7 +153,7 @@
   font-variant-numeric: tabular-nums;
 }
 .profile-level-nums strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-level-bottom {
@@ -137,7 +161,7 @@
   color: var(--text-tertiary);
 }
 .profile-level-next {
-  font-weight: 550;
+  font-weight: 650;
   color: var(--text-secondary);
 }
 .profile-id-level .progress {
@@ -188,15 +212,27 @@
   .profile-id-level {
     padding: 20px 24px;
     border-top: 0;
-    border-left: 1px solid var(--border);
+    border-left: var(--bw) solid var(--ink);
   }
 }
 
 /* ── Stats ──────────────────────────────────────────────────────────────── */
+/* Eight numbers stay calm: one sticker card, hairlines between the cells (the 1px gaps
+   show the grid's own background). */
 .profile-stats {
   display: grid;
-  gap: 12px;
+  gap: 1px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: var(--bw) solid var(--ink);
+  border-radius: var(--r-lg);
+  background: var(--border);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.profile-stats > .card {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .profile-stats .stat-meta {
   margin-top: auto;
@@ -242,6 +278,7 @@
   margin-top: auto;
   padding-top: 16px;
   font-size: var(--fs-xs);
+  font-weight: 500;
   color: var(--text-tertiary);
 }
 .profile-legend {
@@ -308,11 +345,11 @@
   gap: 12px;
   max-width: 100%;
   padding: 12px 16px;
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--text-tertiary);
+  box-shadow: var(--shadow-xs);
+  color: var(--text-secondary);
 }
 .profile-heat-empty-box svg {
   flex: none;
@@ -321,7 +358,7 @@
 }
 .profile-heat-empty-title {
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1.35;
   color: var(--text);
 }
@@ -368,7 +405,8 @@
   background: var(--brand);
 }
 .profile-heat-cell.is-frozen {
-  background: color-mix(in srgb, var(--gem) 45%, var(--surface-active));
+  background: var(--sky);
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
 /* Days before the account existed: present for scale, but clearly not "missed". */
 .profile-heat-cell.is-before {
@@ -382,7 +420,7 @@
 /* Drawn inside the square (as on the Dashboard) so the wrapper's overflow never clips it. */
 .profile-heat-cell.is-today {
   box-shadow:
-    inset 0 0 0 1.5px var(--text-secondary),
+    inset 0 0 0 1.5px var(--text),
     inset 0 0 0 3px var(--surface);
 }
 .profile-heat-cell.is-future {
@@ -401,16 +439,16 @@
   white-space: nowrap;
   border-radius: var(--r-md);
   background: var(--surface-raised);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
   font-size: var(--fs-xs);
   line-height: 1.4;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   pointer-events: none;
   transform: translate(-50%, calc(-100% - 8px));
 }
 .profile-heat-tip strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 
@@ -423,7 +461,8 @@
 }
 .profile-week-total-v {
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   line-height: 1.15;
 }
@@ -441,15 +480,14 @@
   position: relative;
   flex: 1 1 auto;
   min-height: 124px;
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: var(--bw) solid var(--ink);
 }
 .profile-week-goal {
   position: absolute;
   left: 0;
   right: 0;
   height: 0;
-  border-top: 1px dashed var(--text-tertiary);
-  opacity: 0.65;
+  border-top: 1.5px dashed var(--text-tertiary);
   pointer-events: none;
 }
 .profile-week-empty {
@@ -460,11 +498,11 @@
   padding: 4px 10px;
   border-radius: var(--r-full);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   font-size: var(--fs-xs);
-  font-weight: 500;
+  font-weight: 700;
   white-space: nowrap;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   z-index: 1;
   pointer-events: none;
 }
@@ -492,26 +530,31 @@
 }
 .profile-week-col:hover,
 .profile-week-col:focus {
-  background: color-mix(in srgb, var(--text) 4%, transparent);
+  background: var(--surface-hover);
 }
 .profile-week-col:focus:not(:focus-visible) {
   outline: none;
 }
+/* Each bar is a small sticker standing on the ink baseline: sky below the goal, mint once it is met. */
 .profile-week-bar {
+  box-sizing: border-box;
   display: block;
-  width: min(24px, 56%);
+  width: min(26px, 60%);
   height: var(--h);
-  border-radius: 4px 4px 0 0;
-  background: var(--brand);
+  min-height: 8px;
+  border: var(--bw) solid var(--ink);
+  border-bottom: 0;
+  border-radius: 6px 6px 0 0;
+  background: var(--sky);
   transition: height var(--dur-slow) var(--ease);
 }
 .profile-week-bar.is-met {
-  background: var(--success);
+  background: var(--mint);
 }
 .profile-week-bar.is-zero {
-  height: 2px;
-  border-radius: 1px;
-  background: var(--border-strong);
+  height: 0;
+  min-height: 0;
+  border: 0;
 }
 .profile-week-cap {
   position: absolute;
@@ -520,7 +563,7 @@
   right: 0;
   text-align: center;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -537,15 +580,15 @@
   white-space: nowrap;
   border-radius: var(--r-md);
   background: var(--surface-raised);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-md);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
   font-size: var(--fs-xs);
   line-height: 1.4;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   pointer-events: none;
 }
 .profile-week-tip strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-week-col.tip-start .profile-week-tip {
@@ -573,22 +616,24 @@
   color: var(--text-tertiary);
 }
 .profile-week-x .is-today {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-key {
-  width: 10px;
-  height: 10px;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--ink);
   border-radius: 3px;
-  background: var(--brand);
+  background: var(--sky);
 }
 .profile-key.is-met {
-  background: var(--success);
+  background: var(--mint);
 }
 .profile-key-line {
   width: 14px;
   height: 0;
-  border-top: 1px dashed var(--text-tertiary);
+  border-top: 1.5px dashed var(--text-tertiary);
 }
 
 /* ── Achievements ───────────────────────────────────────────────────────── */
@@ -632,7 +677,25 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 9%, transparent);
+}
+/* An earned medal is a colorful sticker, put on a little crooked. The four fills take turns. */
+.profile-medals .profile-medal.is-on .icon-tile:not(.solid) {
+  background: var(--sun);
+  color: var(--on-fill);
+  box-shadow: var(--shadow-xs);
+  transform: rotate(-5deg);
+}
+.profile-medals .profile-medal.is-on:nth-child(4n + 2) .icon-tile:not(.solid) {
+  background: var(--mint);
+  transform: rotate(4deg);
+}
+.profile-medals .profile-medal.is-on:nth-child(4n + 3) .icon-tile:not(.solid) {
+  background: var(--sky);
+  transform: rotate(-3deg);
+}
+.profile-medals .profile-medal.is-on:nth-child(4n) .icon-tile:not(.solid) {
+  background: var(--rose);
+  transform: rotate(5deg);
 }
 .profile-medals .profile-medal .icon-tile svg {
   width: 24px;
@@ -648,7 +711,7 @@
   height: 20px;
   border-radius: 50%;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: 1.5px solid var(--text-tertiary);
   color: var(--text-tertiary);
 }
 .profile-medal-lock svg {
@@ -657,7 +720,7 @@
 }
 .profile-medal-title {
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.3;
   letter-spacing: -0.005em;
   color: var(--text);
@@ -675,7 +738,7 @@
   margin-top: auto;
   padding-top: 8px;
   font-size: var(--fs-xs);
-  font-weight: 550;
+  font-weight: 700;
   line-height: 1;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
@@ -693,18 +756,19 @@
 .profile-medal.is-locked .profile-medal-title {
   color: var(--text-secondary);
 }
-/* Beats the shared dark-mode tile rule so locked medals stay quiet in both themes. */
+/* A locked medal is the empty place for a sticker: a dashed outline. (Beats the shared
+   dark-mode tile rule so it stays quiet in both themes.) */
 .profile-medals .profile-medal.is-locked .icon-tile:not(.solid) {
   color: var(--text-disabled);
-  background: var(--surface-sunken);
-  border-color: var(--border);
+  background: transparent;
+  border: var(--bw) dashed var(--text-disabled);
   box-shadow: none;
 }
 .profile-ach-more {
   display: none;
   justify-content: center;
   padding: 4px 0 4px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border);
   margin: 4px -8px -8px;
 }
 .profile-ach-more .btn {
@@ -821,16 +885,15 @@
   padding: 0 8px;
   border-radius: var(--r-full);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--gem-subtle);
-  border: 1px solid color-mix(in srgb, var(--gem) 28%, transparent);
+  font-weight: 800;
+  color: var(--on-fill);
+  background: var(--sky);
+  border: 1.5px solid var(--ink);
   font-variant-numeric: tabular-nums;
 }
 .profile-shop-price svg {
   width: 12px;
   height: 12px;
-  color: var(--gem);
 }
 .profile-shop-text p {
   margin: 4px 0 0;
@@ -853,25 +916,23 @@
   width: 32px;
   height: 32px;
   border-radius: var(--r-md);
-  border: 1px dashed var(--border-strong);
+  border: var(--bw) dashed var(--text-disabled);
   color: var(--text-disabled);
 }
 .profile-slot svg {
   width: 16px;
   height: 16px;
-  opacity: 0.5;
 }
+/* A freeze you hold is a sky sticker; an empty slot is its dashed outline. */
 .profile-slot.on {
-  border: 1px solid color-mix(in srgb, var(--gem) 35%, transparent);
-  background: var(--gem-subtle);
-  color: var(--gem);
-}
-.profile-slot.on svg {
-  opacity: 1;
+  border: var(--bw) solid var(--ink);
+  background: var(--sky);
+  box-shadow: var(--shadow-xs);
+  color: var(--on-fill);
 }
 .profile-shop-owned-k {
   font-size: var(--fs-sm);
-  font-weight: 500;
+  font-weight: 700;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -904,7 +965,7 @@
   color: var(--gem);
 }
 .profile-shop-balance strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 @container profile (min-width: 520px) {
@@ -948,9 +1009,9 @@
   gap: 12px;
 }
 .profile-group-head h3 {
-  font-size: var(--fs-md);
-  font-weight: 600;
-  letter-spacing: -0.005em;
+  font-size: var(--fs-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 .profile-group-head p {
   margin: 2px 0 0;
@@ -969,8 +1030,9 @@
 .profile-form {
   container: pform / inline-size;
 }
+/* The danger zone is the same sticker on rose-tinted paper. */
 .profile-form.is-danger {
-  border-color: var(--danger-border);
+  background: color-mix(in srgb, var(--rose) 22%, var(--surface));
 }
 .profile-row {
   display: flex;
@@ -980,7 +1042,7 @@
   padding: 16px 20px;
 }
 .profile-row + .profile-row {
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border);
 }
 .profile-row-text {
   flex: 1 1 220px;
@@ -989,7 +1051,7 @@
 .profile-row-label {
   display: block;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-row-desc {
@@ -1025,7 +1087,7 @@
   font-variant-numeric: tabular-nums;
 }
 .seg button.on .profile-seg-sub {
-  color: var(--text-secondary);
+  color: var(--profile-on-fill-soft);
 }
 /* Code practice: every option's description in one cell, only the selected one shown, so the row
    keeps its height and the cards never move when the choice changes */
@@ -1055,11 +1117,13 @@
   flex: 1 1 auto;
   width: 100%;
 }
-/* Radio cards (native radios, so arrow keys move between them), one per row */
+/* Radio cards (native radios, so arrow keys move between them), one per row. Each is a sticker;
+   the picked one is pressed and filled, as an answer choice. */
 .profile-choices {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding: 0 3px 3px 0; /* the hard shadows stay inside the row's padding */
 }
 .profile-choice {
   position: relative;
@@ -1069,29 +1133,40 @@
   min-width: 0;
   padding: 12px 14px;
   background: var(--surface);
-  border: 1px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-md);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition:
-    border-color var(--dur-fast) var(--ease),
     background var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease);
+    box-shadow var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
 }
 @media (hover: hover) {
   .profile-choice:not(.on):hover {
-    border-color: var(--text-disabled);
     background: var(--surface-hover);
   }
 }
+.profile-choice:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+}
 .profile-choice.on {
-  border-color: var(--brand-500);
-  background: var(--brand-subtle);
-  box-shadow: 0 0 0 1px var(--brand-500);
+  --text: var(--on-fill);
+  --text-tertiary: var(--profile-on-fill-soft);
+  background: var(--sky);
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
 .profile-choice:has(.profile-choice-input:focus-visible) {
-  box-shadow:
-    0 0 0 1px var(--brand-500),
-    var(--ring);
+  outline: 3px solid var(--brand-500);
+  outline-offset: 2px;
+}
+/* "Recommended" is a small sunflower stamp, readable on paper and on the sky fill. */
+.profile-choice .badge {
+  background: var(--sun);
+  border-color: var(--ink);
+  color: var(--on-fill);
 }
 .profile-choice-input {
   position: absolute;
@@ -1109,7 +1184,7 @@
   height: 32px;
   border-radius: var(--r-md);
   background: var(--surface-sunken);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--ink);
   color: var(--text-secondary);
 }
 .profile-choice-icon svg {
@@ -1117,9 +1192,8 @@
   height: 16px;
 }
 .profile-choice.on .profile-choice-icon {
-  background: var(--surface);
-  border-color: var(--brand-border);
-  color: var(--brand-text);
+  background: var(--profile-paper);
+  color: var(--on-fill);
 }
 .profile-choice-text {
   flex: 1;
@@ -1134,7 +1208,7 @@
   flex-wrap: wrap;
   gap: 4px 8px;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-choice-sub {
@@ -1145,20 +1219,18 @@
 }
 .profile-choice-radio {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-strong);
+  border: var(--bw) solid var(--ink);
   background: var(--surface);
-  transition:
-    border-color var(--dur-fast),
-    box-shadow var(--dur-fast);
+  transition: box-shadow var(--dur-fast);
 }
 .profile-choice.on .profile-choice-radio {
-  border-color: var(--brand);
+  background: var(--profile-paper);
   box-shadow:
-    inset 0 0 0 3.5px var(--surface),
-    inset 0 0 0 9px var(--brand);
+    inset 0 0 0 3px var(--profile-paper),
+    inset 0 0 0 10px var(--ink);
 }
 @container pform (max-width: 459px) {
   .profile-choice {
@@ -1231,23 +1303,22 @@
 .profile-science-title {
   display: block;
   font-size: var(--fs-md);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 .profile-science-sub {
   display: block;
   font-size: var(--fs-sm);
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 .profile-science-chevron {
   width: 18px;
   height: 18px;
-  color: var(--text-disabled);
+  color: var(--text);
   transition: transform var(--dur) var(--ease);
 }
 .profile-science:hover .profile-science-chevron {
   transform: translateX(2px);
-  color: var(--text-tertiary);
 }
 
 /* ── Reset confirmation ─────────────────────────────────────────────────── */
@@ -1257,7 +1328,10 @@
   gap: 16px;
 }
 .profile-modal .modal-title {
-  margin-top: 6px;
+  margin-top: 4px;
+}
+.profile-modal .pip {
+  margin-top: 2px;
 }
 .profile-modal p {
   margin: 0 0 8px;

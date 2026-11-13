@@ -26,11 +26,12 @@
   padding: 0 9px 0 7px;
   border-radius: var(--r-full);
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--text-secondary);
+  color: var(--text);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
+  box-shadow: var(--shadow-xs);
 }
 .rebuild-score svg {
   width: 14px;
@@ -168,14 +169,13 @@
   align-items: center;
   gap: 10px;
 }
+/* On the file tab header (--sky): ink text, and step pills as the session's progress */
 .rebuild-steps-label {
   font-family: var(--font-mono);
   font-size: 11.5px;
-  color: var(--code-text);
+  font-weight: 500;
+  color: var(--on-fill);
   font-variant-numeric: tabular-nums;
-}
-.rebuild-steps-of {
-  color: var(--code-comment);
 }
 .rebuild-steps-track {
   display: inline-flex;
@@ -183,15 +183,16 @@
 }
 .rebuild-steps-track span {
   width: 14px;
-  height: 4px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--code-text) 16%, transparent);
+  height: 8px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-full);
+  background: var(--fill-paper);
 }
 .rebuild-steps-track span.done {
-  background: var(--success);
+  background: var(--mint);
 }
 .rebuild-steps-track span.current {
-  background: var(--brand-400);
+  background: var(--sun);
 }
 /* Phones: the dashes already show the total, so the counter drops "of N" and tightens
    up, leaving the file tab its full name even on 9- and 10-part solutions */
@@ -200,7 +201,7 @@
     display: none;
   }
   .rebuild-steps-track span {
-    width: 8px;
+    width: 9px;
   }
 }
 
@@ -212,19 +213,20 @@
   padding-top: 3px;
   padding-bottom: 3px;
   white-space: normal;
-  background: color-mix(in srgb, var(--brand-500) 16%, transparent);
-  box-shadow: inset 2px 0 0 var(--brand-400);
+  /* A note in blue pen on the sheet */
+  background: color-mix(in srgb, var(--brand-400) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand-400);
   scroll-margin: 96px 0 240px;
 }
 .rebuild .typer-line.instr .typer-ln {
-  color: var(--brand-300);
+  color: var(--brand-text);
 }
 .rebuild-instr {
   --indent: 0ch;
   display: block;
   padding-left: calc(var(--indent) + 2ch);
   text-indent: -2ch;
-  color: var(--brand-200);
+  color: var(--brand-text);
   font-style: italic;
   overflow-wrap: anywhere;
 }
@@ -243,8 +245,8 @@
   margin: 2px 0 4px;
   padding: 4px 0;
   list-style: none;
-  background: color-mix(in srgb, var(--brand-500) 9%, transparent);
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 70%, transparent);
+  background: color-mix(in srgb, var(--brand-400) 10%, transparent);
+  box-shadow: inset 3px 0 0 var(--brand-400);
   animation: typer-fade var(--dur) var(--ease);
 }
 .rebuild .typer-line.rebuild-outline-row {
@@ -254,14 +256,14 @@
   padding-bottom: 1px;
 }
 .rebuild-outline-row .typer-ln {
-  color: color-mix(in srgb, var(--brand-300) 70%, var(--code-gutter));
+  color: var(--code-gutter);
 }
 .rebuild-outline-text {
   --indent: 0ch;
   display: block;
   padding-left: calc(var(--indent) + 5ch);
   text-indent: -5ch;
-  color: color-mix(in srgb, var(--brand-200) 82%, var(--code-text));
+  color: var(--brand-text);
   font-style: italic;
   overflow-wrap: anywhere;
 }
@@ -288,9 +290,11 @@
   font-variant-ligatures: none;
   line-height: 22px;
   color: var(--code-text);
-  background: color-mix(in srgb, var(--warning) 8%, transparent);
-  border-top: 1px solid var(--code-border);
+  background: color-mix(in srgb, var(--sun) 22%, transparent);
+  border-top: 1px solid var(--border);
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--code-scrollbar) transparent;
 }
 .rebuild-hint-label {
   display: flex;
@@ -299,8 +303,8 @@
   margin-left: -1px;
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  color: color-mix(in srgb, var(--warning) 70%, var(--code-text));
+  font-weight: 700;
+  color: var(--warning-text);
 }
 .rebuild-hint-label svg {
   width: 14px;

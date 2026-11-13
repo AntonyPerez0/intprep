@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, BookMarked, FlaskConical, Route } from 'lucide-react';
 import { SCIENCE } from '../content/science';
 import { IconTile, SCIENCE_ICON } from '../components/icons';
+import { Pip } from '../components/Mascot';
 import { LogoMark, PageHeader, SectionHeader } from '../components/ui';
 
 const SHORT_VERSION: { verb: string; rest: ReactNode }[] = [
@@ -106,9 +107,12 @@ export function Science() {
       <div className="science-layout">
         <div className="science-article">
           <section id={SUMMARY_ID} className="card science-summary" aria-labelledby="science-summary-title">
-            <h2 id="science-summary-title" className="h3">
-              The short version
-            </h2>
+            <div className="science-summary-head">
+              <h2 id="science-summary-title" className="h3">
+                The short version
+              </h2>
+              <Pip size={56} mood="think" />
+            </div>
             <ol className="science-steps">
               {SHORT_VERSION.map(({ verb, rest }, i) => (
                 <li key={verb}>

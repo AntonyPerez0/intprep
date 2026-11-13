@@ -1,5 +1,5 @@
 import '../styles/pages/home.css';
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, Workflow } from 'lucide-react';
 import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
@@ -15,7 +15,8 @@ import { cluesKnown } from '../lib/clues';
 import { REVIEWS_FIRST } from '../lib/plan';
 import { PlanCard } from '../components/PlanCard';
 import { dueProblemIds, learnedIds, repairableStreak, repairStreak, useProgress, xpToday, type Progress } from '../lib/store';
-import { CategoryIcon, Icon, IconTile, ICONS, LESSON_ICON } from '../components/icons';
+import { CategoryIcon, Icon, IconTile, ICONS } from '../components/icons';
+import { Pip } from '../components/Mascot';
 import { Badge, DifficultyChip, ProgressBar, Ring, StatCard } from '../components/ui';
 
 function greeting() {
@@ -133,14 +134,15 @@ function RepairCard({ p }: { p: Progress }) {
 
 interface NextView {
   kind: string;
-  tone?: 'brand' | 'success';
   context: string;
   position?: string;
   accent: string;
-  tile: ReactNode;
   title: string;
   description?: ReactNode;
-  meta: ReactNode;
+  /** Short facts as white pills: difficulty, technique, minutes. */
+  chips?: ReactNode;
+  /** One line about how the step works, under the description. */
+  note?: ReactNode;
   progress?: { label: string; done: number; total: number; unit: string };
   cta: string;
 }
@@ -158,18 +160,17 @@ function describeNext(p: Progress, next: NextStep): NextView {
         context: 'Foundations',
         position: `Lesson ${i + 1} of ${FOUNDATIONS.length}`,
         accent: 'var(--brand)',
-        tile: <IconTile icon={LESSON_ICON[next.lessonId] ?? ICONS.grad} size="lg" />,
         title: next.title,
         description: lesson?.blurb,
-        meta: lesson ? (
+        chips: lesson ? (
           <>
-            <span className="home-meta-item">
-              <Icon name="clock" size={14} />
+            <span className="chip">
+              <Icon name="clock" />
               {lesson.minutes} min
             </span>
             {writes(lesson) > 0 && (
-              <span className="home-meta-item">
-                <Icon name="keyboard" size={14} />
+              <span className="chip">
+                <Icon name="keyboard" />
                 {writes(lesson)} code exercise{writes(lesson) === 1 ? '' : 's'}
               </span>
             )}
@@ -187,14 +188,13 @@ function describeNext(p: Progress, next: NextStep): NextView {
         context: c.name,
         position: `Unit ${CATEGORIES.indexOf(c) + 1} of ${CATEGORIES.length}`,
         accent: c.color,
-        tile: <CategoryIcon id={c.id} color={c.color} size="lg" />,
         title: next.title,
         description: c.tagline,
-        meta: (
-          <span className="home-meta-item">
+        note: (
+          <>
             <Icon name="book" size={14} />
             Read it, then fill in the template
-          </span>
+          </>
         ),
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
         cta: 'Start pattern intro',
@@ -209,22 +209,24 @@ function describeNext(p: Progress, next: NextStep): NextView {
         context: c.name,
         position: `Unit ${CATEGORIES.indexOf(c) + 1} of ${CATEGORIES.length}`,
         accent: c.color,
-        tile: <CategoryIcon id={c.id} color={c.color} size="lg" />,
         title: next.title,
         description: inline(q.prompt),
-        meta: (
+        chips: (
           <>
             <DifficultyChip d={q.difficulty} />
-            <span className="home-meta-item mono">#{q.num}</span>
-            <span className="home-meta-item truncate">{q.pattern}</span>
-            {problemInput(p.settings.typingMode, p.problems[q.id]) === 'pick' && (
-              <span className="home-meta-item">
-                <Icon name="checks" size={14} />
-                You build the code from choices
-              </span>
-            )}
+            <span className="chip mono">#{q.num}</span>
+            <span className="chip home-up-technique">
+              <span className="truncate">{q.pattern}</span>
+            </span>
           </>
         ),
+        note:
+          problemInput(p.settings.typingMode, p.problems[q.id]) === 'pick' ? (
+            <>
+              <Icon name="checks" size={14} />
+              You build the code from choices
+            </>
+          ) : undefined,
         progress: { label: 'Unit progress', done: u.learned, total: u.total, unit: 'learned' },
         cta: 'Start problem',
       };
@@ -232,59 +234,64 @@ function describeNext(p: Progress, next: NextStep): NextView {
     default:
       return {
         kind: 'Learning path complete',
-        tone: 'success',
         context: `${CATEGORIES.length} of ${CATEGORIES.length} patterns`,
         accent: 'var(--success)',
-        tile: <IconTile icon={ICONS.trophy} color="var(--success)" size="lg" />,
         title: `All ${PROBLEMS.length} problems learned`,
         description: 'Every pattern is in your toolkit. Daily review keeps it sharp until interview day.',
-        meta: null,
         progress: { label: 'Learning path progress', done: PROBLEMS.filter((q) => p.problems[q.id]?.learnedAt).length, total: PROBLEMS.length, unit: 'learned' },
         cta: 'Open daily review',
       };
   }
 }
 
+/**
+ * The "Up next" hero: a sky sticker where Pip points at the next step of the learning path. With a
+ * review backlog the review card owns the primary button, so this one turns secondary.
+ */
 function ContinueCard({ p, next, reviewsFirst }: { p: Progress; next: NextStep; reviewsFirst: boolean }) {
   const v = describeNext(p, next);
+  const done = next.kind === 'done';
   return (
-    <section className="card home-card home-continue" style={{ ['--c' as string]: v.accent } as CSSProperties} aria-labelledby="home-continue-title">
-      <div className="home-card-head">
-        <h2 id="home-continue-title" className="card-title">
-          {next.kind === 'done' ? 'Keep it sharp' : 'Continue learning'}
-        </h2>
-        {v.position && <span className="home-card-aside tabular">{v.position}</span>}
-      </div>
-
-      <div className="home-continue-main">
-        {v.tile}
-        <div className="home-continue-kind">
-          <Badge tone={v.tone ?? 'brand'}>{v.kind}</Badge>
-          <span className="truncate">{v.context}</span>
+    <section className="home-up home-continue" aria-labelledby="home-continue-title">
+      <div className="home-up-top">
+        <Pip className="bob home-up-pip" size={68} mood={done ? 'cheer' : 'happy'} />
+        <div className="home-up-text">
+          <div className="home-up-labels">
+            <h2 id="home-continue-title" className="home-up-label">
+              {done ? 'Keep it sharp' : 'Up next'}
+            </h2>
+            {v.position && <span className="home-up-position tabular">{v.position}</span>}
+          </div>
+          <h3 className="home-up-title">{v.title}</h3>
+          <p className="home-up-context">
+            {v.kind}
+            <span aria-hidden="true"> · </span>
+            <span className="sr-only">, </span>
+            {v.context}
+          </p>
+          {v.chips && <div className="home-up-chips">{v.chips}</div>}
         </div>
-        <h3 className="home-continue-title">{v.title}</h3>
-        {v.description && <p className="home-continue-desc">{v.description}</p>}
-        {v.meta && <div className="home-continue-meta">{v.meta}</div>}
       </div>
 
-      <div className="home-continue-foot">
-        {v.progress ? (
-          <div className="home-continue-progress">
+      {v.description && <p className="home-up-desc">{v.description}</p>}
+      {v.note && <p className="home-up-note">{v.note}</p>}
+
+      <div className="home-up-foot">
+        {v.progress && (
+          <div className="home-up-progress">
             <div className="home-progress-label">
               <span className="truncate">{v.progress.label}</span>
               <span className="tabular">
                 {v.progress.done}/{v.progress.total}
-                <span className="text-tertiary"> {v.progress.unit}</span>
+                <span className="home-up-unit"> {v.progress.unit}</span>
               </span>
             </div>
             <ProgressBar value={v.progress.total ? v.progress.done / v.progress.total : 0} color={v.accent} label={`${v.context}: ${v.progress.done} of ${v.progress.total} ${v.progress.unit}`} />
           </div>
-        ) : (
-          <div className="grow" />
         )}
-        <Link to={next.href} className={`btn ${reviewsFirst && next.kind !== 'done' ? 'btn-secondary' : 'btn-primary'} btn-lg home-continue-cta`}>
+        <Link to={next.href} className={`btn ${reviewsFirst && !done ? 'btn-secondary' : 'btn-primary'} btn-xl btn-block home-continue-cta`}>
+          <Icon name={done ? 'review' : 'play'} className="home-up-play" />
           {v.cta}
-          <Icon name="arrow" />
         </Link>
       </div>
     </section>

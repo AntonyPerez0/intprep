@@ -9,6 +9,7 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/shell.css';
 import App from './App';
+import { initNative, isNative } from './lib/native';
 
 // iOS Safari zooms the page in when an input with text smaller than 16px gets focus, and every
 // code input here (editors, gaps, typed key lines) uses the 12.5–13px code size. On iOS only,
@@ -22,14 +23,21 @@ if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPo
   if (viewport && !/maximum-scale/.test(viewport.content)) viewport.content += ', maximum-scale=1';
 }
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')!;
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
 
-// Offline support + "Add to Home Screen" on phones (production builds only).
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// The Android and iOS apps (docs/MOBILE.md): status bar, back button, launch screen. Does nothing
+// on the website.
+initNative(root);
+
+// Offline support + "Add to Home Screen" on phones (production builds only). Not in the Android and
+// iOS apps: their files are already on the device, and a worker's cache would keep serving the old
+// ones after an app update.
+if ('serviceWorker' in navigator && import.meta.env.PROD && !isNative()) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {
       /* offline support is optional */

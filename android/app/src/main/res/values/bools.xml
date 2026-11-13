@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Read by MainActivity: phones are locked to portrait, tablets are not (values-sw600dp). -->
+    <bool name="portrait_only">true</bool>
+</resources>

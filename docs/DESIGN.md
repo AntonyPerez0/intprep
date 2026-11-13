@@ -1,54 +1,79 @@
-# IntPrep design system
+# IntPrep design system: the Sticker book look
 
-IntPrep should feel like a product made by a top-tier product company: think the restraint of **Linear**, the
-clarity of **Stripe**'s dashboard, the density and honesty of **GitHub**, and the polish of **Apple** (Fitness
-rings for goals). It is still a *learning game* — streaks, XP and celebrations stay — but they are expressed
-with taste: precise, quiet, confident.
+IntPrep looks like a well-kept sticker book: cream paper, ink outlines, flat color, hard shadows, and a small
+mascot. It is playful on purpose (it is a learning game: streaks, XP, stamps, celebrations) and careful in the
+details (alignment, contrast, spacing, motion), which is what makes it read as a finished product and not a toy.
+The same look ships on the website and in the Android and iOS apps (Capacitor; see `docs/MOBILE.md`).
+
+It is IntPrep's own look. Do not borrow another product's mascot, illustrations, palette, wording or screens.
 
 ## Principles
 
-1. **Calm by default, color with purpose.** Neutral surfaces; one brand color (indigo) for primary actions and
-   selection; status colors only for status. Gamification accents (streak orange, gem cyan, XP amber) appear
-   small, next to an icon and a label — never as big gradient slabs.
-2. **Hierarchy through type and space, not decoration.** Inter, tight letter-spacing on headings, generous
-   whitespace, 4px spacing grid. No ALL-CAPS buttons, no heavy drop shadows, no 3D "chunky" buttons.
-3. **One icon language.** Lucide stroke icons only (`src/components/icons.tsx`). **No emoji anywhere in the UI.**
-   Content files have legacy emoji `icon` fields — never render them; use `CATEGORY_ICON`, `LESSON_ICON`,
-   `SCIENCE_ICON`, `ICONS`.
-4. **Real data, honestly presented.** Numbers are tabular, labeled, and true. No fake testimonials, user counts,
+1. **Paper, ink, stickers.** The page is cream paper (`--canvas`). Anything you can press, type in or pick up is
+   a sticker: a flat fill, a 2px ink outline (`var(--bw) solid var(--ink)`) and a hard offset shadow
+   (`--shadow-xs…xl`, no blur). Things that only group or divide content inside a sticker use a hairline
+   (`--border`, `--border-subtle`) and no shadow. Never a soft or blurred shadow, never a gradient fill, never
+   glass or backdrop blur.
+2. **A shadow means it moves.** Hover lifts a sticker one pixel up and left; a press pushes it into its shadow
+   (`transform: translate(2px, 2px)` and the shadow goes to 0). A picked answer stays pressed. Flat things have no
+   shadow and do not move.
+3. **Five sticker fills, always under ink text.** `--sun` (the one primary action on a screen, the current thing),
+   `--mint` (right, done), `--sky` (heroes, selection), `--rose` (wrong), plus white paper (`--surface`). Text on
+   them is `--on-fill` (ink) in both themes. `--tomato` is for stamps, kickers and count badges only. `--brand`
+   (ink blue) is for links, focus, progress fills and solid fills that carry white text.
+4. **Hierarchy through type and space.** Inter, heavy: headings 800, labels and buttons 700, body 400–500.
+   Sentence case everywhere (buttons too); uppercase only in `.kicker` / `.eyebrow`. 4px spacing grid.
+5. **One icon language, one mascot.** Lucide stroke icons only (`src/components/icons.tsx`). **No emoji anywhere
+   in the UI.** Content files have legacy emoji `icon` fields — never render them. The mascot is **Pip**
+   (`<Pip size mood>` in `src/components/Mascot.tsx`; moods `happy`, `cheer`, `sad`, `think`): a keycap with a face. A key belongs to no programming language, so Pip
+   stays when the app teaches more than Python; never draw or describe the mascot as a snake.
+   Pip appears where a person would react or point: next to feedback, on end screens, on the "up next" card, in
+   empty states, in onboarding and on the landing page. At most one Pip on screen, never inside a list row, a
+   table or a button, never as wallpaper.
+6. **Motion has a job.** A press, a pop when something is earned (`--spring`), a stamp when a problem is learned,
+   Pip's hop or tilt with the verdict, code-symbol confetti on an end screen (`<Confetti>`). Nothing loops except
+   Pip's blink and a "this is next" pulse. Everything respects `prefers-reduced-motion`.
+7. **Real data, honestly presented.** Numbers are tabular, labeled, and true. No fake testimonials, user counts,
    company logos or endorsements. Not affiliated with LeetCode, NeetCode or any employer — say so in the footer.
-5. **Mobile is first-class.** Design at 390px wide first, then scale up, and check heights too: a phone's browser
+8. **Mobile is first-class.** Design at 390px wide first, then scale up, and check heights too: a phone's browser
    leaves less than the screen (about 660px of an iPhone's 844px with Safari's bars showing, about 550px on a small
    one), so whatever must be on screen together has to fit there. Touch targets ≥ 40px (on touch screens
-   default `.btn` and `.input` grow to 40px, and `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an
-   invisible 40px hit area automatically). Hover colors live inside `@media (hover: hover)` so a tap never leaves a
-   sticky hover. Never cause horizontal page scroll (code blocks scroll inside themselves). Nothing may sit hidden
-   behind a fixed bar: the tab bar and action bar set `scroll-padding-bottom`, and `.session-body` clears the
-   action bar at its measured height.
-6. **Both themes, always.** Use tokens only. Never hard-code a color except category colors passed as `--c`.
-   Check every screen in light *and* dark.
-7. **Accessible.** WCAG AA contrast (white text only on the solid fills below), a solid 2px `:focus-visible`
-   outline that follows each element's radius, `aria-label` on icon-only buttons (and `role="img"` when a plain
-   `<span>` carries an `aria-label`), semantic headings (one `h1` per page, no skipped levels), landmarks (app pages:
-   skip link + `<main id="main">`; sessions: `<header>` + `<main>`), `prefers-reduced-motion` respected (including
-   JS `scrollIntoView`).
+   default `.btn` and `.input` are 40px, and `.btn-sm`, `.seg` buttons, `.toggle` and `.back-link` get an
+   invisible 40px hit area automatically). Hover styles live inside `@media (hover: hover)` so a tap never leaves a
+   sticky hover. Never cause horizontal page scroll (code blocks scroll inside themselves; a hard shadow must not
+   poke past the screen edge either). Nothing may sit hidden behind a fixed bar: the tab bar and action bar set
+   `scroll-padding-bottom`, and `.session-body` clears the action bar at its measured height. Respect
+   `env(safe-area-inset-*)`: in the apps the page runs edge to edge.
+9. **Both themes, always.** Use tokens only. Never hard-code a color except category colors passed as `--c`, the
+   mascot's own colors and text on the five sticker fills. The dark theme is the same book at night: warm dark
+   paper, near-black ink, the same sticker fills. Check every screen in light *and* dark.
+10. **Accessible.** WCAG AA contrast (white text only on the solid fills below; ink text on the sticker fills), a
+    solid 3px `:focus-visible` outline that follows each element's radius, `aria-label` on icon-only buttons (and
+    `role="img"` when a plain `<span>` carries an `aria-label`), semantic headings (one `h1` per page, no skipped
+    levels), landmarks (app pages: skip link + `<main id="main">`; sessions: `<header>` + `<main>`),
+    `prefers-reduced-motion` respected (including JS `scrollIntoView`).
 
 ## Tokens (`src/styles/base.css`)
 
 | Purpose | Tokens |
 |---|---|
-| Surfaces | `--canvas` (app bg), `--surface` (cards), `--surface-raised` (popovers), `--surface-sunken` (wells, tracks), `--surface-hover`, `--surface-active` |
-| Borders | `--border` (default hairline), `--border-strong` (inputs, buttons), `--border-subtle` (row dividers) |
+| Paper | `--canvas` (app bg), `--surface` (stickers, cards), `--surface-raised` (popovers), `--surface-sunken` (wells, tracks), `--surface-hover`, `--surface-active` |
+| Ink | `--ink` (outlines, hard shadows), `--bw` (outline width, 2px), `--border-strong` (= ink: inputs, buttons) |
+| Hairlines | `--border` (dividers inside a sticker), `--border-subtle` (row dividers) |
 | Text | `--text`, `--text-secondary`, `--text-tertiary` (smallest readable text; ≥ 4.5:1 on every surface incl. sunken and brand-subtle), `--text-disabled` (disabled controls and decorative marks only — never labels, headings or placeholders) |
+| Sticker fills | `--sun` (`--sun-hover`), `--mint`, `--sky`, `--rose`, with `--on-fill` text; `--tomato` for stamps, kickers, count badges |
 | Brand | `--brand`, `--brand-hover`, `--brand-text` (brand-colored text), `--brand-subtle` (tinted bg), `--brand-border`, plus `--brand-50…800` |
 | Status | `--success/-text/-subtle/-border`, same for `warning`, `danger`, `info`. `--success`/`--danger` are icon and stroke colors |
-| Solid fills | White text goes only on `--brand` (button-safe in both themes; `--brand-hover` darkens), `--success-solid(-hover)` and `--danger-solid(-hover)` — buttons, count badges, answer numbers |
+| Solid fills | White text goes only on `--brand` (`--brand-hover` darkens), `--success-solid(-hover)`, `--danger-solid(-hover)` and `--tomato` count badges |
 | Game accents | `--streak(-subtle)`, `--gem(-subtle)`, `--xp(-subtle)` |
-| Radius | `--r-xs 4` `--r-sm 6` `--r-md 8` `--r-lg 12` `--r-xl 16` `--r-full` |
-| Elevation | `--shadow-xs` (cards), `--shadow-sm`, `--shadow-md` (hover), `--shadow-lg` (toasts), `--shadow-xl` (modals), `--ring` (focus) |
+| Radius | `--r-xs 6` `--r-sm 8` `--r-md 12` `--r-lg 16` `--r-xl 20` `--r-full` |
+| Elevation | Hard ink shadows: `--shadow-xs` 2px (pills, small stickers), `--shadow-sm` 3px (cards, primary buttons, choices), `--shadow-md` 4px (hover), `--shadow-lg` 5px (toasts), `--shadow-xl` 7px (modals); `--ring` (focus) |
 | Type | `--font-sans` (Inter), `--font-mono` (JetBrains Mono); sizes `--fs-xs 12` `sm 13` `md 14` `base 15` `lg 17` `xl 20` `2xl 24` `3xl 30` `4xl 38` `5xl 52` |
-| Motion | `--ease`, `--dur-fast 120ms`, `--dur 180ms`, `--dur-slow 320ms` |
-| Layout | `--content-max 1120px`, `--prose-max 720px`, `--topbar-h 56px`, `--tabbar-h 60px`, `--actionbar-h` (set at runtime by `SessionShell`) |
+| Motion | `--ease`, `--spring` (overshoot, for pops), `--dur-fast 120ms`, `--dur 180ms`, `--dur-slow 320ms` |
+| Layout | `--content-max 1120px`, `--prose-max 720px`, `--topbar-h 56px`, `--tabbar-h 64px`, `--actionbar-h` (set at runtime by `SessionShell`) |
+
+Code surfaces follow the theme: a sheet of paper with ink text in the light theme, a dark sheet in the dark
+theme. Every color on a code surface comes from a `--code-*` token.
 
 Type helpers: `.display`, `.h1`, `.h2`, `.h3`, `.eyebrow`, `.lead`, `.text-secondary`, `.text-tertiary`,
 `.text-xs/sm/md/lg`, `.fw-500/600`, `.mono`, `.tabular`, `.truncate`.
@@ -65,21 +90,21 @@ Layout helpers: `.row` (+`.wrap .between .start`), `.stack`, `.stack-xs/sm/lg/xl
 | Stats | `<StatCard icon label value meta>`; `.stat`, `.stat-label`, `.stat-value`, `.stat-meta` |
 | Progress | `<ProgressBar value color linear>` (`linear` for countdowns that tick every ~100ms), `<Ring value size track instant>` (`instant` skips easing for fast timers), `<Mastery n>` (signal-strength meter, exported as `Crowns` too) |
 | Forms | `.input`, `.input-group` (leading icon), `.label`, `.help`, `.seg` segmented control, `<Toggle>` switch |
-| Lists | `.list` + `.list-row` (`.title`, `.meta`, `.chevron`), `.status-dot(.learned/.due)` |
-| Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon) |
-| Key insight | `.insight-card` with `.insight-label` and `.mnemonic` |
-| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks are always dark. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`). Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
+| Lists | `.list` + `.list-row` (`.title`, `.meta`, `.chevron`): one sticker card with hairline rows (a pressable row tints, it does not move), `.status-dot(.learned/.due)` (an ink-outlined dot: `--mint` when learned, `--sun` when due, ink mark) |
+| Callouts | `.callout` + `.callout-info/-warning/-brand/-success/-danger` (first child: a 16px Lucide icon). One rule: a callout is a note, not a sticker. Tinted paper (`--*-subtle`; plain = `--surface-sunken`), a 1.5px outline in its status color (`--*-border`, the same as badges), never a shadow, never an ink outline. Use the same rule for a page's own note boxes |
+| Key insight | `.insight-card` with `.insight-label` and `.mnemonic`: a sticker (ink outline, `--shadow-sm`) with a `--sun` tab down its left edge and a `--tomato` label |
+| Code | `<CodeView>`, `<HighlightedCode>`; `.code` blocks follow the theme (paper in light, a dark sheet in dark) inside a 2px ink outline. Colors on code surfaces use `--code-*` tokens (`--code-key`, `--code-success-*`, `--code-danger-*`, `--code-gutter`) or tints mixed from `--sun` (the highlighter: the lines in question, gaps, placed lines) and `--brand-400` (a note in blue pen: cue comments, the open slot's tray), which read on both sheets; nothing may assume the sheet is dark. A filled sticker on the sheet (`--sun`, `--sky`, `--mint`, `--rose`) carries ink text with syntax colors off. The code window is a paper sticker (ink outline, `--shadow-sm`) with a file tab header on `--sky` (ink text, an ink line under it, in both themes); its footer and docked panes (output, key bar, bank, hint) are sunken strips under hairlines. Framed code (templates, solutions, editors, lesson examples, quiz snippets, the landing mock) uses `<CodeWindow filename lang meta right footer className>` from `interact.tsx` — one frame everywhere, never a page-local copy: file tab (`solution.py`, `${unit}.py`, `example.py`…), `meta` such as "12 lines", language label **"Python"** (never "Python 3"); `right` replaces meta + language (e.g. a step counter); `footer` is a one-line status bar; extra panes (e.g. program output) go in `children` below the code. `className` is for placement only (grid area, margins, elevation), never a different frame. The window is a `code-window` size container: below 340px it drops `meta`, then the file name truncates — the head never wraps. Keyboard focus on scrollable code draws the ring on the window, not the clipped `<pre>` |
 | Typing code | The typing kit in `components/CodeTyper.tsx` (styles in `styles/typer.css`, grading in `lib/codegrade.ts`) whenever the learner writes code, from one line to a whole solution: `<CodeTyper>` (editor, then diff, in one typing window) or the pieces `<CodeEditor>`, `<CodeDiff>`, `<TyperFooter>`, `<TyperWindow>`. Never hand-build a code textarea or a diff. See **Typing kit** below |
 | Picking code | The pick kit whenever the learner chooses code rather than typing it (new code in "Pick first, then type", or "Always pick"): `<PickGapsWindow>` + `usePickGaps` (Pick the gaps, Pick the key line), `<ArrangeWindow>` + `useArrange` (Arrange a part), `<CodeOptions>` (one line from options), `<InputSwitch>` ("Type instead" / "Pick instead"); distractors from `lib/choices.ts`. Never `<Choices>` for code. See **Pick first, then type** |
 | Running code | Whenever a whole solution is run against a problem's tests (Code from memory's From scratch, Solve it yourself, the mock interview): `useTestRun(problem)` (`{ phase, result, progress, busy, loadingPython, run(code, mode), reset }`; `run` resolves to null when Python cannot be used, and the caller falls back to comparing code), `runLabel(run, idle)` for the Check button ("Starting Python…", "Running 3/12…"), `<TestReport result max>` (the test report), `<PyErrorLine error>` and `<PythonLoading show>` from `components/RunResults.tsx`; `<WhyWrong p code>` (`components/WhyWrong.tsx`) for "Why is it wrong? Run it" after a miss. Styles in `styles/run.css`. Never hand-build a result list or call the worker directly. See **Running code** below |
 | Traces | `<TraceView p trace onStep>` + `useTrace(p)` (`components/TraceView.tsx`, `lib/traces.ts`, `styles/trace.css`): a solution stepped through on one input. See **Trace view** below |
 | Sessions | `<SessionShell progress title right onClose progressColor progressLinear>` (`progress={null}` hides the bar; renders `<header class="session-head">` + `<main class="session-body">` and publishes the mounted `.actionbar`'s height as `--actionbar-h`), `<ActionBar>` (Enter runs the primary action, except while a modal dialog is open; re-arms on every state/label change, and on every `step` change for pages that keep one bar across slides or code parts, ignoring pointer input for 350ms, so a double-click cannot skip feedback or a step; Ctrl/⌘ + Enter runs the primary action from anywhere but a link, even from a button, while plain Enter on a button or a `<summary>` is that control's own; when a check from the keyboard removes the focused input or editor, focus moves to the primary button; `primaryIcon` replaces the trailing arrow with a leading icon and `primaryClassName` adds a hook such as `.blitz-start`, so pages don't hand-build the bar; `secondary` sits left of Check, `checkedSecondary` left of Continue once checked: on every typing screen a miss puts its second step there with the kit's `<CheckedAction>`, "Fix and check again" (Code from memory, template drill) or "Show answer" (beginner slides), never a bar above the code or a button in the feedback text), `<Choices label>` (radiogroup name, default "Answer options"), `<OrderSteps>`, `<ProblemPrompt>`. Header, body and action bar share one 728px content column. A page's own fixed bar must use the `.actionbar` class so it is measured |
-| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section) |
+| Page chrome | `<PageHeader title sub right back eyebrow>`, `<SectionHeader title sub right id>`, `<EmptyState icon title actions level pip>` (title is an `h2.empty-title` by default; pass `level={3}` inside an h2 section; `pip="happy|cheer|sad|think"` shows Pip in that mood instead of the icon tile, only where no other Pip is on screen) |
 | End screens | `<Completion icon tone title subtitle stats>{actions}</Completion>` (stat values share a bottom line even when a label wraps on a narrow phone) |
 | Plan | `<PlanCard p>` (`components/PlanCard.tsx`, numbers from `buildPlan` in `lib/plan.ts`; styles `.home-plan…` in `styles/pages/home.css`): the dashboard's "Your plan" card. See the Dashboard blueprint |
-| Crash screen | `<Crash>` (`components/Crash.tsx`, styles `.crash…` in `styles/shell.css`): the router's `errorElement`, shown instead of a blank page when a screen throws while rendering. A warning `IconTile`, the `h1` "This screen ran into a problem", one sentence ("Your progress is saved. Reloading usually fixes it…"), the error message in a `pre.crash-detail`, and three actions: **Reload** (primary), **Dashboard** (a full load of `#/`, so nothing of the broken screen is kept) and **Download a backup** (quiet; the same file as Profile's export) |
-| Misc | `<Kbd>`, `.tabs`, `details.disclosure` (the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener; `.modal-actions` wrap, and stack full width with the primary on top below 360px), toasts via `toast({ icon: 'flame', title, body, tone })` (phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
-| App chrome | Desktop top bar: streak and gem `.pill-stat`s + avatar; the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
+| Crash screen | `<Crash>` (`components/Crash.tsx`, styles `.crash…` in `styles/shell.css`): the router's `errorElement`, shown instead of a blank page when a screen throws while rendering. Pip looking sad (`<Pip mood="sad">`), the `h1` "This screen ran into a problem", one sentence ("Your progress is saved. Reloading usually fixes it…"), the error message in a `pre.crash-detail`, and three actions: **Reload** (primary), **Dashboard** (a full load of `#/`, so nothing of the broken screen is kept) and **Download a backup** (quiet; the same file as Profile's export) |
+| Misc | `<Kbd>` (a small keycap sticker: 1.5px ink outline, a 1.5px ink edge under it), `.tabs` (the current tab is a `--sun` pill with an ink outline, the same rule as the tab bar, the sidebar and an "On this page" rail; never an underline), `<Mastery>` (bars: `--success` on, `--border` off), `details.disclosure` (a sticker; the card clips, so the summary draws its focus ring inside: offset −2px, corners follow the card), `<Modal>` (ink outline, `--shadow-xl`, over a plain dimmed backdrop: ink at 55%, no blur; traps Tab, restores focus on close to the control that opened it — recorded at first render, so a child's `autoFocus` doesn't count as the opener; `.modal-actions` wrap, and stack full width with the primary on top below 360px), toasts via `toast({ icon: 'flame', title, body, tone })` (ink outline, `--shadow-lg`; the icon sits in a small sticker tile filled by tone: `streak`/`warn` `--sun`, `success` `--mint`, `gem`/`info` `--sky`; phones and tablets show only the newest, with a +N count, docked below the top bar / session header so they never cover Close). Command palette (⌘K / Ctrl K): a modal combobox (same sticker and backdrop as `<Modal>`; the highlighted row is a selection, so it is a `--sky` fill with ink text and an ink outline; Escape from anywhere, Tab trapped, focus restored, arrow keys move `aria-activedescendant`), one block per group; on touch screens keyboard hints hide and a Close button shows |
+| App chrome | Desktop sidebar: a paper column (`--canvas`) with an ink line on its right; the search trigger is an ink-outlined field; the current page is a `--sun` sticker pill with ink text (`.nav-link.active`), as on the phone tab bar; the daily-goal card at the bottom is a sticker. Desktop top bar: paper, with an ink line under it once the page has scrolled; streak and gem `.pill-stat`s + avatar (a `--sky` sticker with ink initials); the sidebar card owns the daily goal (no duplicate rings or streak pills). Status pills are `role="img"` with an `aria-label` |
 
 ## Typing kit (`components/CodeTyper.tsx`, `lib/codegrade.ts`)
 
@@ -149,20 +174,26 @@ footer already says how many lines to write).
 
 **Touch key bar** — on coarse pointers only (phones, tablets: no Tab key), `CodeEditor` shows a row of keycaps
 under the code: Outdent and Indent (act on the caret's line, or every selected line) and `: ( ) [ ] = _`. Keys are
-44px tall and share the width like a keyboard row (all nine fit from 320px up), never take focus from the textarea
-(the phone keyboard stays open), and have accessible names. `keyBar={false}` hides it.
+small stickers on a sunken tray (paper fill, ink outline, 2px hard shadow; a press pushes the key into its shadow
+and flashes it `--sun`), 44px tall, and share the width like a keyboard row (all nine fit from 320px up), never
+take focus from the textarea (the phone keyboard stays open), and have accessible names. `keyBar={false}` hides it.
 
 **Diff** — `<CodeDiff grade indent given start firstLine>` renders the rows in the gutter style of an editor:
-check (correct), minus (your line), plus (expected; no line number), and a sideways arrow on an amber row for wrong
-indentation, with the expected line right below. Typed lines re-indent from `grade.baseGot` and expected lines from
+check (correct), minus (your line), plus (expected; no line number), and a sideways arrow for wrong
+indentation, with the expected line right below. Each mark is a small round sticker in the gutter (`.typer-sign`:
+`--mint` for check and plus, `--rose` for minus, `--sun` for the indentation arrow, ink outline, ink icon) on a
+row tinted to match (`--code-success-*`, `--code-danger-bg`, a `--sun` tint), so a row never depends on its color
+alone and reads the same on the paper sheet and the dark one. Typed lines re-indent from `grade.baseGot` and expected lines from
 `grade.baseExp` to the display `indent`, so everything lines up under the given code. An anchored grade
 (`grade.anchor`) draws typed lines from the editor's column and expected lines from their real column, so a line
 typed a level off shows a level off.
 
-**Window and status bar** — `<TyperWindow status>` is a `CodeWindow` with the typing frame (focus ring while
-typing, green or red border once checked). `<TyperFooter grade note keys>` is its footer: "Python · {note}" and the
+**Window and status bar** — `<TyperWindow status>` is a `CodeWindow` with the typing frame: while typing, the
+window's outline and hard shadow take the focus color (`--brand-500`; never a soft ring, and the borderless
+textarea draws no outline of its own); once checked, the file tab header turns `--mint` or `--rose`.
+`<TyperFooter grade note keys>` is its footer: "Python · {note}" and the
 desktop keyboard hint while typing, then "Compared line by line" and the summary ("4 of 6 lines correct · 1 extra
-· 1 wrong indent") in a polite live region. Keep the footer mounted while typing so the result is announced.
+· 1 wrong indent", with a mint or rose dot) in a polite live region. Keep the footer mounted while typing so the result is announced.
 `<CodeTyper>` combines all of it: the editor while `grade` is null, the diff once it is set.
 
 **Action bar** — the first check sets the score; later checks only show the result. After a miss, pass
@@ -211,6 +242,8 @@ solution or a plain template into `{ lines, keyLines, header }` (pass `header` a
 **Editor** — `<CodeGaps lines gaps values onChange revealed onSubmit autoFocus disabled locked hints start keyBar
 label ref>`: the visible lines read-only (highlighted, numbered, dimmed like `given`), each gap a single-line
 `input.gaps-input` that starts at its line's indentation (the learner never types indentation) and fills the row.
+An empty gap is a dashed box on `--sun`-tinted paper (dashes in `--code-text`, so they read on the dark sheet
+too); a filled one is a small `--sun` sticker with ink text; the one being typed is plain paper in the focus color.
 Gap rows keep the 22px rhythm on desktop and grow to 44px on touch screens, with the text at the code's size (no
 iOS zoom: see **Font size and iOS**). The
 placeholder is the line's own trailing comment (`# stop when the pointers meet`); `hints` takes your own per gap or
@@ -554,7 +587,9 @@ alone), so picking never climbs the typed ladder.
   `focus(gap?)`, `focusOptions()`, which scrolls the open panel into view, nearest, clear of the header and the
   action bar through the row's scroll-margin; `before` = rows above `lines[0]` inside the code, `top` = above the
   code, e.g. a fold row). It looks exactly like `GapsWindow`: each gap is a slot (`button.pick-slot`, "Line N, pick
-  a line", `aria-expanded`) at its line's indentation, as wide as the visible window; its hint is the line's
+  a line", `aria-expanded`) at its line's indentation, as wide as the visible window (dashed on `--sun`-tinted
+  paper while empty, a `--sun` sticker with ink text once picked, `--sky` while its options are open: on a filled
+  sticker code is ink, syntax colors are for the sheet); its hint is the line's
   trailing comment, else "Pick a line"; a pick wider than the slot ends in an ellipsis, and a hint that does not
   fit (measured as Fill the gaps measures its placeholders) shows in full under the slot as a caption
   (`.pick-row.has-caption`, `.pick-slot-caption`), the slot then showing none. Each slot is described
@@ -570,11 +605,14 @@ alone), so picking never climbs the typed ladder.
   keys leave focus where it is.
 - `<CodeOptions options selected onPick label prompt groupLabel revealed answer keys inline onEscape id
   describedBy ref>` (`describedBy`: the id that describes the radiogroup, e.g. a slot's hint and the code it
-  follows): code options on the code surface (always dark), syntax-highlighted, trimmed (the slot or window fixes the
+  follows): code options, syntax-highlighted, trimmed (the slot or window fixes the
   indentation), wrapping inside the panel on a phone, numbered: keys 1–N pick, Enter or Space picks the focused
   option (never Check), Up/Down move, Escape → `onEscape`. A `radiogroup` of `button.choice.pick-option`
-  (`role="radio"`); "Press 1–4" on desktop (1–N for N options). Standalone (not `inline`) it is a rounded panel
-  to put under any code window; with `revealed` + `answer` the right option is marked correct and a wrong pick wrong.
+  (`role="radio"`): stickers you press, in the language of `.choice` (paper, ink outline, 2px hard shadow; the
+  chosen one is pressed and `--sky`, with its number on ink); "Press 1–4" on desktop (1–N for N options).
+  Standalone (not `inline`) it is a labeled group of stickers on the page, to put under any code window; inline
+  it is a tray under the open slot, in the slot's tint; with `revealed` + `answer` the right option is `--mint`
+  with a check and a wrong pick `--rose` with a cross.
   With `block`, the options are whole snippets written at their real column in the file (one line or several,
   "Pick the right code"): shown line by line with an indent guide per level (a long line wraps under its own
   indentation), read to screen readers as "Line 2, indented 4 spaces: …", and the answer is matched line by line
@@ -587,9 +625,10 @@ alone), so picking never climbs the typed ladder.
   revealed result indent before firstLine label top after status filename meta right note keys ref>` (`indent` = the
   part's base column in the file, `before` = the given rows above it (lines before, cue, signature), `ref`:
   `focus(placed?)`). "Your code" is the code pane: placed lines at their real indentation with line numbers
-  (`.parsons-slot`; each `button.arrange-line`, "Remove line N: …", sends it back), then a dashed "Add the next
-  line" row. The bank is a tray under the code (`.parsons-bank`, "Lines to place" with a count): each block a code
-  button (`.parsons-item.arrange-item`, "Add line: …") at its relative indentation with indent guides, wrapping
+  (`.parsons-slot`; each `button.arrange-line`, "Remove line N: …", sends it back; placed lines are highlighted
+  in `--sun`), then a dashed "Add the next
+  line" row. The bank is a sunken tray under the code (`.parsons-bank`, "Lines to place" with a count): each block a
+  sticker you press (`.parsons-item.arrange-item`, "Add line: …") at its relative indentation with indent guides, wrapping
   under its indentation on a phone; an indented block or placed line is described by its indentation ("Indented 4
   spaces", `aria-describedby`). Tap, Enter or Space adds a block at the end (Enter never checks there; Ctrl/⌘ +
   Enter or Check does: the ActionBar runs its primary action on Ctrl/⌘ + Enter from any button, a bank block, a
@@ -669,8 +708,10 @@ long and was stopped: look for a loop that never ends, or a much slower approach
 a watchdog in `lib/python.ts`: a request with no sign of life for 12 seconds ends the worker, and the next request
 starts a fresh one.
 
-**The test report** (`<TestReport result max>`, `role="status"`) — one box under the code, green or red like the
-typing window's frame:
+**The test report** (`<TestReport result max>`, `role="status"`) — one sticker card under the code whose top strip
+is the verdict, in color, icon and words: `--mint` with a check ("All 12 tests passed") or `--rose` with a cross
+("3 of 12 tests passed", "Your code did not run"), over an ink line, like the typing window's file tab. Failing
+tests are sunken wells inside it; an error's line number is a small rose pill:
 - All passed: "All 12 tests passed". When the code did 12 times the work of the taught solution or more on a test
   (counted in executed lines), a note follows: "Correct, but it did about 40× the work of the taught solution on
   the largest test. An interviewer will ask for the faster approach."
@@ -714,13 +755,14 @@ the first example by hand instead…").
 - **Input** on top, in the code font.
 - **Controls:** Back, a range slider ("Step", announced as "Step 4 of 31") and **Next step** (primary; **Replay**
   once the last step is reached). Left and Right arrow keys step from anywhere on the screen except a text field.
-- **Code** on the left: the whole solution with line numbers and the line about to run marked (`.trace-line.is-on`,
+- **Code** on the left: the whole solution with line numbers on a code sheet (paper or the dark sheet, ink
+  outline, hard shadow) and the line about to run marked (`.trace-line.is-on`: the `--sun` highlighter and
   an arrow in the gutter, `aria-current="step"`). The pane scrolls itself to keep that line in view; the page
   never scrolls.
 - **State** on the right, in a polite live region: "Step 4 of 31 · line 12 runs next"; for recursion, the call
   stack ("3 calls deep: dfs → dfs → dfs") and, on the line that ends a call, "This call ends here and hands back
   2"; the variables of the running call as a two-column table, the ones that are new or changed on this step
-  standing out (`.is-new`); the explanation of the part the line belongs to; and on the last step **Returns** with
+  standing out (`.is-new`: highlighted in `--sun`, the value in bold); the panel is a sticker card beside the code; the explanation of the part the line belongs to; and on the last step **Returns** with
   the result ("It carries on the same way and returns" when the run was longer than the trace).
 
 Stored steps hold only what changed since the call's last step; `expandTrace` replays them into full frames.
@@ -733,7 +775,7 @@ phones): the pattern intro (a "Clue words" slide and one generated question), th
 (searchable), a result of the pattern flowchart (folded), and the drill.
 
 - **The drill** (`/clues`, `/clues?cat=<pattern>`) is a focus session of 12 cards on the drill kit (`.drill`,
-  `Choices`, `ActionBar`). Three kinds of card: *wording to pattern* (one clue's wording as a `.clue-phrase` card,
+  `Choices`, `ActionBar`). Three kinds of card: *wording to pattern* (one clue's wording as a `.clue-phrase` speech bubble: flat, ink outline, the clue word under the `--sun` highlighter,
   four patterns to choose from), a problem's clue phrases without its statement (the same, with two to four
   phrases), and *pattern to wording* (the pattern named in the title, four wordings as options, one per pattern).
   Wrong patterns come from the ones easy to confuse (`CONFUSABLE`) and from the patterns the learner has started;
@@ -744,7 +786,7 @@ phones): the pattern intro (a "Clue words" slide and one generated question), th
   guessing. Reward toasts are
   held until the summary, which lists each pattern's score for the round and whether its clue words are known
   (`CLUES_KNOWN` = four right in a row, kept per pattern in `progress.clues`).
-- **The memorize steps** (`MemoSteps`) are an ordered list: a green check for a step that is done, a filled brand
+- **The memorize steps** (`MemoSteps`) are an ordered list: a `--mint` check for a step that is done, a `--sun`
   number and a primary button for the first step that is not, plain numbers for the rest, and a quiet "Again" on
   done steps. "Memorize this pattern" sits on the unit page beside the clue words; "Memorize this solution" is a
   card on the problem page. Every step reads state the app already keeps (`patternSteps`, `problemSteps`): the
@@ -759,13 +801,14 @@ nothing and earns nothing.
 - **The walk** is one prose-width column. The answers so far are a `.flow-trail` card (number, the question in
   small type, the answer, and a quiet **Change** that goes back to that question). Under it the current question
   (`.flow-question`: "Question N", the question as the `h2`, a line of help, the options) or the result. An
-  option is a full-width button with the wording in medium weight, a hint under it, and at the end a chevron
+  option is a full-width button (a sticker: it lifts under the pointer and a press pushes it into its shadow)
+  with the wording in medium weight, a hint under it, and at the end a chevron
   (it leads to another question) or the pattern's icon tile (it ends there). No Check button: choosing an option
   answers.
 - **The route lives in the address** (`?path=plain.none.piece.window`, option ids from the start), so the browser's
   Back undoes one answer and a result can be linked to. After an answer the next heading takes the focus (it is
   not outlined: it is not a control) and the card scrolls into view only when it is off screen.
-- **The result** (`.flow-result`, topped with the pattern's color): "Try this pattern first", the pattern's name
+- **The result** (`.flow-result`, topped with a flat band of the pattern's color inside the ink outline): "Try this pattern first", the pattern's name
   (`h2`) and tagline; "Reach for" (the result's own `use`) and "Also fits" (pattern pills that open the guide);
   **Open in the pattern guide** (primary), **Drill its clue words**, **Start over** (quiet); "Problems that end
   here" as chips with the learned / due dot (a problem taught in another unit says so on a second line); and the
@@ -794,20 +837,33 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
 
 ## Page blueprints
 
-- **Landing (`/welcome`)** — sticky translucent header (logo, anchor links, "Open app"/"Get started"); hero with
-  eyebrow badge, `.display` headline, lead, two CTAs, and a product preview built from real UI pieces (a coding
+- **Landing (`/welcome`)** — sticky paper header (logo, anchor links, "Open app"/"Get started"; an ink line
+  under it once scrolled); the hero is one big `--sky` sticker (`.lp-hero-card`, `--shadow-xl`): the page's one
+  Pip, large (above the headline on a phone, beside the copy from 900px), with three small stickers from the app
+  around it (the XP of a learned problem, the learned stamp, a streak; decorative), the eyebrow badge, the
+  `.display` headline whose closing phrase has a `--sun` marker line under it (`.lp-hero-title-soft`,
+  `.lp-h2-soft`), the lead, one `--sun` action and a white second button (`.btn-inverse` on a fill), three facts.
+  On a fill the text is ink in both themes (`--lp-paper`, `--lp-on-fill-soft`). The rest is paper: every other
+  section a darker sheet between two ink rules (`.lp-section-tint`), kickers in `--tomato`. Under the hero a
+  product preview built from real UI pieces (a coding
   review card, Fill the gaps with a gap being typed; a code snippet with key lines; a streak/goal widget) — not an
-  image; a stats strip whose numbers come from the content ("Lines of Python you learn to write" uses
-  `lessonParts`, the guided lesson's own part split); "How it works" in 3 steps; feature grid; the 18
-  patterns as a curriculum grid; "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
-  (`details.disclosure`); final CTA band; footer with disclaimer. No fake social proof. The copy describes the
+  image, and in the app's current look (ink outlines, a `--sun` Check); a stats strip, one calm sticker card
+  whose numbers come from the content ("Lines of Python you learn to write" uses
+  `lessonParts`, the guided lesson's own part split); "How it works" in 3 steps (`--sun` numbers on a dashed ink
+  rail); the feature grid (sticker cards: a band of `--sky`, `--sun` or `--mint` with a miniature of the real UI,
+  the text under it); the beginner track as a `--mint` sticker, then the 18
+  patterns as a curriculum grid (one sticker list on a phone, a pressable sticker each from 640px); "Grounded in learning science" with 3–4 principles linking to `/science`; FAQ
+  (`details.disclosure`); the final CTA, a `--sky` sticker like the hero; footer with disclaimer. No fake social proof. The copy describes the
   default "Pick first, then type": new code is picked from choices, typed once known (the hero lead, How it
   works, the features, and the FAQ "Do I have to type all the code?"). The features include "Write it, run it"
   (the code is run against tests in the browser) and "Against the clock" (the mock interview, with Pattern Blitz
   as its quick version); the FAQ answers "Does it run my code?" (yes, in the browser, nothing is sent anywhere,
   about 7 MB once) and gives "How long does it take?" from the content (the count of Easy and Medium problems at
   two a day).
-- **Onboarding (`/onboarding`)** — centered, focused, step indicator; welcome + name → experience (radio cards with
+- **Onboarding (`/onboarding`)** — centered, focused, one sticker card with Pip standing on its top edge (in the
+  header's row, so Pip costs no height; a new mood each step: happy, think, happy, cheer); the step indicator is
+  four pills (`--mint` done, `--sun` current, paper to come); radio cards are stickers and the picked one is
+  pressed and filled (`--sky`, ink text, as an answer choice); welcome + name → experience (radio cards with
   icons) → daily goal (radio cards; each says what a day at that goal is, from `DAILY_GOALS`: "About 20 min:
   reviews and one new problem"; under them an optional date field, "Do you have an interview date?", tomorrow at
   the earliest) → plan summary (starting point (MapPin icon), daily goal, "Pace" (CalendarClock icon: the new
@@ -815,9 +871,18 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   problems a day"; it says so when the date asks for more than the chosen goal has room for, or when not every
   core problem fits), daily review, "Code practice" with the setting's label and line from `CODE_PRACTICE` and its
   icon from `CODE_PRACTICE_ICON`, streak) → **"Start learning"**.
-- **Dashboard (`/`)** — greeting + date; a "Continue learning" primary card (a beginner lesson shows its minutes
-  and how many code exercises it has, picked ones included; a pattern intro reads "Read it, then fill in the
-  template"; a problem whose code will be picked adds "You build the code from choices", ListChecks icon); a
+- **Dashboard (`/`)** — greeting + date; the **"Up next" hero** (`.home-up` in `home.css`, `ContinueCard` in
+  `Home.tsx`): a `--sky` sticker with Pip bobbing on the left (cheering once everything is learned), the small
+  label "Up next" (the section's `h2`; "Keep it sharp" when the path is complete) with the position on its right
+  ("Unit 1 of 18", "Lesson 3 of 14"), the title large and heavy (`h3`), a line saying what it is ("Next problem ·
+  Arrays & Hashing", "New pattern · …", "Lesson · Foundations"), the facts as white pills with an ink outline
+  (difficulty, LeetCode number, technique; a beginner lesson's minutes and how many code exercises it has, picked
+  ones included), the description clamped to two lines, one line on how the step works (a pattern intro reads
+  "Read it, then fill in the template"; a problem whose code will be picked adds "You build the code from
+  choices", ListChecks icon), the unit's progress bar on white paper, and one full-width button with a play icon
+  ("Start problem", "Start lesson", "Start pattern intro", "Open daily review"). Everything on the hero is ink on
+  a sticker fill in both themes (`--on-fill`, a local `--paper` for the pills, the track and the secondary
+  button), so it never uses the theme's text or surface tokens; a
   "Today" panel (goal ring, streak, reviews due); **"Your plan"** (`<PlanCard>`, shown once the learner has
   earned XP or set an interview date): in the head, "Interview in 40 days · Mon 14 Dec", or a quiet "Set an
   interview date" link to Profile's Plan group; three tiles, "Reviews due" ("Do these first" / "All caught up"),
@@ -828,7 +893,7 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   interviews, or how many core problems fit; "Do the 14 reviews first, then today's new problems."; "31 reviews
   are waiting, so nothing new today."), and a warning line with a link when the daily goal is too small for the
   pace the date needs. With more than 12 reviews due (`REVIEWS_FIRST`), "Start review" becomes the primary button
-  and "Continue learning" the secondary one. The Daily review card says what a session is, in the learner's
+  and the hero's button the secondary one (white paper on the sky). The Daily review card says what a session is, in the learner's
   Code practice setting ("Spot each pattern, then recall its code: pick it while it's new, type it once you know
   it."; Always type: "…then write the code from memory…"; Always pick: "…then pick its code from choices…"). Its
   Code from memory row (one learned problem) says "Write Two Sum from memory" (Keyboard icon), or "Practice Two
@@ -838,12 +903,29 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   level); activity heatmap; roadmap progress by unit; quick actions ("Key lines" once 3 problems are learned,
   else "Pattern Blitz"; "Mock interview" once a problem is learned, with "3 of 5 passed" once one was taken). With
   nothing learned yet, the review card's button is "Continue learning" (the next lesson), not a game about patterns
-  the learner has not met. "Continue learning" follows `nextStep` (`lib/path.ts`): the beginner lessons only for a
+  the learner has not met. The hero follows `nextStep` (`lib/path.ts`): the beginner lessons only for a
   learner who said they are new to coding, then each unit's pattern intro and its Easy and Medium problems, then
   the Hard ones in a second pass ("Path order" in the profile switches to unit by unit).
-- **Learning path / Unit** — structured curriculum (vertical timeline/stepper), units with icon tiles, progress
-  and status; problem rows with status, mastery and difficulty. Unit page: header, progress, CTAs, pattern summary,
-  template, problems list. "Up next" is the unit's next problem in the path's order (`unitNext`): in the default
+- **Learning path / Unit** — structured curriculum, units with icon tiles, progress and status. The overview
+  sticker has two halves: overall progress on paper and, under (beside, on wide screens) an ink line, "Recommended
+  next" on `--sky` with Pip, the title, the unit, the facts as white pills and the sun button. Each unit card
+  (`UnitStep` in `Learn.tsx`) shows its **stamp card** (`.learn-stamps`, `Stamp`): one round 40px stamp per
+  lesson, five a row on a phone and as many as fit on wide screens, the pattern intro first (a book), then the
+  problems by their number in the unit. Not started: a dashed circle with the number. Learned: a `--tomato`
+  double ring with a check, tilted a few degrees, each one differently (`rotate`, so presses and the landing can
+  animate `transform`); one learned in the last five minutes lands once (`.is-fresh`). Learned and due for
+  review: the same stamp with a review badge on its corner (RotateCcw in an ink-outlined circle). Up next (the
+  path's `nextStep` only, so one on the page): a `--sun` circle with an ink outline, a hard shadow, a play icon
+  and a slow pulse. Every stamp is a link whose cell is the hit area (44px tall) and whose name says the title,
+  the difficulty or minutes, and the state ("Group Anagrams, Medium, up next"). The lessons by name, with mastery
+  and difficulty, stay one click away under "Show lessons" (closed at first; a deep link such as
+  `/learn#trees` opens its unit); their status dots, and the ones on the Unit page and in the Problem library,
+  use the same language small (dashed circle, tomato ring with a check, review badge, sun dot). A unit the path
+  recommends for later is the same sticker with a soft outline and shadow and paper closer to the page: quieter,
+  never disabled. From 640px a rail runs down the left (mint check for a complete unit, the sun marker for the
+  current one, a lock for a later one); phones leave it out so five stamps fit a row. Unit page: a header in two
+  parts (the unit's identity and CTAs on a flat tint of its color, then the stats on paper under an ink line),
+  pattern summary, template (a long one is cut along a dashed line, with "Show all" under it), problems list. "Up next" is the unit's next problem in the path's order (`unitNext`): in the default
   order a Hard problem that is not next carries a quiet badge, "After the core" while the unit still has Easy or
   Medium problems to learn, then "Second pass"; it can still be opened.
 - **Lessons & drills** — focus mode. Step label (eyebrow) → question title → content cards → action bar. Desktop may
@@ -863,10 +945,10 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   idea: 55 of the 113; a later typed slide in the same lesson or the next types the idea again, and a lesson's last
   "Your turn" is typed) is picked first in "Pick first, then type" and "Always pick", typed in "Always type". The
   other 58 are typed in every setting. Same eyebrow ("Your
-  turn · 2 of 8", ListChecks icon), title and task; the typing window holds the starter as `given` and a dashed slot
+  turn · 2 of 8", ListChecks icon), title and task; the typing window holds the starter as `given` and a dashed slot (on `--sun`-tinted paper)
   at the answer's column ("Pick the 2 lines below"; a tap brings the options into view), with the expected output
   and the status bar ("2 lines to pick", "Ready to check"); under it `<CodeOptions block>` "Pick the right code":
-  the answer and the wrong options, shuffled once per visit. A pick fills the slot in place (tinted, numbered); a
+  the answer and the wrong options, shuffled once per visit. A pick fills the slot in place (highlighted in `--sun`, numbered); a
   pick made on an option moves focus to Check, a number key leaves it. Check: the window shows the pick against the
   answer as the kit's diff (graded at real columns, `anchor: 0`, so a body one level off reads as wrong
   indentation), the legend under it, the options mark the answer and a wrong pick, and the bar gives the
@@ -893,13 +975,13 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   the class / def header (always given;
   so are class lines and class-level `def` signatures that open or close a part, as in design problems, while
   nested helpers such as `def dfs(r, c):` are typed):
-  **Look** (the part's explanation in a card, its code highlighted under the earlier parts, key lines with a gold
+  **Look** (the part's explanation in a card, its code highlighted in `--sun` under the earlier parts, key lines with a sun
   dot in the gutter, later parts hidden; primary "Write it" with Enter, "Back" to the part before), then **Write**
   (the part is covered: the earlier code stays as `given`, the editor starts at the part's indentation (not capped:
   the lines above a deep part are wider still, and the pane scrolls), and grading is anchored there; quiet "Peek" goes back to Look and the part no longer counts as written
   right), then **Check** (the diff; a miss puts "Fix and check again" left of "Next part", which is always there).
-  The first check of a part decides the tally ("Right on the first try · 2 of 3 parts", and a colored segment per
-  part). Look and Write share one typing window, so covering the code swaps rows in place. Wide screens: code left,
+  The first check of a part decides the tally ("Right on the first try · 2 of 3 parts", and a step pill per
+  part: `--sun` for the current one, `--mint` right on the first try, `--rose` missed). Look and Write share one typing window, so covering the code swaps rows in place. Wide screens: code left,
   a sticky card right (the cue while writing). Phones and tablets: the explanation is a comment row above the
   part in the file (unnumbered; the card keeps the part counter, segments, key-line note and tally, and its text
   stays for screen readers), and each move scrolls that row into view. Final check is Fill the gaps over the whole
@@ -1023,8 +1105,8 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   the last six, each with a pass or fail icon, the problem, its difficulty and the time. Empty states: "Learn a
   problem first" (Continue learning) and "Running code is turned off" (Open profile). The interview itself is the
   Solve screen with the session title "Mock interview", the kicker "Mock interview · no hints, no pattern name", a
-  clock in the header (`.solve-clock`, `role="timer"`; it and the linear progress bar turn red in the last two
-  minutes) and "End the interview" as the way out; there is no link to the lesson until it ends. The clock
+  clock in the header (`.solve-clock`, `role="timer"`: a pill sticker; in the last two minutes it turns `--rose`
+  and the linear progress bar red) and "End the interview" as the way out; there is no link to the lesson until it ends. The clock
   survives a reload. It ends in one of three completions: "Interview passed" (Trophy; "with 6:40 left on the
   clock"), "Time is up" or "Interview ended" (Hourglass; a learned problem goes back into today's review, an
   unlearned one leads to its lesson), each with "Another mock interview", the lesson and the solution in a closed
@@ -1055,7 +1137,13 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   memory, else "Gaps N%", else "Picked N%"): the Pattern guide and Unit template headings, and the pattern intro's
   completion (primary "Start the problems", secondary "Practice the template", quiet "Back to dashboard"). Pass
   `state={{ from }}` so Close and Back return to the page that opened it.
-- **Pattern Blitz (`/blitz?game=pattern|lines`)** — a lobby, then a round against the clock (Timed: 60 seconds
+- **Pattern Blitz (`/blitz?game=pattern|lines`)** — the most game-like screen. Its look: the lobby opens with a
+  `--sky` hero (Pip with the game's bolt stuck on one corner); game cards are stickers, the picked one pressed
+  and filled; the clock is a round sticker that turns `--sun` in the last ten seconds and `--rose` in the last
+  five, with an ink arc and ink numbers on both; a live multiplier is a `--sun` pill; the result strip
+  (`.blitz-feedback`) speaks the action bar's language, a full `--mint` or `--rose` fill with ink text and a
+  small Pip reacting; on the results a wrong pick is a `--rose` pill struck through and the right pattern a
+  `--mint` one. A lobby, then a round against the clock (Timed: 60 seconds
   for Spot the pattern, 90 for Key lines, since recalling a line takes longer than naming a pattern, picked or
   typed) or without one (Zen), then
   results. The lobby opens with the game choice, native radio cards (one per row, arrow
@@ -1063,7 +1151,7 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   1–4) and **Key lines** (the key line of a learned solution: recall; typed, or picked from 3 or 4 while its
   problem is new, see Picked rounds below). The last choice is remembered
   (`settings.blitzGame`); `?game=` picks one for a deep link. Key lines opens at 3 learned problems; before that its
-  card is a quiet dashed one with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
+  card is a dashed outline with a lock, "Opens once you've learned 3 problems. N to go." and a link to the next
   lesson, and the pattern game is selected. Personal best and games played below the choice are the chosen game's
   (each game keeps its own timed best: `stats.blitzBest`, `stats.blitzCodeBest`; Zen rounds set no best). Spot
   the pattern's "Questions" setting opens on "Units I've started" (units with the pattern intro done or a problem
@@ -1124,9 +1212,15 @@ failing test that raised shows what the error means in plain words (`errorHelp`)
   learner's code has passed; not shown where code cannot be run), then the lesson again for a learned problem.
   Its status card lists the proof the learner has (`.problem-detail-proof`): "Your own code passed every test"
   and the last mock interview ("Mock interview: passed in 12:40").
-- **Profile** — identity header + level progress, stats grid (eight cards, two rows of four from 600px: streaks,
-  XP, learned, mastered, practice accuracy, "Pattern Blitz best", "Key lines best" (typed lines' points only)),
-  activity heatmap, achievements (icon medallions, locked state), streak-freeze shop, settings form, data management.
+- **Profile** — identity header (a `--sky` band: a `--sun` avatar with ink initials, the name, a level pill) over
+  the level progress, the stats (eight numbers in one sticker card with hairlines between the cells, two rows of
+  four from 600px: streaks, XP, learned, mastered, practice accuracy, "Pattern Blitz best", "Key lines best"
+  (typed lines' points only)), activity (the heatmap; the last 7 days as outlined bars on an ink baseline, `--sky`
+  below the goal and `--mint` once it is met), achievements (an earned medal is a colorful sticker put on a
+  little crooked, the four fills taking turns; a locked one is a dashed outline with a lock, as an empty freeze
+  slot in the shop), streak-freeze shop, settings form (rows with hairlines in sticker cards; the "Code practice"
+  radio cards are stickers, the picked one pressed and filled; the danger zone is the same sticker on rose-tinted
+  paper), data management. The reset dialog shows Pip looking sad.
   Settings: the Practice group holds the daily goal (its description is the goal's line from `DAILY_GOALS`), Code
   practice and the **"Run my code"** toggle; a **Plan** group (`#plan`, where the dashboard's "Set an interview
   date" lands) holds the optional **Interview date** (a date field from tomorrow on, with Clear) and **Path

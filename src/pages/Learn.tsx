@@ -1,7 +1,8 @@
 import '../styles/pages/learn.css';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, BookOpen, Check, ChevronDown, ChevronRight, GraduationCap, Lock, Play, RotateCcw, Trophy } from 'lucide-react';import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
+import { BookOpen, Check, ChevronDown, ChevronRight, GraduationCap, Lock, Play, RotateCcw, Repeat2 } from 'lucide-react';
+import { CATEGORIES, CATEGORY_BY_ID } from '../content/categories';
 import { FOUNDATIONS, guideFor, problemsFor } from '../content/index';
 import { foundationsDone, nextStep, unitProgress, unitUnlocked, type NextStep } from '../lib/path';
 import { mastery } from '../lib/input';
@@ -9,6 +10,7 @@ import { isDue } from '../lib/srs';
 import { dueProblemIds, useProgress } from '../lib/store';
 import { PageHeader } from '../components/Shell';
 import { CategoryIcon, IconTile, LESSON_ICON, type LucideIcon } from '../components/icons';
+import { Pip } from '../components/Mascot';
 import { DifficultyChip, Mastery, ProgressBar, Ring } from '../components/ui';
 
 // ── Model ───────────────────────────────────────────────────────────────────
@@ -129,6 +131,62 @@ const DOT_LABEL: Record<DotState, string> = {
   next: 'Up next',
   todo: 'Not started',
 };
+
+// ── Stamp card ──────────────────────────────────────────────────────────────
+
+/** One stamp of a unit's stamp card: a pattern intro, a problem or a beginner lesson. */
+interface StampItem {
+  id: string;
+  to: string;
+  state: DotState;
+  /** What an unstamped circle shows: the problem's number in the unit, or an icon. */
+  mark: ReactNode;
+  /** Replaces the check on a stamped circle (the pattern intro keeps its book). */
+  stamped?: ReactNode;
+  title: string;
+  /** Said after the title: the difficulty, or a lesson's length. */
+  detail?: string;
+  /** Learned in the last few minutes: the stamp lands once. */
+  fresh?: boolean;
+  /** A lesson or a pattern intro is "completed"; a problem is "learned". */
+  lesson?: boolean;
+}
+
+const STAMP_LABEL: Record<DotState, string> = {
+  done: 'learned',
+  due: 'learned, review due',
+  next: 'up next',
+  todo: 'not started',
+};
+
+/** A stamp counts as just earned for this long after it was learned. */
+const FRESH_MS = 5 * 60_000;
+
+function Stamp({ item }: { item: StampItem }) {
+  const { state } = item;
+  const stamped = state === 'done' || state === 'due';
+  const name = [item.title, item.detail, state === 'done' && item.lesson ? 'completed' : STAMP_LABEL[state]].filter(Boolean).join(', ');
+  return (
+    <li>
+      <Link
+        to={item.to}
+        className={`learn-stamp is-${state}${stamped && item.fresh ? ' is-fresh' : ''}`}
+        aria-label={name}
+        aria-current={state === 'next' ? 'step' : undefined}
+        title={item.detail ? `${item.title} · ${item.detail}` : item.title}
+      >
+        <span className="learn-stamp-mark" aria-hidden="true">
+          {state === 'next' ? <Play /> : stamped ? (item.stamped ?? <Check />) : item.mark}
+        </span>
+        {state === 'due' && (
+          <span className="learn-stamp-due" aria-hidden="true">
+            <RotateCcw />
+          </span>
+        )}
+      </Link>
+    </li>
+  );
+}
 
 function LessonRow({
   to,
@@ -256,7 +314,6 @@ function IndexMarker({ s }: { s: UnitSummary }) {
 // ── Recommended next ────────────────────────────────────────────────────────
 
 function NextUp({ next }: { next: NextStep }) {
-  let tile: ReactNode;
   let context: string;
   let title: string;
   let detail: ReactNode = null;
@@ -265,7 +322,6 @@ function NextUp({ next }: { next: NextStep }) {
   if (next.kind === 'foundation') {
     const i = FOUNDATIONS.findIndex((l) => l.id === next.lessonId);
     const l = FOUNDATIONS[i];
-    tile = <IconTile icon={LESSON_ICON[next.lessonId] ?? GraduationCap} color={FOUNDATIONS_COLOR} size="lg" />;
     context = `Foundations · Lesson ${i + 1} of ${FOUNDATIONS.length}`;
     title = next.title;
     detail = l ? <span className="text-tertiary">{l.blurb}</span> : null;
@@ -273,7 +329,6 @@ function NextUp({ next }: { next: NextStep }) {
   } else if (next.kind === 'guide') {
     const c = CATEGORY_BY_ID[next.category];
     const n = CATEGORIES.indexOf(c) + 1;
-    tile = <CategoryIcon id={c.id} color={c.color} size="lg" />;
     context = `Unit ${n} · ${c.name}`;
     title = 'Pattern intro';
     detail = <span className="text-tertiary">{c.tagline}</span>;
@@ -283,7 +338,6 @@ function NextUp({ next }: { next: NextStep }) {
     const c = CATEGORY_BY_ID[q.category];
     const n = CATEGORIES.indexOf(c) + 1;
     const ids = c.problemIds;
-    tile = <CategoryIcon id={c.id} color={c.color} size="lg" />;
     context = `Unit ${n} · ${c.name}`;
     title = q.title;
     detail = (
@@ -296,27 +350,27 @@ function NextUp({ next }: { next: NextStep }) {
     );
     cta = 'Start problem';
   } else {
-    tile = <IconTile icon={Trophy} color="var(--xp)" size="lg" />;
     context = 'Learning path complete';
     title = 'Every problem learned';
     detail = <span className="text-tertiary">Keep them sharp with a few minutes of daily review.</span>;
     cta = 'Open daily review';
   }
 
+  const done = next.kind === 'done';
   return (
     <div className="learn-next">
-      <h3 className="learn-next-label">Recommended next</h3>
       <div className="learn-next-body">
-        {tile}
+        <Pip className="bob learn-next-pip" size={60} mood={done ? 'cheer' : 'happy'} />
         <div className="grow">
-          <div className="learn-next-context">{context}</div>
+          <h3 className="learn-next-label">Recommended next</h3>
           <div className="learn-next-title">{title}</div>
+          <div className="learn-next-context">{context}</div>
           {detail && <div className="learn-next-detail">{detail}</div>}
         </div>
       </div>
-      <Link to={next.href} className="btn btn-primary learn-next-cta">
+      <Link to={next.href} className="btn btn-primary btn-lg learn-next-cta">
+        {done ? <Repeat2 /> : <Play className="learn-next-play" />}
         {cta}
-        <ArrowRight />
       </Link>
     </div>
   );
@@ -368,9 +422,10 @@ export function Learn() {
   }, [p, fDone, currentId]);
   const byId = useMemo(() => Object.fromEntries(units.map((u) => [u.id, u])), [units]);
 
-  // Which unit cards show their lessons. Active units start open; the rest are one click away.
+  // Which unit cards list their lessons by name. Every card shows its stamps, so the lists start
+  // closed, one click away; a deep link opens its unit.
   const [open, setOpen] = useState<Set<string>>(() => {
-    const s = new Set(units.filter((u) => u.current || u.status === 'progress').map((u) => u.id));
+    const s = new Set<string>();
     if (loc.hash) s.add(decodeURIComponent(loc.hash.slice(1)));
     return s;
   });
@@ -441,6 +496,19 @@ export function Learn() {
   // Foundations
   if (FOUNDATIONS.length > 0) {
     const s = byId[FOUNDATIONS_ID];
+    const stamps = FOUNDATIONS.map<StampItem>((l, i) => {
+      const doneAt = p.lessonsDone[`f:${l.id}`];
+      return {
+        id: l.id,
+        to: `/foundations/${l.id}`,
+        state: doneAt ? 'done' : next.kind === 'foundation' && next.lessonId === l.id ? 'next' : 'todo',
+        mark: i + 1,
+        title: l.title,
+        detail: `${l.minutes} min`,
+        fresh: !!doneAt && mountedAt - doneAt < FRESH_MS,
+        lesson: true,
+      };
+    });
     const lessons = FOUNDATIONS.map((l) => {
       const done = !!p.lessonsDone[`f:${l.id}`];
       const isNext = next.kind === 'foundation' && next.lessonId === l.id;
@@ -469,6 +537,8 @@ export function Learn() {
         title="Foundations"
         tagline="New to coding? Start here. Python, Big-O, recursion and how to attack a problem, writing code in every lesson."
         summary={`${FOUNDATIONS.length} lessons`}
+        stamps={stamps}
+        stampsLabel="Foundations lessons"
         open={open.has(FOUNDATIONS_ID)}
         onToggle={() => toggle(FOUNDATIONS_ID)}
       >
@@ -483,6 +553,33 @@ export function Learn() {
     const guide = guideFor(c.id);
     const guideDone = !!p.lessonsDone[`g:${c.id}`];
     const prev = units[units.indexOf(s) - 1];
+    const stamps: StampItem[] = [];
+    if (problems.length && guide)
+      stamps.push({
+        id: 'intro',
+        to: `/unit/${c.id}/intro`,
+        state: guideDone ? 'done' : next.kind === 'guide' && next.category === c.id ? 'next' : 'todo',
+        mark: <BookOpen />,
+        stamped: <BookOpen />,
+        title: 'Pattern intro',
+        fresh: guideDone && mountedAt - p.lessonsDone[`g:${c.id}`] < FRESH_MS,
+        lesson: true,
+      });
+    problems.forEach((q, i) => {
+      const pp = p.problems[q.id];
+      const learned = !!pp?.learnedAt;
+      const due = learned && !!pp?.srs && isDue(pp.srs);
+      const isNext = next.kind === 'problem' && next.problem.id === q.id;
+      stamps.push({
+        id: q.id,
+        to: learned ? `/p/${q.id}` : `/p/${q.id}/learn`,
+        state: due ? 'due' : learned ? 'done' : isNext ? 'next' : 'todo',
+        mark: i + 1,
+        title: q.title,
+        detail: q.difficulty,
+        fresh: !!pp?.learnedAt && mountedAt - pp.learnedAt < FRESH_MS,
+      });
+    });
     const lockNote =
       s.status === 'locked'
         ? `Recommended after ${listJoin(c.prereqs.map((x) => CATEGORY_BY_ID[x].name))}. You can still jump in.`
@@ -511,6 +608,8 @@ export function Learn() {
             'Coming soon'
           )
         }
+        stamps={stamps}
+        stampsLabel={`${c.name}: pattern intro and problems`}
         open={open.has(c.id)}
         onToggle={() => toggle(c.id)}
       >
@@ -624,15 +723,21 @@ export function Learn() {
               <h2 className="learn-toolbar-title">Curriculum</h2>
               <ul className="learn-legend" aria-label="Status legend">
                 <li>
-                  <i className="learn-legend-swatch is-done" aria-hidden="true" />
+                  <i className="learn-legend-swatch is-done" aria-hidden="true">
+                    <Check />
+                  </i>
                   Learned
                 </li>
                 <li>
-                  <i className="learn-legend-swatch is-due" aria-hidden="true" />
+                  <i className="learn-legend-swatch is-due" aria-hidden="true">
+                    <RotateCcw />
+                  </i>
                   Review due
                 </li>
                 <li>
-                  <i className="learn-legend-swatch is-next" aria-hidden="true" />
+                  <i className="learn-legend-swatch is-next" aria-hidden="true">
+                    <Play />
+                  </i>
                   Up next
                 </li>
               </ul>
@@ -694,6 +799,8 @@ function UnitStep({
   tagline,
   note,
   summary,
+  stamps,
+  stampsLabel,
   open,
   onToggle,
   children,
@@ -710,6 +817,9 @@ function UnitStep({
   tagline: string;
   note?: string;
   summary: ReactNode;
+  /** The unit's stamp card: one stamp per lesson, always in view. */
+  stamps: StampItem[];
+  stampsLabel: string;
   open: boolean;
   onToggle: () => void;
   children: ReactNode;
@@ -763,6 +873,13 @@ function UnitStep({
           </Link>
         ) : (
           <div className="learn-unit-head">{headInner}</div>
+        )}
+        {stamps.length > 0 && (
+          <ol className="learn-stamps" aria-label={stampsLabel}>
+            {stamps.map((x) => (
+              <Stamp key={x.id} item={x} />
+            ))}
+          </ol>
         )}
         <ol className="learn-rows" id={listId} hidden={!open}>
           {children}

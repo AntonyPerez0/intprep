@@ -2,9 +2,13 @@
    Pick first, then type — the pick twins of the typing kit
    src/components/CodeGaps.tsx (CodeOptions, PickGaps), src/components/Arrange.tsx,
    src/components/InputSwitch.tsx.
-   Picking is code practice, not a quiz: slots, options and blocks are code on the
-   code surface (always dark, --code-* tokens), in the typing window's frame, rows
-   and rhythm (src/styles/typer.css, gaps.css).
+   Picking is code practice, not a quiz: slots and placed lines sit on the code
+   sheet in the typing window's frame, rows and rhythm (src/styles/typer.css,
+   gaps.css). An empty slot is a dashed box on sun-tinted paper, a picked one a
+   small --sun sticker, the open one --sky. Options and bank lines are stickers
+   you press, in the language of .choice: ink outline, hard shadow, pressed and
+   filled when chosen, --mint / --rose with a mark once checked. On a filled
+   sticker code is ink: syntax colors are for the sheet.
    ========================================================================== */
 
 /* ── Pick the gaps: a slot where the missing line goes ───────────────────── */
@@ -12,13 +16,15 @@
   align-items: center;
 }
 .pick-row .typer-ln {
-  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+  color: color-mix(in srgb, var(--code-key) 60%, var(--code-text));
+  font-weight: 500;
 }
+/* The open slot and its options read as one block (the options panel has the same tint) */
 .pick-row.is-open {
-  background: var(--code-line-hl);
+  background: color-mix(in srgb, var(--brand-400) 13%, transparent);
 }
 .pick-row.is-open .typer-ln {
-  color: var(--brand-300);
+  color: var(--code-text);
 }
 .pick-slot-wrap {
   flex: 1;
@@ -37,15 +43,15 @@
   align-items: center;
   gap: 8px;
   height: 20px;
-  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1px);
+  margin: 1px 0 1px calc(-1 * var(--gap-pad) - 1.5px);
   padding: 0 4px 0 var(--gap-pad);
-  border: 1px dashed color-mix(in srgb, var(--code-key) 55%, transparent);
+  border: 1.5px dashed var(--code-text);
   border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--code-key) 7%, transparent);
+  background: color-mix(in srgb, var(--sun) 26%, transparent);
   color: var(--code-text);
   font: inherit;
   font-variant-ligatures: none;
-  line-height: 18px;
+  line-height: 17px;
   text-align: left;
   white-space: pre;
   cursor: pointer;
@@ -64,7 +70,7 @@
   text-overflow: ellipsis;
 }
 .pick-slot-hint {
-  color: var(--code-comment);
+  color: color-mix(in srgb, currentColor 68%, transparent);
   font-style: italic;
 }
 /* A hint too long for its slot (phones, deep indents): the whole hint wraps under the slot as a
@@ -88,46 +94,48 @@
   flex: none;
   width: 13px;
   height: 13px;
-  color: color-mix(in srgb, var(--code-key) 75%, var(--code-comment));
+  color: currentColor;
 }
+/* Picked: a small sun sticker with ink text */
 .pick-row.is-filled .pick-slot {
   border-style: solid;
-  border-color: color-mix(in srgb, var(--code-text) 18%, transparent);
-  background: color-mix(in srgb, var(--code-text) 4%, transparent);
-}
-.pick-row.is-filled .pick-slot-icon {
-  color: var(--code-gutter);
+  border-color: var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
 }
 @media (hover: hover) {
   .pick-slot:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--code-key) 80%, transparent);
-    background: color-mix(in srgb, var(--code-key) 12%, transparent);
+    background: color-mix(in srgb, var(--sun) 44%, transparent);
   }
   .pick-row.is-filled .pick-slot:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--code-text) 35%, transparent);
-    background: color-mix(in srgb, var(--code-text) 7%, transparent);
+    background: var(--sun-hover);
   }
 }
-.pick-row.is-open .pick-slot {
+/* Open: the selection color, whatever it holds */
+.pick-row.is-open .pick-slot,
+.pick-row.is-open.is-filled .pick-slot:hover {
   border-style: solid;
-  border-color: var(--brand-400);
-  background: color-mix(in srgb, var(--brand-500) 14%, var(--code-bg));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-400) 30%, transparent);
-}
-.pick-row.is-open .pick-slot-icon {
-  color: var(--brand-300);
+  border-color: var(--ink);
+  background: var(--sky);
+  color: var(--on-fill);
 }
 .pick-slot:focus-visible {
-  outline: 2px solid var(--brand-400);
+  outline: 3px solid var(--brand-500);
   outline-offset: 1px;
 }
 .pick-slot:disabled {
   cursor: default;
   opacity: 0.6;
 }
-/* The window shows a focus ring only while typing; a slot carries its own */
+/* On a filled sticker, code is ink */
+.pick-row.is-filled .pick-slot [class^='tk-'],
+.pick-row.is-open .pick-slot [class^='tk-'],
+.pick-panel .choice.pick-option:is(.selected, .correct, .wrong) [class^='tk-'] {
+  color: inherit;
+}
+/* The window shows its focus color only while typing; a slot carries its own */
 .pick-window.typer-window:focus-within {
-  border-color: var(--code-border);
+  border-color: var(--ink);
   box-shadow: var(--shadow-sm);
 }
 /* Every row as wide as the longest line, so the options panel can stay put while the code scrolls */
@@ -146,16 +154,14 @@
   min-width: 0;
   scroll-margin: 64px 0 calc(var(--actionbar-h, 96px) + 16px);
 }
+/* On its own (one line from options): a labeled group of stickers on the page, like .choices */
 .pick-panel {
   --opt-size: 12.5px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 12px;
+  gap: 10px;
+  padding: 0 3px 3px 0; /* the stickers' hard shadows stay inside the column */
   font-family: var(--font-sans);
-  background: color-mix(in srgb, var(--code-text) 4%, var(--code-bg));
-  border: 1px solid var(--code-border);
-  border-radius: var(--r-lg);
   white-space: normal;
 }
 @media (min-width: 640px) {
@@ -163,13 +169,12 @@
     --opt-size: 13px;
   }
 }
+/* Under the open slot: a tray in the slot's tint, between two hairlines */
 .pick-panel.is-inline {
-  margin: 4px 0 8px;
-  border-radius: 0;
-  border-inline: 0;
-  box-shadow:
-    inset 2px 0 0 var(--brand-400),
-    inset 0 1px 0 color-mix(in srgb, var(--brand-400) 18%, transparent);
+  margin: 0 0 8px;
+  padding: 10px 14px 14px 12px;
+  background: color-mix(in srgb, var(--brand-400) 13%, transparent);
+  border-bottom: 1px solid var(--border);
   animation: pick-open var(--dur) var(--ease);
 }
 @container code-window (min-width: 480px) {
@@ -191,14 +196,15 @@
   gap: 12px;
   min-width: 0;
   font-size: var(--fs-xs);
-  color: var(--code-comment);
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 .pick-panel-label {
   min-width: 0;
 }
 .pick-panel-line {
-  font-weight: 600;
-  color: var(--code-text);
+  font-weight: 700;
+  color: var(--text);
 }
 .pick-panel-sep {
   margin: 0 6px;
@@ -220,20 +226,20 @@
 }
 .pick-options-list {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
+/* An option: a sticker you press (.choice gives the outline, the press and the checked fills) */
 .pick-panel .choice.pick-option {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  min-height: 34px;
+  min-height: 36px;
   padding: 6px 10px 6px 8px;
-  background: color-mix(in srgb, var(--code-text) 5%, var(--code-bg));
-  border: 1px solid var(--code-border);
+  background: var(--surface);
   border-radius: var(--r-sm);
-  box-shadow: none;
+  box-shadow: var(--shadow-xs);
   color: var(--code-text);
   font-family: var(--font-mono);
   font-variant-ligatures: none;
@@ -247,16 +253,16 @@
 }
 @media (hover: hover) {
   .pick-panel .choice.pick-option:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--code-text) 28%, transparent);
-    background: color-mix(in srgb, var(--code-text) 9%, var(--code-bg));
+    background: var(--surface-hover);
   }
 }
 .pick-panel .choice.pick-option:active:not(:disabled) {
-  background: color-mix(in srgb, var(--code-text) 12%, var(--code-bg));
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
 }
 .pick-panel .choice.pick-option:focus-visible {
-  outline: 2px solid var(--brand-400);
-  outline-offset: 1px;
+  outline: 3px solid var(--brand-500);
+  outline-offset: 2px;
 }
 .pick-option-num {
   flex: none;
@@ -264,13 +270,13 @@
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: var(--r-xs);
-  border: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-text) 6%, transparent);
-  color: var(--code-comment);
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--surface);
+  color: var(--text);
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
   line-height: 1;
 }
 .pick-option-code {
@@ -285,7 +291,7 @@
   padding-left: var(--indent, 0ch);
   background: repeating-linear-gradient(
       to right,
-      color-mix(in srgb, var(--code-text) 14%, transparent) 0 1px,
+      color-mix(in srgb, currentColor 16%, transparent) 0 1px,
       transparent 1px 4ch
     )
     0 0 / var(--indent, 0ch) 100% no-repeat;
@@ -296,53 +302,40 @@
   place-items: center;
   height: 20px;
   margin-left: 8px;
+  color: var(--on-fill);
 }
 .pick-option-mark svg {
   width: 16px;
   height: 16px;
 }
-.pick-panel .choice.pick-option.selected {
-  border-color: var(--brand-400);
-  background: color-mix(in srgb, var(--brand-500) 18%, var(--code-bg));
-  box-shadow: 0 0 0 1px var(--brand-400);
+/* Chosen: pressed into its (2px) shadow and filled; checked: mint or rose, with the mark */
+.pick-panel .choice.pick-option:is(.selected, .correct, .wrong) {
+  color: var(--on-fill);
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
 }
-.pick-panel .choice.pick-option.selected .pick-option-num {
-  border-color: var(--brand-400);
-  background: var(--brand);
-  color: #fff;
+.pick-panel .choice.pick-option.selected {
+  background: var(--sky);
 }
 .pick-panel .choice.pick-option.correct {
-  border-color: var(--code-success-border);
-  background: var(--code-success-bg);
-  box-shadow: 0 0 0 1px var(--code-success-border);
-}
-.pick-panel .choice.pick-option.correct .pick-option-num {
-  border-color: var(--success-solid);
-  background: var(--success-solid);
-  color: #fff;
-}
-.pick-panel .choice.pick-option.correct .pick-option-mark {
-  color: var(--code-success-text);
+  background: var(--mint);
+  animation: none;
 }
 .pick-panel .choice.pick-option.wrong {
-  border-color: var(--code-danger-border);
-  background: var(--code-danger-bg);
-  box-shadow: 0 0 0 1px var(--code-danger-border);
+  background: var(--rose);
 }
-.pick-panel .choice.pick-option.wrong .pick-option-num {
-  border-color: var(--danger-solid);
-  background: var(--danger-solid);
+.pick-panel .choice.pick-option:is(.selected, .correct, .wrong) .pick-option-num {
+  background: var(--ink);
+  border-color: var(--ink);
   color: #fff;
-}
-.pick-panel .choice.pick-option.wrong .pick-option-mark {
-  color: var(--code-danger-text);
 }
 .pick-panel .choice.pick-option:disabled {
   cursor: default;
   opacity: 1;
 }
 .pick-panel.is-revealed .choice.pick-option:not(.correct):not(.wrong) {
-  opacity: 0.55;
+  opacity: 0.6;
+  box-shadow: none;
 }
 
 /* Touch screens: 44px slots and options (the code keeps its size) */
@@ -355,7 +348,7 @@
     --slot-min: 14ch;
     height: 38px;
     margin-block: 3px;
-    line-height: 36px;
+    line-height: 35px;
   }
   .pick-slot-icon {
     width: 15px;
@@ -366,7 +359,7 @@
   }
   .pick-panel .choice.pick-option {
     min-height: 44px;
-    padding-block: 11px;
+    padding-block: 10px;
   }
 }
 
@@ -399,15 +392,18 @@
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--brand-400) 55%, transparent);
-  /* Placed lines are tinted, so the learner's code reads apart from the given lines */
-  background: color-mix(in srgb, var(--brand-500) 7%, transparent);
+  /* Placed lines are highlighted in sun, so the learner's code reads apart from the given lines */
+  box-shadow: inset 3px 0 0 var(--code-key);
+  background: color-mix(in srgb, var(--sun) 30%, transparent);
   animation: arrange-in var(--dur) var(--ease);
 }
 @keyframes arrange-in {
   from {
-    background: color-mix(in srgb, var(--brand-500) 22%, transparent);
+    background: color-mix(in srgb, var(--sun) 65%, transparent);
   }
+}
+.typer-line.arrange-line .typer-ln {
+  color: var(--code-text);
 }
 .typer-line.arrange-line .typer-src {
   flex: 0 1 auto;
@@ -424,17 +420,17 @@
 }
 @media (hover: hover) {
   .typer-line.arrange-line:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--danger) 12%, transparent);
-    box-shadow: inset 2px 0 0 color-mix(in srgb, var(--danger) 60%, transparent);
+    background: var(--code-danger-bg);
+    box-shadow: inset 3px 0 0 var(--code-danger-border);
   }
   .typer-line.arrange-line:hover:not(:disabled) .arrange-remove {
     opacity: 1;
-    color: color-mix(in srgb, var(--danger) 70%, var(--code-text));
+    color: var(--code-danger-text);
   }
 }
 .typer-line.arrange-line:focus-visible {
-  outline: 2px solid var(--brand-400);
-  outline-offset: -2px;
+  outline: 3px solid var(--brand-500);
+  outline-offset: -3px;
 }
 .typer-line.arrange-line:focus-visible .arrange-remove {
   opacity: 1;
@@ -447,7 +443,8 @@
   align-items: center;
 }
 .arrange-next .typer-ln {
-  color: color-mix(in srgb, var(--code-key) 70%, var(--code-gutter));
+  color: color-mix(in srgb, var(--code-key) 60%, var(--code-text));
+  font-weight: 500;
 }
 .arrange-next-wrap {
   flex: 1;
@@ -458,41 +455,44 @@
   flex: none;
   width: max(18ch, calc(100cqi - 52px - var(--indent, 0ch) - 12px));
   height: 20px;
-  margin: 1px 0 1px -7px;
+  margin: 1px 0 1px -7.5px;
   padding: 0 6px;
-  border: 1px dashed color-mix(in srgb, var(--code-key) 45%, transparent);
+  border: 1.5px dashed var(--code-text);
   border-radius: var(--r-xs);
-  color: var(--code-comment);
+  background: color-mix(in srgb, var(--sun) 26%, transparent);
+  color: color-mix(in srgb, var(--code-text) 68%, transparent);
   font-style: italic;
-  line-height: 18px;
+  line-height: 17px;
 }
 
-/* The bank: a tray of lines under the code */
+/* The bank: a tray of line stickers under the code */
 .arrange-bank {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px 12px;
-  border-top: 1px solid var(--code-border);
-  background: color-mix(in srgb, var(--code-text) 3%, var(--code-bg));
+  gap: 10px;
+  padding: 10px 14px 14px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-sunken);
 }
 .arrange-bank-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   font-family: var(--font-sans);
   font-size: var(--fs-xs);
-  font-weight: 600;
-  color: var(--code-text);
+  font-weight: 700;
+  color: var(--text);
 }
 .arrange-bank-count {
-  min-width: 20px;
-  padding: 0 6px;
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1.5px solid var(--ink);
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--code-text) 10%, transparent);
-  color: var(--code-comment);
-  font-weight: 600;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 800;
+  line-height: 1.3;
   text-align: center;
 }
 .arrange-bank-list {
@@ -500,20 +500,18 @@
 }
 .arrange-bank-inner {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
+/* A line in the bank: a sticker you press (.parsons-item gives the outline, shadow and press) */
 .arrange-bank .parsons-item.arrange-item {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  min-height: 34px;
+  min-height: 36px;
   padding: 6px 10px;
-  background: color-mix(in srgb, var(--code-text) 5%, var(--code-bg));
-  border: 1px solid var(--code-border);
   border-radius: var(--r-sm);
-  box-shadow: none;
   color: var(--code-text);
   font-family: var(--font-mono);
   font-variant-ligatures: none;
@@ -531,24 +529,9 @@
     font-size: 13px;
   }
 }
-.arrange-bank .parsons-item.arrange-item:hover:not(:disabled) {
-  border-color: var(--code-border);
-}
-@media (hover: hover) {
-  .arrange-bank .parsons-item.arrange-item:hover:not(:disabled) {
-    border-color: color-mix(in srgb, var(--code-text) 28%, transparent);
-    background: color-mix(in srgb, var(--code-text) 9%, var(--code-bg));
-  }
-  .arrange-bank .parsons-item.arrange-item:hover:not(:disabled) .arrange-add {
-    color: var(--brand-300);
-  }
-}
-.arrange-bank .parsons-item.arrange-item:active:not(:disabled) {
-  background: color-mix(in srgb, var(--code-text) 12%, var(--code-bg));
-}
 .arrange-bank .parsons-item.arrange-item:focus-visible {
-  outline: 2px solid var(--brand-400);
-  outline-offset: 1px;
+  outline: 3px solid var(--brand-500);
+  outline-offset: 2px;
 }
 /* The block's indentation, with a faint guide per level (as an editor draws it) */
 .arrange-item-code {
@@ -557,7 +540,7 @@
   padding-left: var(--indent, 0ch);
   background: repeating-linear-gradient(
       to right,
-      color-mix(in srgb, var(--code-text) 14%, transparent) 0 1px,
+      color-mix(in srgb, var(--code-text) 16%, transparent) 0 1px,
       transparent 1px 4ch
     )
     0 0 / var(--indent, 0ch) 100% no-repeat;
@@ -567,25 +550,26 @@
   width: 14px;
   height: 14px;
   margin: 3px 0 0 12px;
-  color: var(--code-gutter);
+  color: var(--text-tertiary);
 }
 /* After checking: the distractor named on a row of its own under it (from the gutter, so a phone shows it) */
 .typer-line.arrange-note {
   min-height: 0;
-  padding-bottom: 4px;
-  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  padding-bottom: 5px;
+  background: var(--code-danger-bg);
 }
 .arrange-tag {
   display: inline-block;
-  padding: 0 6px;
-  border-radius: var(--r-xs);
-  background: color-mix(in srgb, var(--danger) 22%, transparent);
-  color: var(--code-danger-text);
+  padding: 0 7px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--r-full);
+  background: var(--rose);
+  color: var(--on-fill);
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   font-style: normal;
-  line-height: 18px;
+  line-height: 17px;
 }
 .arrange.is-revealed .arrange-diff {
   width: max-content;
@@ -596,6 +580,10 @@
   .arrange-next {
     min-height: 40px;
   }
+  .arrange-next-slot {
+    height: 34px;
+    line-height: 31px;
+  }
   .arrange-remove {
     opacity: 0.7;
     width: 15px;
@@ -603,23 +591,13 @@
   }
   .arrange-bank .parsons-item.arrange-item {
     min-height: 44px;
-    padding-block: 11px;
+    padding-block: 10px;
   }
 }
-/* The window shows a focus ring only while typing */
+/* The window shows its focus color only while typing */
 .arrange-window.typer-window:focus-within {
-  border-color: var(--code-border);
+  border-color: var(--ink);
   box-shadow: var(--shadow-sm);
-}
-.arrange-window.typer-window.is-correct:focus-within {
-  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
-}
-.arrange-window.typer-window.is-wrong:focus-within,
-.pick-window.typer-window.is-wrong:focus-within {
-  border-color: color-mix(in srgb, var(--danger) 45%, var(--code-border));
-}
-.pick-window.typer-window.is-correct:focus-within {
-  border-color: color-mix(in srgb, var(--success) 45%, var(--code-border));
 }
 
 /* ── Input switch ("Type instead" / "Pick instead") ──────────────────────── */

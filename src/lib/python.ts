@@ -12,6 +12,7 @@
 
 import { useSyncExternalStore } from 'react';
 import type { Problem } from '../content/types';
+import { isNative } from './native';
 import { getProgress } from './store';
 
 export type PythonStatus = 'idle' | 'loading' | 'ready' | 'failed';
@@ -223,7 +224,7 @@ export function ensurePython(): Promise<void> {
     setStatus('failed');
   };
   const indexURL = new URL('./pyodide/', document.baseURI).href;
-  ready = send<void>('init', { indexURL }, INIT_TIMEOUT_MS).then(
+  ready = send<void>('init', { indexURL, native: isNative() }, INIT_TIMEOUT_MS).then(
     () => setStatus('ready'),
     (err) => {
       stop('Python could not be loaded');

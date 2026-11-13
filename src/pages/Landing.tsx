@@ -22,6 +22,7 @@ import { CATEGORIES, CATEGORY_BY_ID, FOUNDATIONS, PROBLEM_BY_ID, PROBLEMS, probl
 import { SCIENCE } from '../content/science';
 import { CategoryIcon, IconTile, LESSON_ICON, SCIENCE_ICON, type LucideIcon } from '../components/icons';
 import { CodeWindow } from '../components/interact';
+import { Pip } from '../components/Mascot';
 import { Logo, LogoMark, ProgressBar, Ring } from '../components/ui';
 import { DRILL_LABEL, reviewGaps } from '../lib/drills';
 import { codeLines } from '../lib/codegrade';
@@ -130,40 +131,55 @@ function SectionIntro({ kicker, title, lead, center }: { kicker: string; title: 
 function Hero({ primary }: { primary: { to: string; label: string } }) {
   return (
     <section className="lp-hero" aria-labelledby="lp-hero-title">
-      <div className="lp-hero-bg" aria-hidden="true" />
       <div className="lp-container">
-        <div className="lp-hero-copy">
-          <span className="lp-hero-badge">
-            <span className="lp-hero-badge-dot" aria-hidden="true" />
-            {PROBLEMS.length} problems · {CATEGORIES.length} patterns · Free
-          </span>
-          <h1 id="lp-hero-title" className="display lp-hero-title">
-            Master the coding interview, <span className="lp-hero-title-soft">one pattern at a time.</span>
-          </h1>
-          <p className="lead lp-hero-lead">
-            Learn the {PROBLEMS.length} classic interview problems step by step: pick the code from choices while it&rsquo;s new, then type it
-            yourself. A few minutes of spaced review a day keeps it in memory.
-          </p>
-          <div className="lp-hero-ctas">
-            <Link to={primary.to} className="btn btn-primary btn-xl">
-              {primary.label}
-              <ArrowRight aria-hidden="true" />
-            </Link>
-            <button type="button" className="btn btn-secondary btn-xl" onClick={() => goTo('curriculum')}>
-              Explore the curriculum
-            </button>
+        <div className="lp-hero-card">
+          <div className="lp-hero-copy">
+            <span className="lp-hero-badge">
+              <span className="lp-hero-badge-dot" aria-hidden="true" />
+              {PROBLEMS.length} problems · {CATEGORIES.length} patterns · Free
+            </span>
+            <h1 id="lp-hero-title" className="display lp-hero-title">
+              Master the coding interview, <span className="lp-hero-title-soft">one pattern at a time.</span>
+            </h1>
+            <p className="lead lp-hero-lead">
+              Learn the {PROBLEMS.length} classic interview problems step by step: pick the code from choices while it&rsquo;s new, then type it
+              yourself. A few minutes of spaced review a day keeps it in memory.
+            </p>
+            <div className="lp-hero-ctas">
+              <Link to={primary.to} className="btn btn-primary btn-xl">
+                {primary.label}
+                <ArrowRight aria-hidden="true" />
+              </Link>
+              <button type="button" className="btn btn-inverse btn-xl" onClick={() => goTo('curriculum')}>
+                Explore the curriculum
+              </button>
+            </div>
+            <ul className="lp-hero-facts">
+              <li>
+                <Check aria-hidden="true" /> No account needed
+              </li>
+              <li>
+                <Check aria-hidden="true" /> Solutions in Python
+              </li>
+              <li>
+                <Check aria-hidden="true" /> Phone and desktop
+              </li>
+            </ul>
           </div>
-          <ul className="lp-hero-facts">
-            <li>
-              <Check aria-hidden="true" /> No account needed
-            </li>
-            <li>
-              <Check aria-hidden="true" /> Solutions in Python
-            </li>
-            <li>
-              <Check aria-hidden="true" /> Phone and desktop
-            </li>
-          </ul>
+          {/* Pip with three stickers from the app: XP for a learned problem, the learned stamp, a streak. */}
+          <div className="lp-hero-art" aria-hidden="true">
+            <span className="lp-sticker lp-sticker-xp">
+              <Zap strokeWidth={2.5} />+{XP.problem[TWO_SUM.difficulty]} XP
+            </span>
+            <span className="lp-sticker lp-sticker-stamp">
+              <Check strokeWidth={3} />
+            </span>
+            <span className="lp-sticker lp-sticker-streak">
+              <Flame strokeWidth={2.5} />
+              12
+            </span>
+            <Pip size={240} className="bob lp-hero-pip" />
+          </div>
         </div>
         <HeroPreview />
       </div>
@@ -242,7 +258,7 @@ function HeroPreview() {
       <div className="lp-pv lp-pv-quiz">
         <div className="lp-pv-quiz-top">
           <X aria-hidden="true" />
-          <ProgressBar value={0.42} thin />
+          <ProgressBar value={0.42} />
           <span className="lp-pv-combo">
             <Flame aria-hidden="true" />3
           </span>
@@ -648,7 +664,7 @@ function Curriculum() {
           <div className="grow">
             <div className="lp-foundations-title">
               New to coding? Start with the foundations.
-              <span className="badge badge-brand badge-pill">
+              <span className="badge badge-pill lp-foundations-badge">
                 {FOUNDATIONS.length} lessons · about {hours} {hours === 1 ? 'hour' : 'hours'}
               </span>
             </div>
@@ -826,7 +842,6 @@ function FinalCta({ primary, onboarded }: { primary: { to: string; label: string
     <section className="lp-section lp-cta-section" aria-labelledby="lp-cta-title">
       <div className="lp-container">
         <div className="lp-cta">
-          <div className="lp-cta-bg" aria-hidden="true" />
           <LogoMark size={44} />
           <h2 id="lp-cta-title" className="lp-h2">
             {onboarded ? 'Pick up where you left off' : 'Start with one pattern today'}
@@ -841,7 +856,7 @@ function FinalCta({ primary, onboarded }: { primary: { to: string; label: string
               {onboarded ? primary.label : 'Create your plan'}
               <ArrowRight aria-hidden="true" />
             </Link>
-            <Link to="/science" className="btn btn-secondary btn-xl">
+            <Link to="/science" className="btn btn-inverse btn-xl">
               Read the science
             </Link>
           </div>

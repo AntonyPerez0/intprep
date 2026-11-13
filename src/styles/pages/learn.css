@@ -38,7 +38,7 @@
 }
 .learn-progress-label {
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 700;
   letter-spacing: 0;
   color: var(--text-secondary);
 }
@@ -50,7 +50,7 @@
 }
 .learn-progress-value {
   font-size: var(--fs-3xl);
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: -0.035em;
   line-height: 1;
   color: var(--text);
@@ -67,7 +67,7 @@
 .learn-progress-pct {
   margin-left: auto;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 
@@ -107,7 +107,7 @@
   min-height: 28px;
   margin: 0;
   font-size: var(--fs-xl);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 28px;
   color: var(--text);
@@ -129,14 +129,14 @@
   max-width: 100%;
   min-width: 0;
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.3;
   color: var(--text);
 }
 .learn-kpi-done {
   font-size: var(--fs-md);
-  font-weight: 550;
+  font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--success-text);
 }
@@ -156,14 +156,19 @@
   }
 }
 
+/* Recommended next: the sky half of the overview sticker, where Pip points at the next step.
+   Everything on it is ink on a sticker fill, in both themes. */
 .learn-next {
+  --paper: var(--fill-paper); /* white paper on a sticker fill: the same in both themes, like .btn-inverse */
+  --on-fill-2: color-mix(in srgb, var(--on-fill) 80%, var(--sky)); /* secondary text, 7:1 on sky */
   display: flex;
   flex-direction: column;
   gap: 14px;
   min-width: 0;
-  padding: 20px;
-  background: var(--surface-hover);
-  border-top: 1px solid var(--border);
+  padding: 16px;
+  background: var(--sky);
+  border-top: var(--bw) solid var(--ink);
+  color: var(--on-fill);
 }
 @media (min-width: 640px) {
   .learn-next {
@@ -173,36 +178,40 @@
 @container (min-width: 760px) {
   .learn-next {
     border-top: 0;
-    border-left: 1px solid var(--border);
+    border-left: var(--bw) solid var(--ink);
   }
-}
-.learn-next-label {
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  line-height: 1.5;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--brand-text);
 }
 .learn-next-body {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 14px;
   min-width: 0;
 }
-.learn-next-context {
-  font-size: var(--fs-xs);
-  font-weight: 500;
-  color: var(--text-tertiary);
+.learn-next-pip {
+  margin: 2px 2px 4px; /* room for the cut-out outline and its hard shadow */
+}
+.learn-next-label {
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: 0;
+  color: var(--on-fill);
 }
 .learn-next-title {
-  margin-top: 2px;
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.3;
-  color: var(--text);
+  margin-top: 1px;
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--on-fill);
   overflow-wrap: anywhere;
+}
+.learn-next-context {
+  margin-top: 4px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--on-fill-2);
 }
 .learn-next-meta {
   display: flex;
@@ -211,13 +220,28 @@
   gap: 8px;
 }
 .learn-next-detail {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: var(--fs-sm);
   line-height: 1.5;
+}
+.learn-next .text-tertiary {
+  font-weight: 500;
+  color: var(--on-fill-2);
+}
+/* Facts are white pills with an ink outline: the difficulty is said in words, not in color. */
+.learn .learn-next .chip {
+  height: 24px;
+  border-color: var(--ink);
+  background: var(--paper);
+  color: var(--on-fill);
+  font-weight: 800;
 }
 .learn-next-cta {
   width: 100%;
   margin-top: auto;
+}
+.learn-next-play {
+  fill: currentColor;
 }
 /* Stacked under the progress panel with room to spare: details left, button right. */
 @container (min-width: 520px) and (max-width: 759px) {
@@ -273,31 +297,51 @@
 .learn-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 16px;
-  margin: 4px 0 0;
+  gap: 4px 14px;
+  margin: 6px 0 0;
   padding: 0;
   list-style: none;
   font-size: var(--fs-xs);
-  color: var(--text-tertiary);
+  font-weight: 600;
+  color: var(--text-secondary);
 }
 .learn-legend li {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
+/* The legend shows the stamps themselves, small. */
 .learn-legend-swatch {
-  width: 8px;
-  height: 8px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
 }
+.learn-legend-swatch svg {
+  width: 9px;
+  height: 9px;
+  stroke-width: 3.5;
+}
 .learn-legend-swatch.is-done {
-  background: var(--success);
+  border: 2px solid var(--tomato);
+  color: var(--tomato);
 }
 .learn-legend-swatch.is-due {
-  background: var(--warning);
+  border: 1.5px solid var(--ink);
+  background: color-mix(in srgb, var(--warning) 34%, var(--surface));
+  color: var(--warning-text);
 }
 .learn-legend-swatch.is-next {
-  background: var(--brand);
+  border: 1.5px solid var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
+}
+.learn-legend-swatch.is-next svg {
+  width: 8px;
+  height: 8px;
+  margin-left: 1px;
+  fill: currentColor;
 }
 .learn-chevron {
   transition: transform var(--dur) var(--ease);
@@ -312,21 +356,35 @@
   margin: 0;
   padding: 0;
 }
+/* Phones: the unit cards take the full width (five stamps a row need it) and the rail is left
+   out; the kicker already says "Unit 3" and the status badge says the rest. */
 .learn-step {
-  --marker: 28px;
-  --rail-gap: 10px;
-  --marker-top: 20px; /* header padding + half the icon tile − half the marker */
+  --marker: 30px;
+  --rail-gap: 16px;
+  --marker-top: 24px; /* header padding + half the icon tile − half the marker */
   position: relative;
-  display: grid;
-  grid-template-columns: var(--marker) minmax(0, 1fr);
-  column-gap: var(--rail-gap);
-  padding-bottom: 12px;
+  padding-bottom: 14px;
+}
+.learn-rail {
+  display: none;
+}
+.learn-step::before,
+.learn-step::after {
+  display: none;
 }
 @media (min-width: 640px) {
   .learn-step {
-    --rail-gap: 16px;
-    --marker-top: 24px;
+    display: grid;
+    grid-template-columns: var(--marker) minmax(0, 1fr);
+    column-gap: var(--rail-gap);
     padding-bottom: 16px;
+  }
+  .learn-rail {
+    display: block;
+  }
+  .learn-step::before,
+  .learn-step::after {
+    display: block;
   }
 }
 /* Connector: one segment above the marker, one below. */
@@ -346,8 +404,8 @@
   top: calc(var(--marker-top) + var(--marker));
   bottom: 0;
 }
-.learn-step.is-first::before,
-.learn-step.is-last::after {
+.learn-step.learn-step.is-first::before,
+.learn-step.learn-step.is-last::after {
   display: none;
 }
 .learn-step.prev-complete::before,
@@ -367,10 +425,10 @@
   height: var(--marker);
   border-radius: 50%;
   background: var(--surface);
-  border: 1.5px solid var(--border-strong);
-  color: var(--text-tertiary);
+  border: var(--bw) solid var(--ink);
+  color: var(--text);
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -379,19 +437,18 @@
   height: 14px;
 }
 .learn-marker.is-complete {
-  background: var(--success);
-  border-color: var(--success);
-  color: var(--text-inverse);
+  background: var(--mint);
+  color: var(--on-fill);
 }
+/* The unit to work on is the sun one, like the stamp to press. */
 .learn-marker.is-current {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--text-inverse);
-  box-shadow: 0 0 0 4px var(--brand-subtle);
+  background: var(--sun);
+  color: var(--on-fill);
+  box-shadow: var(--shadow-xs);
 }
 .learn-marker.is-progress {
   border: 0;
-  color: var(--brand-text);
+  color: var(--text);
 }
 .learn-marker.is-progress .ring svg {
   width: var(--marker);
@@ -399,8 +456,8 @@
 }
 .learn-marker.is-locked {
   background: var(--surface-sunken);
-  border-color: var(--border);
-  color: var(--text-disabled);
+  border: 1.5px solid var(--border);
+  color: var(--text-tertiary);
 }
 .learn-marker.is-locked svg {
   width: 12px;
@@ -409,19 +466,27 @@
 
 /* ── Unit card ──────────────────────────────────────────────────────────── */
 .learn-unit {
+  --stamp-paper: var(--surface);
+  --stamp-line: color-mix(in srgb, var(--text) 50%, var(--surface)); /* dashed outline, 3:1 */
   min-width: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-xs);
-  overflow: hidden;
-  transition:
-    border-color var(--dur) var(--ease),
-    box-shadow var(--dur) var(--ease);
-}
-.learn-unit.is-current {
-  border-color: var(--brand-border);
   box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+/* A unit the path recommends for later is the same sticker, not peeled yet: a soft outline and
+   shadow, paper closer to the page. Its text keeps full contrast and it can still be opened. */
+.learn-unit.is-locked {
+  --quiet-ink: color-mix(in srgb, var(--ink) 45%, var(--canvas));
+  --stamp-paper: color-mix(in srgb, var(--surface) 50%, var(--canvas));
+  --stamp-line: color-mix(in srgb, var(--text) 36%, var(--stamp-paper));
+  background: var(--stamp-paper);
+  border-color: var(--quiet-ink);
+  box-shadow: 3px 3px 0 var(--quiet-ink);
+}
+.learn-unit.is-locked .learn-unit-title {
+  color: var(--text-secondary);
 }
 
 /* Phones: icon, kicker and the learned count share the first row so the title
@@ -485,16 +550,16 @@
 }
 .learn-unit-n {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 .learn-unit-title {
   font-size: var(--fs-lg);
-  font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.3;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
 }
 .learn-unit-tagline {
   margin: 2px 0 0;
@@ -526,15 +591,10 @@
   white-space: nowrap;
 }
 .learn-unit-count strong {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
 }
 @media (max-width: 639px) {
-  /* Phones: the rail marker already shows the lock, so the badge drops it to
-     keep the kicker on one line. */
-  .learn-badge-later svg {
-    display: none;
-  }
   /* Phones: "5/9" on the kicker row; the word stays for screen readers. */
   .learn-unit-count-label {
     position: absolute;
@@ -559,6 +619,10 @@
   .learn-unit-count {
     text-align: right;
   }
+  /* The rail marker already shows the lock. */
+  .learn-badge-later svg {
+    display: none;
+  }
 }
 .learn-unit-go {
   grid-area: go;
@@ -579,7 +643,214 @@
   transform: translateX(2px);
 }
 
-/* Lesson rows */
+/* ── Stamp card ─────────────────────────────────────────────────────────── */
+/* One round stamp per lesson: five a row on a phone, as many as fit on wide screens. Each cell is
+   the link (44px tall, so the hit area never depends on the 40px circle). */
+.learn-stamps {
+  --stamp: 40px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px 2px;
+  justify-items: center;
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px;
+}
+@media (min-width: 640px) {
+  .learn-stamps {
+    grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+    gap: 4px;
+    padding: 0 14px 14px;
+  }
+}
+.learn-stamps li {
+  width: 100%;
+  min-width: 0;
+}
+.learn-stamp {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  text-decoration: none !important;
+}
+.learn-stamp:focus-visible {
+  outline-offset: -2px;
+}
+.learn-stamp-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--stamp);
+  height: var(--stamp);
+  border-radius: 50%;
+  border: var(--bw) dashed var(--stamp-line);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  transition:
+    transform var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+.learn-stamp-mark svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.25;
+}
+.learn-unit.is-locked .learn-stamp {
+  color: var(--text-tertiary);
+}
+@media (hover: hover) {
+  .learn-stamp.is-todo:hover .learn-stamp-mark {
+    border-color: var(--text);
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+  .learn-stamp.is-done:hover .learn-stamp-mark,
+  .learn-stamp.is-due:hover .learn-stamp-mark {
+    transform: scale(1.08);
+  }
+  .learn-stamp.is-next:hover .learn-stamp-mark {
+    background: var(--sun-hover);
+  }
+}
+.learn-stamp.is-todo:active .learn-stamp-mark,
+.learn-stamp.is-done:active .learn-stamp-mark,
+.learn-stamp.is-due:active .learn-stamp-mark {
+  transform: scale(0.92);
+}
+
+/* Learned: a tomato double ring with a check, a few degrees off, each one differently, as if
+   stamped by hand. The tilt is `rotate`, so presses and the landing animate `transform` freely. */
+.learn-stamps li {
+  --tilt: -11deg;
+}
+.learn-stamps li:nth-child(even) {
+  --tilt: 8deg;
+}
+.learn-stamps li:nth-child(3n) {
+  --tilt: -4deg;
+}
+.learn-stamps li:nth-child(4n + 1) {
+  --tilt: 13deg;
+}
+.learn-stamp.is-done .learn-stamp-mark,
+.learn-stamp.is-due .learn-stamp-mark {
+  border: 2.5px solid var(--tomato);
+  background: var(--stamp-paper);
+  box-shadow:
+    inset 0 0 0 2.5px var(--stamp-paper),
+    inset 0 0 0 4px var(--tomato);
+  color: var(--tomato);
+  rotate: var(--tilt);
+}
+.learn-stamp.is-done .learn-stamp-mark svg,
+.learn-stamp.is-due .learn-stamp-mark svg {
+  stroke-width: 3.2;
+}
+/* A stamp earned in the last few minutes lands once. */
+.learn-stamp.is-fresh .learn-stamp-mark {
+  animation: learn-stamp 0.5s 0.25s var(--spring) backwards;
+}
+@keyframes learn-stamp {
+  0% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+}
+
+/* Due for review: the stamp stays (it is learned) and carries a review badge on its corner. */
+.learn-stamp-due {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-left: 6px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--warning) 34%, var(--surface));
+  color: var(--warning-text);
+}
+.learn-stamp-due svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3;
+}
+
+/* Up next: the one sun sticker on the path, with a hard shadow, a play icon and a slow pulse. */
+.learn-stamp.is-next .learn-stamp-mark {
+  border: var(--bw) solid var(--ink);
+  background: var(--sun);
+  box-shadow: var(--shadow-xs);
+  color: var(--on-fill);
+  animation: learn-next-bump 2.4s ease-in-out infinite;
+}
+.learn-stamp.is-next .learn-stamp-mark svg {
+  width: 15px;
+  height: 15px;
+  margin-left: 2px;
+  fill: currentColor;
+}
+.learn-stamp.is-next .learn-stamp-mark::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--sun-hover);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+  animation: learn-next-ring 2.4s ease-out infinite;
+}
+.learn-stamp.is-next:active .learn-stamp-mark {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 var(--ink);
+  animation: none;
+}
+@keyframes learn-next-bump {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.07);
+  }
+}
+@keyframes learn-next-ring {
+  0%,
+  25% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .learn-stamp.is-next .learn-stamp-mark,
+  .learn-stamp.is-next .learn-stamp-mark::after,
+  .learn-stamp.is-fresh .learn-stamp-mark {
+    animation: none;
+  }
+}
+
+/* Lesson rows: the same lessons by name, behind "Show lessons" */
 .learn-rows {
   list-style: none;
   margin: 0;
@@ -615,7 +886,12 @@
   border-radius: var(--r-sm);
 }
 .learn-row.is-next {
-  background: var(--brand-subtle);
+  background: color-mix(in srgb, var(--sun) 20%, var(--surface));
+}
+@media (hover: hover) {
+  .learn-row.is-next:hover {
+    background: color-mix(in srgb, var(--sun) 30%, var(--surface));
+  }
 }
 .learn-row.is-next::before {
   content: '';
@@ -623,9 +899,9 @@
   left: 0;
   top: 6px;
   bottom: 6px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--brand);
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--sun);
 }
 .learn-row-main {
   flex: 1;
@@ -658,7 +934,7 @@
   }
 }
 .learn-row.is-next .learn-row-title {
-  font-weight: 600;
+  font-weight: 700;
 }
 .learn-row-sub {
   display: none;
@@ -677,6 +953,9 @@
 }
 .badge.learn-row-flag {
   display: none;
+  border-color: var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
 }
 @media (min-width: 480px) {
   .badge.learn-row-flag {
@@ -718,20 +997,46 @@
   color: var(--text-tertiary);
 }
 
-/* Status dot variants (base: .status-dot in components.css) */
-.status-dot.learn-dot-todo {
+/* Status dots (base: .status-dot in components.css), in the stamp card's language. The shared
+   sheet loads after this one, so the overrides carry the list's class. */
+.learn-rows .status-dot {
+  border: 1.5px dashed var(--stamp-line);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.learn-rows .status-dot.learn-dot-todo {
   font-variant-numeric: tabular-nums;
 }
-.status-dot.learn-dot-todo svg {
+.learn-rows .status-dot.learn-dot-todo svg {
   width: 12px;
   height: 12px;
 }
-.status-dot.learn-dot-next {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--text-inverse);
+.learn-rows .status-dot.learned {
+  border: 2px solid var(--tomato);
+  background: var(--stamp-paper);
+  color: var(--tomato);
 }
-.status-dot.learn-dot-next svg {
+.learn-rows .status-dot.learned svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3.5;
+}
+.learn-rows .status-dot.due {
+  border: 1.5px solid var(--ink);
+  background: color-mix(in srgb, var(--warning) 34%, var(--surface));
+  color: var(--warning-text);
+}
+.learn-rows .status-dot.due svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.75;
+}
+.learn-rows .status-dot.learn-dot-next {
+  border: 1.5px solid var(--ink);
+  background: var(--sun);
+  color: var(--on-fill);
+}
+.learn-rows .status-dot.learn-dot-next svg {
   width: 9px;
   height: 9px;
   margin-left: 1px;
@@ -765,7 +1070,7 @@
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-sm);
-  font-weight: 550;
+  font-weight: 700;
   cursor: pointer;
   transition:
     background var(--dur-fast),
@@ -816,7 +1121,7 @@
 .learn-index-title {
   padding: 0 0 10px 14px;
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-tertiary);
@@ -847,9 +1152,9 @@
   color: var(--text);
 }
 .learn-index-link.is-active {
-  border-left-color: var(--brand);
+  border-left-color: var(--text);
   color: var(--text);
-  font-weight: 550;
+  font-weight: 700;
 }
 .learn-index-link:focus-visible {
   outline-offset: -2px;
@@ -892,25 +1197,23 @@
   border-radius: 50%;
 }
 .learn-index-mark.is-complete {
-  background: var(--success);
-  color: var(--text-inverse);
+  border: 1.5px solid var(--ink);
+  background: var(--mint);
+  color: var(--on-fill);
 }
 .learn-index-mark.is-complete svg {
   width: 9px;
   height: 9px;
 }
 .learn-index-mark.is-current {
-  width: 8px;
-  height: 8px;
-  margin: 3px;
-  background: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-subtle);
+  border: 1.5px solid var(--ink);
+  background: var(--sun);
 }
 .learn-index-mark.is-open {
-  border: 1.5px solid var(--border-strong);
+  border: 1.5px dashed var(--text-tertiary);
 }
 .learn-index-mark.is-locked {
-  color: var(--text-disabled);
+  color: var(--text-tertiary);
 }
 .learn-index-mark.is-locked svg {
   width: 12px;

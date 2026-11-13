@@ -3,25 +3,19 @@
 // backup download in case the saved data itself is what the screen choked on.
 
 import { useRouteError } from 'react-router-dom';
-import { Download, House, RotateCw, TriangleAlert } from 'lucide-react';
+import { Download, House, RotateCw } from 'lucide-react';
 import { today } from '../lib/date';
 import { exportProgress } from '../lib/store';
-import { IconTile } from './icons';
+import { saveTextFile } from '../lib/native';
+import { Pip } from './Mascot';
 
 export function Crash() {
   const error = useRouteError();
   const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  const download = () => {
-    const blob = new Blob([exportProgress()], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `intprep-progress-${today()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  };
+  const download = () => void saveTextFile(`intprep-progress-${today()}.json`, exportProgress());
   return (
     <main className="crash">
-      <IconTile icon={TriangleAlert} size="xl" color="var(--warning)" />
+      <Pip size={112} mood="sad" />
       <h1>This screen ran into a problem</h1>
       <p>Your progress is saved. Reloading usually fixes it; if it keeps happening, download a backup and open the dashboard.</p>
       {message && (

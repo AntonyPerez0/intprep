@@ -15,7 +15,7 @@
 }
 .trace-io-label {
   font-size: var(--fs-xs);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-tertiary);
 }
 .trace-io code,
@@ -31,17 +31,20 @@
   gap: 12px;
   align-items: start;
 }
+/* The sheet (as the code window, without a file tab) and the variables card: two stickers */
 .trace-code {
   background: var(--code-bg);
   color: var(--code-text);
-  border: 1px solid var(--code-border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
   padding: 10px 0;
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.7;
   max-height: 420px;
   overflow: auto;
+  scrollbar-width: thin;
   scrollbar-color: var(--code-scrollbar) transparent;
 }
 .trace-line {
@@ -51,9 +54,14 @@
   padding-right: 14px;
   min-width: max-content;
 }
+/* The line that runs next: the highlighter, plus the arrow in the gutter */
 .trace-line.is-on {
-  background: rgba(227, 179, 65, 0.16);
-  box-shadow: inset 2px 0 0 var(--code-key);
+  background: color-mix(in srgb, var(--sun) 32%, transparent);
+  box-shadow: inset 3px 0 0 var(--code-key);
+}
+.trace-line.is-on .trace-ln {
+  color: var(--code-text);
+  font-weight: 500;
 }
 .trace-ln {
   text-align: right;
@@ -62,7 +70,7 @@
   user-select: none;
 }
 .trace-arrow {
-  color: var(--code-key);
+  color: var(--code-text);
   font-size: 9px;
   line-height: 21px;
 }
@@ -70,14 +78,15 @@
   display: grid;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid var(--border);
+  border: var(--bw) solid var(--ink);
   border-radius: var(--r-lg);
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   min-width: 0;
 }
 .trace-step {
   font-size: var(--fs-sm);
-  font-weight: 600;
+  font-weight: 700;
 }
 .trace-step-line {
   font-weight: 450;
@@ -126,10 +135,14 @@
   font-weight: 500;
   color: var(--text-secondary);
 }
+/* A variable that just changed: highlighted, and its value in bold (not color alone) */
 .trace-vars tr.is-new td,
 .trace-vars tr.is-new th {
-  background: var(--warning-subtle);
+  background: color-mix(in srgb, var(--sun) 32%, transparent);
   color: var(--text);
+}
+.trace-vars tr.is-new td {
+  font-weight: 700;
 }
 .trace-none {
   font-family: var(--font-sans);
@@ -145,7 +158,7 @@
   border-top: 1px solid var(--border);
 }
 .trace-result code {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--success-text);
 }
 .trace-controls {
@@ -158,7 +171,7 @@
   /* A range input has a wide default size: let the row decide. */
   width: 0;
   min-width: 48px;
-  accent-color: var(--brand);
+  accent-color: var(--text);
 }
 /* A slider is thin: on touch screens, give it a finger-sized row to be dragged in. */
 @media (pointer: coarse) {

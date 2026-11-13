@@ -6,6 +6,7 @@ import { inline, Md } from '../lib/markdown';
 import type { SolutionLine } from '../lib/parseSolution';
 import { shuffle } from '../lib/random';
 import { DifficultyChip } from './ui';
+import { Pip } from './Mascot';
 
 // ── Action bar: Check → feedback → Continue ─────────────────────────────────
 //
@@ -109,12 +110,15 @@ export function ActionBar({
     <div className={`actionbar ${status}`} role={isIdle ? undefined : 'status'}>
       <div className="actionbar-inner">
         {!isIdle && (
-          <div>
-            <div className="feedback-title">
-              {status === 'correct' ? <CircleCheck strokeWidth={2.2} /> : <CircleX strokeWidth={2.2} />}
-              {title ?? (status === 'correct' ? praise : enc)}
+          <div className="feedback">
+            <Pip size={46} mood={status === 'correct' ? 'cheer' : 'sad'} className="feedback-pip" />
+            <div className="feedback-text">
+              <div className="feedback-title">
+                {status === 'correct' ? <CircleCheck strokeWidth={2.4} /> : <CircleX strokeWidth={2.4} />}
+                {title ?? (status === 'correct' ? praise : enc)}
+              </div>
+              {feedback && <div className="feedback-body">{feedback}</div>}
             </div>
-            {feedback && <div className="feedback-body">{feedback}</div>}
           </div>
         )}
         <div className={`buttons arm-${arm.n % 2}`}>
@@ -271,7 +275,7 @@ export function CodeView({
             {isBlank ? (
               <>
                 {indent}
-                <span className={`blank ${blankState ? `filled-${blankState}` : ''}`}>{blankContent ?? '???'}</span>
+                <span className={`blank ${blankState ? `filled-${blankState}` : blankContent && blankContent !== '???' ? 'is-filled' : ''}`}>{blankContent ?? '???'}</span>
               </>
             ) : l.text === '' ? (
               ' '
@@ -419,7 +423,7 @@ export function OrderSteps({
             <button key={i} type="button" className={`parsons-item ${state}`} onClick={() => unplace(i)} disabled={revealed} title="Remove">
               <span className="idx">{pos + 1}.</span>
               <span className="grow">{inline(steps[i])}</span>
-              {revealed && (i === pos ? <Check size={16} color="var(--success)" /> : <X size={16} color="var(--danger)" />)}
+              {revealed && (i === pos ? <Check size={16} strokeWidth={2.4} aria-hidden="true" /> : <X size={16} strokeWidth={2.4} aria-hidden="true" />)}
             </button>
           );
         })}

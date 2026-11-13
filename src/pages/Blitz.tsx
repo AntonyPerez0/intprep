@@ -17,7 +17,6 @@ import {
   Check,
   ChevronRight,
   CircleCheck,
-  CircleX,
   CodeXml,
   Eye,
   Flame,
@@ -67,6 +66,7 @@ import { awardXp, flagForReview, getProgress, recordAnswers, recordBlitz, record
 import { unitProgress } from '../lib/path';
 import { SessionShell } from '../components/Shell';
 import { CategoryIcon, IconTile } from '../components/icons';
+import { Pip } from '../components/Mascot';
 import { ActionBar, ProblemPrompt } from '../components/interact';
 import { CheckedAction, CodeLine, CodePane, TyperWindow } from '../components/CodeTyper';
 import { CodeGaps, GapsFooter, PickGaps, type CodeGapsHandle, type PickGapsHandle } from '../components/CodeGaps';
@@ -98,7 +98,7 @@ const TONE_COLOR: Record<Tone, string> = { calm: 'var(--brand)', warning: 'var(-
 function HudRing({ value, tone, label, children }: { value: number; tone: Tone; label: string; children: ReactNode }) {
   return (
     <div className={`blitz-ring is-${tone}`} aria-label={label} role="img">
-      <Ring value={value} size={56} stroke={4} instant color={TONE_COLOR[tone]} track="var(--blitz-ring-track)">
+      <Ring value={value} size={54} stroke={5} instant color="var(--blitz-ring-arc)" track="var(--blitz-ring-track)">
         <span className="blitz-ring-label" aria-hidden="true">
           {children}
         </span>
@@ -367,7 +367,12 @@ function Lobby({
     <SessionShell progress={null} onClose={() => nav('/')} title="Pattern Blitz">
       <div className="blitz-lobby">
         <header className="blitz-hero">
-          <IconTile icon={Zap} size="lg" />
+          <span className="blitz-hero-art" aria-hidden="true">
+            <Pip size={76} mood="happy" className="bob" />
+            <span className="blitz-hero-bolt">
+              <Zap strokeWidth={2.4} />
+            </span>
+          </span>
           <h1>Pattern Blitz</h1>
           <p className="blitz-lede">
             {lines
@@ -849,7 +854,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
               )}
               {flash?.ok && (
                 <>
-                  <CircleCheck className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+                  <Pip size={34} mood="cheer" className="blitz-feedback-pip" />
                   <span className="blitz-feedback-title">Correct</span>
                   <span className="blitz-feedback-gain tabular">+{POINTS * mult}</span>
                   {mult > 1 && <span className="blitz-feedback-meta">×{mult} multiplier</span>}
@@ -857,7 +862,7 @@ function PatternGame({ zen, scope, onAgain, onMenu }: { zen: boolean; scope: 'st
               )}
               {flash && !flash.ok && (
                 <>
-                  <CircleX className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+                  <Pip size={34} mood="sad" className="blitz-feedback-pip" />
                   <div className="grow blitz-feedback-body">
                     <div className="blitz-feedback-line">
                       <span className="blitz-feedback-label">Answer</span>
@@ -1317,7 +1322,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
         <div className={`blitz-feedback blitz-lines-feedback ${flash ? 'is-correct' : 'is-idle'}`} role="status" aria-live="polite">
           {flash?.kind === 'correct' && (
             <span className="blitz-flash" key={flash.id}>
-              <CircleCheck className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+              <Pip size={34} mood="cheer" className="blitz-feedback-pip" />
               <span className="blitz-feedback-title">Correct</span>
               <span className="blitz-feedback-gain tabular">+{flash.gained}</span>
               {flash.mult > 1 && <span className="blitz-feedback-meta">×{flash.mult} multiplier</span>}
@@ -1326,7 +1331,7 @@ function LinesGame({ zen, pool, onAgain, onMenu }: { zen: boolean; pool: KeyLine
           )}
           {flash?.kind === 'fixed' && (
             <span className="blitz-flash" key={flash.id}>
-              <CircleCheck className="blitz-feedback-icon" strokeWidth={2.2} aria-hidden="true" />
+              <Pip size={34} mood="happy" className="blitz-feedback-pip" />
               <span className="blitz-feedback-title">Fixed</span>
               <span className="blitz-feedback-meta">No points for a fix, but it helps it stick.</span>
               <span className="sr-only"> Next: {flash.next}.</span>
